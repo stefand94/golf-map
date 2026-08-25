@@ -329,14 +329,16 @@ loadStoredState();
 const startView=restoredView||{center:[51.45,-0.15],zoom:9};
 map=L.map('map',{scrollWheelZoom:true,zoomControl:false}).setView(startView.center,startView.zoom);
 L.control.zoom({position:'bottomright'}).addTo(map);
-/* GOLF: swapped the flat CartoDB Light basemap for OpenTopoMap — green/
-   brown terrain shading and contour lines read much better for coastal
-   links courses (Formby, St Enodoc) than a plain grey-green base, and it's
-   free with no API key (Stadia's hosted Stamen Terrain now requires a
-   signed-up key even for a static site, so this is the closest true
-   no-signup equivalent). maxZoom 17 is OpenTopoMap's real ceiling — Leaflet
-   upsamples past it rather than requesting tiles that don't exist. */
-L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)',maxZoom:17,maxNativeZoom:17}).addTo(map);
+/* GOLF: basemap went CartoDB Light -> OpenTopoMap -> CartoDB Voyager.
+   OpenTopoMap's contour lines/terrain shading looked great on coastal
+   links courses but were too busy at the country-wide "show all results"
+   view, and Esri World Topo (compared side by side) was even busier —
+   more place-name labels and a relief tint competing with the pins.
+   Voyager keeps colour (cream land, blue water, orange/yellow roads)
+   without contours or dense labelling, so the flag pins and rail lines
+   stay legible on top of it. Free, no API key, same CDN as the original
+   CartoDB Light basemap. */
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap contributors &copy; CARTO',maxZoom:19}).addTo(map);
 
 const railLayer=L.layerGroup().addTo(map),lblLayer=L.layerGroup().addTo(map),
       stnLayer=L.layerGroup().addTo(map),stnLblLayer=L.layerGroup().addTo(map),
