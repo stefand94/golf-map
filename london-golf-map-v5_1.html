@@ -8,10 +8,16 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
 <style>
-  :root{--ink:#14211B;--ink-soft:#3C4A42;--paper:#E9EBE3;--paper-2:#F4F5EF;--line:#C6CBBC;--stone:#8A9187;--accent:#0072B2}
+  /* GOLF-18: --stone was #8A9187, only 2.96:1 against --paper-2 — fails
+     WCAG AA (needs 4.5:1) for the large amount of small secondary text it's
+     used for. Darkened to #697065 (4.66:1 on paper-2, 5.11:1 on white),
+     same muted grey-green hue, passes AA with margin. */
+  :root{--ink:#14211B;--ink-soft:#3C4A42;--paper:#E9EBE3;--paper-2:#F4F5EF;--line:#C6CBBC;--stone:#697065;--accent:#0072B2}
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;height:100%}
   body{font-family:"IBM Plex Sans",system-ui,sans-serif;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased}
+  .skip-link{position:absolute;left:8px;top:-40px;background:var(--ink);color:var(--paper-2);padding:8px 14px;border-radius:5px;font:600 12.5px "IBM Plex Sans",sans-serif;text-decoration:none;z-index:3000;transition:top .12s}
+  .skip-link:focus{top:8px}
   .app{display:grid;grid-template-columns:minmax(360px,420px) 1fr;height:100vh}
   @media (max-width:900px){.app{grid-template-columns:1fr;grid-template-rows:auto 1fr}#map{min-height:50vh}.panel{max-height:50vh}}
   .panel{display:flex;flex-direction:column;background:var(--paper-2);border-right:1px solid var(--line);overflow:hidden}
@@ -90,7 +96,8 @@
   .stnlabel{font:500 9.5px "IBM Plex Sans",sans-serif;color:#33403A;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
 
   .legend{background:var(--paper-2);border-radius:7px;border:1px solid var(--line);font-size:11px;line-height:1.55;box-shadow:0 3px 12px rgba(20,33,27,.16);max-width:200px}
-  .legend-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone)}
+  .legend-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone);width:100%;border:none;background:none;text-align:left}
+  .legend-head:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
   .legend-head::after{content:'▸';font-size:9px;transition:transform .12s}
   .legend.open .legend-head::after{transform:rotate(90deg)}
   .legend-body{display:none;padding:0 11px 9px;max-height:60vh;overflow-y:auto}
@@ -118,6 +125,7 @@
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
+<a href="#map" class="skip-link">Skip to map</a>
 <div class="app">
   <aside class="panel">
     <header class="mast">
@@ -150,7 +158,7 @@
             <option value="name">by name</option>
           </select>
         </label>
-        <span id="count"></span>
+        <span id="count" role="status" aria-live="polite"></span>
       </div>
       <div class="row">
         <button class="linkbtn" id="fit-map">Show all results on map</button>
@@ -162,7 +170,7 @@
     </div>
     <div class="list" id="list"></div>
   </aside>
-  <div id="map"></div>
+  <div id="map" tabindex="-1"></div>
 </div>
 <div class="drawer" id="drawer"><div class="sheet" id="sheet"></div></div>
 
@@ -452,7 +460,7 @@ function openTripPlanner(){
       <button class="btn2 ghost" id="tp-mode-anchor">By anchor course</button>
     </div>
     <div id="tp-body"></div>`;
-  drawer.classList.add('open');
+  openDrawer();
   document.getElementById('tp-mode-region').addEventListener('click',()=>tripPlannerMode('region'));
   document.getElementById('tp-mode-anchor').addEventListener('click',()=>tripPlannerMode('anchor'));
   tripPlannerMode('region');
@@ -626,9 +634,15 @@ function render(){
 
 const legend=L.control({position:'topright'});
 legend.onAdd=()=>{const d=L.DomUtil.create('div','legend');
-  const head=L.DomUtil.create('div','legend-head',d);head.textContent='Legend';
-  const body=L.DomUtil.create('div','legend-body',d);
-  head.addEventListener('click',()=>d.classList.toggle('open'));
+  const head=L.DomUtil.create('button','legend-head',d);
+  head.type='button';head.textContent='Legend';head.setAttribute('aria-expanded','false');
+  const bodyId='legend-body-'+Math.random().toString(36).slice(2,8);
+  head.setAttribute('aria-controls',bodyId);
+  const body=L.DomUtil.create('div','legend-body',d);body.id=bodyId;
+  head.addEventListener('click',()=>{
+    const open=d.classList.toggle('open');
+    head.setAttribute('aria-expanded',String(open));
+  });
   body.innerHTML='<b>Flag colour = who can play</b>'+
     Object.values(ACCESS).map(a=>`<div class="lr">${flagSVG(a.colour,a.pole,15,false)}<span>${a.label}</span></div>`).join('')+
     '<div style="margin-top:4px;color:var(--stone);font-size:10.5px">Bigger flag + gold ring = Top 100 ranked</div><hr>'+
@@ -642,11 +656,36 @@ legend.onAdd=()=>{const d=L.DomUtil.create('div','legend');
   L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d};
 legend.addTo(map);
 
-/* ---- editor / export (unchanged behaviour) ---- */
+/* ---- editor / export / trip planner drawer ---- */
 const drawer=document.getElementById('drawer'),sheet=document.getElementById('sheet');
+drawer.setAttribute('role','dialog');drawer.setAttribute('aria-modal','true');
 drawer.addEventListener('click',e=>{if(e.target===drawer)closeDrawer()});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
-function closeDrawer(){drawer.classList.remove('open');tripClear()}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drawer.classList.contains('open'))closeDrawer()});
+
+/* GOLF-18: focus management — move focus into the drawer on open, trap
+   Tab/Shift+Tab within it while open, restore focus to whatever triggered
+   it on close. Previously the drawer opened/closed with no focus handling
+   at all, leaving keyboard/screen-reader users disoriented. */
+let drawerTrigger=null;
+function openDrawer(){
+  drawerTrigger=document.activeElement;
+  drawer.classList.add('open');
+  const first=sheet.querySelector('input,select,textarea,button,a[href]');
+  if(first)first.focus();
+}
+function closeDrawer(){
+  drawer.classList.remove('open');tripClear();
+  if(drawerTrigger&&document.body.contains(drawerTrigger))drawerTrigger.focus();
+  drawerTrigger=null;
+}
+drawer.addEventListener('keydown',e=>{
+  if(e.key!=='Tab')return;
+  const focusable=[...sheet.querySelectorAll('input,select,textarea,button,a[href]')].filter(el=>!el.disabled&&el.offsetParent!==null);
+  if(!focusable.length)return;
+  const first=focusable[0],last=focusable[focusable.length-1];
+  if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
+  else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
+});
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
 function openEditor(i){
   map.closePopup();
@@ -668,7 +707,7 @@ function openEditor(i){
     <div class="bar"><button class="btn2" onclick="saveEdit(${i})">Save correction</button>
     <button class="btn2 ghost" onclick="closeDrawer()">Cancel</button>
     ${isEdited(i)?`<button class="btn2 warn" onclick="revertEdit(${i})">Revert to original</button>`:''}</div>`;
-  drawer.classList.add('open');
+  openDrawer();
 }
 function saveEdit(i){const g=id=>document.getElementById(id).value;
   const next={wd:g('e-wd'),we:g('e-we'),a:g('e-a'),band:g('e-band'),stn:g('e-stn'),walk:g('e-walk'),arch:g('e-arch'),spec:g('e-spec'),site:g('e-site'),book:g('e-book'),note:g('e-note')};
@@ -693,7 +732,7 @@ document.getElementById('open-export').addEventListener('click',()=>{
     <span id="copied" style="font-size:12px;color:var(--stone)"></span></div>`
     :`<div class="bar"><button class="btn2 ghost" onclick="closeDrawer()">Close</button></div>`}
     <div class="bar"><button class="btn2 warn" onclick="wipeStoredState()">Clear saved filters &amp; corrections on this device</button></div>`;
-  drawer.classList.add('open')});
+  openDrawer()});
 function wipeStoredState(){
   if(!confirm('Clear all saved filters, map position, corrections and played/want-to-play lists stored in this browser? This cannot be undone unless you exported a copy.'))return;
   Object.keys(EDITS).forEach(k=>delete EDITS[k]);
