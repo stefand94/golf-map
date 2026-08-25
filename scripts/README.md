@@ -106,6 +106,33 @@ St Georges Golf Club") — the script picks the closest name match via
 one) can still need a more specific query. Verify unfamiliar matches via
 `matched_name` in the output JSON before trusting them.
 
+### `fetch_club_images.py`
+GOLF-21: decodes and resizes club logo images out of the `LogoImage` base64
+blobs already sitting in `scripts/output/england_golf_clubs.json` (from
+`fetch_england_golf_clubs.py`) — does not hit the network again. Resizes to
+~160px wide, JPEG quality ~70, landing around 15-25KB each (raw blobs
+average ~470KB), saved under `images/clubs/`.
+
+**Requires Pillow** (`pip install Pillow`) — a one-time local dev dependency
+for this script only, never shipped to the browser. Every other script here
+uses only the Python standard library; this is the one deliberate exception.
+
+```bash
+python3 scripts/fetch_club_images.py
+```
+Writes `images/clubs/*.jpg` plus `scripts/output/club_images.json` — a
+`{clubName: relativePath}` map for `merge_club_images.py` to consume.
+
+### `merge_club_images.py`
+Merges `fetch_club_images.py`'s output into a `data/courses-*.js` file as a
+`logo:"images/clubs/....jpg"` field, keyed by course name with any trailing
+"(Old)"/"(Hotchkin)"/etc. qualifier stripped (same convention as
+`merge_club_details.py`). Idempotent.
+
+```bash
+python3 scripts/merge_club_images.py data/courses-top100.js --images scripts/output/club_images.json
+```
+
 ### `test_data.js`
 GOLF-17: automated data-integrity checks (no browser needed) — every course
 has its required fields, valid access/region/band values, resolvable `stn`
@@ -132,3 +159,4 @@ station position) before merging anything in by hand — then run
 | `fetch_england_golf_clubs.py` | 2026-08-25 | Sourced the 100 England Top 100 entries in `data/courses-top100.js` |
 | `compute_nearest_stations.py` + `merge_nearest_stations.py` | 2026-08-25 | Populated `nearStation` on all 100 Top 100 entries (GOLF-10) |
 | `fetch_england_golf_clubs.py` + `merge_club_details.py` | 2026-08-25 | Populated `clubInfo` on 98 of 100 Top 100 entries (GOLF-11); Swinley Forest still absent from the directory, Prince's needs a name-mapping fix |
+| `fetch_club_images.py` + `merge_club_images.py` | 2026-08-25 | Populated `logo` on 71 of 100 Top 100 entries (GOLF-21); 393KB total added to `images/clubs/`, the other 29 clubs had no `LogoImage` in the England Golf data |

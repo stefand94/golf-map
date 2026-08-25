@@ -391,7 +391,7 @@ function popupHTML(i){
     :(V(i,'walk')||'Outside the rail catchment — no nearby station on this map');
   const search=`https://www.google.com/search?q=${encodeURIComponent(V(i,'n')+' golf club green fees')}`;
   const site=V(i,'site'),book=V(i,'book'),club=c.clubInfo;
-  return `<div class="pop"><h3>${V(i,'n')} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want to play</span>':''}</h3>
+  return `<div class="pop">${c.logo?`<img src="${c.logo}" alt="${V(i,'n')} club logo" loading="lazy" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;margin-bottom:8px">`:''}<h3>${V(i,'n')} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want to play</span>':''}</h3>
     <p class="sub">${c.r} · ${a.label}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
     <div class="fees"><div class="fee-box"><b>Weekday</b><span>${V(i,'wd')}</span></div>
     <div class="fee-box"><b>Weekend</b><span>${V(i,'we')}</span></div></div>
