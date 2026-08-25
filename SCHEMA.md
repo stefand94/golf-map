@@ -62,6 +62,12 @@ straight-line distance rather than a walkable London-network station.
 | `nearStation` | `{n, lat, lng, mi}` | GOLF-10: nearest station **nationally** by straight-line (haversine) distance, computed via `scripts/compute_nearest_stations.py` + `scripts/merge_nearest_stations.py`. Deliberately a separate field from `stn`/`walk` — those imply a walkable London-network station; this is "as the crow flies" and may be many miles, including across water on the coast. Currently only populated on `C_TOP100` entries lacking `stn`. |
 | `clubInfo` | `{phone?, membership?, teeBooking?, blurb?}` | GOLF-11: contact/booking details from England Golf's club-finder API (`scripts/fetch_england_golf_clubs.py` + `scripts/merge_club_details.py`), keyed to the club regardless of which of its courses the entry represents. All sub-fields optional and independently absent if England Golf doesn't have them — popups degrade gracefully. Note: England Golf's `FacilityTypes` (amenity icons) and `LogoImage`/banner fields were evaluated and deliberately **not** used — the former was empty across every club spot-checked, and the latter are raw base64 blobs averaging ~470KB each (would bloat this file by tens of MB) — see `scripts/README.md`. |
 
+## Runtime-only state (not in `C`/`C_TOP100`, lives in `localStorage`)
+
+| Const | Shape | Purpose |
+|---|---|---|
+| `PLAYED`, `WANT` | `Set<courseIndex>` | GOLF-15: two distinct personal lists ("Played" / "Want to play"), mutually exclusive per course — marking a course played clears it from the want list. Toggled from the popup, persisted via the same `localStorage` mechanism as `EDITS` (GOLF-9), cleared together via "Clear saved filters & corrections". |
+
 ## Conventions worth preserving
 
 - **No runtime API calls.** Every field above is a static literal, refreshed
