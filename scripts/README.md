@@ -106,11 +106,23 @@ St Georges Golf Club") — the script picks the closest name match via
 one) can still need a more specific query. Verify unfamiliar matches via
 `matched_name` in the output JSON before trusting them.
 
+### `test_data.js`
+GOLF-17: automated data-integrity checks (no browser needed) — every course
+has its required fields, valid access/region/band values, resolvable `stn`
+references, well-formed optional sub-objects, no duplicates. See
+`TESTING.md` for this plus the manual/browser-based checks that complement
+it.
+
+```bash
+node scripts/test_data.js
+```
+
 ## Verifying a re-run
 
-After running either script, spot-check a few known values against the
-current `data/*.js` (e.g. Sunningdale's coordinates, Clapham Junction's
-station position) before merging anything in by hand.
+After running either fetch script, spot-check a few known values against
+the current `data/*.js` (e.g. Sunningdale's coordinates, Clapham Junction's
+station position) before merging anything in by hand — then run
+`node scripts/test_data.js` to catch anything the spot-check missed.
 
 ## Last run
 
