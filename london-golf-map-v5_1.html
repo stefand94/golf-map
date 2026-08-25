@@ -24,6 +24,14 @@
 
   .filters{padding:11px 20px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
   .flabel{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone);display:block;margin-bottom:5px}
+  .fgroup{border:none;padding:0;margin:0}
+  .fgroup summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:5px}
+  .fgroup summary::-webkit-details-marker{display:none}
+  .fgroup summary::before{content:'▸';font-size:9px;color:var(--stone);transition:transform .12s}
+  .fgroup[open] summary::before{transform:rotate(90deg)}
+  .fgroup summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .fbadge{font-family:"IBM Plex Mono",monospace;font-size:9.5px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:8px;font-weight:600}
+  .fgroup .chips{margin-top:2px}
   .chips{display:flex;flex-wrap:wrap;gap:5px}
   .chip{display:inline-flex;align-items:center;gap:5px;font:500 11.5px/1 "IBM Plex Sans",sans-serif;padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--ink-soft);cursor:pointer;transition:background .12s,border-color .12s,color .12s}
   .chip:hover{border-color:var(--ink-soft)}
@@ -79,7 +87,12 @@
   .lnlabel{font:600 9px "IBM Plex Mono",monospace;letter-spacing:.04em;color:#fff;padding:1.5px 4px;border-radius:2.5px;white-space:nowrap;opacity:.95}
   .stnlabel{font:500 9.5px "IBM Plex Sans",sans-serif;color:#33403A;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
 
-  .legend{background:var(--paper-2);padding:9px 11px;border-radius:7px;border:1px solid var(--line);font-size:11px;line-height:1.55;box-shadow:0 3px 12px rgba(20,33,27,.16);max-width:200px;max-height:64vh;overflow-y:auto}
+  .legend{background:var(--paper-2);border-radius:7px;border:1px solid var(--line);font-size:11px;line-height:1.55;box-shadow:0 3px 12px rgba(20,33,27,.16);max-width:200px}
+  .legend-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone)}
+  .legend-head::after{content:'▸';font-size:9px;transition:transform .12s}
+  .legend.open .legend-head::after{transform:rotate(90deg)}
+  .legend-body{display:none;padding:0 11px 9px;max-height:60vh;overflow-y:auto}
+  .legend.open .legend-body{display:block}
   .legend b{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--stone);display:block;margin-bottom:5px;font-weight:500}
   .legend hr{border:0;border-top:1px solid var(--line);margin:7px 0}
   .legend .lr{display:flex;align-items:center;gap:7px;margin-bottom:2px}
@@ -113,9 +126,9 @@
     <div class="filters">
       <div><span class="flabel">Who can play</span><div class="chips" id="f-access"></div></div>
       <div><span class="flabel">Green fee</span><div class="chips" id="f-price"></div></div>
-      <div><span class="flabel">Architect</span><div class="chips" id="f-arch"></div></div>
-      <div><span class="flabel">Area</span><div class="chips" id="f-region"></div></div>
-      <div><span class="flabel">Show only</span><div class="chips" id="f-flag"></div></div>
+      <details class="fgroup" id="g-arch"><summary><span class="flabel" style="margin:0">Architect</span><span class="fbadge" id="b-arch" hidden></span></summary><div class="chips" id="f-arch"></div></details>
+      <details class="fgroup" id="g-region"><summary><span class="flabel" style="margin:0">Area</span><span class="fbadge" id="b-region" hidden></span></summary><div class="chips" id="f-region"></div></details>
+      <details class="fgroup" id="g-flag"><summary><span class="flabel" style="margin:0">Show only</span><span class="fbadge" id="b-flag" hidden></span></summary><div class="chips" id="f-flag"></div></details>
       <input id="q" type="search" placeholder="Search club, town, architect or station…" autocomplete="off" aria-label="Search courses">
       <div class="row">
         <div class="toggles">
@@ -211,10 +224,42 @@ function V(i,f){return(EDITS[i]&&EDITS[i][f]!==undefined)?EDITS[i][f]:C[i][f]}
 function isEdited(i){return !!EDITS[i]&&Object.keys(EDITS[i]).length>0}
 function editCount(){return Object.keys(EDITS).filter(isEdited).length}
 
+/* ---- persistence (GOLF-9): filters, map view and corrections survive
+   a reload via localStorage. The JSON export/import flow below stays
+   as the manual backup path — this is just a convenience cache. ---- */
+const LS_KEY='golfmap:v1';
+let restoredView=null;
+function loadStoredState(){
+  let raw;try{raw=localStorage.getItem(LS_KEY)}catch(e){return}
+  if(!raw)return;
+  let saved;try{saved=JSON.parse(raw)}catch(e){return}
+  if(saved.edits)Object.assign(EDITS,saved.edits);
+  if(saved.filters){['access','price','region','flag','arch'].forEach(k=>{
+    (saved.filters[k]||[]).forEach(v=>state[k].add(v));});}
+  if(saved.q)state.q=saved.q;
+  if(saved.sort)state.sort=saved.sort;
+  if(saved.mapCenter&&saved.mapZoom)restoredView={center:saved.mapCenter,zoom:saved.mapZoom};
+}
+function saveState(){
+  try{
+    const c=map?map.getCenter():null;
+    localStorage.setItem(LS_KEY,JSON.stringify({
+      edits:EDITS,
+      filters:{access:[...state.access],price:[...state.price],region:[...state.region],flag:[...state.flag],arch:[...state.arch]},
+      q:state.q,sort:state.sort,
+      mapCenter:c?[c.lat,c.lng]:undefined,mapZoom:map?map.getZoom():undefined
+    }));
+  }catch(e){/* storage unavailable or full — persistence is best-effort */}
+}
+function clearStoredState(){try{localStorage.removeItem(LS_KEY)}catch(e){}}
+
 const HOME=[51.5467873,-0.1798875];
 const state={access:new Set(),price:new Set(),region:new Set(),flag:new Set(),arch:new Set(),q:"",sort:"region"};
+let map; // assigned below; loadStoredState reads state before map exists
+loadStoredState();
 
-const map=L.map('map',{scrollWheelZoom:true,zoomControl:false}).setView([51.45,-0.15],9);
+const startView=restoredView||{center:[51.45,-0.15],zoom:9};
+map=L.map('map',{scrollWheelZoom:true,zoomControl:false}).setView(startView.center,startView.zoom);
 L.control.zoom({position:'bottomright'}).addTo(map);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap contributors &copy; CARTO',maxZoom:19}).addTo(map);
 
@@ -269,6 +314,17 @@ function ranked(i){const t=C[i].t100;return t&&(typeof t.gl==='number'||t.gbi||t
 function pinFor(i){const a=ACCESS[V(i,'a')],rk=ranked(i),size=rk?28:20;
   return L.divIcon({className:'',html:flagSVG(a.colour,a.pole,size,rk),iconSize:[size,size*1.3],iconAnchor:[size*0.28,size*1.25]})}
 const CONF={club:"Rate from the club's own page",press:"Rate published in trade press or a golf guide",est:"Indicative — verify with the club before travelling"};
+/* Card space is tight — show only the single most prestigious ranking
+   (ENG > GB&I > GL), with a "+N" hint if a course carries more than one. */
+function bestRankBadge(i){const t=C[i].t100;if(!t)return'';
+  const all=[];
+  if(typeof t.eng==='number')all.push(`ENG #${t.eng}`);
+  if(t.gbi)all.push(`GB&amp;I #${t.gbi}`);
+  if(typeof t.gl==='number')all.push(`GL #${t.gl}`);
+  if(!all.length)return'';
+  const extra=all.length>1?` <span class="wt">+${all.length-1}</span>`:'';
+  return `<span class="rk">${all[0]}</span>${extra}`;
+}
 function rankChips(i){const t=C[i].t100;if(!t)return'';const p=[];
   if(typeof t.gl==='number')p.push(`Greater London #${t.gl}`);if(t.gbi)p.push(`Britain &amp; Ireland #${t.gbi}`);
   if(t.eng)p.push(`England #${t.eng}`);if(t.lse)p.push(`London &amp; SE #${t.lse}`);if(t.sur)p.push(`Surrey #${t.sur}`);
@@ -308,15 +364,32 @@ buildChips('f-price',Object.entries(BANDS).map(([k,v])=>[k,v]),'price',false);
 buildChips('f-arch',ARCHS,'arch',false);
 buildChips('f-region',REGIONS.map(r=>[r,r]),'region',false);
 buildChips('f-flag',[['ranked','Top 100 ranked'],['top100','England Top 100 only'],['weekend','Open at weekends'],['walk','Walk from station'],['winter','Good in winter'],['sweep','Sweep finds'],['edited','My corrections']],'flag',false);
+function updateFilterBadges(){
+  [['arch','b-arch'],['region','b-region'],['flag','b-flag']].forEach(([k,id])=>{
+    const b=document.getElementById(id),n=state[k].size;
+    b.hidden=!n;if(n)b.textContent=n;});
+}
 document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{
   const k=ch.dataset.k,v=ch.dataset.v,on=ch.getAttribute('aria-pressed')==='true';
-  ch.setAttribute('aria-pressed',String(!on));on?state[k].delete(v):state[k].add(v);render()}));
-document.getElementById('q').addEventListener('input',e=>{state.q=e.target.value.toLowerCase();render()});
-document.getElementById('sort').addEventListener('change',e=>{state.sort=e.target.value;render()});
+  ch.setAttribute('aria-pressed',String(!on));on?state[k].delete(v):state[k].add(v);updateFilterBadges();saveState();render()}));
+/* reflect any filters restored from localStorage onto the actual chip elements */
+document.querySelectorAll('.chip').forEach(ch=>{
+  if(state[ch.dataset.k].has(ch.dataset.v))ch.setAttribute('aria-pressed','true');
+});
+['g-arch','g-region','g-flag'].forEach((id,idx)=>{
+  const k=['arch','region','flag'][idx];
+  if(state[k].size)document.getElementById(id).open=true;
+});
+updateFilterBadges();
+document.getElementById('q').value=state.q;
+document.getElementById('sort').value=state.sort;
+document.getElementById('q').addEventListener('input',e=>{state.q=e.target.value.toLowerCase();saveState();render()});
+document.getElementById('sort').addEventListener('change',e=>{state.sort=e.target.value;saveState();render()});
+map.on('moveend zoomend',saveState);
 document.getElementById('reset').addEventListener('click',()=>{
   ['access','price','region','flag','arch'].forEach(k=>state[k].clear());state.q="";
   document.getElementById('q').value="";document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed','false'));
-  linkLayer.clearLayers();render();map.setView([51.45,-0.15],9)});
+  updateFilterBadges();linkLayer.clearLayers();saveState();render();map.setView([51.45,-0.15],9)});
 function toggle(id,lyr){const b=document.getElementById(id);
   b.addEventListener('click',()=>{const on=b.getAttribute('aria-pressed')==='true';
     b.setAttribute('aria-pressed',String(!on));on?map.removeLayer(lyr):map.addLayer(lyr)})}
@@ -355,14 +428,13 @@ function render(){
   document.getElementById('editcount').textContent=editCount();
   const list=document.getElementById('list');
   if(!shown.length){list.innerHTML=`<p class="empty">Nothing matches. The cheapest heathland tends to be weekdays-only — try dropping that filter.</p>`;return}
-  list.innerHTML=shown.map(i=>{const a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')],t=C[i].t100||{};
+  list.innerHTML=shown.map(i=>{const a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')];
     return `<button class="card" data-i="${i}"><div class="card-top">
-      <p class="cname">${flagSVG(a.colour,a.pole,15,false)}${V(i,'n')}${isEdited(i)?' <span class="edited">EDITED</span>':''}${C[i].sweep?' <span class="wt">sweep</span>':''}</p>
+      <p class="cname">${flagSVG(a.colour,a.pole,15,false)}${V(i,'n')}${isEdited(i)?' <span class="edited">EDITED</span>':''}</p>
       <span class="cfee">${V(i,'wd')}<small>wknd ${V(i,'we')}</small></span></div>
       <p class="cmeta"><span>${a.label}</span>
       ${stn?`<span>${stn.n} · ${LINES[stn.l].n}</span>`:`<span style="color:var(--stone)">no close station</span>`}
-      ${typeof t.gl==='number'?`<span class="rk">GL #${t.gl}</span>`:''}${t.gbi?`<span class="rk">GB&amp;I #${t.gbi}</span>`:''}${typeof t.eng==='number'?`<span class="rk">ENG #${t.eng}</span>`:''}
-      ${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
+      ${bestRankBadge(i)}${C[i].sweep?'<span class="wt">sweep</span>':''}${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
   list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
     const i=+el.dataset.i;map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
     markers.get(i).setPopupContent(popupHTML(i));markers.get(i).openPopup();highlight(i);drawLink(i)}));
@@ -370,7 +442,10 @@ function render(){
 
 const legend=L.control({position:'topright'});
 legend.onAdd=()=>{const d=L.DomUtil.create('div','legend');
-  d.innerHTML='<b>Flag colour = who can play</b>'+
+  const head=L.DomUtil.create('div','legend-head',d);head.textContent='Legend';
+  const body=L.DomUtil.create('div','legend-body',d);
+  head.addEventListener('click',()=>d.classList.toggle('open'));
+  body.innerHTML='<b>Flag colour = who can play</b>'+
     Object.values(ACCESS).map(a=>`<div class="lr">${flagSVG(a.colour,a.pole,15,false)}<span>${a.label}</span></div>`).join('')+
     '<div style="margin-top:4px;color:var(--stone);font-size:10.5px">Bigger flag + gold ring = Top 100 ranked</div><hr>'+
     '<b>Stations</b>'+
@@ -416,8 +491,8 @@ function saveEdit(i){const g=id=>document.getElementById(id).value;
   const diff={};Object.entries(next).forEach(([k,v])=>{if(v!==C[i][k])diff[k]=v});
   const why=g('e-why').trim();if(why)diff._why=why;
   if(Object.keys(diff).length)EDITS[i]=diff;else delete EDITS[i];
-  closeDrawer();render()}
-function revertEdit(i){delete EDITS[i];closeDrawer();render()}
+  saveState();closeDrawer();render()}
+function revertEdit(i){delete EDITS[i];saveState();closeDrawer();render()}
 function corrections(){return Object.keys(EDITS).filter(isEdited).map(i=>{
   const changed={};Object.entries(EDITS[i]).forEach(([k,v])=>{if(k!=='_why')changed[k]={from:C[i][k],to:v}});
   return{course:C[i].n,why:EDITS[i]._why||null,changed}})}
@@ -425,15 +500,20 @@ document.getElementById('open-export').addEventListener('click',()=>{
   const list=corrections();
   const json=JSON.stringify({source:"Heath & Parkland golf map v5",exported:new Date().toISOString().slice(0,10),corrections:list},null,2);
   sheet.innerHTML=`<h2>Your corrections</h2>
-    <p class="lede">${list.length?`${list.length} ${list.length===1?'entry':'entries'} changed. Copy the JSON and paste it back into our chat — I'll merge it and mark those fields as verified by you.`:`Nothing corrected yet. Open any course and hit <b>Correct this</b>.`}</p>
+    <p class="lede">${list.length?`${list.length} ${list.length===1?'entry':'entries'} changed. Your corrections, filters and map position are saved to this browser automatically — export below only if you want a portable copy to paste back into our chat.`:`Nothing corrected yet. Open any course and hit <b>Correct this</b>.`}</p>
     ${list.length?`<div class="fld"><label for="ex">Correction patch</label><textarea id="ex" style="min-height:220px">${esc(json)}</textarea></div>
     <div class="bar"><button class="btn2" onclick="copyPatch()">Copy to clipboard</button>
     <button class="btn2 ghost" onclick="downloadPatch()">Download .json</button>
     <button class="btn2 ghost" onclick="closeDrawer()">Close</button>
-    <span id="copied" style="font-size:12px;color:var(--stone)"></span></div>
-    <p class="hint">Nothing is saved between sessions — export before you close the tab.</p>`
-    :`<div class="bar"><button class="btn2" onclick="closeDrawer()">Close</button></div>`}`;
+    <span id="copied" style="font-size:12px;color:var(--stone)"></span></div>`
+    :`<div class="bar"><button class="btn2 ghost" onclick="closeDrawer()">Close</button></div>`}
+    <div class="bar"><button class="btn2 warn" onclick="wipeStoredState()">Clear saved filters &amp; corrections on this device</button></div>`;
   drawer.classList.add('open')});
+function wipeStoredState(){
+  if(!confirm('Clear all saved filters, map position and corrections stored in this browser? This cannot be undone unless you exported a copy.'))return;
+  Object.keys(EDITS).forEach(k=>delete EDITS[k]);
+  clearStoredState();closeDrawer();render();
+}
 function copyPatch(){const t=document.getElementById('ex');t.select();
   navigator.clipboard.writeText(t.value).then(()=>document.getElementById('copied').textContent='Copied.')
   .catch(()=>document.getElementById('copied').textContent='Select the text above and copy manually.')}
