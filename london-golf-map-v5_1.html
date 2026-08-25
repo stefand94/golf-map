@@ -356,6 +356,7 @@ function popupHTML(i){
     <div class="fee-box"><b>Weekend</b><span>${V(i,'we')}</span></div></div>
     <dl><dt>Course</dt><dd>${V(i,'spec')}</dd><dt>Design</dt><dd>${V(i,'arch')}</dd><dt>By rail</dt><dd>${travel}</dd>${club&&club.phone?`<dt>Phone</dt><dd>${club.phone}</dd>`:''}${c.top100?`<dt>From home</dt><dd>${distMiles(i)} mi, as the crow flies</dd>`:''}</dl>
     <p class="note">${V(i,'note')}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${club.blurb}</span>`:''}</p>
+    ${tripHTML(i)}
     <div class="actions">
       <button class="btn ghost" onclick="togglePlayed(${i})">${PLAYED.has(i)?'Unmark played':'Mark played'}</button>
       <button class="btn ghost" onclick="toggleWant(${i})">${WANT.has(i)?'Remove from want-to-play':'Want to play'}</button>
@@ -374,6 +375,37 @@ C.forEach((c,i)=>{
 function drawLink(i){linkLayer.clearLayers();
   const s=STN[V(i,'stn')]||C[i].nearStation;if(!s)return;
   L.polyline([[s.lat,s.lng],[C[i].lat,C[i].lng]],{color:'#14211B',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(linkLayer)}
+
+/* GOLF-14: trip planner — up to 2 other bookable (pay&play/open access,
+   not members-only or application-only) courses reachable off the same
+   rail line, as a lightweight same-day pairing suggestion. Straight-line
+   distance between courses is a fine enough proxy for "roughly nearby on
+   this line" — this isn't attempting real journey planning. */
+function tripPartners(i){
+  const stn=STN[V(i,'stn')];if(!stn)return[];
+  const line=stn.l;
+  const candidates=C.map((c,j)=>j).filter(j=>{
+    if(j===i)return false;
+    const s=STN[V(j,'stn')];if(!s||s.l!==line)return false;
+    return['public','open'].includes(V(j,'a'));
+  });
+  candidates.sort((a,b)=>{
+    const da=Math.hypot(C[a].lat-C[i].lat,C[a].lng-C[i].lng);
+    const db=Math.hypot(C[b].lat-C[i].lat,C[b].lng-C[i].lng);
+    return da-db;
+  });
+  return candidates.slice(0,2);
+}
+function tripHTML(i){
+  const partners=tripPartners(i);if(!partners.length)return'';
+  const stn=STN[V(i,'stn')];
+  return `<div class="note" style="border-top:1px solid var(--line);padding-top:8px;margin-top:9px">
+    <b style="display:block;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone);margin-bottom:5px">Same-day pairing — also on the ${LINES[stn.l].n}</b>
+    ${partners.map(j=>`<div style="margin-bottom:3px"><a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${j})">${V(j,'n')}</a> — ${STN[V(j,'stn')].n}, ${ACCESS[V(j,'a')].label.toLowerCase()}</div>`).join('')}
+  </div>`;
+}
+function goToCourse(i){map.closePopup();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
+  markers.get(i).setPopupContent(popupHTML(i));markers.get(i).openPopup();highlight(i);drawLink(i)}
 
 function buildChips(id,items,key,withIcon){
   document.getElementById(id).innerHTML=items.map(([v,l,colOrArch,pole])=>
