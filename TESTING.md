@@ -68,6 +68,18 @@ that touches rendering, filters, or persistence:
    Sunningdale) — image should be fully visible (letterboxed, not
    cropped) inside its frame, and a course without one should render with
    no gap or broken-image icon.
+8. **Rail zoom-gating.** At the default London view (zoom 9) rail lines
+   and line-name labels should be visible; zoom out to a country-wide view
+   (e.g. via "Show all results on map") and they should disappear
+   entirely, not just fade — then zoom back in past `RAIL_MIN_ZOOM` (9)
+   and they should reappear, respecting whatever state the Rail/Labels
+   toggle buttons are in.
+9. **National Rail badge.** Open a London-catchment course whose nearest
+   station is on a non-TfL line (e.g. Mill Hill Golf Club → Mill Hill
+   Broadway, Thameslink) — should show a red "NR" badge next to the
+   station name. A course on a TfL line (Tube/Overground/Elizabeth/DLR)
+   should show no badge. Every Top 100 course's nationwide `nearStation`
+   should always show the badge (that lookup is always National Rail).
 
 ## What's explicitly not covered
 

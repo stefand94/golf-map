@@ -230,6 +230,21 @@ Object.entries(R).forEach(([rk,arr])=>arr.forEach(([n,la,ln])=>{
 ISOLATED.forEach(([n,la,ln,lk])=>{ if(!STN[n]){STN[n]={n,lat:la,lng:ln,l:lk};(STN_LINES[n]=STN_LINES[n]||new Set()).add(lk);} });
 const isIX=n=>STN_LINES[n].size>1||MANUAL_IX.includes(n);
 
+/* GOLF: a small "NR" badge next to a station when it's reached by National
+   Rail, not the TfL network (Tube/Overground/Elizabeth/DLR) — those are the
+   lines a Tube-only Oyster/contactless cap doesn't cover. Overground and
+   Elizabeth line run partly on National Rail infrastructure but are TfL
+   fare-zone/TfL-operated services, so they count as TfL here; every other
+   entry in LINES (Thameslink, Great Northern, Chiltern, Southern,
+   Southeastern, South Western, WCML) is a train-operating-company service —
+   plus every nationwide GOLF-10 nearStation lookup, which by construction
+   is always National Rail (it's a GB-wide station dataset, not a TfL one). */
+const TFL_LINES=new Set(['met','jub','nor','pic','cen','dis','eli','ovg']);
+function nrBadge(lineKey){
+  if(lineKey!==undefined&&TFL_LINES.has(lineKey))return'';
+  return ' <span title="National Rail service — not on the TfL network/Oyster cap" style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;background:#B5121B;color:#fff;padding:1.5px 5px;border-radius:3px;font-weight:600;letter-spacing:.03em">NR</span>';
+}
+
 function spline(pts,seg=14){
   if(pts.length<3)return pts;
   const p=[pts[0],...pts,pts[pts.length-1]],out=[];
@@ -314,7 +329,14 @@ loadStoredState();
 const startView=restoredView||{center:[51.45,-0.15],zoom:9};
 map=L.map('map',{scrollWheelZoom:true,zoomControl:false}).setView(startView.center,startView.zoom);
 L.control.zoom({position:'bottomright'}).addTo(map);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap contributors &copy; CARTO',maxZoom:19}).addTo(map);
+/* GOLF: swapped the flat CartoDB Light basemap for OpenTopoMap — green/
+   brown terrain shading and contour lines read much better for coastal
+   links courses (Formby, St Enodoc) than a plain grey-green base, and it's
+   free with no API key (Stadia's hosted Stamen Terrain now requires a
+   signed-up key even for a static site, so this is the closest true
+   no-signup equivalent). maxZoom 17 is OpenTopoMap's real ceiling — Leaflet
+   upsamples past it rather than requesting tiles that don't exist. */
+L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:'Map data: &copy; OpenStreetMap contributors, SRTM | Map style: &copy; OpenTopoMap (CC-BY-SA)',maxZoom:17,maxNativeZoom:17}).addTo(map);
 
 const railLayer=L.layerGroup().addTo(map),lblLayer=L.layerGroup().addTo(map),
       stnLayer=L.layerGroup().addTo(map),stnLblLayer=L.layerGroup().addTo(map),
@@ -348,6 +370,14 @@ Object.values(STN).forEach(s=>{
   stnDots[stnDots.length-1].lbl=lbl;
 });
 
+/* GOLF: at country-wide zoom (default view, zoom 9) the London rail
+   network is 100+ overlapping polylines squeezed into a tiny area — pure
+   clutter until you're actually zoomed in on London. Below RAIL_MIN_ZOOM
+   the rail/line-label layers come off the map entirely (not just dimmed),
+   while still respecting the manual Rail/Labels toggles once you zoom in. */
+const RAIL_MIN_ZOOM=9;
+function railToggledOn(){return document.getElementById('t-rail').getAttribute('aria-pressed')==='true'}
+function lblToggledOn(){return document.getElementById('t-lbl').getAttribute('aria-pressed')==='true'}
 function restyleRail(){
   const w=railWeight();
   railPolys.forEach(p=>p.setStyle({weight:w}));
@@ -356,6 +386,13 @@ function restyleRail(){
   stnLblLayer.clearLayers();
   if(z>=13) stnDots.forEach(o=>stnLblLayer.addLayer(o.lbl));
   else if(z>=11) stnDots.filter(o=>o.ix).forEach(o=>stnLblLayer.addLayer(o.lbl));
+
+  const showRail=railToggledOn()&&z>=RAIL_MIN_ZOOM;
+  if(showRail&&!map.hasLayer(railLayer))map.addLayer(railLayer);
+  if(!showRail&&map.hasLayer(railLayer))map.removeLayer(railLayer);
+  const showLbl=lblToggledOn()&&z>=RAIL_MIN_ZOOM;
+  if(showLbl&&!map.hasLayer(lblLayer))map.addLayer(lblLayer);
+  if(!showLbl&&map.hasLayer(lblLayer))map.removeLayer(lblLayer);
 }
 map.on('zoomend',restyleRail);restyleRail();
 
@@ -386,8 +423,8 @@ function rankChips(i){const t=C[i].t100;if(!t)return'';const p=[];
 
 function popupHTML(i){
   const c=C[i],a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')],near=c.nearStation;
-  const travel=stn?`<b style="color:${LINES[stn.l].c}">${stn.n}</b> · ${LINES[stn.l].n} — ${V(i,'walk')}`
-    :near?`<b>${near.n}</b> — ${near.mi} mi, straight-line (nearest station nationally, not a walking route)`
+  const travel=stn?`<b style="color:${LINES[stn.l].c}">${stn.n}</b> · ${LINES[stn.l].n}${nrBadge(stn.l)} — ${V(i,'walk')}`
+    :near?`<b>${near.n}</b>${nrBadge()} — ${near.mi} mi, straight-line (nearest station nationally, not a walking route)`
     :(V(i,'walk')||'Outside the rail catchment — no nearby station on this map');
   const search=`https://www.google.com/search?q=${encodeURIComponent(V(i,'n')+' golf club green fees')}`;
   const site=V(i,'site'),book=V(i,'book'),club=c.clubInfo;
@@ -635,7 +672,17 @@ document.getElementById('reset').addEventListener('click',()=>{
 function toggle(id,lyr){const b=document.getElementById(id);
   b.addEventListener('click',()=>{const on=b.getAttribute('aria-pressed')==='true';
     b.setAttribute('aria-pressed',String(!on));on?map.removeLayer(lyr):map.addLayer(lyr)})}
-toggle('t-rail',railLayer);toggle('t-stn',stnLayer);toggle('t-lbl',lblLayer);
+toggle('t-stn',stnLayer);
+/* t-rail/t-lbl don't add/remove their layer directly — restyleRail() also
+   gates them on zoom (RAIL_MIN_ZOOM), so flip the button state and let it
+   decide what's actually shown. */
+['t-rail','t-lbl'].forEach(id=>{
+  const b=document.getElementById(id);
+  b.addEventListener('click',()=>{
+    b.setAttribute('aria-pressed',String(b.getAttribute('aria-pressed')!=='true'));
+    restyleRail();
+  });
+});
 
 function feeNum(i){const m=String(V(i,'wd')).match(/\d+(\.\d+)?/);return m?parseFloat(m[0]):9999}
 function distOut(i){const dy=C[i].lat-HOME[0],dx=(C[i].lng-HOME[1])*Math.cos(HOME[0]*Math.PI/180);return Math.hypot(dy,dx)}
