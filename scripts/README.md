@@ -133,6 +133,32 @@ Merges `fetch_club_images.py`'s output into a `data/courses-*.js` file as a
 python3 scripts/merge_club_images.py data/courses-top100.js --images scripts/output/club_images.json
 ```
 
+### `fetch_course_stats.py` + `merge_course_stats.py`
+GOLF-12/13: fetches par/slope/course rating from `golfapi.uk` (RapidAPI,
+free tier — 200 requests/month, 5 req/min) and merges it into a
+`data/courses-*.js` file as `courseStats:{par,slope,rating}`, which
+pre-fills the Course Handicap calculator.
+
+Needs a `scripts/output/.rapidapi_key` file (gitignored, one line, your
+own RapidAPI key — never hardcoded or committed) before running. Two
+calls per unique *club* (search + course lookup), not per course entry —
+several Top 100 entries share one physical club. Resumable: writes
+incrementally, skips anything already resolved on a re-run, and takes
+`--max-requests` to cap how much of the monthly quota a single run spends
+— useful since 200/month doesn't cover all 221 courses in one pass.
+
+```bash
+python3 scripts/fetch_course_stats.py --max-requests 180
+python3 scripts/merge_course_stats.py data/courses-top100.js --stats scripts/output/course_stats.json
+python3 scripts/merge_course_stats.py data/courses-london.js --stats scripts/output/course_stats.json
+```
+
+**Scope note:** first pass was scoped to London 18-hole courses + England's
+Top 30 (133 courses, 127 unique clubs) rather than all 221, since that
+already needs 254 requests at 2/club — over one month's free-tier cap.
+Re-run `fetch_course_stats.py` (same command) once quota resets to
+continue; it'll pick up wherever it left off.
+
 ### `fetch_rail_geometry.py`
 Traces real track geometry for the TfL network lines (Underground,
 Elizabeth line, and the two Overground branches we cover: Weaver,
@@ -200,3 +226,4 @@ station position) before merging anything in by hand — then run
 | `fetch_england_golf_clubs.py` + `merge_club_details.py` | 2026-08-25 | Populated `clubInfo` on 98 of 100 Top 100 entries (GOLF-11); Swinley Forest still absent from the directory, Prince's needs a name-mapping fix |
 | `fetch_club_images.py` + `merge_club_images.py` | 2026-08-25 | Populated `logo` on 71 of 100 Top 100 entries (GOLF-21); 393KB total added to `images/clubs/`, the other 29 clubs had no `LogoImage` in the England Golf data |
 | `fetch_rail_geometry.py` + `merge_rail_geometry.py` | 2026-08-25 | Wrote `data/rail-geometry.js` — real OSM track geometry for all 8 TfL-network line families, replacing the spline approximation for those |
+| `fetch_course_stats.py` + `merge_course_stats.py` | 2026-08-25 | Populated `courseStats` on 66 of 221 entries (GOLF-12/13) — London 18-hole + England Top 30 scope, first of two monthly batches (free-tier quota) |

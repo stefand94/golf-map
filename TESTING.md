@@ -59,8 +59,8 @@ that touches rendering, filters, or persistence:
    should open Trip Planning already in anchor mode with that course
    pre-selected and results populated.
 6. **Course Handicap calculator.** Visible on every popup — pre-filled
-   with `courseStats` where we have it (currently: no course does, pending
-   GOLF-12's data source), otherwise all four fields (par/slope/rating/
+   with `courseStats` where we have it (66 of 221 so far, e.g. Royal
+   Birkdale), otherwise all four fields (par/slope/rating/
    index) are blank for manual entry. Verify one output against a
    hand-calculated example, and that an incomplete set of fields shows
    "Fill in all four fields." rather than a wrong number.

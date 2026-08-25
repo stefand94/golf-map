@@ -49,3 +49,13 @@ stays shelved for lack of a data source.
 
 The England Golf WHS platform lead is a dead end for a self-serve project —
 worth knowing so we don't re-investigate it later.
+
+## Update — 2026-08-25: implemented
+
+Stakeholder created a free `golfapi.uk`/RapidAPI account (option (a) — free
+tier, spread across monthly batches). First batch fetched via
+`scripts/fetch_course_stats.py` + `scripts/merge_course_stats.py`, scoped
+to London 18-hole courses + England's Top 30 (133 courses / 127 unique
+clubs — even that scoped set needs 254 requests at 2/club, over one
+month's 200-request cap). 66 of 221 entries now have `courseStats`. See
+`scripts/README.md` for how to run the next batch once quota resets.
