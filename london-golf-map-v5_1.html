@@ -635,9 +635,37 @@ function passes(i){const c=C[i];
   if(state.flag.has('edited')&&!isEdited(i))return false;
   if(state.flag.has('played')&&!PLAYED.has(i))return false;
   if(state.flag.has('want')&&!WANT.has(i))return false;
-  if(state.q){const s=V(i,'stn')||'';
-    if(!(V(i,'n')+' '+c.r+' '+V(i,'arch')+' '+V(i,'note')+' '+V(i,'walk')+' '+s).toLowerCase().includes(state.q))return false}
+  if(state.q&&!searchMatches(i,state.q))return false;
   return true}
+
+/* GOLF-20: exact substring match stays the primary, fast path (unchanged
+   behavior for anyone typing something that actually appears verbatim).
+   Fuzzy only kicks in as a fallback so a typo doesn't return zero results
+   — checked word-by-word against the searchable text, not as one long
+   Levenshtein diff against the whole blob, so "Sunningdle" still finds
+   "Sunningdale" inside a longer name/note without needing the whole
+   string to nearly match. */
+function levenshtein(a,b){
+  const m=a.length,n=b.length;
+  if(!m)return n;if(!n)return m;
+  let prev=Array.from({length:n+1},(_,j)=>j);
+  for(let i=1;i<=m;i++){
+    const cur=[i];
+    for(let j=1;j<=n;j++){
+      cur[j]=a[i-1]===b[j-1]?prev[j-1]:1+Math.min(prev[j-1],prev[j],cur[j-1]);
+    }
+    prev=cur;
+  }
+  return prev[n];
+}
+function searchMatches(i,q){
+  const c=C[i],s=V(i,'stn')||'';
+  const text=(V(i,'n')+' '+c.r+' '+V(i,'arch')+' '+V(i,'note')+' '+V(i,'walk')+' '+s).toLowerCase();
+  if(text.includes(q))return true;
+  if(q.length<3)return false; // too short for fuzzy to mean anything, avoid noisy matches
+  const threshold=q.length<=5?1:2;
+  return text.split(/\W+/).some(word=>word.length>=q.length-threshold&&levenshtein(q,word)<=threshold);
+}
 function highlight(i){document.querySelectorAll('.card').forEach(el=>el.classList.toggle('active',+el.dataset.i===i));
   const el=document.querySelector(`.card[data-i="${i}"]`);if(el)el.scrollIntoView({block:'nearest'})}
 
