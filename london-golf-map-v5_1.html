@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Heath &amp; Parkland — golf you can book, by rail</title>
+<title>The England Golf Explorer</title>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -154,8 +154,8 @@
   <aside class="panel">
     <header class="mast">
       <p class="eyebrow">Greater London · Herts · Bucks · Surrey · Kent · Essex · plus England's Top 100</p>
-      <h1>Heath &amp; Parkland<br><em>golf you can book, by rail</em></h1>
-      <p class="standfirst">121 courses that take visitors without membership, swept geographically across the London catchment — plus all 100 of England's ranked Top 100 courses nationally, shown as pins with no rail line since most are well outside the network. Most of the Top 100 sit well off this default view — search, filter to "England Top 100 only," or use <b>Show all results on map</b> below to find them.</p>
+      <h1>The England<br><em>Golf Explorer</em></h1>
+      <p class="standfirst">Greater London and England's Top 100 golf courses, in one place — a way to explore England's golf and find the easiest way to get there. 121 courses that take visitors without membership, swept geographically across the London catchment — plus all 100 of England's ranked Top 100 courses nationally, shown as pins with no rail line since most are well outside the network. Most of the Top 100 sit well off this default view — search, filter to "England Top 100 only," or use <b>Show all results on map</b> below to find them.</p>
     </header>
     <div class="filters">
       <div><span class="flabel">Who can play</span><div class="chips" id="f-access"></div></div>
@@ -391,7 +391,7 @@ function popupHTML(i){
     :(V(i,'walk')||'Outside the rail catchment — no nearby station on this map');
   const search=`https://www.google.com/search?q=${encodeURIComponent(V(i,'n')+' golf club green fees')}`;
   const site=V(i,'site'),book=V(i,'book'),club=c.clubInfo;
-  return `<div class="pop">${c.logo?`<img src="${c.logo}" alt="${V(i,'n')} club logo" loading="lazy" style="width:100%;max-height:110px;object-fit:cover;border-radius:6px;margin-bottom:8px">`:''}<h3>${V(i,'n')} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want to play</span>':''}</h3>
+  return `<div class="pop">${c.logo?`<div style="width:100%;height:100px;background:var(--paper);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${c.logo}" alt="${V(i,'n')} club logo" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"></div>`:''}<h3>${V(i,'n')} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want to play</span>':''}</h3>
     <p class="sub">${c.r} · ${a.label}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
     <div class="fees"><div class="fee-box"><b>Weekday</b><span>${V(i,'wd')}</span></div>
     <div class="fee-box"><b>Weekend</b><span>${V(i,'we')}</span></div></div>
@@ -406,6 +406,7 @@ function popupHTML(i){
       ${club&&club.teeBooking&&club.teeBooking!==site&&club.teeBooking!==book?`<a class="btn ghost" href="${club.teeBooking}" target="_blank" rel="noopener">Tee booking</a>`:''}
       ${club&&club.membership&&club.membership!==site?`<a class="btn ghost" href="${club.membership}" target="_blank" rel="noopener">Membership</a>`:''}
       <button class="btn ghost" onclick="openEditor(${i})">Correct this</button>
+      <button class="btn ghost" onclick="setAsAnchor(${i})">Set as anchor course for a trip</button>
     </div><p class="conf">${CONF[c.conf]}</p></div>`;
 }
 C.forEach((c,i)=>{
@@ -473,7 +474,7 @@ function tripByAnchor(anchor,radiusMiles){
 }
 const tripLayer=L.layerGroup().addTo(map);
 function tripClear(){tripLayer.clearLayers()}
-function tripShow(indices,anchor){
+function tripShow(indices,anchor,radiusMiles){
   tripClear();
   const pts=[];
   indices.forEach(i=>{
@@ -483,6 +484,11 @@ function tripShow(indices,anchor){
   if(anchor!=null){
     L.circleMarker([C[anchor].lat,C[anchor].lng],{radius:11,color:'#14211B',weight:3,fillColor:'#E6B400',fillOpacity:1}).addTo(tripLayer);
     pts.push([C[anchor].lat,C[anchor].lng]);
+    if(radiusMiles){
+      const circle=L.circle([C[anchor].lat,C[anchor].lng],{radius:radiusMiles*1609.34,color:'#14211B',weight:1.5,dashArray:'4 6',fillColor:'#14211B',fillOpacity:.05}).addTo(tripLayer);
+      const b=circle.getBounds();
+      pts.push([b.getSouthWest().lat,b.getSouthWest().lng],[b.getNorthEast().lat,b.getNorthEast().lng]);
+    }
   }
   if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
 }
@@ -496,7 +502,7 @@ function tripResultsHTML(indices,anchor){
     </div>`;
   }).join('');
 }
-function openTripPlanner(){
+function openTripPlanner(presetAnchor){
   map.closePopup();
   sheet.innerHTML=`<h2>Trip Planning</h2>
     <p class="lede">Browse bookable courses (pay &amp; play or open-access) by region or around a chosen course. Nothing here is saved — this is just for browsing.</p>
@@ -508,9 +514,13 @@ function openTripPlanner(){
   openDrawer();
   document.getElementById('tp-mode-region').addEventListener('click',()=>tripPlannerMode('region'));
   document.getElementById('tp-mode-anchor').addEventListener('click',()=>tripPlannerMode('anchor'));
-  tripPlannerMode('region');
+  tripPlannerMode(presetAnchor!=null?'anchor':'region',presetAnchor);
 }
-function tripPlannerMode(mode){
+/* GOLF: jump straight into Trip Planning with a course pre-set as the
+   anchor, from that course's own popup — the fastest path from "I like
+   this course" to "what else is nearby." */
+function setAsAnchor(i){closeDrawer();openTripPlanner(i)}
+function tripPlannerMode(mode,presetAnchor){
   document.getElementById('tp-mode-region').className=mode==='region'?'btn2':'btn2 ghost';
   document.getElementById('tp-mode-anchor').className=mode==='anchor'?'btn2':'btn2 ghost';
   const body=document.getElementById('tp-body');
@@ -527,7 +537,7 @@ function tripPlannerMode(mode){
     });
   }else{
     const opts=C.map((c,i)=>i).sort((a,b)=>V(a,'n').localeCompare(V(b,'n')))
-      .map(i=>`<option value="${i}">${V(i,'n')}</option>`).join('');
+      .map(i=>`<option value="${i}"${presetAnchor===i?' selected':''}>${V(i,'n')}</option>`).join('');
     body.innerHTML=`<div class="grid2">
       <div class="fld"><label for="tp-anchor">Anchor course</label><select id="tp-anchor"><option value="">— choose a course —</option>${opts}</select></div>
       <div class="fld"><label for="tp-radius">Radius (miles, straight-line)</label><input id="tp-radius" type="number" value="30" min="1" max="200"></div>
@@ -538,38 +548,51 @@ function tripPlannerMode(mode){
       if(a===''){tripClear();document.getElementById('tp-results').innerHTML='';return}
       const anchor=+a,radius=parseFloat(document.getElementById('tp-radius').value)||30;
       const res=tripByAnchor(anchor,radius);
-      tripShow(res,anchor);
+      tripShow(res,anchor,radius);
       document.getElementById('tp-results').innerHTML=tripResultsHTML(res,anchor);
     };
     document.getElementById('tp-anchor').addEventListener('change',run);
     document.getElementById('tp-radius').addEventListener('change',run);
+    if(presetAnchor!=null)run();
   }
 }
 
 /* GOLF-13: Course Handicap calculator. The formula itself needs no data
-   source — only its inputs (par/slope/course rating per course) do, via
-   GOLF-12. courseStats is deliberately absent until that's populated;
-   the whole section is skipped when it's missing, per acceptance criteria. */
+   source. courseStats (par/slope/course rating) pre-fills the inputs when
+   we have it via GOLF-12 — currently unpopulated for every course pending
+   a free data source — but the calculator is not gated on that: any field
+   we don't have, the visitor can type in themselves (e.g. off their own
+   scorecard), so the tool works on every course today rather than staying
+   invisible until GOLF-12 lands. */
 function courseHandicap(hcIndex,slope,rating,par){
   return Math.round(hcIndex*(slope/113)+(rating-par));
 }
 function calcHTML(i){
-  const cs=C[i].courseStats;if(!cs||!cs.slope||!cs.rating||!cs.par)return'';
+  const cs=C[i].courseStats||{};
+  const fld=(id,label,val,step)=>`<div><label for="${id}" style="display:block;font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--stone);margin-bottom:3px">${label}</label><input id="${id}" type="number" step="${step||1}" value="${val!==undefined?val:''}" style="width:100%;padding:6px 7px;border:1px solid var(--line);border-radius:5px;font:400 12px 'IBM Plex Sans',sans-serif"></div>`;
   return `<div class="note" style="border-top:1px solid var(--line);padding-top:8px;margin-top:9px">
     <b style="display:block;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone);margin-bottom:5px">Course Handicap calculator</b>
-    <p style="margin:0 0 6px;font-size:11px;color:var(--stone)">Par ${cs.par} · Slope ${cs.slope} · Course rating ${cs.rating}</p>
-    <div style="display:flex;gap:6px;align-items:center">
-      <input id="hc-${i}" type="number" step="0.1" placeholder="Handicap Index" style="width:110px;padding:6px 8px;border:1px solid var(--line);border-radius:5px;font:400 12px 'IBM Plex Sans',sans-serif">
+    <p style="margin:0 0 7px;font-size:11px;color:var(--stone)">${cs.par&&cs.slope&&cs.rating?`We have this course's par/slope/rating pre-filled below.`:`We don't have this course's par/slope/rating yet — enter them from your scorecard.`}</p>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:7px">
+      ${fld(`hc-par-${i}`,'Par',cs.par)}
+      ${fld(`hc-slope-${i}`,'Slope',cs.slope)}
+      ${fld(`hc-rating-${i}`,'Rating',cs.rating,0.1)}
+      ${fld(`hc-idx-${i}`,'Your Index',undefined,0.1)}
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
       <button class="btn ghost" onclick="runCalc(${i})">Calculate</button>
       <span id="hc-out-${i}" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600"></span>
     </div>
   </div>`;
 }
 function runCalc(i){
-  const cs=C[i].courseStats,v=parseFloat(document.getElementById(`hc-${i}`).value);
+  const par=parseFloat(document.getElementById(`hc-par-${i}`).value);
+  const slope=parseFloat(document.getElementById(`hc-slope-${i}`).value);
+  const rating=parseFloat(document.getElementById(`hc-rating-${i}`).value);
+  const idx=parseFloat(document.getElementById(`hc-idx-${i}`).value);
   const out=document.getElementById(`hc-out-${i}`);
-  if(isNaN(v)){out.textContent='Enter your Handicap Index first.';return}
-  out.textContent=`Course Handicap: ${courseHandicap(v,cs.slope,cs.rating,cs.par)}`;
+  if([par,slope,rating,idx].some(isNaN)){out.textContent='Fill in all four fields.';return}
+  out.textContent=`Course Handicap: ${courseHandicap(idx,slope,rating,par)}`;
 }
 
 function buildChips(id,items,key,withIcon){
@@ -795,7 +818,7 @@ function corrections(){return Object.keys(EDITS).filter(isEdited).map(i=>{
 document.getElementById('open-trip').addEventListener('click',openTripPlanner);
 document.getElementById('open-export').addEventListener('click',()=>{
   const list=corrections();
-  const json=JSON.stringify({source:"Heath & Parkland golf map v5",exported:new Date().toISOString().slice(0,10),corrections:list},null,2);
+  const json=JSON.stringify({source:"The England Golf Explorer",exported:new Date().toISOString().slice(0,10),corrections:list},null,2);
   sheet.innerHTML=`<h2>Your corrections</h2>
     <p class="lede">${list.length?`${list.length} ${list.length===1?'entry':'entries'} changed. Your corrections, filters and map position are saved to this browser automatically — export below only if you want a portable copy to paste back into our chat.`:`Nothing corrected yet. Open any course and hit <b>Correct this</b>.`}</p>
     ${list.length?`<div class="fld"><label for="ex">Correction patch</label><textarea id="ex" style="min-height:220px">${esc(json)}</textarea></div>

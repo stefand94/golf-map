@@ -53,12 +53,21 @@ that touches rendering, filters, or persistence:
 5. **Trip Planning.** Open it, try both "by region" (e.g. South West
    England) and "by anchor course" (e.g. Formby, 40 mile radius) — results
    should be non-empty for any reasonably well-served area, map should
-   fit bounds to the results, clicking a result should navigate to it and
-   close the drawer.
-6. **Course Handicap calculator.** Only visible when a course has
-   `courseStats` (currently: none do, pending GOLF-12's data source) —
-   confirm it's absent everywhere until then, and when data does exist,
-   verify one output against a hand-calculated example.
+   fit bounds to the results (including the dashed radius circle in anchor
+   mode), clicking a result should navigate to it and close the drawer.
+   Also: click "Set as anchor course for a trip" on any course's popup —
+   should open Trip Planning already in anchor mode with that course
+   pre-selected and results populated.
+6. **Course Handicap calculator.** Visible on every popup — pre-filled
+   with `courseStats` where we have it (currently: no course does, pending
+   GOLF-12's data source), otherwise all four fields (par/slope/rating/
+   index) are blank for manual entry. Verify one output against a
+   hand-calculated example, and that an incomplete set of fields shows
+   "Fill in all four fields." rather than a wrong number.
+7. **Club logo popups.** Spot-check a course with a `logo` field (e.g.
+   Sunningdale) — image should be fully visible (letterboxed, not
+   cropped) inside its frame, and a course without one should render with
+   no gap or broken-image icon.
 
 ## What's explicitly not covered
 
