@@ -106,9 +106,9 @@
 <div class="app">
   <aside class="panel">
     <header class="mast">
-      <p class="eyebrow">Greater London · Herts · Bucks · Surrey · Kent · Essex</p>
+      <p class="eyebrow">Greater London · Herts · Bucks · Surrey · Kent · Essex · plus England's Top 100</p>
       <h1>Heath &amp; Parkland<br><em>golf you can book, by rail</em></h1>
-      <p class="standfirst">111 courses that take visitors without membership, swept geographically across the whole catchment — not just the famous ones.</p>
+      <p class="standfirst">121 courses that take visitors without membership, swept geographically across the London catchment — plus all 100 of England's ranked Top 100 courses nationally, shown as pins with no rail line since most are well outside the network.</p>
     </header>
     <div class="filters">
       <div><span class="flabel">Who can play</span><div class="chips" id="f-access"></div></div>
@@ -262,7 +262,7 @@ L.marker(HOME,{icon:L.divIcon({className:'',html:'<div class="home"></div>',icon
  .addTo(map).bindPopup('<div class="pop"><h3>Finchley Road</h3><p class="sub">Your starting point</p><p class="note" style="border:0;padding:0">Jubilee and Metropolitan. West Hampstead Thameslink is a 6-minute walk — that unlocks Mill Hill Broadway, Elstree, Radlett, St Albans City, Harpenden and West Dulwich directly.</p></div>');
 
 const layer=L.layerGroup().addTo(map),markers=new Map();
-function ranked(i){const t=C[i].t100;return t&&(typeof t.gl==='number'||t.gbi)}
+function ranked(i){const t=C[i].t100;return t&&(typeof t.gl==='number'||t.gbi||typeof t.eng==='number')}
 function pinFor(i){const a=ACCESS[V(i,'a')],rk=ranked(i),size=rk?28:20;
   return L.divIcon({className:'',html:flagSVG(a.colour,a.pole,size,rk),iconSize:[size,size*1.3],iconAnchor:[size*0.28,size*1.25]})}
 const CONF={club:"Rate from the club's own page",press:"Rate published in trade press or a golf guide",est:"Indicative — verify with the club before travelling"};
@@ -274,7 +274,7 @@ function rankChips(i){const t=C[i].t100;if(!t)return'';const p=[];
 
 function popupHTML(i){
   const c=C[i],a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')];
-  const travel=stn?`<b style="color:${LINES[stn.l].c}">${stn.n}</b> · ${LINES[stn.l].n} — ${V(i,'walk')}`:V(i,'walk');
+  const travel=stn?`<b style="color:${LINES[stn.l].c}">${stn.n}</b> · ${LINES[stn.l].n} — ${V(i,'walk')}`:(V(i,'walk')||'Outside the rail catchment — no nearby station on this map');
   const search=`https://www.google.com/search?q=${encodeURIComponent(V(i,'n')+' golf club green fees')}`;
   const site=V(i,'site'),book=V(i,'book');
   return `<div class="pop"><h3>${V(i,'n')} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}</h3>
@@ -304,7 +304,7 @@ buildChips('f-access',Object.entries(ACCESS).map(([k,v])=>[k,v.label,v.colour,v.
 buildChips('f-price',Object.entries(BANDS).map(([k,v])=>[k,v]),'price',false);
 buildChips('f-arch',ARCHS,'arch',false);
 buildChips('f-region',REGIONS.map(r=>[r,r]),'region',false);
-buildChips('f-flag',[['ranked','Top 100 ranked'],['weekend','Open at weekends'],['walk','Walk from station'],['winter','Good in winter'],['sweep','Sweep finds'],['edited','My corrections']],'flag',false);
+buildChips('f-flag',[['ranked','Top 100 ranked'],['top100','England Top 100 only'],['weekend','Open at weekends'],['walk','Walk from station'],['winter','Good in winter'],['sweep','Sweep finds'],['edited','My corrections']],'flag',false);
 document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{
   const k=ch.dataset.k,v=ch.dataset.v,on=ch.getAttribute('aria-pressed')==='true';
   ch.setAttribute('aria-pressed',String(!on));on?state[k].delete(v):state[k].add(v);render()}));
@@ -332,6 +332,7 @@ function passes(i){const c=C[i];
   if(state.flag.has('walk')&&!/walk|minute/i.test(V(i,'walk')))return false;
   if(state.flag.has('winter')&&!c.winter)return false;
   if(state.flag.has('sweep')&&!c.sweep)return false;
+  if(state.flag.has('top100')&&!c.top100)return false;
   if(state.flag.has('edited')&&!isEdited(i))return false;
   if(state.q){const s=V(i,'stn')||'';
     if(!(V(i,'n')+' '+c.r+' '+V(i,'arch')+' '+V(i,'note')+' '+V(i,'walk')+' '+s).toLowerCase().includes(state.q))return false}
@@ -357,7 +358,7 @@ function render(){
       <span class="cfee">${V(i,'wd')}<small>wknd ${V(i,'we')}</small></span></div>
       <p class="cmeta"><span>${a.label}</span>
       ${stn?`<span>${stn.n} · ${LINES[stn.l].n}</span>`:`<span style="color:var(--stone)">no close station</span>`}
-      ${typeof t.gl==='number'?`<span class="rk">GL #${t.gl}</span>`:''}${t.gbi?`<span class="rk">GB&amp;I #${t.gbi}</span>`:''}
+      ${typeof t.gl==='number'?`<span class="rk">GL #${t.gl}</span>`:''}${t.gbi?`<span class="rk">GB&amp;I #${t.gbi}</span>`:''}${typeof t.eng==='number'?`<span class="rk">ENG #${t.eng}</span>`:''}
       ${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
   list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
     const i=+el.dataset.i;map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
@@ -374,7 +375,7 @@ legend.onAdd=()=>{const d=L.DomUtil.create('div','legend');
     '<div class="lr"><svg width="14" height="14"><circle cx="7" cy="7" r="4.4" fill="#fff" stroke="#14211B" stroke-width="1.6"/></svg><span>Interchange</span></div><hr>'+
     '<b>Rail — colour + dash</b>'+
     Object.values(LINES).map(l=>`<div class="lr"><svg width="24" height="5"><line x1="0" y1="2.5" x2="24" y2="2.5" stroke="${l.c}" stroke-width="2" ${l.d?`stroke-dasharray="${l.d}"`:''}/></svg><span>${l.n}</span></div>`).join('')+
-    '<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Zone 1 omitted. Station positions are from TfL and National Rail open data; curves still run point-to-point through stations, not along the real track. "Sweep find" tags mark courses added from geographic search rather than the original topic search — verify details before relying on them.</div>';
+    '<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Zone 1 omitted. Station positions are from TfL and National Rail open data; curves still run point-to-point through stations, not along the real track. "Sweep find" tags mark courses added from geographic search rather than the original topic search — verify details before relying on them. England Top 100 pins (national, black-flag clubs included) are from a published 2026 price list cross-checked against England Golf’s club directory for name and coordinates — most sit outside the rail catchment, so no line is drawn to a station.</div>';
   L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d};
 legend.addTo(map);
 
