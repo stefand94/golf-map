@@ -80,6 +80,32 @@ duplicating it.
 python3 scripts/merge_nearest_stations.py data/courses-top100.js --nearest scripts/output/nearest_stations.json
 ```
 
+### `merge_club_details.py`
+GOLF-11: merges `fetch_england_golf_clubs.py`'s output into a
+`data/courses-*.js` file as a `clubInfo:{phone,membership,teeBooking,blurb}`
+field, keyed by course name with any trailing "(Old)"/"(Hotchkin)"/etc.
+qualifier stripped (several Top 100 entries share one physical club).
+
+```bash
+python3 scripts/merge_club_details.py data/courses-top100.js --clubs scripts/output/england_golf_clubs.json
+```
+
+**Scope note:** the original plan expected England Golf's per-club
+`FacilityTypes` field to give amenity icons (bar, buggy hire, etc.) — a spot
+check across ~95 clubs found it consistently `null` on `GetClubDetails`, so
+that's not actually available there and isn't merged. `LogoImage`/banner
+image fields are also skipped on purpose: they're raw base64 blobs averaging
+~470KB each — embedding them would add tens of MB to a data file that's
+currently ~130KB total. A real image pipeline (fetch once, save as actual
+`.jpg` files, reference by relative path) would need its own ticket.
+
+**Also note:** `GetClubsByName` can return several close matches for one
+query (e.g. "St Georges" → both "St Georges Hill Golf Club" and "The Royal
+St Georges Golf Club") — the script picks the closest name match via
+`difflib`, not just the first result, but a real name collision (like that
+one) can still need a more specific query. Verify unfamiliar matches via
+`matched_name` in the output JSON before trusting them.
+
 ## Verifying a re-run
 
 After running either script, spot-check a few known values against the
@@ -93,3 +119,4 @@ station position) before merging anything in by hand.
 | `fetch_rail_stations.py` | 2026-08-25 | Sourced the London-network stations in `data/stations.js`; also a nationwide 2,882-station set used by `compute_nearest_stations.py` |
 | `fetch_england_golf_clubs.py` | 2026-08-25 | Sourced the 100 England Top 100 entries in `data/courses-top100.js` |
 | `compute_nearest_stations.py` + `merge_nearest_stations.py` | 2026-08-25 | Populated `nearStation` on all 100 Top 100 entries (GOLF-10) |
+| `fetch_england_golf_clubs.py` + `merge_club_details.py` | 2026-08-25 | Populated `clubInfo` on 98 of 100 Top 100 entries (GOLF-11); Swinley Forest still absent from the directory, Prince's needs a name-mapping fix |

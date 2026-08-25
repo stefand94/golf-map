@@ -38,6 +38,7 @@ Refresh cadence: manual/on-demand only.
 """
 import argparse
 import datetime
+import difflib
 import json
 import os
 import sys
@@ -61,6 +62,19 @@ def search_by_name(name):
     except Exception as e:
         print(f"  ! search failed for '{name}': {e}", file=sys.stderr)
         return None
+
+
+def best_candidate(name, candidates):
+    """GetClubsByName returns [{ClubId, ClubName, RegionId}, ...] — often
+    several near-matches (e.g. 'Sunningdale', 'Sunningdale Artisans',
+    'Sunningdale Heath'). Pick the closest name match rather than assuming
+    the first result is right."""
+
+    def score(cand):
+        cname = (cand.get("ClubName") or "").lower()
+        return difflib.SequenceMatcher(None, name.lower(), cname).ratio()
+
+    return max(candidates, key=score)
 
 
 def get_club_details(club_id):
@@ -103,13 +117,15 @@ def main():
             results[key] = {"query": name, "club_id": None, "details": None}
             continue
 
-        club_id = candidates[0].get("id") or candidates[0].get("Id")
+        chosen = best_candidate(name, candidates)
+        club_id = chosen.get("ClubId")
         details = get_club_details(club_id) if club_id else None
         time.sleep(args.delay)
 
         results[key] = {
             "query": name,
             "club_id": club_id,
+            "matched_name": chosen.get("ClubName"),
             "candidates_found": len(candidates),
             "details": details,
         }

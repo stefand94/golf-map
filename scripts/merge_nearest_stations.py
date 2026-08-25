@@ -44,7 +44,9 @@ def main():
         )
         return m.group(0) + frag
 
-    pattern = re.compile(r'\{n:"((?:[^"\\]|\\.)*)",lat:-?\d+\.?\d*,lng:-?\d+\.?\d*')
+    # ^-anchored so a re-run only matches a course entry's own opener, not a
+    # nested nearStation/clubInfo sub-object that also starts with {n:"...".
+    pattern = re.compile(r'^\{n:"((?:[^"\\]|\\.)*)",lat:-?\d+\.?\d*,lng:-?\d+\.?\d*', re.MULTILINE)
     new_text, n = pattern.subn(repl, text)
 
     with open(args.infile, "w") as f:
