@@ -154,7 +154,7 @@
       </div>
       <div class="row">
         <button class="linkbtn" id="fit-map">Show all results on map</button>
-        <span></span>
+        <button class="linkbtn" id="open-trip">Trip Planning</button>
       </div>
       <div class="row"><span></span>
         <button class="linkbtn" id="open-export">Review &amp; export corrections (<span id="editcount">0</span>)</button>
@@ -365,7 +365,6 @@ function popupHTML(i){
     <dl><dt>Course</dt><dd>${V(i,'spec')}</dd><dt>Design</dt><dd>${V(i,'arch')}</dd><dt>By rail</dt><dd>${travel}</dd>${club&&club.phone?`<dt>Phone</dt><dd>${club.phone}</dd>`:''}${c.top100?`<dt>From home</dt><dd>${distMiles(i)} mi, as the crow flies</dd>`:''}</dl>
     <p class="note">${V(i,'note')}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${club.blurb}</span>`:''}</p>
     ${calcHTML(i)}
-    ${tripHTML(i)}
     <div class="actions">
       <button class="btn ghost" onclick="togglePlayed(${i})">${PLAYED.has(i)?'Unmark played':'Mark played'}</button>
       <button class="btn ghost" onclick="toggleWant(${i})">${WANT.has(i)?'Remove from want-to-play':'Want to play'}</button>
@@ -385,36 +384,114 @@ function drawLink(i){linkLayer.clearLayers();
   const s=STN[V(i,'stn')]||C[i].nearStation;if(!s)return;
   L.polyline([[s.lat,s.lng],[C[i].lat,C[i].lng]],{color:'#14211B',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(linkLayer)}
 
-/* GOLF-14: trip planner — up to 2 other bookable (pay&play/open access,
-   not members-only or application-only) courses reachable off the same
-   rail line, as a lightweight same-day pairing suggestion. Straight-line
-   distance between courses is a fine enough proxy for "roughly nearby on
-   this line" — this isn't attempting real journey planning. */
-function tripPartners(i){
-  const stn=STN[V(i,'stn')];if(!stn)return[];
-  const line=stn.l;
-  const candidates=C.map((c,j)=>j).filter(j=>{
-    if(j===i)return false;
-    const s=STN[V(j,'stn')];if(!s||s.l!==line)return false;
-    return['public','open'].includes(V(j,'a'));
-  });
-  candidates.sort((a,b)=>{
-    const da=Math.hypot(C[a].lat-C[i].lat,C[a].lng-C[i].lng);
-    const db=Math.hypot(C[b].lat-C[i].lat,C[b].lng-C[i].lng);
-    return da-db;
-  });
-  return candidates.slice(0,2);
-}
-function tripHTML(i){
-  const partners=tripPartners(i);if(!partners.length)return'';
-  const stn=STN[V(i,'stn')];
-  return `<div class="note" style="border-top:1px solid var(--line);padding-top:8px;margin-top:9px">
-    <b style="display:block;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone);margin-bottom:5px">Same-day pairing — also on the ${LINES[stn.l].n}</b>
-    ${partners.map(j=>`<div style="margin-bottom:3px"><a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${j})">${V(j,'n')}</a> — ${STN[V(j,'stn')].n}, ${ACCESS[V(j,'a')].label.toLowerCase()}</div>`).join('')}
-  </div>`;
-}
 function goToCourse(i){map.closePopup();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
   markers.get(i).setPopupContent(popupHTML(i));markers.get(i).openPopup();highlight(i);drawLink(i)}
+
+/* GOLF-24: standalone Trip Planning mode — supersedes GOLF-14's inline
+   "Same-day pairing" popup blurb, which only ever worked for London
+   courses on a shared rail line (silently did nothing for all 100 Top 100
+   entries — exactly where this is most wanted, e.g. Cornwall, the
+   Liverpool coast). "Bookable" = pay&play/open access, not members-only
+   or application-only, matching GOLF-14's original definition. Distance
+   is straight-line (haversine, miles) — same approximation already used
+   for GOLF-10's nearest-station lookups, not real routing. Browse-only:
+   nothing here is persisted. */
+function haversineMiles(lat1,lng1,lat2,lng2){
+  const R=3958.8,toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1),dLng=toRad(lng2-lng1);
+  const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+/* "Bookable" = a visitor can actually book a round, even if only on
+   certain days ("limited"). Only "application" (invitation-only, no
+   public booking at all) is excluded. Verified this matters: every
+   championship links course near Formby on the Liverpool coast — Royal
+   Birkdale, Royal Liverpool, Hillside, West Lancs... — is tier "limited",
+   so an public/open-only definition returned zero results for exactly
+   the coastal-cluster case this feature exists for. */
+function bookable(i){return['public','open','limited'].includes(V(i,'a'))}
+function tripByRegion(region){
+  return C.map((c,i)=>i).filter(i=>C[i].r===region&&bookable(i))
+    .sort((a,b)=>V(a,'n').localeCompare(V(b,'n')));
+}
+function tripByAnchor(anchor,radiusMiles){
+  return C.map((c,i)=>i).filter(i=>i!==anchor&&bookable(i)&&haversineMiles(C[anchor].lat,C[anchor].lng,C[i].lat,C[i].lng)<=radiusMiles)
+    .sort((a,b)=>haversineMiles(C[anchor].lat,C[anchor].lng,C[a].lat,C[a].lng)-haversineMiles(C[anchor].lat,C[anchor].lng,C[b].lat,C[b].lng));
+}
+const tripLayer=L.layerGroup().addTo(map);
+function tripClear(){tripLayer.clearLayers()}
+function tripShow(indices,anchor){
+  tripClear();
+  const pts=[];
+  indices.forEach(i=>{
+    L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:'#E6B400',weight:2.5,fillColor:'#fff',fillOpacity:.9}).addTo(tripLayer);
+    pts.push([C[i].lat,C[i].lng]);
+  });
+  if(anchor!=null){
+    L.circleMarker([C[anchor].lat,C[anchor].lng],{radius:11,color:'#14211B',weight:3,fillColor:'#E6B400',fillOpacity:1}).addTo(tripLayer);
+    pts.push([C[anchor].lat,C[anchor].lng]);
+  }
+  if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
+}
+function tripResultsHTML(indices,anchor){
+  if(!indices.length)return `<p class="hint">No bookable courses found${anchor!=null?' in range':' in this region'}. Try a wider radius or a different area.</p>`;
+  return indices.map(i=>{
+    const dist=anchor!=null?` — ${haversineMiles(C[anchor].lat,C[anchor].lng,C[i].lat,C[i].lng).toFixed(1)} mi`:'';
+    return `<div style="padding:7px 0;border-bottom:1px solid var(--line)">
+      <a href="#" class="linkbtn" onclick="event.preventDefault();closeDrawer();goToCourse(${i})">${V(i,'n')}</a>
+      <span style="color:var(--stone);font-size:11.5px">${dist} · ${C[i].r} · ${ACCESS[V(i,'a')].label.toLowerCase()}</span>
+    </div>`;
+  }).join('');
+}
+function openTripPlanner(){
+  map.closePopup();
+  sheet.innerHTML=`<h2>Trip Planning</h2>
+    <p class="lede">Browse bookable courses (pay &amp; play or open-access) by region or around a chosen course. Nothing here is saved — this is just for browsing.</p>
+    <div class="bar" style="margin-top:0;margin-bottom:14px">
+      <button class="btn2" id="tp-mode-region">By region</button>
+      <button class="btn2 ghost" id="tp-mode-anchor">By anchor course</button>
+    </div>
+    <div id="tp-body"></div>`;
+  drawer.classList.add('open');
+  document.getElementById('tp-mode-region').addEventListener('click',()=>tripPlannerMode('region'));
+  document.getElementById('tp-mode-anchor').addEventListener('click',()=>tripPlannerMode('anchor'));
+  tripPlannerMode('region');
+}
+function tripPlannerMode(mode){
+  document.getElementById('tp-mode-region').className=mode==='region'?'btn2':'btn2 ghost';
+  document.getElementById('tp-mode-anchor').className=mode==='anchor'?'btn2':'btn2 ghost';
+  const body=document.getElementById('tp-body');
+  tripClear();
+  if(mode==='region'){
+    body.innerHTML=`<div class="fld"><label for="tp-region">Region</label>
+      <select id="tp-region"><option value="">— choose a region —</option>${REGIONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
+      <div id="tp-results"></div>`;
+    document.getElementById('tp-region').addEventListener('change',e=>{
+      if(!e.target.value){tripClear();document.getElementById('tp-results').innerHTML='';return}
+      const res=tripByRegion(e.target.value);
+      tripShow(res,null);
+      document.getElementById('tp-results').innerHTML=tripResultsHTML(res,null);
+    });
+  }else{
+    const opts=C.map((c,i)=>i).sort((a,b)=>V(a,'n').localeCompare(V(b,'n')))
+      .map(i=>`<option value="${i}">${V(i,'n')}</option>`).join('');
+    body.innerHTML=`<div class="grid2">
+      <div class="fld"><label for="tp-anchor">Anchor course</label><select id="tp-anchor"><option value="">— choose a course —</option>${opts}</select></div>
+      <div class="fld"><label for="tp-radius">Radius (miles, straight-line)</label><input id="tp-radius" type="number" value="30" min="1" max="200"></div>
+    </div>
+    <div id="tp-results"></div>`;
+    const run=()=>{
+      const a=document.getElementById('tp-anchor').value;
+      if(a===''){tripClear();document.getElementById('tp-results').innerHTML='';return}
+      const anchor=+a,radius=parseFloat(document.getElementById('tp-radius').value)||30;
+      const res=tripByAnchor(anchor,radius);
+      tripShow(res,anchor);
+      document.getElementById('tp-results').innerHTML=tripResultsHTML(res,anchor);
+    };
+    document.getElementById('tp-anchor').addEventListener('change',run);
+    document.getElementById('tp-radius').addEventListener('change',run);
+  }
+}
 
 /* GOLF-13: Course Handicap calculator. The formula itself needs no data
    source — only its inputs (par/slope/course rating per course) do, via
@@ -569,7 +646,7 @@ legend.addTo(map);
 const drawer=document.getElementById('drawer'),sheet=document.getElementById('sheet');
 drawer.addEventListener('click',e=>{if(e.target===drawer)closeDrawer()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
-function closeDrawer(){drawer.classList.remove('open')}
+function closeDrawer(){drawer.classList.remove('open');tripClear()}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
 function openEditor(i){
   map.closePopup();
@@ -603,6 +680,7 @@ function revertEdit(i){delete EDITS[i];saveState();closeDrawer();render()}
 function corrections(){return Object.keys(EDITS).filter(isEdited).map(i=>{
   const changed={};Object.entries(EDITS[i]).forEach(([k,v])=>{if(k!=='_why')changed[k]={from:C[i][k],to:v}});
   return{course:C[i].n,why:EDITS[i]._why||null,changed}})}
+document.getElementById('open-trip').addEventListener('click',openTripPlanner);
 document.getElementById('open-export').addEventListener('click',()=>{
   const list=corrections();
   const json=JSON.stringify({source:"Heath & Parkland golf map v5",exported:new Date().toISOString().slice(0,10),corrections:list},null,2);

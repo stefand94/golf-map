@@ -65,13 +65,14 @@ straight-line distance rather than a walkable London-network station.
 
 ## Derived/computed (not stored, computed at render time)
 
-- **GOLF-14 trip planner** (`tripPartners(i)`): for a London-catchment course
-  with a `stn`, suggests up to 2 other courses on the same rail line
-  (`STN[...].l`) with a `public`/`open` access tier, ranked by straight-line
-  proximity to the selected course. Surfaced as "Same-day pairing" in the
-  popup. Nothing is persisted — it's recomputed from `C`/`EDITS` each time a
-  popup renders, so a correction to a course's access tier or station takes
-  effect immediately.
+- **GOLF-24 Trip Planning mode** (`tripByRegion()`/`tripByAnchor()`,
+  standalone drawer opened via `openTripPlanner()`) — **supersedes GOLF-14**,
+  which only worked for London courses sharing a rail line and did nothing
+  for any Top 100 entry. Two browse-only modes: by `REGIONS` value, or by an
+  anchor course + straight-line radius (`haversineMiles()`, miles). Both
+  filter to `bookable(i)` (`public`/`open` access tier). Nothing persisted —
+  purely computed on demand; results are drawn on a dedicated `tripLayer`
+  cleared whenever the drawer closes.
 
 ## Runtime-only state (not in `C`/`C_TOP100`, lives in `localStorage`)
 
