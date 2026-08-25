@@ -1,0 +1,440 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heath &amp; Parkland — golf you can book, by rail</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{--ink:#14211B;--ink-soft:#3C4A42;--paper:#E9EBE3;--paper-2:#F4F5EF;--line:#C6CBBC;--stone:#8A9187;--accent:#0072B2}
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%}
+  body{font-family:"IBM Plex Sans",system-ui,sans-serif;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased}
+  .app{display:grid;grid-template-columns:minmax(360px,420px) 1fr;height:100vh}
+  @media (max-width:900px){.app{grid-template-columns:1fr;grid-template-rows:auto 1fr}#map{min-height:50vh}.panel{max-height:50vh}}
+  .panel{display:flex;flex-direction:column;background:var(--paper-2);border-right:1px solid var(--line);overflow:hidden}
+
+  .mast{padding:16px 20px 11px;border-bottom:1px solid var(--line)}
+  .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone);margin:0 0 6px}
+  h1{font-family:"Fraunces",Georgia,serif;font-weight:800;font-size:26px;line-height:1.02;margin:0 0 6px;letter-spacing:-.015em}
+  h1 em{font-style:italic;font-weight:400;color:var(--accent)}
+  .standfirst{margin:0;font-size:12.5px;line-height:1.5;color:var(--ink-soft);max-width:42ch}
+
+  .filters{padding:11px 20px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+  .flabel{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone);display:block;margin-bottom:5px}
+  .chips{display:flex;flex-wrap:wrap;gap:5px}
+  .chip{display:inline-flex;align-items:center;gap:5px;font:500 11.5px/1 "IBM Plex Sans",sans-serif;padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--ink-soft);cursor:pointer;transition:background .12s,border-color .12s,color .12s}
+  .chip:hover{border-color:var(--ink-soft)}
+  .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper-2)}
+  .chip svg{display:block;flex:0 0 auto}
+  .chip:focus-visible,.card:focus-visible,#q:focus-visible,.togg:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  #q{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:6px;background:#fff;font:400 13px "IBM Plex Sans",sans-serif;color:var(--ink)}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--stone)}
+  .toggles{display:flex;gap:5px;flex-wrap:wrap}
+  .togg{font:500 11px "IBM Plex Sans",sans-serif;padding:5px 9px;border:1px solid var(--line);border-radius:5px;background:#fff;cursor:pointer;color:var(--ink-soft)}
+  .togg[aria-pressed="true"]{background:var(--ink);color:var(--paper-2);border-color:var(--ink)}
+  .linkbtn{background:none;border:none;padding:0;font:inherit;color:var(--accent);cursor:pointer;text-decoration:underline}
+  #sort{font:500 11px "IBM Plex Sans",sans-serif;padding:5px 7px;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink-soft)}
+
+  .list{overflow-y:auto;flex:1;padding:6px 12px 24px}
+  .card{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--line);padding:11px 8px;cursor:pointer;transition:background .12s}
+  .card:hover,.card.active{background:#fff}
+  .card.active{box-shadow:inset 3px 0 0 var(--accent)}
+  .card-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+  .cname{font:600 13.5px/1.25 "IBM Plex Sans",sans-serif;margin:0;display:flex;align-items:center;gap:6px}
+  .cfee{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;white-space:nowrap;text-align:right;line-height:1.35}
+  .cfee small{display:block;font-weight:400;font-size:10px;color:var(--stone)}
+  .cmeta{margin:5px 0 0;font-size:11px;color:var(--ink-soft);display:flex;flex-wrap:wrap;gap:3px 8px;align-items:center}
+  .rk{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.06em;background:var(--ink);color:#fff;padding:2px 5px;border-radius:3px;font-weight:500}
+  .wt{font-family:"IBM Plex Mono",monospace;font-size:9.5px;background:#DCEBF3;color:#00537F;padding:2px 5px;border-radius:3px}
+  .edited{font-family:"IBM Plex Mono",monospace;font-size:9px;background:#E69F00;color:#241a00;padding:2px 5px;border-radius:3px;font-weight:600}
+  .empty{padding:28px 10px;color:var(--stone);font-size:13px;line-height:1.6}
+
+  #map{height:100%;width:100%;background:#E4E7DD}
+  .leaflet-container{font-family:"IBM Plex Sans",sans-serif}
+  .leaflet-popup-content-wrapper{border-radius:8px;box-shadow:0 8px 28px rgba(20,33,27,.22)}
+  .leaflet-popup-content{margin:14px 16px;width:300px !important}
+  .pop h3{font-family:"Fraunces",serif;font-weight:600;font-size:17px;line-height:1.15;margin:0 0 3px}
+  .pop .sub{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--stone);margin:0 0 9px}
+  .ranks{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 9px}
+  .ranks span{font-family:"IBM Plex Mono",monospace;font-size:9.5px;background:#E4EEF5;color:#00537F;padding:3px 6px;border-radius:3px}
+  .fees{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 9px}
+  .fee-box{background:#EFF1E9;border-radius:5px;padding:7px 9px}
+  .fee-box b{display:block;font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone);font-weight:500;margin-bottom:2px}
+  .fee-box span{font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:600}
+  .pop dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px}
+  .pop dt{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--stone);padding-top:2px}
+  .pop dd{margin:0}
+  .pop .note{margin:9px 0 0;font-size:12px;line-height:1.45;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:8px}
+  .pop .actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  .pop .btn{font:600 11.5px "IBM Plex Sans",sans-serif;color:var(--paper-2);background:var(--ink);padding:7px 11px;border-radius:5px;text-decoration:none;border:none;cursor:pointer}
+  .pop .btn:hover{background:var(--accent)}
+  .pop .btn.ghost{background:transparent;color:var(--ink-soft);border:1px solid var(--line)}
+  .pop .btn.ghost:hover{background:#fff;color:var(--accent)}
+  .conf{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--stone);margin:7px 0 0}
+
+  .home{width:13px;height:13px;border-radius:50%;background:#fff;border:4px solid var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+  .lnlabel{font:600 9px "IBM Plex Mono",monospace;letter-spacing:.04em;color:#fff;padding:1.5px 4px;border-radius:2.5px;white-space:nowrap;opacity:.95}
+  .stnlabel{font:500 9.5px "IBM Plex Sans",sans-serif;color:#33403A;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
+
+  .legend{background:var(--paper-2);padding:9px 11px;border-radius:7px;border:1px solid var(--line);font-size:11px;line-height:1.55;box-shadow:0 3px 12px rgba(20,33,27,.16);max-width:200px;max-height:64vh;overflow-y:auto}
+  .legend b{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--stone);display:block;margin-bottom:5px;font-weight:500}
+  .legend hr{border:0;border-top:1px solid var(--line);margin:7px 0}
+  .legend .lr{display:flex;align-items:center;gap:7px;margin-bottom:2px}
+  .legend svg{flex:0 0 auto}
+
+  .drawer{position:fixed;inset:0;background:rgba(20,33,27,.5);display:none;z-index:2000;align-items:center;justify-content:center;padding:20px}
+  .drawer.open{display:flex}
+  .sheet{background:var(--paper-2);border-radius:10px;max-width:560px;width:100%;max-height:88vh;overflow-y:auto;padding:22px 24px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+  .sheet h2{font-family:"Fraunces",serif;font-size:21px;margin:0 0 4px}
+  .sheet p.lede{margin:0 0 16px;font-size:12.5px;color:var(--ink-soft);line-height:1.5}
+  .fld{margin-bottom:12px}
+  .fld label{display:block;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--stone);margin-bottom:4px}
+  .fld input,.fld select,.fld textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:5px;background:#fff;font:400 13px "IBM Plex Sans",sans-serif;color:var(--ink)}
+  .fld textarea{min-height:70px;resize:vertical;font-family:"IBM Plex Mono",monospace;font-size:12px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .sheet .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
+  .btn2{font:600 12.5px "IBM Plex Sans",sans-serif;padding:9px 14px;border-radius:6px;border:1px solid var(--ink);background:var(--ink);color:var(--paper-2);cursor:pointer}
+  .btn2.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+  .btn2.warn{background:transparent;color:#9A3412;border-color:#E5C7B5}
+  .hint{font-size:11.5px;color:var(--stone);margin:8px 0 0;line-height:1.5}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="app">
+  <aside class="panel">
+    <header class="mast">
+      <p class="eyebrow">Greater London · Herts · Bucks · Surrey · Kent · Essex</p>
+      <h1>Heath &amp; Parkland<br><em>golf you can book, by rail</em></h1>
+      <p class="standfirst">111 courses that take visitors without membership, swept geographically across the whole catchment — not just the famous ones.</p>
+    </header>
+    <div class="filters">
+      <div><span class="flabel">Who can play</span><div class="chips" id="f-access"></div></div>
+      <div><span class="flabel">Green fee</span><div class="chips" id="f-price"></div></div>
+      <div><span class="flabel">Architect</span><div class="chips" id="f-arch"></div></div>
+      <div><span class="flabel">Area</span><div class="chips" id="f-region"></div></div>
+      <div><span class="flabel">Show only</span><div class="chips" id="f-flag"></div></div>
+      <input id="q" type="search" placeholder="Search club, town, architect or station…" autocomplete="off" aria-label="Search courses">
+      <div class="row">
+        <div class="toggles">
+          <button class="togg" id="t-rail" aria-pressed="true">Rail</button>
+          <button class="togg" id="t-stn" aria-pressed="true">Stations</button>
+          <button class="togg" id="t-lbl" aria-pressed="true">Labels</button>
+        </div>
+        <button class="linkbtn" id="reset">Clear</button>
+      </div>
+      <div class="row">
+        <label for="sort" style="display:flex;gap:6px;align-items:center">Sort
+          <select id="sort">
+            <option value="region">by area</option>
+            <option value="fee">by weekday fee</option>
+            <option value="rank">by ranking</option>
+            <option value="dist">by distance out</option>
+            <option value="name">by name</option>
+          </select>
+        </label>
+        <span id="count"></span>
+      </div>
+      <div class="row"><span></span>
+        <button class="linkbtn" id="open-export">Review &amp; export corrections (<span id="editcount">0</span>)</button>
+      </div>
+    </div>
+    <div class="list" id="list"></div>
+  </aside>
+  <div id="map"></div>
+</div>
+<div class="drawer" id="drawer"><div class="sheet" id="sheet"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="data.js"></script>
+<script>
+
+/* Golf-flag marker: pole + triangular pennant + a small base ellipse
+   standing in for the hole. Ranked courses get a thicker pole and a
+   thin gold ring at the base instead of just being bigger. */
+function flagSVG(colour,pole,size,ring){
+  const w=size,h=size*1.3;
+  const poleW=ring?2.4:1.6, poleX=w*0.28;
+  const flagPts=`${poleX},${h*0.06} ${w*0.92},${h*0.24} ${poleX},${h*0.42}`;
+  const strokeCol = colour==='#FFFFFF' ? '#9AA39C' : 'rgba(0,0,0,.18)';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+    <ellipse cx="${poleX}" cy="${h*0.93}" rx="${w*0.24}" ry="${h*0.055}" fill="${pole}" opacity=".22"/>
+    ${ring?`<circle cx="${poleX}" cy="${h*0.93}" r="${w*0.30}" fill="none" stroke="#E6B400" stroke-width="1.6"/>`:''}
+    <line x1="${poleX}" y1="${h*0.05}" x2="${poleX}" y2="${h*0.95}" stroke="${pole}" stroke-width="${poleW}" stroke-linecap="round"/>
+    <polygon points="${flagPts}" fill="${colour}" stroke="${strokeCol}" stroke-width="1"/>
+  </svg>`;
+}
+
+const STN={},STN_LINES={};
+Object.entries(R).forEach(([rk,arr])=>arr.forEach(([n,la,ln])=>{
+  (STN_LINES[n]=STN_LINES[n]||new Set()).add(ROUTE_LINE[rk]);
+  if(!STN[n])STN[n]={n,lat:la,lng:ln,l:ROUTE_LINE[rk]};
+}));
+ISOLATED.forEach(([n,la,ln,lk])=>{ if(!STN[n]){STN[n]={n,lat:la,lng:ln,l:lk};(STN_LINES[n]=STN_LINES[n]||new Set()).add(lk);} });
+const isIX=n=>STN_LINES[n].size>1||MANUAL_IX.includes(n);
+
+function spline(pts,seg=14){
+  if(pts.length<3)return pts;
+  const p=[pts[0],...pts,pts[pts.length-1]],out=[];
+  for(let i=1;i<p.length-2;i++){
+    const[p0,p1,p2,p3]=[p[i-1],p[i],p[i+1],p[i+2]];
+    for(let t=0;t<seg;t++){const s=t/seg,s2=s*s,s3=s2*s;
+      out.push([.5*((2*p1[0])+(-p0[0]+p2[0])*s+(2*p0[0]-5*p1[0]+4*p2[0]-p3[0])*s2+(-p0[0]+3*p1[0]-3*p2[0]+p3[0])*s3),
+                .5*((2*p1[1])+(-p0[1]+p2[1])*s+(2*p0[1]-5*p1[1]+4*p2[1]-p3[1])*s2+(-p0[1]+3*p1[1]-3*p2[1]+p3[1])*s3)]);}
+  }
+  out.push(pts[pts.length-1]);return out;
+}
+
+/* architect tagging derived from the design credit */
+function archTags(s){
+  const t=s.toLowerCase(),out=new Set();
+  if(/colt/.test(t))out.add("colt");
+  if(/braid/.test(t))out.add("braid");
+  if(/mackenzie/.test(t))out.add("mackenzie");
+  if(/abercromby/.test(t))out.add("abercromby");
+  if(/taylor/.test(t))out.add("taylor");
+  if(/hawtree/.test(t))out.add("hawtree");
+  if(/vardon/.test(t))out.add("vardon");
+  if(/park jr|willie park/.test(t))out.add("park");
+  if(/fowler/.test(t))out.add("fowler");
+  if(/ballesteros|nicklaus|phillips|ebert|jacobs|benz|mcevoy|williams|swan/.test(t))out.add("modern");
+  return out;
+}
+
+const EDITS={};
+function V(i,f){return(EDITS[i]&&EDITS[i][f]!==undefined)?EDITS[i][f]:C[i][f]}
+function isEdited(i){return !!EDITS[i]&&Object.keys(EDITS[i]).length>0}
+function editCount(){return Object.keys(EDITS).filter(isEdited).length}
+
+const HOME=[51.5467873,-0.1798875];
+const state={access:new Set(),price:new Set(),region:new Set(),flag:new Set(),arch:new Set(),q:"",sort:"region"};
+
+const map=L.map('map',{scrollWheelZoom:true,zoomControl:false}).setView([51.45,-0.15],9);
+L.control.zoom({position:'bottomright'}).addTo(map);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap contributors &copy; CARTO',maxZoom:19}).addTo(map);
+
+const railLayer=L.layerGroup().addTo(map),lblLayer=L.layerGroup().addTo(map),
+      stnLayer=L.layerGroup().addTo(map),stnLblLayer=L.layerGroup().addTo(map),
+      linkLayer=L.layerGroup().addTo(map);
+
+const railPolys=[],stnDots=[];
+function railWeight(){const z=map.getZoom();return z<10?1.1:z<12?1.6:z<14?2.2:3}
+function stnRadius(ix){const z=map.getZoom();const b=z<10?1.4:z<12?2:z<14?2.8:3.6;return ix?b*1.55:b}
+
+Object.entries(R).forEach(([rk,stations])=>{
+  const L_=LINES[ROUTE_LINE[rk]];
+  const curve=spline(stations.map(s=>[s[1],s[2]]));
+  const p=L.polyline(curve,{color:L_.c,weight:railWeight(),opacity:.95,dashArray:L_.d,lineCap:'round',lineJoin:'round'})
+    .bindTooltip(L_.n,{sticky:true}).addTo(railLayer);
+  railPolys.push(p);
+  if(LABEL_AT[rk]!==undefined){
+    const s=stations[LABEL_AT[rk]];
+    L.marker([s[1],s[2]],{interactive:false,icon:L.divIcon({className:'',html:`<div class="lnlabel" style="background:${L_.c}">${L_.n}</div>`,iconSize:[0,0],iconAnchor:[-5,5]})}).addTo(lblLayer);
+  }
+});
+
+Object.values(STN).forEach(s=>{
+  const ix=isIX(s.n),col=LINES[s.l].c;
+  const dot=L.circleMarker([s.lat,s.lng],{
+    radius:stnRadius(ix),color:ix?'#14211B':col,weight:ix?1.6:1.2,fillColor:ix?'#ffffff':col,fillOpacity:1
+  }).bindTooltip(s.n,{direction:'top',offset:[0,-4]})
+    .bindPopup(`<div class="pop"><h3 style="font-size:15px">${s.n}</h3><p class="sub" style="margin:0">${[...STN_LINES[s.n]].map(k=>LINES[k].n).join(' · ')}${ix?' — interchange':''}</p></div>`)
+    .addTo(stnLayer);
+  stnDots.push({dot,ix,s});
+  const lbl=L.marker([s.lat,s.lng],{interactive:false,icon:L.divIcon({className:'',html:`<div class="stnlabel">${s.n}</div>`,iconSize:[0,0],iconAnchor:[-6,6]})});
+  stnDots[stnDots.length-1].lbl=lbl;
+});
+
+function restyleRail(){
+  const w=railWeight();
+  railPolys.forEach(p=>p.setStyle({weight:w}));
+  stnDots.forEach(o=>o.dot.setRadius(stnRadius(o.ix)));
+  const z=map.getZoom();
+  stnLblLayer.clearLayers();
+  if(z>=13) stnDots.forEach(o=>stnLblLayer.addLayer(o.lbl));
+  else if(z>=11) stnDots.filter(o=>o.ix).forEach(o=>stnLblLayer.addLayer(o.lbl));
+}
+map.on('zoomend',restyleRail);restyleRail();
+
+L.marker(HOME,{icon:L.divIcon({className:'',html:'<div class="home"></div>',iconSize:[21,21],iconAnchor:[10.5,10.5]})})
+ .addTo(map).bindPopup('<div class="pop"><h3>Finchley Road</h3><p class="sub">Your starting point</p><p class="note" style="border:0;padding:0">Jubilee and Metropolitan. West Hampstead Thameslink is a 6-minute walk — that unlocks Mill Hill Broadway, Elstree, Radlett, St Albans City, Harpenden and West Dulwich directly.</p></div>');
+
+const layer=L.layerGroup().addTo(map),markers=new Map();
+function ranked(i){const t=C[i].t100;return t&&(typeof t.gl==='number'||t.gbi)}
+function pinFor(i){const a=ACCESS[V(i,'a')],rk=ranked(i),size=rk?28:20;
+  return L.divIcon({className:'',html:flagSVG(a.colour,a.pole,size,rk),iconSize:[size,size*1.3],iconAnchor:[size*0.28,size*1.25]})}
+const CONF={club:"Rate from the club's own page",press:"Rate published in trade press or a golf guide",est:"Indicative — verify with the club before travelling"};
+function rankChips(i){const t=C[i].t100;if(!t)return'';const p=[];
+  if(typeof t.gl==='number')p.push(`Greater London #${t.gl}`);if(t.gbi)p.push(`Britain &amp; Ireland #${t.gbi}`);
+  if(t.eng)p.push(`England #${t.eng}`);if(t.lse)p.push(`London &amp; SE #${t.lse}`);if(t.sur)p.push(`Surrey #${t.sur}`);
+  if(typeof t.gl==='string')p.push(t.gl);if(t.kent)p.push(t.kent);
+  return `<p class="ranks">${p.map(x=>`<span>${x}</span>`).join('')}</p>`}
+
+function popupHTML(i){
+  const c=C[i],a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')];
+  const travel=stn?`<b style="color:${LINES[stn.l].c}">${stn.n}</b> · ${LINES[stn.l].n} — ${V(i,'walk')}`:V(i,'walk');
+  const search=`https://www.google.com/search?q=${encodeURIComponent(V(i,'n')+' golf club green fees')}`;
+  const site=V(i,'site'),book=V(i,'book');
+  return `<div class="pop"><h3>${V(i,'n')} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}</h3>
+    <p class="sub">${c.r} · ${a.label}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
+    <div class="fees"><div class="fee-box"><b>Weekday</b><span>${V(i,'wd')}</span></div>
+    <div class="fee-box"><b>Weekend</b><span>${V(i,'we')}</span></div></div>
+    <dl><dt>Course</dt><dd>${V(i,'spec')}</dd><dt>Design</dt><dd>${V(i,'arch')}</dd><dt>By rail</dt><dd>${travel}</dd></dl>
+    <p class="note">${V(i,'note')}</p>
+    <div class="actions">
+      ${site?`<a class="btn" href="${site}" target="_blank" rel="noopener">Club website</a>`:`<a class="btn ghost" href="${search}" target="_blank" rel="noopener">Find the club site</a>`}
+      ${book&&book!==site?`<a class="btn ghost" href="${book}" target="_blank" rel="noopener">Green fees</a>`:''}
+      <button class="btn ghost" onclick="openEditor(${i})">Correct this</button>
+    </div><p class="conf">${CONF[c.conf]}</p></div>`;
+}
+C.forEach((c,i)=>{
+  const m=L.marker([c.lat,c.lng],{icon:pinFor(i),title:c.n});
+  m.on('click',()=>{m.setPopupContent(popupHTML(i));highlight(i);drawLink(i)});
+  m.bindPopup(popupHTML(i),{maxWidth:340});markers.set(i,m);
+});
+function drawLink(i){linkLayer.clearLayers();const s=STN[V(i,'stn')];if(!s)return;
+  L.polyline([[s.lat,s.lng],[C[i].lat,C[i].lng]],{color:'#14211B',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(linkLayer)}
+
+function buildChips(id,items,key,withIcon){
+  document.getElementById(id).innerHTML=items.map(([v,l,colOrArch,pole])=>
+    `<button class="chip" aria-pressed="false" data-k="${key}" data-v="${v}">${withIcon?flagSVG(colOrArch,pole,13,false):''}${l}</button>`).join('')}
+buildChips('f-access',Object.entries(ACCESS).map(([k,v])=>[k,v.label,v.colour,v.pole]),'access',true);
+buildChips('f-price',Object.entries(BANDS).map(([k,v])=>[k,v]),'price',false);
+buildChips('f-arch',ARCHS,'arch',false);
+buildChips('f-region',REGIONS.map(r=>[r,r]),'region',false);
+buildChips('f-flag',[['ranked','Top 100 ranked'],['weekend','Open at weekends'],['walk','Walk from station'],['winter','Good in winter'],['sweep','Sweep finds'],['edited','My corrections']],'flag',false);
+document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{
+  const k=ch.dataset.k,v=ch.dataset.v,on=ch.getAttribute('aria-pressed')==='true';
+  ch.setAttribute('aria-pressed',String(!on));on?state[k].delete(v):state[k].add(v);render()}));
+document.getElementById('q').addEventListener('input',e=>{state.q=e.target.value.toLowerCase();render()});
+document.getElementById('sort').addEventListener('change',e=>{state.sort=e.target.value;render()});
+document.getElementById('reset').addEventListener('click',()=>{
+  ['access','price','region','flag','arch'].forEach(k=>state[k].clear());state.q="";
+  document.getElementById('q').value="";document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed','false'));
+  linkLayer.clearLayers();render();map.setView([51.45,-0.15],9)});
+function toggle(id,lyr){const b=document.getElementById(id);
+  b.addEventListener('click',()=>{const on=b.getAttribute('aria-pressed')==='true';
+    b.setAttribute('aria-pressed',String(!on));on?map.removeLayer(lyr):map.addLayer(lyr)})}
+toggle('t-rail',railLayer);toggle('t-stn',stnLayer);toggle('t-lbl',lblLayer);
+
+function feeNum(i){const m=String(V(i,'wd')).match(/\d+(\.\d+)?/);return m?parseFloat(m[0]):9999}
+function distOut(i){const dy=C[i].lat-HOME[0],dx=(C[i].lng-HOME[1])*Math.cos(HOME[0]*Math.PI/180);return Math.hypot(dy,dx)}
+function rankNum(i){const t=C[i].t100;if(!t)return 9999;if(typeof t.gl==='number')return t.gl;if(t.gbi)return t.gbi/20;return 500}
+function passes(i){const c=C[i];
+  if(state.access.size&&!state.access.has(V(i,'a')))return false;
+  if(state.price.size&&!state.price.has(V(i,'band')))return false;
+  if(state.region.size&&!state.region.has(c.r))return false;
+  if(state.arch.size){const tags=archTags(V(i,'arch'));if(![...state.arch].some(a=>tags.has(a)))return false}
+  if(state.flag.has('ranked')&&!ranked(i))return false;
+  if(state.flag.has('weekend')&&/members only|closed|restricted/i.test(V(i,'we')))return false;
+  if(state.flag.has('walk')&&!/walk|minute/i.test(V(i,'walk')))return false;
+  if(state.flag.has('winter')&&!c.winter)return false;
+  if(state.flag.has('sweep')&&!c.sweep)return false;
+  if(state.flag.has('edited')&&!isEdited(i))return false;
+  if(state.q){const s=V(i,'stn')||'';
+    if(!(V(i,'n')+' '+c.r+' '+V(i,'arch')+' '+V(i,'note')+' '+V(i,'walk')+' '+s).toLowerCase().includes(state.q))return false}
+  return true}
+function highlight(i){document.querySelectorAll('.card').forEach(el=>el.classList.toggle('active',+el.dataset.i===i));
+  const el=document.querySelector(`.card[data-i="${i}"]`);if(el)el.scrollIntoView({block:'nearest'})}
+
+function render(){
+  layer.clearLayers();
+  let shown=C.map((c,i)=>i).filter(passes);
+  const S_={region:(a,b)=>REGIONS.indexOf(C[a].r)-REGIONS.indexOf(C[b].r)||feeNum(a)-feeNum(b),
+    fee:(a,b)=>feeNum(a)-feeNum(b),rank:(a,b)=>rankNum(a)-rankNum(b),
+    dist:(a,b)=>distOut(a)-distOut(b),name:(a,b)=>V(a,'n').localeCompare(V(b,'n'))};
+  shown.sort(S_[state.sort]);
+  shown.forEach(i=>{markers.get(i).setIcon(pinFor(i));markers.get(i).setPopupContent(popupHTML(i));layer.addLayer(markers.get(i))});
+  document.getElementById('count').textContent=`${shown.length} of ${C.length}`;
+  document.getElementById('editcount').textContent=editCount();
+  const list=document.getElementById('list');
+  if(!shown.length){list.innerHTML=`<p class="empty">Nothing matches. The cheapest heathland tends to be weekdays-only — try dropping that filter.</p>`;return}
+  list.innerHTML=shown.map(i=>{const a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')],t=C[i].t100||{};
+    return `<button class="card" data-i="${i}"><div class="card-top">
+      <p class="cname">${flagSVG(a.colour,a.pole,15,false)}${V(i,'n')}${isEdited(i)?' <span class="edited">EDITED</span>':''}${C[i].sweep?' <span class="wt">sweep</span>':''}</p>
+      <span class="cfee">${V(i,'wd')}<small>wknd ${V(i,'we')}</small></span></div>
+      <p class="cmeta"><span>${a.label}</span>
+      ${stn?`<span>${stn.n} · ${LINES[stn.l].n}</span>`:`<span style="color:var(--stone)">no close station</span>`}
+      ${typeof t.gl==='number'?`<span class="rk">GL #${t.gl}</span>`:''}${t.gbi?`<span class="rk">GB&amp;I #${t.gbi}</span>`:''}
+      ${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
+  list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
+    const i=+el.dataset.i;map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
+    markers.get(i).setPopupContent(popupHTML(i));markers.get(i).openPopup();highlight(i);drawLink(i)}));
+}
+
+const legend=L.control({position:'topright'});
+legend.onAdd=()=>{const d=L.DomUtil.create('div','legend');
+  d.innerHTML='<b>Flag colour = who can play</b>'+
+    Object.values(ACCESS).map(a=>`<div class="lr">${flagSVG(a.colour,a.pole,15,false)}<span>${a.label}</span></div>`).join('')+
+    '<div style="margin-top:4px;color:var(--stone);font-size:10.5px">Bigger flag + gold ring = Top 100 ranked</div><hr>'+
+    '<b>Stations</b>'+
+    '<div class="lr"><svg width="14" height="14"><circle cx="7" cy="7" r="3" fill="#9B0056" stroke="#9B0056"/></svg><span>Ordinary stop</span></div>'+
+    '<div class="lr"><svg width="14" height="14"><circle cx="7" cy="7" r="4.4" fill="#fff" stroke="#14211B" stroke-width="1.6"/></svg><span>Interchange</span></div><hr>'+
+    '<b>Rail — colour + dash</b>'+
+    Object.values(LINES).map(l=>`<div class="lr"><svg width="24" height="5"><line x1="0" y1="2.5" x2="24" y2="2.5" stroke="${l.c}" stroke-width="2" ${l.d?`stroke-dasharray="${l.d}"`:''}/></svg><span>${l.n}</span></div>`).join('')+
+    '<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Zone 1 omitted. Station positions are from TfL and National Rail open data; curves still run point-to-point through stations, not along the real track. "Sweep find" tags mark courses added from geographic search rather than the original topic search — verify details before relying on them.</div>';
+  L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d};
+legend.addTo(map);
+
+/* ---- editor / export (unchanged behaviour) ---- */
+const drawer=document.getElementById('drawer'),sheet=document.getElementById('sheet');
+drawer.addEventListener('click',e=>{if(e.target===drawer)closeDrawer()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
+function closeDrawer(){drawer.classList.remove('open')}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+function openEditor(i){
+  map.closePopup();
+  const stnOpts=Object.keys(STN).sort().map(s=>`<option value="${s}" ${V(i,'stn')===s?'selected':''}>${s}</option>`).join('');
+  sheet.innerHTML=`<h2>Correct: ${C[i].n}</h2>
+    <p class="lede">Change anything that's wrong. Edits stay in this browser session — use <b>Review &amp; export</b> to pull them out as JSON you can paste back to me.</p>
+    <div class="grid2"><div class="fld"><label for="e-wd">Weekday fee</label><input id="e-wd" value="${esc(V(i,'wd'))}"></div>
+    <div class="fld"><label for="e-we">Weekend fee</label><input id="e-we" value="${esc(V(i,'we'))}"></div></div>
+    <div class="grid2"><div class="fld"><label for="e-a">Who can play</label><select id="e-a">${Object.entries(ACCESS).map(([k,v])=>`<option value="${k}" ${V(i,'a')===k?'selected':''}>${v.label}</option>`).join('')}</select></div>
+    <div class="fld"><label for="e-band">Fee band</label><select id="e-band">${Object.entries(BANDS).map(([k,v])=>`<option value="${k}" ${V(i,'band')===k?'selected':''}>${v}</option>`).join('')}<option value="na" ${V(i,'band')==='na'?'selected':''}>n/a</option></select></div></div>
+    <div class="fld"><label for="e-stn">Nearest station</label><select id="e-stn"><option value="">— none —</option>${stnOpts}</select></div>
+    <div class="fld"><label for="e-walk">Getting there from the station</label><input id="e-walk" value="${esc(V(i,'walk'))}"></div>
+    <div class="grid2"><div class="fld"><label for="e-arch">Architect</label><input id="e-arch" value="${esc(V(i,'arch'))}"></div>
+    <div class="fld"><label for="e-spec">Course spec</label><input id="e-spec" value="${esc(V(i,'spec'))}"></div></div>
+    <div class="fld"><label for="e-site">Club website</label><input id="e-site" value="${esc(V(i,'site'))}" placeholder="https://"></div>
+    <div class="fld"><label for="e-book">Green fees / booking page</label><input id="e-book" value="${esc(V(i,'book'))}" placeholder="https://"></div>
+    <div class="fld"><label for="e-note">Notes</label><textarea id="e-note">${esc(V(i,'note'))}</textarea></div>
+    <div class="fld"><label for="e-why">What was wrong? (optional, but useful to me)</label><textarea id="e-why" placeholder="e.g. played it last month, weekend rate is actually £62 and the handicap requirement has gone">${esc((EDITS[i]||{})._why||'')}</textarea></div>
+    <div class="bar"><button class="btn2" onclick="saveEdit(${i})">Save correction</button>
+    <button class="btn2 ghost" onclick="closeDrawer()">Cancel</button>
+    ${isEdited(i)?`<button class="btn2 warn" onclick="revertEdit(${i})">Revert to original</button>`:''}</div>`;
+  drawer.classList.add('open');
+}
+function saveEdit(i){const g=id=>document.getElementById(id).value;
+  const next={wd:g('e-wd'),we:g('e-we'),a:g('e-a'),band:g('e-band'),stn:g('e-stn'),walk:g('e-walk'),arch:g('e-arch'),spec:g('e-spec'),site:g('e-site'),book:g('e-book'),note:g('e-note')};
+  const diff={};Object.entries(next).forEach(([k,v])=>{if(v!==C[i][k])diff[k]=v});
+  const why=g('e-why').trim();if(why)diff._why=why;
+  if(Object.keys(diff).length)EDITS[i]=diff;else delete EDITS[i];
+  closeDrawer();render()}
+function revertEdit(i){delete EDITS[i];closeDrawer();render()}
+function corrections(){return Object.keys(EDITS).filter(isEdited).map(i=>{
+  const changed={};Object.entries(EDITS[i]).forEach(([k,v])=>{if(k!=='_why')changed[k]={from:C[i][k],to:v}});
+  return{course:C[i].n,why:EDITS[i]._why||null,changed}})}
+document.getElementById('open-export').addEventListener('click',()=>{
+  const list=corrections();
+  const json=JSON.stringify({source:"Heath & Parkland golf map v5",exported:new Date().toISOString().slice(0,10),corrections:list},null,2);
+  sheet.innerHTML=`<h2>Your corrections</h2>
+    <p class="lede">${list.length?`${list.length} ${list.length===1?'entry':'entries'} changed. Copy the JSON and paste it back into our chat — I'll merge it and mark those fields as verified by you.`:`Nothing corrected yet. Open any course and hit <b>Correct this</b>.`}</p>
+    ${list.length?`<div class="fld"><label for="ex">Correction patch</label><textarea id="ex" style="min-height:220px">${esc(json)}</textarea></div>
+    <div class="bar"><button class="btn2" onclick="copyPatch()">Copy to clipboard</button>
+    <button class="btn2 ghost" onclick="downloadPatch()">Download .json</button>
+    <button class="btn2 ghost" onclick="closeDrawer()">Close</button>
+    <span id="copied" style="font-size:12px;color:var(--stone)"></span></div>
+    <p class="hint">Nothing is saved between sessions — export before you close the tab.</p>`
+    :`<div class="bar"><button class="btn2" onclick="closeDrawer()">Close</button></div>`}`;
+  drawer.classList.add('open')});
+function copyPatch(){const t=document.getElementById('ex');t.select();
+  navigator.clipboard.writeText(t.value).then(()=>document.getElementById('copied').textContent='Copied.')
+  .catch(()=>document.getElementById('copied').textContent='Select the text above and copy manually.')}
+function downloadPatch(){try{const blob=new Blob([document.getElementById('ex').value],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='golf-map-corrections.json';a.click();URL.revokeObjectURL(a.href)}
+  catch(e){document.getElementById('copied').textContent='Download blocked here — use Copy instead.'}}
+
+render();
+</script>
