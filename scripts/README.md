@@ -133,6 +133,45 @@ Merges `fetch_club_images.py`'s output into a `data/courses-*.js` file as a
 python3 scripts/merge_club_images.py data/courses-top100.js --images scripts/output/club_images.json
 ```
 
+### `fetch_rail_geometry.py`
+Traces real track geometry for the TfL network lines (Underground,
+Elizabeth line, and the two Overground branches we cover: Weaver,
+Lioness) from OpenStreetMap's free Overpass API — no key needed. Replaces
+the app's spline-through-station-coordinates approximation, which looked
+visibly wrong once the basemap started showing real streets underneath
+it (see the CartoDB Voyager switch above).
+
+```bash
+python3 scripts/fetch_rail_geometry.py
+```
+Writes `scripts/output/rail_geometry.json` — `{family: [[[lat,lng],...], ...]}`,
+one polyline per matched OSM way (not stitched into one continuous line —
+an earlier version tried that and Overpass's member ordering wasn't
+reliable enough, producing long straight "jump" artifacts between
+unrelated ways; per-way segments avoid that failure mode entirely and
+Leaflet renders adjoining ways as one visual line anyway).
+
+**Scope note:** National Rail groupings (Thameslink, Southern,
+Southeastern, South Western, Great Northern, Chiltern, WCML) are
+deliberately NOT traced — those are our own station groupings by rough
+geographic corridor, not a single physical route the way "the Northern
+line" is, so there's no one OSM relation that corresponds to what we've
+grouped. Those keep the spline approximation.
+
+Rate-limited gently against Overpass's public instance (occasional
+`HTTP 429` on a family is normal under load — the script just skips that
+family; re-run to pick up whatever failed).
+
+### `merge_rail_geometry.py`
+Turns `fetch_rail_geometry.py`'s output into `data/rail-geometry.js` (a
+plain `RAIL_GEOM` global, same loading convention as every other
+`data/*.js` file), rounding coordinates to 5 decimal places to keep the
+committed file smaller.
+
+```bash
+python3 scripts/merge_rail_geometry.py
+```
+
 ### `test_data.js`
 GOLF-17: automated data-integrity checks (no browser needed) — every course
 has its required fields, valid access/region/band values, resolvable `stn`
@@ -160,3 +199,4 @@ station position) before merging anything in by hand — then run
 | `compute_nearest_stations.py` + `merge_nearest_stations.py` | 2026-08-25 | Populated `nearStation` on all 100 Top 100 entries (GOLF-10) |
 | `fetch_england_golf_clubs.py` + `merge_club_details.py` | 2026-08-25 | Populated `clubInfo` on 98 of 100 Top 100 entries (GOLF-11); Swinley Forest still absent from the directory, Prince's needs a name-mapping fix |
 | `fetch_club_images.py` + `merge_club_images.py` | 2026-08-25 | Populated `logo` on 71 of 100 Top 100 entries (GOLF-21); 393KB total added to `images/clubs/`, the other 29 clubs had no `LogoImage` in the England Golf data |
+| `fetch_rail_geometry.py` + `merge_rail_geometry.py` | 2026-08-25 | Wrote `data/rail-geometry.js` — real OSM track geometry for all 8 TfL-network line families, replacing the spline approximation for those |

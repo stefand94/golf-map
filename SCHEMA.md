@@ -19,6 +19,7 @@ in `london-golf-map-v5_1.html` to know what's expected.
 | `MANUAL_IX` | array of station names | Stations needing a manually-nudged label position to avoid overlap on the map — purely a rendering aid. |
 | `C` | array of course objects | The 121 original London-catchment courses. See below. |
 | `C_TOP100` | array of course objects | The 100 England Top 100 national courses. Appended onto `C` via `C.push(...C_TOP100)` at the end of the file — from the app's perspective there is one course array. |
+| `RAIL_GEOM` (`data/rail-geometry.js`) | `{family: [[[lat,lng],...], ...]}` | Real track geometry for the 8 TfL-network line families (`met`/`jub`/`nor`/`pic`/`cen`/`dis`/`eli`/`ovg`), traced from OpenStreetMap via `scripts/fetch_rail_geometry.py`. Each family maps to a list of polylines (one per matched OSM way, not stitched into one line). When a family has an entry here, the app draws these instead of the `spline()` approximation through `R`'s station points; National Rail groupings (`tl`/`gn`/`chil`/`sn`/`se`/`swr`/`wcml`) have no entry and always fall back to the spline, since they're our own station groupings by corridor, not one physical route. |
 
 ## Course object fields
 

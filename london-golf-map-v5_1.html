@@ -204,6 +204,7 @@
 <script src="data/stations.js"></script>
 <script src="data/courses-london.js"></script>
 <script src="data/courses-top100.js"></script>
+<script src="data/rail-geometry.js"></script>
 <script>
 
 /* Golf-flag marker: pole + triangular pennant + a small base ellipse
@@ -348,12 +349,34 @@ const railPolys=[],stnDots=[];
 function railWeight(){const z=map.getZoom();return z<10?1.1:z<12?1.6:z<14?2.2:3}
 function stnRadius(ix){const z=map.getZoom();const b=z<10?1.4:z<12?2:z<14?2.8:3.6;return ix?b*1.55:b}
 
+/* GOLF: TfL-network families (met/jub/nor/pic/cen/dis/eli/ovg) draw from
+   RAIL_GEOM — real track geometry traced from OpenStreetMap via
+   scripts/fetch_rail_geometry.py — instead of a spline through station
+   coordinates, which only ever approximated the route and looked visibly
+   wrong once the basemap started showing real streets underneath it.
+   National Rail groupings (Thameslink, Southern, etc.) have no single
+   physical route to trace (they're our own station groupings by corridor,
+   not one relation in OSM) so those keep the spline approximation. Each
+   family's real geometry is drawn once (not once per branch key) since
+   RAIL_GEOM already holds every distinct segment for that family. */
+const geomDrawn=new Set();
 Object.entries(R).forEach(([rk,stations])=>{
-  const L_=LINES[ROUTE_LINE[rk]];
-  const curve=spline(stations.map(s=>[s[1],s[2]]));
-  const p=L.polyline(curve,{color:L_.c,weight:railWeight(),opacity:.95,dashArray:L_.d,lineCap:'round',lineJoin:'round'})
-    .bindTooltip(L_.n,{sticky:true}).addTo(railLayer);
-  railPolys.push(p);
+  const fam=ROUTE_LINE[rk],L_=LINES[fam];
+  if(typeof RAIL_GEOM!=='undefined'&&RAIL_GEOM[fam]){
+    if(!geomDrawn.has(fam)){
+      geomDrawn.add(fam);
+      RAIL_GEOM[fam].forEach(seg=>{
+        const p=L.polyline(seg,{color:L_.c,weight:railWeight(),opacity:.95,dashArray:L_.d,lineCap:'round',lineJoin:'round'})
+          .bindTooltip(L_.n,{sticky:true}).addTo(railLayer);
+        railPolys.push(p);
+      });
+    }
+  }else{
+    const curve=spline(stations.map(s=>[s[1],s[2]]));
+    const p=L.polyline(curve,{color:L_.c,weight:railWeight(),opacity:.95,dashArray:L_.d,lineCap:'round',lineJoin:'round'})
+      .bindTooltip(L_.n,{sticky:true}).addTo(railLayer);
+    railPolys.push(p);
+  }
   if(LABEL_AT[rk]!==undefined){
     const s=stations[LABEL_AT[rk]];
     L.marker([s[1],s[2]],{interactive:false,icon:L.divIcon({className:'',html:`<div class="lnlabel" style="background:${L_.c}">${L_.n}</div>`,iconSize:[0,0],iconAnchor:[-5,5]})}).addTo(lblLayer);
