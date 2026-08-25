@@ -19,7 +19,21 @@
   .skip-link{position:absolute;left:8px;top:-40px;background:var(--ink);color:var(--paper-2);padding:8px 14px;border-radius:5px;font:600 12.5px "IBM Plex Sans",sans-serif;text-decoration:none;z-index:3000;transition:top .12s}
   .skip-link:focus{top:8px}
   .app{display:grid;grid-template-columns:minmax(360px,420px) 1fr;height:100vh}
-  @media (max-width:900px){.app{grid-template-columns:1fr;grid-template-rows:auto 1fr}#map{min-height:50vh}.panel{max-height:50vh}}
+  /* GOLF-19: the old fixed 50vh panel/map split clipped the panel with
+     overflow:hidden — on a real phone this made the search box, sort
+     dropdown, and every button below the filter chips completely
+     unreachable (confirmed: filters content ran ~715px tall, capped at
+     406px, no scroll). Replaced with a full-height list<->map toggle. */
+  .mob-toggle{display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:1500;
+    background:var(--ink);color:var(--paper-2);border:none;border-radius:22px;padding:12px 22px;
+    font:600 13px "IBM Plex Sans",sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.3);cursor:pointer}
+  @media (max-width:900px){
+    .app{grid-template-columns:1fr;grid-template-rows:1fr}
+    .panel{max-height:none}
+    body.mob-map .panel{display:none}
+    body.mob-list #map{display:none}
+    .mob-toggle{display:block}
+  }
   .panel{display:flex;flex-direction:column;background:var(--paper-2);border-right:1px solid var(--line);overflow:hidden}
 
   .mast{padding:16px 20px 11px;border-bottom:1px solid var(--line)}
@@ -123,6 +137,16 @@
   .btn2.warn{background:transparent;color:#9A3412;border-color:#E5C7B5}
   .hint{font-size:11.5px;color:var(--stone);margin:8px 0 0;line-height:1.5}
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+  /* GOLF-19: kept at the end of the stylesheet so these win the cascade
+     over the earlier component rules (#q etc. set font-size via the
+     `font` shorthand later in source order than the layout block above —
+     equal specificity, later wins, so this has to come later still). */
+  @media (max-width:900px){
+    .chip,.togg{min-height:44px;padding-top:11px;padding-bottom:11px}
+    #q,.fld input,.fld select,.fld textarea,#sort{font-size:16px}
+    .leaflet-popup-content{width:min(300px,calc(100vw - 60px)) !important}
+  }
 </style>
 
 <a href="#map" class="skip-link">Skip to map</a>
@@ -172,6 +196,7 @@
   </aside>
   <div id="map" tabindex="-1"></div>
 </div>
+<button class="mob-toggle" id="mob-toggle" type="button">Show map</button>
 <div class="drawer" id="drawer"><div class="sheet" id="sheet"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -392,7 +417,27 @@ function drawLink(i){linkLayer.clearLayers();
   const s=STN[V(i,'stn')]||C[i].nearStation;if(!s)return;
   L.polyline([[s.lat,s.lng],[C[i].lat,C[i].lng]],{color:'#14211B',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(linkLayer)}
 
-function goToCourse(i){map.closePopup();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
+/* GOLF-19: mobile list<->map toggle (see the max-width:900px block in
+   <style> — .app stacks full-height, one of .panel/#map is display:none
+   at a time via body.mob-list/mob-map). Desktop ignores this entirely,
+   the toggle button itself is display:none above 900px. */
+const mobToggle=document.getElementById('mob-toggle');
+document.body.classList.add('mob-list');
+function showMobileMap(){
+  if(window.innerWidth>900)return;
+  document.body.classList.remove('mob-list');document.body.classList.add('mob-map');
+  mobToggle.textContent='Show list';
+  setTimeout(()=>map.invalidateSize(),0);
+}
+function showMobileList(){
+  document.body.classList.remove('mob-map');document.body.classList.add('mob-list');
+  mobToggle.textContent='Show map';
+}
+mobToggle.addEventListener('click',()=>{
+  document.body.classList.contains('mob-map')?showMobileList():showMobileMap();
+});
+
+function goToCourse(i){map.closePopup();showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
   markers.get(i).setPopupContent(popupHTML(i));markers.get(i).openPopup();highlight(i);drawLink(i)}
 
 /* GOLF-24: standalone Trip Planning mode — supersedes GOLF-14's inline
@@ -628,7 +673,7 @@ function render(){
       ${C[i].top100?`<span style="color:var(--stone)">${distMiles(i)} mi from home</span>`:''}
       ${bestRankBadge(i)}${C[i].sweep?'<span class="wt">sweep</span>':''}${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
   list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
-    const i=+el.dataset.i;map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
+    const i=+el.dataset.i;showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
     markers.get(i).setPopupContent(popupHTML(i));markers.get(i).openPopup();highlight(i);drawLink(i)}));
 }
 
