@@ -342,7 +342,7 @@ function popupHTML(i){
     <p class="sub">${c.r} · ${a.label}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
     <div class="fees"><div class="fee-box"><b>Weekday</b><span>${V(i,'wd')}</span></div>
     <div class="fee-box"><b>Weekend</b><span>${V(i,'we')}</span></div></div>
-    <dl><dt>Course</dt><dd>${V(i,'spec')}</dd><dt>Design</dt><dd>${V(i,'arch')}</dd><dt>By rail</dt><dd>${travel}</dd>${club&&club.phone?`<dt>Phone</dt><dd>${club.phone}</dd>`:''}</dl>
+    <dl><dt>Course</dt><dd>${V(i,'spec')}</dd><dt>Design</dt><dd>${V(i,'arch')}</dd><dt>By rail</dt><dd>${travel}</dd>${club&&club.phone?`<dt>Phone</dt><dd>${club.phone}</dd>`:''}${c.top100?`<dt>From home</dt><dd>${distMiles(i)} mi, as the crow flies</dd>`:''}</dl>
     <p class="note">${V(i,'note')}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${club.blurb}</span>`:''}</p>
     <div class="actions">
       ${site?`<a class="btn" href="${site}" target="_blank" rel="noopener">Club website</a>`:`<a class="btn ghost" href="${search}" target="_blank" rel="noopener">Find the club site</a>`}
@@ -402,6 +402,10 @@ toggle('t-rail',railLayer);toggle('t-stn',stnLayer);toggle('t-lbl',lblLayer);
 
 function feeNum(i){const m=String(V(i,'wd')).match(/\d+(\.\d+)?/);return m?parseFloat(m[0]):9999}
 function distOut(i){const dy=C[i].lat-HOME[0],dx=(C[i].lng-HOME[1])*Math.cos(HOME[0]*Math.PI/180);return Math.hypot(dy,dx)}
+/* GOLF-16: distOut() is in degrees (used internally for sorting); miles
+   at ~69 mi/degree latitude is accurate enough for a labelled "as the
+   crow flies" stat, not for anything requiring real precision. */
+function distMiles(i){return Math.round(distOut(i)*69)}
 function rankNum(i){const t=C[i].t100;if(!t)return 9999;if(typeof t.gl==='number')return t.gl;if(t.gbi)return t.gbi/20;return 500}
 function passes(i){const c=C[i];
   if(state.access.size&&!state.access.has(V(i,'a')))return false;
@@ -439,6 +443,7 @@ function render(){
       <span class="cfee">${V(i,'wd')}<small>wknd ${V(i,'we')}</small></span></div>
       <p class="cmeta"><span>${a.label}</span>
       ${stn?`<span>${stn.n} · ${LINES[stn.l].n}</span>`:near?`<span>${near.n} · ${near.mi} mi straight-line</span>`:`<span style="color:var(--stone)">no close station</span>`}
+      ${C[i].top100?`<span style="color:var(--stone)">${distMiles(i)} mi from home</span>`:''}
       ${bestRankBadge(i)}${C[i].sweep?'<span class="wt">sweep</span>':''}${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
   list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
     const i=+el.dataset.i;map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
