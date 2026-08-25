@@ -6,7 +6,7 @@
 
 /* Data-provenance dates — set by hand each time a scripts/fetch_*.py
    run's output is merged into the data/ files. See scripts/README.md. */
-const DATA_REFRESHED={stations:"2026-08-25",top100:"2026-08-25"};
+const DATA_REFRESHED={stations:"2026-08-25",top100:"2026-08-25",nearStation:"2026-08-25"};
 
 /* ==========================================================
    ACCESS TIERS — now expressed as flag colour, per request.

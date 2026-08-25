@@ -332,8 +332,10 @@ function rankChips(i){const t=C[i].t100;if(!t)return'';const p=[];
   return `<p class="ranks">${p.map(x=>`<span>${x}</span>`).join('')}</p>`}
 
 function popupHTML(i){
-  const c=C[i],a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')];
-  const travel=stn?`<b style="color:${LINES[stn.l].c}">${stn.n}</b> · ${LINES[stn.l].n} — ${V(i,'walk')}`:(V(i,'walk')||'Outside the rail catchment — no nearby station on this map');
+  const c=C[i],a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')],near=c.nearStation;
+  const travel=stn?`<b style="color:${LINES[stn.l].c}">${stn.n}</b> · ${LINES[stn.l].n} — ${V(i,'walk')}`
+    :near?`<b>${near.n}</b> — ${near.mi} mi, straight-line (nearest station nationally, not a walking route)`
+    :(V(i,'walk')||'Outside the rail catchment — no nearby station on this map');
   const search=`https://www.google.com/search?q=${encodeURIComponent(V(i,'n')+' golf club green fees')}`;
   const site=V(i,'site'),book=V(i,'book');
   return `<div class="pop"><h3>${V(i,'n')} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}</h3>
@@ -353,7 +355,8 @@ C.forEach((c,i)=>{
   m.on('click',()=>{m.setPopupContent(popupHTML(i));highlight(i);drawLink(i)});
   m.bindPopup(popupHTML(i),{maxWidth:340});markers.set(i,m);
 });
-function drawLink(i){linkLayer.clearLayers();const s=STN[V(i,'stn')];if(!s)return;
+function drawLink(i){linkLayer.clearLayers();
+  const s=STN[V(i,'stn')]||C[i].nearStation;if(!s)return;
   L.polyline([[s.lat,s.lng],[C[i].lat,C[i].lng]],{color:'#14211B',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(linkLayer)}
 
 function buildChips(id,items,key,withIcon){
@@ -428,12 +431,12 @@ function render(){
   document.getElementById('editcount').textContent=editCount();
   const list=document.getElementById('list');
   if(!shown.length){list.innerHTML=`<p class="empty">Nothing matches. The cheapest heathland tends to be weekdays-only — try dropping that filter.</p>`;return}
-  list.innerHTML=shown.map(i=>{const a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')];
+  list.innerHTML=shown.map(i=>{const a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')],near=C[i].nearStation;
     return `<button class="card" data-i="${i}"><div class="card-top">
       <p class="cname">${flagSVG(a.colour,a.pole,15,false)}${V(i,'n')}${isEdited(i)?' <span class="edited">EDITED</span>':''}</p>
       <span class="cfee">${V(i,'wd')}<small>wknd ${V(i,'we')}</small></span></div>
       <p class="cmeta"><span>${a.label}</span>
-      ${stn?`<span>${stn.n} · ${LINES[stn.l].n}</span>`:`<span style="color:var(--stone)">no close station</span>`}
+      ${stn?`<span>${stn.n} · ${LINES[stn.l].n}</span>`:near?`<span>${near.n} · ${near.mi} mi straight-line</span>`:`<span style="color:var(--stone)">no close station</span>`}
       ${bestRankBadge(i)}${C[i].sweep?'<span class="wt">sweep</span>':''}${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
   list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
     const i=+el.dataset.i;map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
@@ -453,8 +456,8 @@ legend.onAdd=()=>{const d=L.DomUtil.create('div','legend');
     '<div class="lr"><svg width="14" height="14"><circle cx="7" cy="7" r="4.4" fill="#fff" stroke="#14211B" stroke-width="1.6"/></svg><span>Interchange</span></div><hr>'+
     '<b>Rail — colour + dash</b>'+
     Object.values(LINES).map(l=>`<div class="lr"><svg width="24" height="5"><line x1="0" y1="2.5" x2="24" y2="2.5" stroke="${l.c}" stroke-width="2" ${l.d?`stroke-dasharray="${l.d}"`:''}/></svg><span>${l.n}</span></div>`).join('')+
-    '<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Zone 1 omitted. Station positions are from TfL and National Rail open data; curves still run point-to-point through stations, not along the real track. "Sweep find" tags mark courses added from geographic search rather than the original topic search — verify details before relying on them. England Top 100 pins (national, black-flag clubs included) are from a published 2026 price list cross-checked against England Golf’s club directory for name and coordinates — most sit outside the rail catchment, so no line is drawn to a station.</div>'+
-    `<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Data last refreshed — stations: ${DATA_REFRESHED.stations}, England Top 100: ${DATA_REFRESHED.top100}. All fetched once and stored statically; the page makes no live API calls.</div>`;
+    '<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Zone 1 omitted. Station positions are from TfL and National Rail open data; curves still run point-to-point through stations, not along the real track. "Sweep find" tags mark courses added from geographic search rather than the original topic search — verify details before relying on them. England Top 100 pins (national, black-flag clubs included) are from a published 2026 price list cross-checked against England Golf’s club directory for name and coordinates — most sit outside the London rail network drawn on this map, so instead they show the nearest station <i>nationally</i> as a straight-line (as-the-crow-flies) distance, not a walking route or real travel time.</div>'+
+    `<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Data last refreshed — stations: ${DATA_REFRESHED.stations}, England Top 100: ${DATA_REFRESHED.top100}, nearest-station lookups: ${DATA_REFRESHED.nearStation}. All fetched once and stored statically; the page makes no live API calls.</div>`;
   L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d};
 legend.addTo(map);
 

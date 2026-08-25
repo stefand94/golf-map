@@ -46,6 +46,40 @@ Known gotchas (hit while sourcing the original Top 100 batch):
   (showed "9" for several known 18-hole championship courses) — don't trust
   it without cross-checking.
 
+### `extract_courses.py`
+Pulls `{n, lat, lng}` out of a `data/courses-*.js` file into plain JSON, for
+feeding into `compute_nearest_stations.py`. Regex-based against the existing
+single-line-per-course formatting — not a JS parser.
+
+```bash
+python3 scripts/extract_courses.py data/courses-top100.js --out scripts/output/top100_courses.json
+```
+
+### `compute_nearest_stations.py`
+GOLF-10: nearest station to each course **nationally**, by straight-line
+(haversine) distance — not real routing. Needs `fetch_rail_stations.py`'s
+output (nationwide, not just London) and a courses JSON from
+`extract_courses.py`.
+
+```bash
+python3 scripts/compute_nearest_stations.py --courses scripts/output/top100_courses.json
+```
+Writes `scripts/output/nearest_stations.json` — `{courseName: {station, lat, lng, miles}}`.
+A naive nearest-neighbour can occasionally pick a closed/tiny halt over an
+obvious nearby mainline station, or (on the coast) a station across water
+that's closer as the crow flies than any station reachable by land — spot-check
+the largest distances before merging.
+
+### `merge_nearest_stations.py`
+Merges `compute_nearest_stations.py`'s output into a `data/courses-*.js` file
+in place, as a `nearStation:{n,lat,lng,mi}` field per course (see SCHEMA.md).
+Idempotent — re-running replaces any existing `nearStation` field rather than
+duplicating it.
+
+```bash
+python3 scripts/merge_nearest_stations.py data/courses-top100.js --nearest scripts/output/nearest_stations.json
+```
+
 ## Verifying a re-run
 
 After running either script, spot-check a few known values against the
@@ -56,5 +90,6 @@ station position) before merging anything in by hand.
 
 | Script | Last run | Notes |
 |---|---|---|
-| `fetch_rail_stations.py` | 2026-08-25 | Sourced the 314 stations currently in `data/stations.js` |
+| `fetch_rail_stations.py` | 2026-08-25 | Sourced the London-network stations in `data/stations.js`; also a nationwide 2,882-station set used by `compute_nearest_stations.py` |
 | `fetch_england_golf_clubs.py` | 2026-08-25 | Sourced the 100 England Top 100 entries in `data/courses-top100.js` |
+| `compute_nearest_stations.py` + `merge_nearest_stations.py` | 2026-08-25 | Populated `nearStation` on all 100 Top 100 entries (GOLF-10) |

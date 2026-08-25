@@ -47,11 +47,9 @@ Every field below appears on **all** courses unless marked otherwise.
 | `book` | string | Online booking URL, or `""`/absent if unknown. |
 
 Top 100 entries deliberately have **no** `stn`/`walk`/`book` — most are well
-outside the London rail catchment this map was built around, so no line is
-drawn to a station for them. (GOLF-10 will add a *nearest station nationally*,
-computed by straight-line distance, as a distinctly-labelled new field rather
-than reusing `stn`/`walk` — see `SCHEMA.md` update expected alongside that
-ticket.)
+outside the London rail catchment this map was built around. Instead they
+carry `nearStation` (see below), a nationwide nearest-station lookup by
+straight-line distance rather than a walkable London-network station.
 
 ### Optional fields (present on some entries in either array)
 
@@ -61,6 +59,7 @@ ticket.)
 | `top100:1` | boolean flag | Marks an entry as one of the 100 England Top 100 courses. Only ever present (and always `1`) on `C_TOP100` entries. |
 | `sweep:1` | boolean flag | Marks a lower-confidence entry found via a broad geographic search rather than direct verification. London-catchment (`C`) only. |
 | `winter:1` | boolean flag | Marks a course specifically noted as playing well/draining well in winter. |
+| `nearStation` | `{n, lat, lng, mi}` | GOLF-10: nearest station **nationally** by straight-line (haversine) distance, computed via `scripts/compute_nearest_stations.py` + `scripts/merge_nearest_stations.py`. Deliberately a separate field from `stn`/`walk` — those imply a walkable London-network station; this is "as the crow flies" and may be many miles, including across water on the coast. Currently only populated on `C_TOP100` entries lacking `stn`. |
 
 ## Conventions worth preserving
 
