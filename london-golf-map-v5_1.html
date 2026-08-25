@@ -123,7 +123,7 @@
     <header class="mast">
       <p class="eyebrow">Greater London · Herts · Bucks · Surrey · Kent · Essex · plus England's Top 100</p>
       <h1>Heath &amp; Parkland<br><em>golf you can book, by rail</em></h1>
-      <p class="standfirst">121 courses that take visitors without membership, swept geographically across the London catchment — plus all 100 of England's ranked Top 100 courses nationally, shown as pins with no rail line since most are well outside the network.</p>
+      <p class="standfirst">121 courses that take visitors without membership, swept geographically across the London catchment — plus all 100 of England's ranked Top 100 courses nationally, shown as pins with no rail line since most are well outside the network. Most of the Top 100 sit well off this default view — search, filter to "England Top 100 only," or use <b>Show all results on map</b> below to find them.</p>
     </header>
     <div class="filters">
       <div><span class="flabel">Who can play</span><div class="chips" id="f-access"></div></div>
@@ -151,6 +151,10 @@
           </select>
         </label>
         <span id="count"></span>
+      </div>
+      <div class="row">
+        <button class="linkbtn" id="fit-map">Show all results on map</button>
+        <span></span>
       </div>
       <div class="row"><span></span>
         <button class="linkbtn" id="open-export">Review &amp; export corrections (<span id="editcount">0</span>)</button>
@@ -266,7 +270,11 @@ function saveState(){
 function clearStoredState(){try{localStorage.removeItem(LS_KEY)}catch(e){}}
 
 const HOME=[51.5467873,-0.1798875];
-const state={access:new Set(),price:new Set(),region:new Set(),flag:new Set(),arch:new Set(),q:"",sort:"region"};
+/* GOLF-22: default sort was "by area" — REGIONS appends the 5 Top-100-only
+   regions after the 8 original London ones, so a course like Royal Birkdale
+   ended up literally last of 221 in the default view. "by name" interleaves
+   everything instead, so nothing is structurally buried by default. */
+const state={access:new Set(),price:new Set(),region:new Set(),flag:new Set(),arch:new Set(),q:"",sort:"name"};
 let map; // assigned below; loadStoredState reads state before map exists
 loadStoredState();
 
@@ -449,7 +457,10 @@ function updateFilterBadges(){
 }
 document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{
   const k=ch.dataset.k,v=ch.dataset.v,on=ch.getAttribute('aria-pressed')==='true';
-  ch.setAttribute('aria-pressed',String(!on));on?state[k].delete(v):state[k].add(v);updateFilterBadges();saveState();render()}));
+  ch.setAttribute('aria-pressed',String(!on));on?state[k].delete(v):state[k].add(v);updateFilterBadges();saveState();render();
+  /* GOLF-22: turning on "England Top 100 only" is exactly the case that got
+     lost off-screen — jump the map to wherever those results actually are. */
+  if(k==='flag'&&v==='top100'&&!on)fitToResults();}));
 /* reflect any filters restored from localStorage onto the actual chip elements */
 document.querySelectorAll('.chip').forEach(ch=>{
   if(state[ch.dataset.k].has(ch.dataset.v))ch.setAttribute('aria-pressed','true');
@@ -499,6 +510,17 @@ function passes(i){const c=C[i];
   return true}
 function highlight(i){document.querySelectorAll('.card').forEach(el=>el.classList.toggle('active',+el.dataset.i===i));
   const el=document.querySelector(`.card[data-i="${i}"]`);if(el)el.scrollIntoView({block:'nearest'})}
+
+/* GOLF-22: default map view (London, zoom 9) hides every Top 100 course
+   hundreds of miles away with no on-screen hint to zoom out. This gives
+   an explicit, discoverable way to see wherever the current filters
+   actually are. */
+function fitToResults(){
+  const shown=C.map((c,i)=>i).filter(passes);
+  if(!shown.length)return;
+  map.fitBounds(L.latLngBounds(shown.map(i=>[C[i].lat,C[i].lng])),{padding:[28,28]});
+}
+document.getElementById('fit-map').addEventListener('click',fitToResults);
 
 function render(){
   layer.clearLayers();
