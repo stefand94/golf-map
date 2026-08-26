@@ -99,6 +99,14 @@ that touches rendering, filters, or persistence:
    otherwise, same as before) — its persistent label and its tooltip/popup
    on click should also show the red "NR" suffix; a Tube-only station
    shouldn't have a ring or an "NR" suffix anywhere.
+   Separately: clicking any course draws a dashed line to its nearest
+   station (`drawLink()`) — for any course whose nearest station is
+   National Rail (every `nearStation` nationwide lookup, e.g. Royal Cinque
+   Ports → Deal; or a London-network `stn` on a non-TfL line), a small
+   National-Rail-roundel-style icon marker should appear right at that
+   station's coordinates, not just the dashed line with nothing at the
+   other end. A TfL-only `stn` (e.g. a course walking distance from a
+   Tube-only station) shouldn't get the roundel.
 10. **Trip Planning anchor search.** Open Trip Planning → By anchor
     course — the anchor field should be a free-text search (not a plain
     221-option dropdown): typing a partial name (e.g. "Sunning") should

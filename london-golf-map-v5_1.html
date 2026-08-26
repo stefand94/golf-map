@@ -245,6 +245,23 @@ function nrBadge(lineKey){
   if(lineKey!==undefined&&TFL_LINES.has(lineKey))return'';
   return ' <span title="National Rail service — not on the TfL network/Oyster cap" style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;background:#B5121B;color:#fff;padding:1.5px 5px;border-radius:3px;font-weight:600;letter-spacing:.03em">NR</span>';
 }
+/* GOLF: a small icon marker approximating the National Rail double-arrow
+   roundel, placed directly at a station's coordinates — distinct from
+   nrBadge() (which is text/CSS, used in labels/tooltips/popups) because
+   this needs to be a real map marker, positioned exactly on the station,
+   for the "nearest station" link line drawn on course selection. */
+function nrRoundelIcon(size){
+  size=size||24;
+  return L.divIcon({className:'',iconSize:[size,size],iconAnchor:[size/2,size/2],html:
+    `<svg width="${size}" height="${size}" viewBox="0 0 20 20" style="display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))">
+      <rect x="0.75" y="0.75" width="18.5" height="18.5" rx="3" fill="#fff" stroke="#B5121B" stroke-width="1.5"/>
+      <polygon points="2,6.5 9,6.5 9,3.5 17,10 9,16.5 9,13.5 2,13.5 2,11 7.5,11 7.5,9 2,9" fill="#B5121B"/>
+    </svg>`});
+}
+function nrStationMarker(lat,lng,size){
+  size=size||24;
+  return L.marker([lat,lng],{interactive:true,icon:nrRoundelIcon(size)}).bindTooltip('National Rail station',{direction:'top',offset:[0,-size/2]});
+}
 
 function spline(pts,seg=14){
   if(pts.length<3)return pts;
@@ -495,8 +512,16 @@ C.forEach((c,i)=>{
   m.bindPopup(popupHTML(i),{maxWidth:340});markers.set(i,m);
 });
 function drawLink(i){linkLayer.clearLayers();
-  const s=STN[V(i,'stn')]||C[i].nearStation;if(!s)return;
-  L.polyline([[s.lat,s.lng],[C[i].lat,C[i].lng]],{color:'#14211B',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(linkLayer)}
+  const stnObj=STN[V(i,'stn')],near=C[i].nearStation,s=stnObj||near;if(!s)return;
+  L.polyline([[s.lat,s.lng],[C[i].lat,C[i].lng]],{color:'#14211B',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(linkLayer);
+  /* GOLF: nationwide nearStation lookups are always National Rail (no
+     equivalent TfL data outside London); a London-network stn only gets
+     the roundel if none of its lines are TfL. Without this, a course's
+     nearest station never showed anything at its actual map location —
+     only the dashed link line. */
+  const isNR=stnObj?[...STN_LINES[stnObj.n]].some(k=>!TFL_LINES.has(k)):true;
+  if(isNR)nrStationMarker(s.lat,s.lng).addTo(linkLayer);
+}
 
 /* GOLF-19: mobile list<->map toggle (see the max-width:900px block in
    <style> — .app stacks full-height, one of .panel/#map is display:none
