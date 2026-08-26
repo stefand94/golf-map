@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The England Golf Explorer</title>
+<title>The Britain Golf Explorer</title>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -153,9 +153,9 @@
 <div class="app">
   <aside class="panel">
     <header class="mast">
-      <p class="eyebrow">Greater London · Herts · Bucks · Surrey · Kent · Essex · plus England's Top 100</p>
-      <h1>The England<br><em>Golf Explorer</em></h1>
-      <p class="standfirst">Greater London and England's Top 100 golf courses, in one place — a way to explore England's golf and find the easiest way to get there. 121 courses that take visitors without membership, swept geographically across the London catchment — plus all 100 of England's ranked Top 100 courses nationally, shown as pins with no rail line since most are well outside the network. Most of the Top 100 sit well off this default view — search, filter to "England Top 100 only," or use <b>Show all results on map</b> below to find them.</p>
+      <p class="eyebrow">Greater London · Herts · Bucks · Surrey · Kent · Essex · plus England's Top 100, Scotland &amp; Wales</p>
+      <h1>The Britain<br><em>Golf Explorer</em></h1>
+      <p class="standfirst">Greater London's visitor-friendly courses, England's ranked Top 100, and curated notable courses across Scotland and Wales, in one place — a way to explore Britain's golf and find the easiest way to get there. 121 courses that take visitors without membership, swept geographically across the London catchment — plus all 100 of England's ranked Top 100 nationally, 41 of Scotland's best, and 22 of Wales's best, shown as pins with no rail line since most are well outside the network. Most of these sit well off this default view — search, filter to "England Top 100 only" / "Scotland only" / "Wales only," or use <b>Show all results on map</b> below to find them.</p>
     </header>
     <div class="filters">
       <div><span class="flabel">Who can play</span><div class="chips" id="f-access"></div></div>
@@ -204,6 +204,8 @@
 <script src="data/stations.js"></script>
 <script src="data/courses-london.js"></script>
 <script src="data/courses-top100.js"></script>
+<script src="data/courses-scotland.js"></script>
+<script src="data/courses-wales.js"></script>
 <script src="data/rail-geometry.js"></script>
 <script>
 
@@ -460,7 +462,7 @@ L.marker(HOME,{icon:L.divIcon({className:'',html:'<div class="home"></div>',icon
 
 const layer=L.layerGroup().addTo(map),markers=new Map();
 const HC_TEES={};
-function ranked(i){const t=C[i].t100;return t&&(typeof t.gl==='number'||t.gbi||typeof t.eng==='number')}
+function ranked(i){const t=C[i].t100;return t&&(typeof t.gl==='number'||t.gbi||typeof t.eng==='number'||typeof t.sco==='number'||typeof t.wal==='number')}
 function pinFor(i){const a=ACCESS[V(i,'a')],rk=ranked(i),size=rk?28:20;
   return L.divIcon({className:'',html:flagSVG(a.colour,a.pole,size,rk),iconSize:[size,size*1.3],iconAnchor:[size*0.28,size*1.25]})}
 const CONF={club:"Rate from the club's own page",press:"Rate published in trade press or a golf guide",est:"Indicative — verify with the club before travelling"};
@@ -469,6 +471,8 @@ const CONF={club:"Rate from the club's own page",press:"Rate published in trade 
 function bestRankBadge(i){const t=C[i].t100;if(!t)return'';
   const all=[];
   if(typeof t.eng==='number')all.push(`ENG #${t.eng}`);
+  if(typeof t.sco==='number')all.push(`SCO #${t.sco}`);
+  if(typeof t.wal==='number')all.push(`WAL #${t.wal}`);
   if(t.gbi)all.push(`GB&amp;I #${t.gbi}`);
   if(typeof t.gl==='number')all.push(`GL #${t.gl}`);
   if(!all.length)return'';
@@ -477,7 +481,8 @@ function bestRankBadge(i){const t=C[i].t100;if(!t)return'';
 }
 function rankChips(i){const t=C[i].t100;if(!t)return'';const p=[];
   if(typeof t.gl==='number')p.push(`Greater London #${t.gl}`);if(t.gbi)p.push(`Britain &amp; Ireland #${t.gbi}`);
-  if(t.eng)p.push(`England #${t.eng}`);if(t.lse)p.push(`London &amp; SE #${t.lse}`);if(t.sur)p.push(`Surrey #${t.sur}`);
+  if(t.eng)p.push(`England #${t.eng}`);if(t.sco)p.push(`Scotland #${t.sco}`);if(t.wal)p.push(`Wales #${t.wal}`);
+  if(t.lse)p.push(`London &amp; SE #${t.lse}`);if(t.sur)p.push(`Surrey #${t.sur}`);
   if(typeof t.gl==='string')p.push(t.gl);if(t.kent)p.push(t.kent);
   return `<p class="ranks">${p.map(x=>`<span>${x}</span>`).join('')}</p>`}
 
@@ -492,7 +497,7 @@ function popupHTML(i){
     <p class="sub">${c.r} · ${a.label}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
     <div class="fees"><div class="fee-box"><b>Weekday</b><span>${V(i,'wd')}</span></div>
     <div class="fee-box"><b>Weekend</b><span>${V(i,'we')}</span></div></div>
-    <dl><dt>Course</dt><dd>${V(i,'spec')}</dd><dt>Design</dt><dd>${V(i,'arch')}</dd><dt>By rail</dt><dd>${travel}</dd>${club&&club.phone?`<dt>Phone</dt><dd>${club.phone}</dd>`:''}${c.top100?`<dt>From home</dt><dd>${distMiles(i)} mi, as the crow flies</dd>`:''}</dl>
+    <dl><dt>Course</dt><dd>${V(i,'spec')}</dd><dt>Design</dt><dd>${V(i,'arch')}</dd><dt>By rail</dt><dd>${travel}</dd>${club&&club.phone?`<dt>Phone</dt><dd>${club.phone}</dd>`:''}${(c.top100||c.topScot||c.topWales)?`<dt>From home</dt><dd>${distMiles(i)} mi, as the crow flies</dd>`:''}</dl>
     <p class="note">${V(i,'note')}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${club.blurb}</span>`:''}</p>
     ${calcHTML(i)}
     <div class="actions">
@@ -737,7 +742,7 @@ buildChips('f-access',Object.entries(ACCESS).map(([k,v])=>[k,v.label,v.colour,v.
 buildChips('f-price',Object.entries(BANDS).map(([k,v])=>[k,v]),'price',false);
 buildChips('f-arch',ARCHS,'arch',false);
 buildChips('f-region',REGIONS.map(r=>[r,r]),'region',false);
-buildChips('f-flag',[['ranked','Top 100 ranked'],['top100','England Top 100 only'],['weekend','Open at weekends'],['walk','Walk from station'],['winter','Good in winter'],['sweep','Sweep finds'],['edited','My corrections'],['played','Played'],['want','Want to play']],'flag',false);
+buildChips('f-flag',[['ranked','Top 100 ranked'],['top100','England Top 100 only'],['topScot','Scotland only'],['topWales','Wales only'],['weekend','Open at weekends'],['walk','Walk from station'],['winter','Good in winter'],['sweep','Sweep finds'],['edited','My corrections'],['played','Played'],['want','Want to play']],'flag',false);
 function updateFilterBadges(){
   [['arch','b-arch'],['region','b-region'],['flag','b-flag']].forEach(([k,id])=>{
     const b=document.getElementById(id),n=state[k].size;
@@ -748,7 +753,7 @@ document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{
   ch.setAttribute('aria-pressed',String(!on));on?state[k].delete(v):state[k].add(v);updateFilterBadges();saveState();render();
   /* GOLF-22: turning on "England Top 100 only" is exactly the case that got
      lost off-screen — jump the map to wherever those results actually are. */
-  if(k==='flag'&&v==='top100'&&!on)fitToResults();}));
+  if(k==='flag'&&(v==='top100'||v==='topScot'||v==='topWales')&&!on)fitToResults();}));
 /* reflect any filters restored from localStorage onto the actual chip elements */
 document.querySelectorAll('.chip').forEach(ch=>{
   if(state[ch.dataset.k].has(ch.dataset.v))ch.setAttribute('aria-pressed','true');
@@ -800,6 +805,8 @@ function passes(i){const c=C[i];
   if(state.flag.has('winter')&&!c.winter)return false;
   if(state.flag.has('sweep')&&!c.sweep)return false;
   if(state.flag.has('top100')&&!c.top100)return false;
+  if(state.flag.has('topScot')&&!c.topScot)return false;
+  if(state.flag.has('topWales')&&!c.topWales)return false;
   if(state.flag.has('edited')&&!isEdited(i))return false;
   if(state.flag.has('played')&&!PLAYED.has(i))return false;
   if(state.flag.has('want')&&!WANT.has(i))return false;
@@ -866,7 +873,7 @@ function render(){
       <span class="cfee">${V(i,'wd')}<small>wknd ${V(i,'we')}</small></span></div>
       <p class="cmeta"><span>${a.label}</span>
       ${stn?`<span>${stn.n} · ${LINES[stn.l].n}</span>`:near?`<span>${near.n} · ${near.mi} mi straight-line</span>`:`<span style="color:var(--stone)">no close station</span>`}
-      ${C[i].top100?`<span style="color:var(--stone)">${distMiles(i)} mi from home</span>`:''}
+      ${(C[i].top100||C[i].topScot||C[i].topWales)?`<span style="color:var(--stone)">${distMiles(i)} mi from home</span>`:''}
       ${bestRankBadge(i)}${C[i].sweep?'<span class="wt">sweep</span>':''}${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
   list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
     const i=+el.dataset.i;showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
@@ -892,8 +899,8 @@ legend.onAdd=()=>{const d=L.DomUtil.create('div','legend');
     '<div class="lr"><svg width="14" height="14"><circle cx="7" cy="7" r="4.4" fill="#fff" stroke="#14211B" stroke-width="1.6"/></svg><span>Interchange</span></div><hr>'+
     '<b>Rail — colour + dash</b>'+
     Object.values(LINES).map(l=>`<div class="lr"><svg width="24" height="5"><line x1="0" y1="2.5" x2="24" y2="2.5" stroke="${l.c}" stroke-width="2" ${l.d?`stroke-dasharray="${l.d}"`:''}/></svg><span>${l.n}</span></div>`).join('')+
-    '<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Zone 1 omitted. Station positions are from TfL and National Rail open data; curves still run point-to-point through stations, not along the real track. "Sweep find" tags mark courses added from geographic search rather than the original topic search — verify details before relying on them. England Top 100 pins (national, black-flag clubs included) are from a published 2026 price list cross-checked against England Golf’s club directory for name and coordinates — most sit outside the London rail network drawn on this map, so instead they show the nearest station <i>nationally</i> as a straight-line (as-the-crow-flies) distance, not a walking route or real travel time.</div>'+
-    `<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Data last refreshed — stations: ${DATA_REFRESHED.stations}, England Top 100: ${DATA_REFRESHED.top100}, nearest-station lookups: ${DATA_REFRESHED.nearStation}. All fetched once and stored statically; the page makes no live API calls.</div>`;
+    '<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Zone 1 omitted. Station positions are from TfL and National Rail open data; curves still run point-to-point through stations, not along the real track. "Sweep find" tags mark courses added from geographic search rather than the original topic search — verify details before relying on them. England Top 100 pins (national, black-flag clubs included) are from a published 2026 price list cross-checked against England Golf’s club directory for name and coordinates — most sit outside the London rail network drawn on this map, so instead they show the nearest station <i>nationally</i> as a straight-line (as-the-crow-flies) distance, not a walking route or real travel time. Scotland and Wales pins are a curated set of notable courses (not a full national directory), sourced the same way from Scottish Golf and Wales Golf’s club directories; fee/access/architect details for these are indicative and unverified (marked "est") pending direct confirmation from each club.</div>'+
+    `<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Data last refreshed — stations: ${DATA_REFRESHED.stations}, England Top 100: ${DATA_REFRESHED.top100}, Scotland &amp; Wales: ${DATA_REFRESHED.scotlandWales}, nearest-station lookups: ${DATA_REFRESHED.nearStation}. All fetched once and stored statically; the page makes no live API calls.</div>`;
   L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d};
 legend.addTo(map);
 
@@ -994,7 +1001,7 @@ function corrections(){return Object.keys(EDITS).filter(isEdited).map(i=>{
 document.getElementById('open-trip').addEventListener('click',openTripPlanner);
 document.getElementById('open-export').addEventListener('click',()=>{
   const list=corrections();
-  const json=JSON.stringify({source:"The England Golf Explorer",exported:new Date().toISOString().slice(0,10),corrections:list},null,2);
+  const json=JSON.stringify({source:"The Britain Golf Explorer",exported:new Date().toISOString().slice(0,10),corrections:list},null,2);
   sheet.innerHTML=`<h2>Your corrections</h2>
     <p class="lede">${list.length?`${list.length} ${list.length===1?'entry':'entries'} changed. Your corrections, filters and map position are saved to this browser automatically — export below only if you want a portable copy to paste back into our chat.`:`Nothing corrected yet. Open any course and hit <b>Correct this</b>.`}</p>
     ${list.length?`<div class="fld"><label for="ex">Correction patch</label><textarea id="ex" style="min-height:220px">${esc(json)}</textarea></div>

@@ -46,6 +46,30 @@ Known gotchas (hit while sourcing the original Top 100 batch):
   (showed "9" for several known 18-hole championship courses) — don't trust
   it without cross-checking.
 
+### `fetch_scottish_golf_clubs.py` / `fetch_wales_golf_clubs.py`
+GOLF-25/26: same script as `fetch_england_golf_clubs.py`, pointed at
+`scottishgolf.org`/`walesgolf.org` instead. Both sites run the same
+"DotGolf" white-label platform as England Golf — confirmed live this round
+by hitting `GetClubsByName`/`GetClubDetails` directly against both domains
+and getting back the identical response shape, even though each site's own
+current front-end JS uses a different flow (`GetClubHierarchies`+`FindClubs`)
+internally. Same usage/output shape as the England script:
+
+```bash
+python3 scripts/fetch_scottish_golf_clubs.py --names-file scripts/output/scotland_names.json --out scripts/output/scottish_golf_clubs.json
+python3 scripts/fetch_wales_golf_clubs.py --names-file scripts/output/wales_names.json --out scripts/output/wales_golf_clubs.json
+```
+
+Same gotchas as the England script (short/alternate search terms often
+needed) plus two new ones hit this round:
+- Castle Stuart is genuinely absent from Scottish Golf's own directory
+  (same situation as Swinley Forest in England's data) — fell back to
+  `api.postcodes.io` with its postcode.
+- Two entries (Newport GC in Wales, Gailes Links in Scotland) came back
+  from the live API with `Latitude:0.0,Longitude:0.0` — a data-quality gap
+  in the source directories themselves, not a script bug. Same
+  postcodes.io fallback applied.
+
 ### `extract_courses.py`
 Pulls `{n, lat, lng}` out of a `data/courses-*.js` file into plain JSON, for
 feeding into `compute_nearest_stations.py`. Regex-based against the existing
@@ -226,4 +250,7 @@ station position) before merging anything in by hand — then run
 | `fetch_england_golf_clubs.py` + `merge_club_details.py` | 2026-08-25 | Populated `clubInfo` on 98 of 100 Top 100 entries (GOLF-11); Swinley Forest still absent from the directory, Prince's needs a name-mapping fix |
 | `fetch_club_images.py` + `merge_club_images.py` | 2026-08-25 | Populated `logo` on 71 of 100 Top 100 entries (GOLF-21); 393KB total added to `images/clubs/`, the other 29 clubs had no `LogoImage` in the England Golf data |
 | `fetch_rail_geometry.py` + `merge_rail_geometry.py` | 2026-08-25 | Wrote `data/rail-geometry.js` — real OSM track geometry for all 8 TfL-network line families, replacing the spline approximation for those |
+| `fetch_scottish_golf_clubs.py` | 2026-08-26 | Sourced the 41 Scotland entries in `data/courses-scotland.js` (GOLF-25) |
+| `fetch_wales_golf_clubs.py` | 2026-08-26 | Sourced the 22 Wales entries in `data/courses-wales.js` (GOLF-26) |
+| `compute_nearest_stations.py` + `merge_nearest_stations.py` | 2026-08-26 | Populated `nearStation` on all 41 Scotland + 22 Wales entries |
 | `fetch_course_stats.py` + `merge_course_stats.py` | 2026-08-25 | Populated `courseStats` on 66 of 221 entries (GOLF-12/13) — London 18-hole + England Top 30 scope, first of two monthly batches (free-tier quota) |

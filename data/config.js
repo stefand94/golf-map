@@ -6,7 +6,7 @@
 
 /* Data-provenance dates — set by hand each time a scripts/fetch_*.py
    run's output is merged into the data/ files. See scripts/README.md. */
-const DATA_REFRESHED={stations:"2026-08-25",top100:"2026-08-25",nearStation:"2026-08-25"};
+const DATA_REFRESHED={stations:"2026-08-25",top100:"2026-08-25",nearStation:"2026-08-26",scotlandWales:"2026-08-26"};
 
 /* ==========================================================
    ACCESS TIERS — now expressed as flag colour, per request.
@@ -22,7 +22,7 @@ const ACCESS={
   application:{label:"Application/invitation only",colour:"#2B2B2B",pole:"#6B6B6B"} // black flag — no visitor fee published
 };
 const BANDS={low:"≤ £30",mid:"£31–70",high:"£71–150",premium:"£151+"};
-const REGIONS=["N & NW London","W London","SW London","S London & Surrey","SE London & Kent","NE London & Essex","Herts","Bucks & Berks","South Coast & Sussex","East Anglia","South West England","Midlands","North of England"];
+const REGIONS=["N & NW London","W London","SW London","S London & Surrey","SE London & Kent","NE London & Essex","Herts","Bucks & Berks","South Coast & Sussex","East Anglia","South West England","Midlands","North of England","Fife & East Lothian","Angus & Aberdeenshire","Ayrshire & Argyll","Highlands & Islands","Perthshire & Central Scotland","South Wales Coast","North Wales Coast","West Wales","Mid Wales","North Wales","South Wales Borders"];
 const ARCHS=[["colt","Colt"],["braid","Braid"],["mackenzie","MacKenzie"],["abercromby","Abercromby"],["taylor","J.H. Taylor"],["hawtree","Hawtree"],["vardon","Vardon"],["park","Willie Park Jr"],["fowler","Fowler"],["modern","Modern era"]];
 
 /* dash patterns scaled for hairline weights */

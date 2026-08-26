@@ -109,16 +109,27 @@ that touches rendering, filters, or persistence:
    Tube-only station) shouldn't get the roundel.
 10. **Trip Planning anchor search.** Open Trip Planning → By anchor
     course — the anchor field should be a free-text search (not a plain
-    221-option dropdown): typing a partial name (e.g. "Sunning") should
+    284-option dropdown): typing a partial name (e.g. "Sunning") should
     narrow the suggestions to matching courses, and typing a full exact
     name should immediately run the search and populate results/map.
     Typing something that doesn't exactly match any course should show
     "No course matches that name exactly" rather than silently doing
     nothing or erroring.
 
+11. **Scotland/Wales visibility (GOLF-25/26).** Toggle the "Scotland only"
+    chip — result count should drop to 41, and "Show all results on map"
+    should fit the map bounds to Scotland (roughly Islay to Fraserburgh, not
+    still centred on London). Same for "Wales only" (22 results, bounds
+    roughly Pembrokeshire to Wrexham). Spot-check a course card/popup from
+    each nation (e.g. St Andrews (Old), Royal Porthcawl) for a `SCO #`/
+    `WAL #` rank badge and no "undefined" anywhere. Don't repeat GOLF-22's
+    bug: with no filter active, a Scotland/Wales course should still be
+    reachable within a couple of scrolls under the default "by name" sort,
+    not buried at the end of an unfiltered list.
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
 devices (the Browser tool's mobile preset is an emulation, not the real
 thing), and load testing — none of these are proportionate for a
-221-course static site with no backend.
+284-course static site with no backend.

@@ -1,13 +1,14 @@
-# The England Golf Explorer
+# The Britain Golf Explorer
 
-Greater London and England's Top 100 golf courses, in one place — a way to
-explore England's golf and find the easiest way to get there.
+Greater London's visitor-friendly courses, England's Top 100, and curated
+notable courses across Scotland and Wales, in one place — a way to explore
+Britain's golf and find the easiest way to get there.
 
 **Live site:** https://stefand94.github.io/golf-map/
 
 ## What this is
 
-A single-page interactive map covering 221 golf courses:
+A single-page interactive map covering 284 golf courses:
 
 - **121 London-catchment courses** — pay-and-play/visitor-friendly courses
   swept geographically across Greater London, Herts, Bucks, Surrey, Kent
@@ -16,6 +17,10 @@ A single-page interactive map covering 221 golf courses:
 - **England's Top 100** — every nationally-ranked course, shown with its
   nearest station nationally (straight-line distance, clearly labelled as
   such) since most sit well outside the London rail network.
+- **41 curated Scotland courses + 22 curated Wales courses** — notable
+  courses (not a full national directory) sourced from Scottish Golf's and
+  Wales Golf's public club directories, shown the same way as the England
+  Top 100.
 
 Every course card/popup shows green fees, access tier (pay & play,
 members' guest, restricted days, etc.), architect, a club logo where

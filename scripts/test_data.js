@@ -20,7 +20,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const files = ['data/config.js', 'data/stations.js', 'data/courses-london.js', 'data/courses-top100.js'];
+const files = ['data/config.js', 'data/stations.js', 'data/courses-london.js', 'data/courses-top100.js', 'data/courses-scotland.js', 'data/courses-wales.js'];
 
 const sandbox = {};
 vm.createContext(sandbox);
@@ -39,20 +39,22 @@ for (const f of files) {
   }
 }
 
-const { C, C_TOP100, R, ISOLATED, REGIONS, ACCESS, BANDS } = sandbox;
+const { C, C_TOP100, C_SCOTLAND, C_WALES, R, ISOLATED, REGIONS, ACCESS, BANDS } = sandbox;
 const failures = [];
 const fail = (msg) => failures.push(msg);
 
 // ---- shape sanity ----
-if (!Array.isArray(C) || !Array.isArray(C_TOP100)) {
-  console.error('FAIL: C or C_TOP100 is not an array — data files did not populate expected globals');
+if (!Array.isArray(C) || !Array.isArray(C_TOP100) || !Array.isArray(C_SCOTLAND) || !Array.isArray(C_WALES)) {
+  console.error('FAIL: C, C_TOP100, C_SCOTLAND, or C_WALES is not an array — data files did not populate expected globals');
   process.exit(1);
 }
-const EXPECTED_TOTAL = 221;
+const EXPECTED_TOTAL = 284;
 if (C.length !== EXPECTED_TOTAL) {
   fail(`C.length is ${C.length}, expected ${EXPECTED_TOTAL} — update EXPECTED_TOTAL in this script if a course was deliberately added/removed`);
 }
 if (C_TOP100.length !== 100) fail(`C_TOP100.length is ${C_TOP100.length}, expected 100`);
+if (C_SCOTLAND.length !== 41) fail(`C_SCOTLAND.length is ${C_SCOTLAND.length}, expected 41`);
+if (C_WALES.length !== 22) fail(`C_WALES.length is ${C_WALES.length}, expected 22`);
 
 // ---- known station names, for stn/nearStation validation ----
 const stationNames = new Set();
@@ -71,8 +73,8 @@ C.forEach((c, i) => {
   if (!ACCESS[c.a]) fail(`${label}: access tier "${c.a}" not in ACCESS`);
   if (c.band !== 'na' && !BANDS[c.band]) fail(`${label}: band "${c.band}" not in BANDS and not "na"`);
 
-  // London-catchment-only: every C entry (non-Top100) should have stn/walk/book per SCHEMA.md
-  if (!c.top100) {
+  // London-catchment-only: every C entry (non-Top100, non-Scotland, non-Wales) should have stn/walk/book per SCHEMA.md
+  if (!c.top100 && !c.topScot && !c.topWales) {
     if (c.stn === undefined) fail(`${label}: London-catchment entry missing "stn"`);
     else if (!stationNames.has(c.stn)) fail(`${label}: stn "${c.stn}" does not match any known station in R/ISOLATED`);
     if (c.walk === undefined) fail(`${label}: London-catchment entry missing "walk"`);
