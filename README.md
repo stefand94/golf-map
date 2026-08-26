@@ -28,12 +28,17 @@ available, and links to the club's own site and tee-booking page.
 
 Beyond browsing, the app includes:
 
-- **Trip Planning** — browse bookable courses by region (including nearby
-  courses just over the region border, tagged as such), or around any
-  course as an anchor point within a chosen radius (straight-line miles);
-  or build an actual trip — add courses to a cart from their popups, see
-  a rough total cost, a suggested visiting order, and the route drawn on
-  the map.
+- **Trip Builder** — a dedicated pane (swaps in for the course list) for
+  building an actual trip: pick a course, see what's bookable nearby, add
+  the next one, and keep going — the cart (with a rough per-course fee
+  estimate and running total, and manually reorderable via ▲/▼, with an
+  opt-in "auto-order by nearest-neighbour" fallback) and its route update
+  live on the map as you go. The trip route stays visible on the map even
+  outside the pane — adding a course via any popup's "Add to trip" button
+  immediately shows the growing route, no need to open the pane to see it.
+  Discovery can also browse by region (including nearby courses just over
+  the region border, tagged as such) instead of by proximity to your last
+  pick.
 - **Course Handicap calculator** — enter your Handicap Index plus a
   course's par/slope/rating (pre-filled where we have it, otherwise typed
   in from your scorecard) to get your Course Handicap for that round.

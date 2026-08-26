@@ -116,27 +116,53 @@ that touches rendering, filters, or persistence:
     "No course matches that name exactly" rather than silently doing
     nothing or erroring.
 
-11. **Trip Planning — region border chip (GOLF-27).** Open Trip Planning
-    → By region → "S London & Surrey" with the default 8-mile border
-    threshold — results should include courses actually in that region
-    (no "border" chip) plus nearby courses from other regions (e.g. Kent,
-    West/SW London) tagged "border", with a gray dashed marker on the map
-    distinct from the gold in-region markers. Setting the border input to
-    0 should drop back to in-region-only results.
-12. **Trip Builder (GOLF-28).** From any course's popup, click "Add to
-    trip" (button label should flip to "Remove from trip", and the popup
-    header should show an "in trip" tag) — repeat for 3+ courses spanning
-    a real geography (e.g. a Scotland course + an England Top 100 course +
-    a London course). Open Trip Planning → "My trip (N)" — should list all
-    added courses in a greedy nearest-neighbour order starting from the
-    first one added, show a cost estimate with an accurate "N of M have a
-    parseable fee" coverage count, and draw them on the map as numbered
-    markers connected by a dashed line, each with a National Rail roundel
-    at its nearest station where applicable. Reload the page — the trip
-    should still be there (same persistence guarantee as Played/Want).
-    Remove a course from the list — it should disappear from both the list
-    and the map immediately. Open "Review & export corrections" — the
-    exported JSON should include a `trip` array matching the current cart.
+11. **Trip Builder pane — entry, discovery loop, cart (GOLF-31).** From
+    any course's popup, click "Set as anchor course for a trip" (e.g.
+    Royal Dornoch) — the left column should swap from the filter/course
+    list to the "Trip Builder" pane (filters/list hidden, `#tb-pane`
+    visible), and Dornoch should already be in the cart. The "Nearby" tab
+    should list bookable courses near Dornoch (e.g. Brora, Nairn, Castle
+    Stuart) sorted by distance; clicking "Add" on Castle Stuart should add
+    it to the cart, update the running cost estimate/coverage count, and
+    re-seed the "Nearby" list from Castle Stuart instead of Dornoch (so
+    Nairn should still appear, now closer). Repeat once more — the cart
+    should show all 3 in a sensible nearest-neighbour order, the map should
+    show a numbered dashed route through them, and the still-unpicked
+    discovery candidates should also be visible on the map at the same
+    time. Each cart row shows a rough weekday-fee estimate (e.g. "~£295
+    wd") pulled from the course's fee text, or "fee not parseable" if none
+    could be extracted, plus a running "Rough total" with a coverage count
+    above the list. Use the ▲/▼ buttons on a row to move it earlier/later —
+    the order updates immediately in the list and on the map's numbered
+    route, and survives a reload. "auto-order by nearest-neighbour" resets
+    the cart to the greedy-distance order (only when clicked — manual
+    reordering is never silently overwritten). The cart renders as a
+    checkout-style list — each row's fee is a large right-aligned number,
+    and a dark "Rough total" bar with a large total sits below the list.
+    The discovery radius no longer draws a circle on the map (removed as
+    distracting) — only the numbered course markers and dashed route show.
+    Click "Remove" (✕) on one cart
+    entry — it should disappear from both the cart list and the map
+    immediately, cost/order recomputed. Click
+    "Exit" — the pane should close and the normal filter/course list should
+    reappear; the trip route stays visible on the map (it's independent of
+    the pane now — see #14 below); the cart contents should
+    still be there if you re-open the pane (same persistence guarantee as
+    Played/Want — reload the page and confirm too). While the pane is open,
+    open "Correct this" on any course and close it again — the trip route
+    on the map must NOT disappear (only genuinely-unrelated drawer closes
+    should clear it). Open "Review & export corrections" — the exported
+    JSON's `trip` array should reflect the cart's current manual order, not
+    a freshly recomputed one.
+12. **Trip Builder — region discovery tab (GOLF-27 logic, GOLF-31 UI).**
+    With the pane open, click the "By region" tab and pick "S London &
+    Surrey" with the default 8-mile border threshold — results should
+    include bookable courses actually in that region (no "border" chip)
+    plus nearby courses from other regions (e.g. Kent, West/SW London)
+    tagged "border", with a gray dashed marker on the map distinct from the
+    gold in-region markers; each row should have an "Add" button that adds
+    it to the cart same as the Nearby tab. Setting the border input to 0
+    should drop back to in-region-only results.
 13. **Scotland/Wales visibility (GOLF-25/26).** Toggle the "Scotland only"
     chip — result count should drop to 41, and "Show all results on map"
     should fit the map bounds to Scotland (roughly Islay to Fraserburgh, not
@@ -147,6 +173,15 @@ that touches rendering, filters, or persistence:
     bug: with no filter active, a Scotland/Wales course should still be
     reachable within a couple of scrolls under the default "by name" sort,
     not buried at the end of an unfiltered list.
+14. **Persistent "Add to trip" map feedback (outside the pane).** With the
+    Trip Builder pane closed, open any course's popup and click "Add to
+    trip" — the mast's "Trip Builder" link should immediately show a count
+    badge, and the map should redraw/fit to a numbered dashed route
+    through the cart without opening the pane. Add a second course from a
+    different popup — the route should extend to include it. Reload the
+    page with a non-empty cart — the route should be present on load
+    (without forcing a re-fit/zoom). Opening and closing the "Correct
+    this"/export drawer must not clear this route either.
 
 ## What's explicitly not covered
 

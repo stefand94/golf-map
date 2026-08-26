@@ -36,11 +36,24 @@
   }
   .panel{display:flex;flex-direction:column;background:var(--paper-2);border-right:1px solid var(--line);overflow:hidden}
 
-  .mast{padding:16px 20px 11px;border-bottom:1px solid var(--line)}
-  .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--stone);margin:0 0 6px}
-  h1{font-family:"Fraunces",Georgia,serif;font-weight:800;font-size:26px;line-height:1.02;margin:0 0 6px;letter-spacing:-.015em}
-  h1 em{font-style:italic;font-weight:400;color:var(--accent)}
-  .standfirst{margin:0;font-size:12.5px;line-height:1.5;color:var(--ink-soft);max-width:42ch}
+  /* GOLF-31: Trip Builder pane — replaces .filters/.list in the same grid
+     column (no .app layout change), following the same body-class toggle
+     idiom already used for the mobile mob-list/mob-map split above. */
+  .tb-pane{display:none;flex-direction:column;overflow-y:auto;flex:1}
+  body.trip-mode .filters,body.trip-mode .list{display:none}
+  body.trip-mode .tb-pane{display:flex}
+  .tb-section{padding:11px 20px;border-bottom:1px solid var(--line)}
+  .tb-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
+  .tb-row:last-child{border-bottom:none}
+
+  /* GOLF-31: the old eyebrow/h1/standfirst mast ate ~140px of the panel's
+     vertical space on every screen, including Trip Builder — traded for a
+     single compact bar so filters/list/pane content start almost
+     immediately. */
+  .mast{padding:12px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .wordmark{font-family:"Fraunces",Georgia,serif;font-weight:700;font-size:15px;color:var(--ink)}
+  #trip-badge{font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;background:var(--accent);color:#fff;padding:1px 6px;border-radius:8px;margin-left:5px}
+  #trip-badge:empty{display:none}
 
   .filters{padding:11px 20px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
   .flabel{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone);display:block;margin-bottom:5px}
@@ -155,9 +168,8 @@
 <div class="app">
   <aside class="panel">
     <header class="mast">
-      <p class="eyebrow">Greater London · Herts · Bucks · Surrey · Kent · Essex · plus England's Top 100, Scotland &amp; Wales</p>
-      <h1>The Britain<br><em>Golf Explorer</em></h1>
-      <p class="standfirst">Greater London's visitor-friendly courses, England's ranked Top 100, and curated notable courses across Scotland and Wales, in one place — a way to explore Britain's golf and find the easiest way to get there. 121 courses that take visitors without membership, swept geographically across the London catchment — plus all 100 of England's ranked Top 100 nationally, 41 of Scotland's best, and 22 of Wales's best, shown as pins with no rail line since most are well outside the network. Most of these sit well off this default view — search, filter to "England Top 100 only" / "Scotland only" / "Wales only," or use <b>Show all results on map</b> below to find them.</p>
+      <span class="wordmark">Golf Explorer</span>
+      <button class="linkbtn" id="open-trip">Trip Builder<span id="trip-badge"></span></button>
     </header>
     <div class="filters">
       <div><span class="flabel">Who can play</span><div class="chips" id="f-access"></div></div>
@@ -188,13 +200,14 @@
       </div>
       <div class="row">
         <button class="linkbtn" id="fit-map">Show all results on map</button>
-        <button class="linkbtn" id="open-trip">Trip Planning</button>
+        <span></span>
       </div>
       <div class="row"><span></span>
         <button class="linkbtn" id="open-export">Review &amp; export corrections (<span id="editcount">0</span>)</button>
       </div>
     </div>
     <div class="list" id="list"></div>
+    <div class="tb-pane" id="tb-pane"></div>
   </aside>
   <div id="map" tabindex="-1"></div>
 </div>
@@ -307,11 +320,44 @@ const PLAYED=new Set(),WANT=new Set();
 function togglePlayed(i){if(PLAYED.has(i))PLAYED.delete(i);else{PLAYED.add(i);WANT.delete(i)}saveState();render();}
 function toggleWant(i){if(WANT.has(i))WANT.delete(i);else{WANT.add(i);PLAYED.delete(i)}saveState();render();}
 
-/* GOLF-28: the trip cart — a Set, same pattern as PLAYED/WANT. Insertion
-   order is preserved (JS Set iteration order), which "My trip" uses as the
-   starting point for its suggested visiting order. */
+/* GOLF-28: the trip cart — a Set, same pattern as PLAYED/WANT, for O(1)
+   membership checks (popup badges, "in trip" state). GOLF-31: display/map
+   order is a separate array, tripSeq, since a Set can't be reordered
+   in place — new adds append to the end, tbMove() lets the visitor drag
+   the order into whatever sequence they actually want to play, and that
+   choice persists (it's no longer silently overwritten by a recomputed
+   nearest-neighbour guess on every render). */
 const TRIP=new Set();
-function toggleTrip(i){if(TRIP.has(i))TRIP.delete(i);else TRIP.add(i);saveState();render();}
+let tripSeq=[];
+let tripLastAdded=null;
+function toggleTrip(i){
+  if(TRIP.has(i)){TRIP.delete(i);tripSeq=tripSeq.filter(x=>x!==i);if(tripLastAdded===i)tripLastAdded=tripSeq.length?tripSeq[tripSeq.length-1]:null;}
+  else{TRIP.add(i);tripSeq.push(i);tripLastAdded=i;}
+  saveState();render();
+  /* GOLF-31: clicking "Add to trip" straight from a popup (not via the
+     Trip Builder pane) previously gave no visible feedback beyond a small
+     popup badge — the map itself never showed anything building. Now the
+     cart's numbered route is always drawn/updated on the map, pane open
+     or not, so a visitor can watch their trip take shape as they click
+     through popups. render()'s tripBuilderOn hook already redraws it when
+     the pane is open; this covers the "pane closed" case. */
+  if(!tripBuilderOn)tripDrawCart(true);
+}
+/* Swap a cart course one place earlier/later in tripSeq. */
+function tbMove(i,dir){
+  const idx=tripSeq.indexOf(i),next=idx+dir;
+  if(idx<0||next<0||next>=tripSeq.length)return;
+  [tripSeq[idx],tripSeq[next]]=[tripSeq[next],tripSeq[idx]];
+  saveState();
+  if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(false);}
+}
+
+/* GOLF-31: Trip Builder pane state — a persistent left-pane mode (see
+   .tb-pane/body.trip-mode in <style>), not a modal. tbAnchor seeds the
+   "nearby" discovery list and moves forward to whatever was most recently
+   added, so picking Dornoch -> Castle Stuart -> Nairn keeps the discovery
+   list walking up the coast rather than staying anchored to the first pick. */
+let tripBuilderOn=false,tbAnchor=null,tbRadius=30,tbDiscoveryTab='anchor';
 
 /* ---- persistence (GOLF-9): filters, map view and corrections survive
    a reload via localStorage. The JSON export/import flow below stays
@@ -326,6 +372,10 @@ function loadStoredState(){
   (saved.played||[]).forEach(i=>PLAYED.add(i));
   (saved.want||[]).forEach(i=>WANT.add(i));
   (saved.trip||[]).forEach(i=>TRIP.add(i));
+  /* tripSeq must exactly match TRIP's membership — fall back to Set
+     insertion order if the saved sequence is missing/stale (e.g. state
+     saved before GOLF-31, or corrupted). */
+  tripSeq=(Array.isArray(saved.tripSeq)&&saved.tripSeq.length===TRIP.size&&saved.tripSeq.every(i=>TRIP.has(i)))?saved.tripSeq.slice():[...TRIP];
   if(saved.filters){['access','price','region','flag','arch'].forEach(k=>{
     (saved.filters[k]||[]).forEach(v=>state[k].add(v));});}
   if(saved.q)state.q=saved.q;
@@ -337,7 +387,7 @@ function saveState(){
     const c=map?map.getCenter():null;
     localStorage.setItem(LS_KEY,JSON.stringify({
       edits:EDITS,
-      played:[...PLAYED],want:[...WANT],trip:[...TRIP],
+      played:[...PLAYED],want:[...WANT],trip:[...TRIP],tripSeq:tripSeq,
       filters:{access:[...state.access],price:[...state.price],region:[...state.region],flag:[...state.flag],arch:[...state.arch]},
       q:state.q,sort:state.sort,
       mapCenter:c?[c.lat,c.lng]:undefined,mapZoom:map?map.getZoom():undefined
@@ -548,7 +598,11 @@ function showMobileMap(){
   if(window.innerWidth>900)return;
   document.body.classList.remove('mob-list');document.body.classList.add('mob-map');
   mobToggle.textContent='Show list';
-  setTimeout(()=>map.invalidateSize(),0);
+  /* GOLF-31: a tbDrawMap() fitBounds() that ran while #map was
+     display:none (e.g. right after tbSelect() on mobile, still on the
+     list view) computed against a stale/zero-size container — re-fit
+     once the map is actually visible and sized. */
+  setTimeout(()=>{map.invalidateSize();if(tripBuilderOn)tbDrawMap();},0);
 }
 function showMobileList(){
   document.body.classList.remove('mob-map');document.body.classList.add('mob-list');
@@ -609,8 +663,8 @@ function tripByAnchor(anchor,radiusMiles){
 }
 const tripLayer=L.layerGroup().addTo(map);
 function tripClear(){tripLayer.clearLayers()}
-function tripShow(items,anchor,radiusMiles){
-  tripClear();
+function tripShow(items,anchor,radiusMiles,clear=true,fit=true){
+  if(clear)tripClear();
   const pts=[];
   items.forEach(({i,border})=>{
     L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:border?'#8C8478':'#E6B400',weight:2.5,fillColor:'#fff',fillOpacity:.9,dashArray:border?'2 3':null}).addTo(tripLayer);
@@ -619,24 +673,9 @@ function tripShow(items,anchor,radiusMiles){
   if(anchor!=null){
     L.circleMarker([C[anchor].lat,C[anchor].lng],{radius:11,color:'#14211B',weight:3,fillColor:'#E6B400',fillOpacity:1}).addTo(tripLayer);
     pts.push([C[anchor].lat,C[anchor].lng]);
-    if(radiusMiles){
-      const circle=L.circle([C[anchor].lat,C[anchor].lng],{radius:radiusMiles*1609.34,color:'#14211B',weight:1.5,dashArray:'4 6',fillColor:'#14211B',fillOpacity:.05}).addTo(tripLayer);
-      const b=circle.getBounds();
-      pts.push([b.getSouthWest().lat,b.getSouthWest().lng],[b.getNorthEast().lat,b.getNorthEast().lng]);
-    }
   }
-  if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
-}
-function tripResultsHTML(items,anchor){
-  if(!items.length)return `<p class="hint">No bookable courses found${anchor!=null?' in range':' in this region'}. Try a wider radius or a different area.</p>`;
-  return items.map(({i,border})=>{
-    const dist=anchor!=null?` — ${haversineMiles(C[anchor].lat,C[anchor].lng,C[i].lat,C[i].lng).toFixed(1)} mi`:'';
-    return `<div style="padding:7px 0;border-bottom:1px solid var(--line)">
-      <a href="#" class="linkbtn" onclick="event.preventDefault();closeDrawer();goToCourse(${i})">${V(i,'n')}</a>
-      ${border?' <span class="wt" title="Just over the border — nearest to a course in your chosen region, not itself in it">border</span>':''}
-      <span style="color:var(--stone);font-size:11.5px">${dist} · ${C[i].r} · ${ACCESS[V(i,'a')].label.toLowerCase()}</span>
-    </div>`;
-  }).join('');
+  if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
+  return pts;
 }
 
 /* GOLF-28: Trip Builder — best-effort numeric extractor over a course's
@@ -673,8 +712,8 @@ function tripOrder(indices){
   }
   return order;
 }
-function tripShowOrdered(order){
-  tripClear();
+function tripShowOrdered(order,clear=true,fit=true){
+  if(clear)tripClear();
   const pts=[];
   order.forEach((i,idx)=>{
     L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:'#14211B',weight:2.5,fillColor:'#E6B400',fillOpacity:1})
@@ -687,98 +726,172 @@ function tripShowOrdered(order){
     }
   });
   if(order.length>1)L.polyline(order.map(i=>[C[i].lat,C[i].lng]),{color:'#14211B',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(tripLayer);
-  if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
+  if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
+  return pts;
 }
+/* GOLF-31: order is now tripSeq — the visitor's own arrangement (drag order
+   via tbMove()'s up/down controls below), not a recomputed greedy guess.
+   "Auto-order" stays available as an opt-in shortcut back to tripOrder()'s
+   nearest-neighbour walk, rather than silently overwriting a manual edit. */
 function tripListHTML(order,cost){
   if(!order.length)return`<p class="hint">No courses in your trip yet. Open any course's popup and hit <b>Add to trip</b>.</p>`;
-  return`<p style="font-size:11.5px;color:var(--stone);margin:0 0 6px">Suggested order — as the crow flies from the first course you added, not a real route.</p>
-    <p style="font-size:11.5px;color:var(--stone);margin:0 0 10px">Rough cost estimate (weekday fees) — ${cost.covered?`£${cost.total.toFixed(0)}`:'—'}, ${cost.covered} of ${cost.of} course${cost.of===1?'':'s'} have a parseable fee.</p>
-    ${order.map((i,idx)=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)">
-      <div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--stone)">${idx+1}.</span>
-        <a href="#" class="linkbtn" onclick="event.preventDefault();closeDrawer();goToCourse(${i})">${V(i,'n')}</a>
-        <span style="color:var(--stone);font-size:11.5px"> — ${C[i].r}</span></div>
-      <button class="btn2 ghost" onclick="toggleTrip(${i});tripPlannerMode('mine')">Remove</button>
-    </div>`).join('')}`;
-}
-function openTripPlanner(presetAnchor){
-  map.closePopup();
-  sheet.innerHTML=`<h2>Trip Planning</h2>
-    <p class="lede">Browse bookable courses (pay &amp; play or open-access) by region or around a chosen course, or build your own trip from courses you've added along the way.</p>
-    <div class="bar" style="margin-top:0;margin-bottom:14px">
-      <button class="btn2" id="tp-mode-region">By region</button>
-      <button class="btn2 ghost" id="tp-mode-anchor">By anchor course</button>
-      <button class="btn2 ghost" id="tp-mode-mine">My trip${TRIP.size?` (${TRIP.size})`:''}</button>
-    </div>
-    <div id="tp-body"></div>`;
-  openDrawer();
-  document.getElementById('tp-mode-region').addEventListener('click',()=>tripPlannerMode('region'));
-  document.getElementById('tp-mode-anchor').addEventListener('click',()=>tripPlannerMode('anchor'));
-  document.getElementById('tp-mode-mine').addEventListener('click',()=>tripPlannerMode('mine'));
-  tripPlannerMode(presetAnchor!=null?'anchor':'region',presetAnchor);
-}
-/* GOLF: jump straight into Trip Planning with a course pre-set as the
-   anchor, from that course's own popup — the fastest path from "I like
-   this course" to "what else is nearby." */
-function setAsAnchor(i){closeDrawer();openTripPlanner(i)}
-function tripPlannerMode(mode,presetAnchor){
-  document.getElementById('tp-mode-region').className=mode==='region'?'btn2':'btn2 ghost';
-  document.getElementById('tp-mode-anchor').className=mode==='anchor'?'btn2':'btn2 ghost';
-  document.getElementById('tp-mode-mine').className=mode==='mine'?'btn2':'btn2 ghost';
-  document.getElementById('tp-mode-mine').textContent=`My trip${TRIP.size?` (${TRIP.size})`:''}`;
-  const body=document.getElementById('tp-body');
-  tripClear();
-  if(mode==='mine'){
-    const order=tripOrder([...TRIP]);
-    tripShowOrdered(order);
-    body.innerHTML=tripListHTML(order,tripCostEstimate(order));
-  }else if(mode==='region'){
-    body.innerHTML=`<div class="grid2">
-      <div class="fld"><label for="tp-region">Region</label>
-        <select id="tp-region"><option value="">— choose a region —</option>${REGIONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
-      <div class="fld"><label for="tp-border">Include courses just over the border, within (miles)</label><input id="tp-border" type="number" value="8" min="0" max="50"></div>
-    </div>
-    <div id="tp-results"></div>`;
-    const run=()=>{
-      const region=document.getElementById('tp-region').value;
-      if(!region){tripClear();document.getElementById('tp-results').innerHTML='';return}
-      const borderMiles=parseFloat(document.getElementById('tp-border').value)||0;
-      const res=tripByRegion(region,borderMiles);
-      tripShow(res,null);
-      document.getElementById('tp-results').innerHTML=tripResultsHTML(res,null);
-    };
-    document.getElementById('tp-region').addEventListener('change',run);
-    document.getElementById('tp-border').addEventListener('change',run);
-  }else{
-    /* GOLF: a plain <select> with 221 options was unusable for finding a
-       specific course — a text input backed by a <datalist> gives native
-       type-to-filter search (no JS library needed, keeps the zero-
-       dependency approach) while still resolving to an exact course by
-       name once the visitor picks/types a match. */
-    const order=C.map((c,i)=>i).sort((a,b)=>V(a,'n').localeCompare(V(b,'n')));
-    const nameToIdx=new Map(order.map(i=>[V(i,'n'),i]));
-    const opts=order.map(i=>`<option value="${V(i,'n')}">`).join('');
-    body.innerHTML=`<div class="grid2">
-      <div class="fld"><label for="tp-anchor">Anchor course</label>
-        <input id="tp-anchor" list="tp-anchor-list" placeholder="Search by name…" autocomplete="off" value="${presetAnchor!=null?V(presetAnchor,'n'):''}">
-        <datalist id="tp-anchor-list">${opts}</datalist>
+  return`<p style="font-size:11.5px;color:var(--stone);margin:0 0 10px">Your order — as the crow flies, not a real route. Use the arrows to rearrange, or <a href="#" class="linkbtn" onclick="event.preventDefault();tripAutoOrder()">auto-order by nearest-neighbour</a>.</p>
+    <div style="border:1px solid var(--line);border-radius:8px;overflow:hidden">
+    ${order.map((i,idx)=>{
+      const fee=extractFee(V(i,'wd'));
+      return`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 10px;${idx<order.length-1?'border-bottom:1px solid var(--line)':''};background:${idx%2?'var(--paper)':'transparent'}">
+      <div style="display:flex;align-items:center;gap:6px;min-width:0">
+        <span style="display:flex;flex-direction:column;flex-shrink:0">
+          <button class="btn2 ghost" style="padding:1px 5px;font-size:9px;line-height:1" title="Move earlier" ${idx===0?'disabled':''} onclick="tbMove(${i},-1)">▲</button>
+          <button class="btn2 ghost" style="padding:1px 5px;font-size:9px;line-height:1;margin-top:2px" title="Move later" ${idx===order.length-1?'disabled':''} onclick="tbMove(${i},1)">▼</button>
+        </span>
+        <div style="min-width:0">
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--stone)">${idx+1}.</span>
+          <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${V(i,'n')}</a>
+          <div style="color:var(--stone);font-size:11.5px">${C[i].r}</div>
+        </div>
       </div>
-      <div class="fld"><label for="tp-radius">Radius (miles, straight-line)</label><input id="tp-radius" type="number" value="30" min="1" max="200"></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:700;color:var(--ink)">${fee!=null?`£${fee.toFixed(0)}`:'—'}</span>
+        <button class="btn2 ghost" title="Remove from trip" onclick="toggleTrip(${i})" style="padding:4px 8px;line-height:1">✕</button>
+      </div>
+    </div>`;}).join('')}
     </div>
-    <div id="tp-results"></div>`;
-    const run=()=>{
-      const typed=document.getElementById('tp-anchor').value.trim();
-      const anchor=nameToIdx.get(typed);
-      if(anchor===undefined){tripClear();document.getElementById('tp-results').innerHTML=typed?'<p class="hint">No course matches that name exactly — pick one from the suggestions.</p>':'';return}
-      const radius=parseFloat(document.getElementById('tp-radius').value)||30;
-      const res=tripByAnchor(anchor,radius);
-      tripShow(res,anchor,radius);
-      document.getElementById('tp-results').innerHTML=tripResultsHTML(res,anchor);
-    };
-    document.getElementById('tp-anchor').addEventListener('input',run);
-    document.getElementById('tp-radius').addEventListener('change',run);
-    if(presetAnchor!=null)run();
+    <div style="margin-top:10px;padding:12px 14px;background:var(--ink);border-radius:8px;display:flex;justify-content:space-between;align-items:baseline">
+      <div>
+        <div style="color:var(--paper-2);font:600 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;opacity:.75">Rough total (weekday fees)</div>
+        <div style="color:var(--paper-2);font-size:10.5px;opacity:.6">${cost.covered} of ${cost.of} course${cost.of===1?'':'s'} have a parseable fee</div>
+      </div>
+      <div style="color:#fff;font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:700">${cost.covered?`£${cost.total.toFixed(0)}`:'—'}</div>
+    </div>`;
+}
+function tripAutoOrder(){
+  tripSeq=tripOrder([...TRIP]);
+  saveState();
+  if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(false);}
+}
+/* GOLF-31: Trip Builder pane — retires the modal openTripPlanner()/
+   tripPlannerMode() flow (region/anchor/mine mode buttons in a centered
+   drawer) in favour of a persistent left-pane "page within a page":
+   .filters/.list hide, #tb-pane shows (body.trip-mode, see <style>).
+   Region/anchor browsing fold in as "Nearby"/"By region" discovery tabs
+   inside the same pane rather than living on as a separate UI. */
+function tbEffectiveAnchor(){
+  if(tbAnchor!=null&&bookable(tbAnchor))return tbAnchor;
+  if(tripLastAdded!=null&&TRIP.has(tripLastAdded))return tripLastAdded;
+  return tripSeq.length?tripSeq[tripSeq.length-1]:null;
+}
+/* Excludes courses already in the cart — tripByAnchor()/tripByRegion()
+   alone don't know about TRIP, they're shared with nothing else. */
+function tbDiscover(){
+  if(tbDiscoveryTab==='region'){
+    const region=document.getElementById('tb-region')?document.getElementById('tb-region').value:'';
+    if(!region)return[];
+    return tripByRegion(region,parseFloat(document.getElementById('tb-border')?.value)||0).filter(({i})=>!TRIP.has(i));
+  }
+  const anchor=tbEffectiveAnchor();
+  if(anchor==null)return[];
+  return tripByAnchor(anchor,tbRadius).filter(({i})=>!TRIP.has(i));
+}
+function tbResultsHTML(items){
+  if(!items.length)return`<p class="hint">${tbDiscoveryTab==='region'?'Pick a region above, or none found nearby.':'Add a course to seed nearby suggestions, or none found in range.'}</p>`;
+  const anchor=tbDiscoveryTab==='anchor'?tbEffectiveAnchor():null;
+  return items.map(({i,border})=>{
+    const dist=anchor!=null?` — ${haversineMiles(C[anchor].lat,C[anchor].lng,C[i].lat,C[i].lng).toFixed(1)} mi`:'';
+    return`<div class="tb-row">
+      <div><a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${V(i,'n')}</a>
+        ${border?' <span class="wt" title="Just over the border — nearest to a course in your chosen region, not itself in it">border</span>':''}
+        <div style="color:var(--stone);font-size:11.5px">${dist} · ${C[i].r} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
+      <button class="btn2 ghost" onclick="tbSelect(${i})">Add</button>
+    </div>`;
+  }).join('');
+}
+/* GOLF-31: draws just the confirmed cart's numbered route — used whenever
+   the cart changes outside the pane (toggleTrip/tbMove from a popup), so
+   there's always visible feedback on the map even when Trip Builder isn't
+   open. */
+function tripDrawCart(fit){
+  tripClear();
+  const pts=tripShowOrdered(tripSeq,false,false);
+  if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
+}
+/* Draws the confirmed cart route AND the not-yet-added discovery
+   candidates on the map at once — tripShow()/tripShowOrdered()'s clear/fit
+   params exist specifically so these two draws don't wipe each other out. */
+function tbDrawMap(){
+  tripClear();
+  const pts1=tripShowOrdered(tripSeq,false,false);
+  const anchor=tbDiscoveryTab==='anchor'?tbEffectiveAnchor():null;
+  const radius=tbDiscoveryTab==='anchor'?tbRadius:0;
+  const pts2=tripShow(tbDiscover(),anchor,radius,false,false);
+  const pts=[...pts1,...pts2];
+  if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
+}
+function renderTripBuilder(){
+  const pane=document.getElementById('tb-pane');
+  const cartOrder=tripSeq;
+  const cost=tripCostEstimate(cartOrder);
+  pane.innerHTML=`
+    <div class="tb-section" style="display:flex;justify-content:space-between;align-items:center">
+      <b>Trip Builder</b><button class="linkbtn" id="tb-exit">Exit</button>
+    </div>
+    <div class="tb-section" id="tb-cart">${tripListHTML(cartOrder,cost)}</div>
+    <div class="tb-section">
+      <div class="toggles" style="margin-bottom:10px">
+        <button class="togg" id="tb-tab-anchor" aria-pressed="${tbDiscoveryTab==='anchor'}">Nearby</button>
+        <button class="togg" id="tb-tab-region" aria-pressed="${tbDiscoveryTab==='region'}">By region</button>
+      </div>
+      ${tbDiscoveryTab==='anchor'?`
+        <p class="hint" style="margin:0 0 8px">${tbEffectiveAnchor()!=null?`Showing courses near <b>${V(tbEffectiveAnchor(),'n')}</b>.`:'Add a course from the map, or search below, to see what\'s nearby.'}</p>
+        <div class="fld" style="margin-bottom:8px"><label for="tb-radius">Radius (miles, straight-line)</label><input id="tb-radius" type="number" value="${tbRadius}" min="1" max="200"></div>`
+        :`<div class="fld" style="margin-bottom:8px"><label for="tb-region">Region</label>
+          <select id="tb-region"><option value="">— choose a region —</option>${REGIONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
+        <div class="fld" style="margin-bottom:8px"><label for="tb-border">Include courses just over the border, within (miles)</label><input id="tb-border" type="number" value="8" min="0" max="50"></div>`}
+      <div id="tb-results">${tbResultsHTML(tbDiscover())}</div>
+    </div>`;
+  document.getElementById('tb-exit').addEventListener('click',exitTripBuilder);
+  document.getElementById('tb-tab-anchor').addEventListener('click',()=>{tbDiscoveryTab='anchor';renderTripBuilder();tbDrawMap();});
+  document.getElementById('tb-tab-region').addEventListener('click',()=>{tbDiscoveryTab='region';renderTripBuilder();tbDrawMap();});
+  if(tbDiscoveryTab==='anchor'){
+    document.getElementById('tb-radius').addEventListener('change',()=>{
+      tbRadius=parseFloat(document.getElementById('tb-radius').value)||30;
+      document.getElementById('tb-results').innerHTML=tbResultsHTML(tbDiscover());
+      tbDrawMap();
+    });
+  }else{
+    const run=()=>{document.getElementById('tb-results').innerHTML=tbResultsHTML(tbDiscover());tbDrawMap();};
+    document.getElementById('tb-region').addEventListener('change',run);
+    document.getElementById('tb-border').addEventListener('change',run);
   }
 }
+function enterTripBuilder(seedAnchor){
+  map.closePopup();
+  tripBuilderOn=true;
+  document.body.classList.add('trip-mode');
+  tbAnchor=seedAnchor??tbEffectiveAnchor();
+  renderTripBuilder();
+  tbDrawMap();
+}
+function exitTripBuilder(){
+  tripBuilderOn=false;
+  document.body.classList.remove('trip-mode');
+  /* Keep the cart's route visible on the map after exiting — only the
+     discovery-candidate overlay goes away, not the trip itself. */
+  tripDrawCart(false);
+  render();
+}
+/* tbSelect: the "pick a nearby course" action — set the anchor to the
+   just-picked course BEFORE the mutating toggleTrip() call, since
+   toggleTrip() synchronously triggers saveState()->render() which (via
+   the tripBuilderOn hook in render()) re-renders this pane immediately;
+   this is what re-seeds "nearby" from Dornoch -> Castle Stuart -> Nairn. */
+function tbSelect(i){tbAnchor=i;toggleTrip(i);}
+/* Jump straight into Trip Builder from a course's own popup — the
+   fastest path from "I like this course" to "what else is nearby."
+   Adds the course to the cart too (it's the first pick of the trip),
+   not just anchor-only, matching "select Dornoch -> select Castle
+   Stuart -> both are in my cart." */
+function setAsAnchor(i){if(!TRIP.has(i)){TRIP.add(i);saveState();}enterTripBuilder(i)}
 
 /* GOLF-13: Course Handicap calculator. The formula itself needs no data
    source. courseStats (par/slope/course rating) pre-fills the inputs when
@@ -959,6 +1072,12 @@ function fitToResults(){
 document.getElementById('fit-map').addEventListener('click',fitToResults);
 
 function render(){
+  /* GOLF-31: single hook point — every existing render() call site
+     (filter chips, played/want/trip toggles, corrections save, reset,
+     wipeStoredState) keeps the Trip Builder pane and the mast's cart-count
+     badge in sync for free. */
+  document.getElementById('trip-badge').textContent=TRIP.size?String(TRIP.size):'';
+  if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
   layer.clearLayers();
   let shown=C.map((c,i)=>i).filter(passes);
   const S_={region:(a,b)=>REGIONS.indexOf(C[a].r)-REGIONS.indexOf(C[b].r)||feeNum(a)-feeNum(b),
@@ -1025,7 +1144,11 @@ function openDrawer(){
   if(first)first.focus();
 }
 function closeDrawer(){
-  drawer.classList.remove('open');tripClear();
+  drawer.classList.remove('open');
+  /* GOLF-31: the trip route overlay is independent of this modal drawer's
+     lifecycle now (it's drawn whenever the cart is non-empty, pane open or
+     not) — closing the unrelated corrections/export drawer must never wipe
+     it off the map. */
   if(drawerTrigger&&document.body.contains(drawerTrigger))drawerTrigger.focus();
   drawerTrigger=null;
 }
@@ -1101,10 +1224,10 @@ function revertEdit(i){delete EDITS[i];saveState();closeDrawer();render()}
 function corrections(){return Object.keys(EDITS).filter(isEdited).map(i=>{
   const changed={};Object.entries(EDITS[i]).forEach(([k,v])=>{if(k!=='_why')changed[k]={from:C[i][k],to:v}});
   return{course:C[i].n,why:EDITS[i]._why||null,changed}})}
-document.getElementById('open-trip').addEventListener('click',openTripPlanner);
+document.getElementById('open-trip').addEventListener('click',()=>enterTripBuilder());
 document.getElementById('open-export').addEventListener('click',()=>{
   const list=corrections();
-  const tripOrdered=tripOrder([...TRIP]);
+  const tripOrdered=tripSeq;
   const trip=tripOrdered.map(i=>({course:C[i].n,region:C[i].r,weekdayFee:V(i,'wd')}));
   const json=JSON.stringify({source:"The Britain Golf Explorer",exported:new Date().toISOString().slice(0,10),corrections:list,trip},null,2);
   sheet.innerHTML=`<h2>Your corrections</h2>
@@ -1120,7 +1243,7 @@ document.getElementById('open-export').addEventListener('click',()=>{
 function wipeStoredState(){
   if(!confirm('Clear all saved filters, map position, corrections, played/want-to-play lists and your trip stored in this browser? This cannot be undone unless you exported a copy.'))return;
   Object.keys(EDITS).forEach(k=>delete EDITS[k]);
-  PLAYED.clear();WANT.clear();TRIP.clear();
+  PLAYED.clear();WANT.clear();TRIP.clear();tripSeq=[];
   clearStoredState();closeDrawer();render();
 }
 function copyPatch(){const t=document.getElementById('ex');t.select();
@@ -1131,4 +1254,5 @@ function downloadPatch(){try{const blob=new Blob([document.getElementById('ex').
   catch(e){document.getElementById('copied').textContent='Download blocked here — use Copy instead.'}}
 
 render();
+if(TRIP.size)tripDrawCart(false);
 </script>

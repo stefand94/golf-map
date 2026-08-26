@@ -72,35 +72,48 @@ rather than a walkable London-network station.
 
 ## Derived/computed (not stored, computed at render time)
 
-- **GOLF-24 Trip Planning mode** (`tripByRegion()`/`tripByAnchor()`,
-  standalone drawer opened via `openTripPlanner()`) — **supersedes GOLF-14**,
-  which only worked for London courses sharing a rail line and did nothing
-  for any Top 100 entry. Three modes, switched via `tripPlannerMode()`:
-  - **By region** — `tripByRegion(region, borderMiles)`. GOLF-27: since
-    `REGIONS` is a flat label list with no real geometry, "just over the
-    border" is derived from course geography rather than a hand-maintained
-    adjacency table — any `bookable(i)` course outside the chosen region
-    whose straight-line distance to its single nearest course *inside* the
-    region is within `borderMiles` (default 8, tunable in the drawer) is
+- **GOLF-31 Trip Builder pane** (`enterTripBuilder()`/`exitTripBuilder()`/
+  `renderTripBuilder()`, `#tb-pane`) — **supersedes GOLF-24's modal**
+  (`openTripPlanner()`/`tripPlannerMode()`, retired). Not a drawer: a
+  persistent left-hand pane that replaces `.filters`/`.list` in the same
+  grid column (`body.trip-mode` CSS toggle), so building a trip and seeing
+  the map update happen side by side rather than behind a modal. The loop
+  is: pick a course (from its popup's "Set as anchor course for a trip," or
+  an in-pane "Add" button) → it's added to the `TRIP` cart and becomes the
+  new discovery anchor → nearby bookable courses are shown → pick the next
+  one → repeat. Two discovery sub-tabs, both computed on demand (nothing
+  extra persisted beyond `TRIP` itself):
+  - **Nearby** — `tripByAnchor(anchor, radiusMiles)` (unchanged from
+    GOLF-24) wrapped by `tbDiscover()` to exclude courses already in the
+    cart; `anchor` auto-advances to the most recently added cart course
+    (`tbEffectiveAnchor()`), which is what makes "Dornoch → Castle Stuart →
+    Nairn" walk forward geographically instead of staying pinned to the
+    first pick.
+  - **By region** — `tripByRegion(region, borderMiles)`, unchanged from
+    GOLF-27: since `REGIONS` is a flat label list with no real geometry,
+    "just over the border" is derived from course geography rather than a
+    hand-maintained adjacency table — any `bookable(i)` course outside the
+    chosen region whose straight-line distance to its single nearest course
+    *inside* the region is within `borderMiles` (default 8, tunable) is
     included and flagged `{border:true}`, rendered with a "border" chip and
     a visually distinct (grey, dashed) map marker so it doesn't look like a
     filter bug.
-  - **By anchor course** — `tripByAnchor(anchor, radiusMiles)`, unchanged
-    from GOLF-24: every `bookable(i)` course within a straight-line radius
-    of a chosen anchor course.
-  - **My trip** (GOLF-28) — lists the current `TRIP` cart (see below) via
-    `tripOrder()`/`tripCostEstimate()`/`tripListHTML()`/`tripShowOrdered()`.
-  Region/anchor modes are pure browse — nothing persisted, purely computed
-  on demand. Results are drawn on a dedicated `tripLayer`, cleared whenever
-  the drawer closes (My trip's map drawing persists across a reload via
-  `TRIP`, but is still recomputed on each drawer open rather than stored).
+  The cart itself (`tripOrder()`/`tripCostEstimate()`/`tripListHTML()`/
+  `tripShowOrdered()`) is unchanged from GOLF-28. Both the confirmed cart
+  route and the not-yet-added discovery candidates draw on `tripLayer`
+  simultaneously (`tbDrawMap()`), which needed `tripShow()`/
+  `tripShowOrdered()` to gain optional `clear`/`fit` params so the two
+  draws don't wipe each other out. The pane's map overlay persists while
+  open — `closeDrawer()` only clears `tripLayer` when the *unrelated*
+  corrections-editor drawer closes and Trip Builder isn't active, so
+  opening "Correct this" mid-trip doesn't erase the route.
 
 ## Runtime-only state (not in `C`/`C_TOP100`, lives in `localStorage`)
 
 | Const | Shape | Purpose |
 |---|---|---|
 | `PLAYED`, `WANT` | `Set<courseIndex>` | GOLF-15: two distinct personal lists ("Played" / "Want to play"), mutually exclusive per course — marking a course played clears it from the want list. Toggled from the popup, persisted via the same `localStorage` mechanism as `EDITS` (GOLF-9), cleared together via "Clear saved filters & corrections". |
-| `TRIP` | `Set<courseIndex>` | GOLF-28: the trip cart, same pattern as `PLAYED`/`WANT` — toggled from the popup ("Add to trip"), persisted the same way, cleared together with the others. Insertion order (preserved by JS `Set` iteration) is the starting point for `tripOrder()`'s greedy nearest-neighbour walk in the "My trip" planner mode. Also included in the "Review & export corrections" JSON export (`trip` array) since there's no backend to persist it beyond this browser. |
+| `TRIP` | `Set<courseIndex>` | GOLF-28: the trip cart, same pattern as `PLAYED`/`WANT` — toggled from the popup ("Add to trip") or the GOLF-31 Trip Builder pane's discovery-list "Add" buttons, persisted the same way, cleared together with the others. Insertion order (preserved by JS `Set` iteration) is the starting point for `tripOrder()`'s greedy nearest-neighbour walk. Also included in the "Review & export corrections" JSON export (`trip` array) since there's no backend to persist it beyond this browser. |
 
 ## Conventions worth preserving
 
