@@ -80,12 +80,28 @@ that touches rendering, filters, or persistence:
    Sunningdale) — image should be fully visible (letterboxed, not
    cropped) inside its frame, and a course without one should render with
    no gap or broken-image icon.
-8. **Rail zoom-gating.** At the default London view (zoom 9) rail lines
-   and line-name labels should be visible; zoom out to a country-wide view
-   (e.g. via "Show all results on map") and they should disappear
+8. **Rail/station zoom-gating.** At the default London view (zoom 9) rail
+   lines and line-name labels should be visible; zoom out to a country-wide
+   view (e.g. via "Show all results on map") and they should disappear
    entirely, not just fade — then zoom back in past `RAIL_MIN_ZOOM` (9)
    and they should reappear, respecting whatever state the Rail/Labels
-   toggle buttons are in.
+   toggle buttons are in. Station dots (and their NR rings) are gated
+   separately at `STN_MIN_ZOOM` (11) the same way — below zoom 11 they're
+   off the map entirely even with the Stations toggle pressed, since at
+   country/regional zoom they were just clutter on top of the course flags;
+   zoom back in past 11 and they reappear, still respecting the Stations
+   toggle's own on/off state.
+8a. **Marker clustering.** At any zoom wide enough to see more than one
+   town's worth of courses (the default country-wide view especially),
+   nearby course flags should collapse into a single numbered circular
+   badge rather than rendering as 284 overlapping flags — badge color/size
+   should step up with count (small navy → larger ink-dark tiers). Clicking
+   a cluster zooms/spiderfies it apart; past `disableClusteringAtZoom` (14)
+   every course renders as its own individual flag again, and clicking one
+   still opens its normal popup with working buttons (this goes through
+   `L.markerClusterGroup` now instead of a plain `layerGroup` — verify a
+   popup opens correctly on an unclustered flag, since that's the one thing
+   most likely to regress if the library's marker-wrapping ever changes).
 9. **National Rail badge.** Open a London-catchment course whose nearest
    station is on a non-TfL line (e.g. Mill Hill Golf Club → Mill Hill
    Broadway, Thameslink) — should show a red "NR" badge next to the

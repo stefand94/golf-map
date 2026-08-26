@@ -3,20 +3,42 @@
 <title>The Britain Golf Explorer</title>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
-  /* GOLF-18: --stone was #8A9187, only 2.96:1 against --paper-2 — fails
-     WCAG AA (needs 4.5:1) for the large amount of small secondary text it's
-     used for. Darkened to #697065 (4.66:1 on paper-2, 5.11:1 on white),
-     same muted grey-green hue, passes AA with margin. */
-  :root{--ink:#14211B;--ink-soft:#3C4A42;--paper:#E9EBE3;--paper-2:#F4F5EF;--line:#C6CBBC;--stone:#697065;--accent:#0072B2}
+  /* Design refresh v2: dropped the separate monospace font entirely —
+     --font-mono now just aliases --font-sans, with tabular-nums applied
+     directly to the few number-bearing classes (.cart-fee, .cart-total-amount,
+     .cfee, .fee-box span, #hc-out) so figures stay aligned without reading
+     as code. Palette moved from the warm teal to "Links navy": --stone
+     #5C6672 clears WCAG AA against both --paper (5.41:1) and --paper-2
+     (5.31:1); --ink #1B2733 clears 14.07:1 against --paper (near-AAA);
+     --accent #2E5C8A clears 6.33:1 as text on --paper-2 and 6.96:1 as
+     white-on-accent for button labels; --accent-dark #1B4266 clears 8.78:1
+     against --accent-soft. --paper/-2 dropped the cream/sepia cast for a
+     cool near-white (panel is #F5F7F9, cards stay pure #fff on top of it)
+     so the navy accent reads crisp rather than sitting on an off-white
+     wash; --stone still clears 5.05:1 against --paper and 5.68:1 against
+     --paper-2. All verified by hand, same discipline as the original
+     GOLF-18 fix. */
+  :root{
+    --font-display:"Space Grotesk",var(--font-sans);
+    --font-sans:"Manrope",ui-sans-serif,system-ui,sans-serif;
+    --font-mono:var(--font-sans);
+    --ink:#1B2733;--ink-soft:#3E4C5A;--paper:#EDF1F4;--paper-2:#F5F7F9;--line:#DCE2E7;--stone:#5C6672;
+    --accent:#2E5C8A;--accent-dark:#1B4266;--accent-soft:#E4EDF4;
+    --shadow-sm:0 1px 2px rgba(27,39,51,.06),0 1px 1px rgba(27,39,51,.08);
+    --shadow-md:0 4px 14px rgba(27,39,51,.10),0 2px 4px rgba(27,39,51,.08);
+    --shadow-lg:0 14px 40px rgba(27,39,51,.18),0 4px 10px rgba(27,39,51,.10);
+  }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;height:100%}
-  body{font-family:"IBM Plex Sans",system-ui,sans-serif;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased}
-  .skip-link{position:absolute;left:8px;top:-40px;background:var(--ink);color:var(--paper-2);padding:8px 14px;border-radius:5px;font:600 12.5px "IBM Plex Sans",sans-serif;text-decoration:none;z-index:3000;transition:top .12s}
+  button,input,select,textarea{font-family:inherit}
+  body{font-family:var(--font-sans);color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased}
+  .skip-link{position:absolute;left:8px;top:-40px;background:var(--ink);color:var(--paper-2);padding:8px 14px;border-radius:5px;font:600 12.5px var(--font-sans);text-decoration:none;z-index:3000;transition:top .12s}
   .skip-link:focus{top:8px}
   .app{display:grid;grid-template-columns:minmax(360px,420px) 1fr;height:100vh}
   /* GOLF-19: the old fixed 50vh panel/map split clipped the panel with
@@ -26,7 +48,7 @@
      406px, no scroll). Replaced with a full-height list<->map toggle. */
   .mob-toggle{display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:1500;
     background:var(--ink);color:var(--paper-2);border:none;border-radius:22px;padding:12px 22px;
-    font:600 13px "IBM Plex Sans",sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.3);cursor:pointer}
+    font:600 13px var(--font-sans);box-shadow:0 6px 20px rgba(0,0,0,.3);cursor:pointer}
   @media (max-width:900px){
     .app{grid-template-columns:1fr;grid-template-rows:1fr}
     .panel{max-height:none}
@@ -34,7 +56,7 @@
     body.mob-list #map{display:none}
     .mob-toggle{display:block}
   }
-  .panel{display:flex;flex-direction:column;background:var(--paper-2);border-right:1px solid var(--line);overflow:hidden}
+  .panel{display:flex;flex-direction:column;background:var(--paper-2);border-right:1px solid var(--line);overflow:hidden;box-shadow:6px 0 24px -12px rgba(22,36,29,.25);position:relative;z-index:10}
 
   /* GOLF-31: Trip Builder pane — replaces .filters/.list in the same grid
      column (no .app layout change), following the same body-class toggle
@@ -57,120 +79,140 @@
   .cart-move .btn2{padding:1px 5px;font-size:9px;line-height:1}
   .cart-move .btn2+.btn2{margin-top:2px}
   .cart-course{min-width:0}
-  .cart-idx{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--stone)}
+  .cart-idx{font-family:var(--font-mono);font-size:11px;color:var(--stone)}
   .cart-region{color:var(--stone);font-size:11.5px}
   .cart-price{display:flex;align-items:center;gap:10px;flex-shrink:0}
-  .cart-fee{font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:700;color:var(--ink)}
+  .cart-fee{font-variant-numeric:tabular-nums;font-size:14px;font-weight:700;color:var(--ink)}
   .cart-remove{padding:4px 8px;line-height:1}
-  .cart-total{margin-top:10px;padding:12px 14px;background:var(--ink);border-radius:8px;display:flex;justify-content:space-between;align-items:baseline}
-  .cart-total-label{color:var(--paper-2);font:600 10px "IBM Plex Mono",monospace;letter-spacing:.06em;text-transform:uppercase;opacity:.75}
+  .cart-total{margin-top:10px;padding:12px 14px;background:linear-gradient(135deg,var(--ink),var(--accent-dark));border-radius:10px;display:flex;justify-content:space-between;align-items:baseline;box-shadow:var(--shadow-md)}
+  .cart-total-label{color:var(--paper-2);font:600 10px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;opacity:.75}
   .cart-total-coverage{color:var(--paper-2);font-size:10.5px;opacity:.6}
-  .cart-total-amount{color:#fff;font-family:"IBM Plex Mono",monospace;font-size:22px;font-weight:700}
+  .cart-total-amount{color:#fff;font-variant-numeric:tabular-nums;font-size:22px;font-weight:700}
 
   /* GOLF-31: the old eyebrow/h1/standfirst mast ate ~140px of the panel's
      vertical space on every screen, including Trip Builder — traded for a
      single compact bar so filters/list/pane content start almost
      immediately. */
-  .mast{padding:12px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px}
-  .wordmark{font-family:"Fraunces",Georgia,serif;font-weight:700;font-size:15px;color:var(--ink)}
-  #trip-badge{font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;background:var(--accent);color:#fff;padding:1px 6px;border-radius:8px;margin-left:5px}
+  .mast{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:var(--shadow-sm);position:relative;z-index:1}
+  .wordmark{font-family:var(--font-display);font-weight:700;font-size:16.5px;letter-spacing:-.01em;color:var(--ink)}
+  #open-trip{display:inline-flex;align-items:center;font:600 12.5px var(--font-sans);color:var(--accent);background:var(--accent-soft);border:1px solid transparent;padding:7px 12px;border-radius:20px;text-decoration:none;transition:box-shadow .12s,transform .12s}
+  #open-trip:hover{box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+  #trip-badge{font-family:var(--font-mono);font-size:10px;font-weight:700;background:var(--accent);color:#fff;padding:1px 6px;border-radius:8px;margin-left:6px}
   #trip-badge:empty{display:none}
 
   .filters{padding:11px 20px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
-  .flabel{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone);display:block;margin-bottom:5px}
+  .flabel{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone);display:block;margin-bottom:5px}
   .fgroup{border:none;padding:0;margin:0}
   .fgroup summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:5px}
   .fgroup summary::-webkit-details-marker{display:none}
   .fgroup summary::before{content:'▸';font-size:9px;color:var(--stone);transition:transform .12s}
   .fgroup[open] summary::before{transform:rotate(90deg)}
   .fgroup summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  .fbadge{font-family:"IBM Plex Mono",monospace;font-size:9.5px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:8px;font-weight:600}
+  .fbadge{font-family:var(--font-mono);font-size:9.5px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:8px;font-weight:600}
   .fgroup .chips{margin-top:2px}
   .chips{display:flex;flex-wrap:wrap;gap:5px}
-  .chip{display:inline-flex;align-items:center;gap:5px;font:500 11.5px/1 "IBM Plex Sans",sans-serif;padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--ink-soft);cursor:pointer;transition:background .12s,border-color .12s,color .12s}
-  .chip:hover{border-color:var(--ink-soft)}
-  .chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper-2)}
+  .chip{display:inline-flex;align-items:center;gap:5px;font:500 11.5px/1 var(--font-sans);padding:6px 10px;border:1px solid var(--line);border-radius:20px;background:#fff;color:var(--ink-soft);cursor:pointer;transition:background .12s,border-color .12s,color .12s,box-shadow .12s,transform .12s}
+  .chip:hover{border-color:var(--accent);color:var(--ink);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+  .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:var(--shadow-sm)}
+  .chip[aria-pressed="true"]:hover{transform:none;box-shadow:var(--shadow-sm)}
   .chip svg{display:block;flex:0 0 auto}
   .chip:focus-visible,.card:focus-visible,#q:focus-visible,.togg:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  #q{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:6px;background:#fff;font:400 13px "IBM Plex Sans",sans-serif;color:var(--ink)}
-  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--stone)}
+  #q{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;font:400 13px var(--font-sans);color:var(--ink);transition:border-color .12s,box-shadow .12s}
+  #q:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--font-mono);font-size:11px;color:var(--stone)}
   .toggles{display:flex;gap:5px;flex-wrap:wrap}
-  .togg{font:500 11px "IBM Plex Sans",sans-serif;padding:5px 9px;border:1px solid var(--line);border-radius:5px;background:#fff;cursor:pointer;color:var(--ink-soft)}
+  .togg{font:500 11px var(--font-sans);padding:5px 10px;border:1px solid var(--line);border-radius:14px;background:#fff;cursor:pointer;color:var(--ink-soft);transition:background .12s,border-color .12s,color .12s}
   .togg[aria-pressed="true"]{background:var(--ink);color:var(--paper-2);border-color:var(--ink)}
   .linkbtn{background:none;border:none;padding:0;font:inherit;color:var(--accent);cursor:pointer;text-decoration:underline}
-  #sort{font:500 11px "IBM Plex Sans",sans-serif;padding:5px 7px;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink-soft)}
+  #sort{font:500 11px var(--font-sans);padding:5px 7px;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink-soft)}
 
-  .list{overflow-y:auto;flex:1;padding:6px 12px 24px}
-  .card{display:block;width:100%;text-align:left;background:none;border:none;border-bottom:1px solid var(--line);padding:11px 8px;cursor:pointer;transition:background .12s}
-  .card:hover,.card.active{background:#fff}
-  .card.active{box-shadow:inset 3px 0 0 var(--accent)}
+  .list{overflow-y:auto;flex:1;padding:10px 12px 24px;display:flex;flex-direction:column;gap:7px}
+  .card{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 12px;cursor:pointer;box-shadow:var(--shadow-sm);transition:box-shadow .14s,transform .14s,border-color .14s}
+  .card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);border-color:var(--line)}
+  .card.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft),var(--shadow-md)}
   .card-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
-  .cname{font:600 13.5px/1.25 "IBM Plex Sans",sans-serif;margin:0;display:flex;align-items:center;gap:6px}
-  .cfee{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;white-space:nowrap;text-align:right;line-height:1.35}
+  .cname{font:600 13.5px/1.25 var(--font-sans);margin:0;display:flex;align-items:center;gap:6px}
+  .cfee{font-variant-numeric:tabular-nums;font-size:12px;font-weight:600;white-space:nowrap;text-align:right;line-height:1.35}
   .cfee small{display:block;font-weight:400;font-size:10px;color:var(--stone)}
   .cmeta{margin:5px 0 0;font-size:11px;color:var(--ink-soft);display:flex;flex-wrap:wrap;gap:3px 8px;align-items:center}
-  .rk{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.06em;background:var(--ink);color:#fff;padding:2px 5px;border-radius:3px;font-weight:500}
-  .wt{font-family:"IBM Plex Mono",monospace;font-size:9.5px;background:#DCEBF3;color:#00537F;padding:2px 5px;border-radius:3px}
-  .trip-num{background:transparent;border:none;box-shadow:none;font:700 10px/1 "IBM Plex Mono",monospace;color:#14211B;padding:0}
+  .rk{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;background:var(--ink);color:#fff;padding:2px 5px;border-radius:3px;font-weight:500}
+  .wt{font-family:var(--font-mono);font-size:9.5px;background:var(--accent-soft);color:var(--accent-dark);padding:2px 5px;border-radius:3px}
+  .trip-num{background:transparent;border:none;box-shadow:none;font:700 10px/1 var(--font-mono);color:#1B2733;padding:0}
   .trip-num::before{display:none}
   .wt.played{background:#DCEFDC;color:#1D6B1D}
   .wt.want{background:#F3E6D8;color:#8A5A1E}
-  .edited{font-family:"IBM Plex Mono",monospace;font-size:9px;background:#E69F00;color:#241a00;padding:2px 5px;border-radius:3px;font-weight:600}
+  .edited{font-family:var(--font-mono);font-size:9px;background:#E69F00;color:#241a00;padding:2px 5px;border-radius:3px;font-weight:600}
   .empty{padding:28px 10px;color:var(--stone);font-size:13px;line-height:1.6}
 
-  #map{height:100%;width:100%;background:#E4E7DD}
-  .leaflet-container{font-family:"IBM Plex Sans",sans-serif}
-  .leaflet-popup-content-wrapper{border-radius:8px;box-shadow:0 8px 28px rgba(20,33,27,.22)}
+  #map{height:100%;width:100%;background:var(--paper)}
+  .leaflet-container{font-family:var(--font-sans)}
+  .leaflet-popup-content-wrapper{border-radius:12px;box-shadow:var(--shadow-lg)}
   .leaflet-popup-content{margin:14px 16px;width:300px !important}
-  .pop h3{font-family:"Fraunces",serif;font-weight:600;font-size:17px;line-height:1.15;margin:0 0 3px}
-  .pop .sub{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--stone);margin:0 0 9px}
+  .pop h3{font-family:var(--font-display);font-weight:600;font-size:17px;line-height:1.15;margin:0 0 3px}
+  .pop .sub{font-family:var(--font-mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--stone);margin:0 0 9px}
   .ranks{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 9px}
-  .ranks span{font-family:"IBM Plex Mono",monospace;font-size:9.5px;background:#E4EEF5;color:#00537F;padding:3px 6px;border-radius:3px}
+  .ranks span{font-family:var(--font-mono);font-size:9.5px;background:var(--accent-soft);color:var(--accent-dark);padding:3px 6px;border-radius:3px}
   .fees{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 9px}
-  .fee-box{background:#EFF1E9;border-radius:5px;padding:7px 9px}
-  .fee-box b{display:block;font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone);font-weight:500;margin-bottom:2px}
-  .fee-box span{font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:600}
+  .fee-box{background:var(--paper);border-radius:6px;padding:8px 10px}
+  .fee-box b{display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone);font-weight:500;margin-bottom:2px}
+  .fee-box span{font-variant-numeric:tabular-nums;font-size:14px;font-weight:600}
   .pop dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px}
-  .pop dt{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--stone);padding-top:2px}
+  .pop dt{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--stone);padding-top:2px}
   .pop dd{margin:0}
   .pop .note{margin:9px 0 0;font-size:12px;line-height:1.45;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:8px}
-  .pop .actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-  .pop .btn{font:600 11.5px "IBM Plex Sans",sans-serif;color:var(--paper-2);background:var(--ink);padding:7px 11px;border-radius:5px;text-decoration:none;border:none;cursor:pointer}
-  .pop .btn:hover{background:var(--accent)}
-  .pop .btn.ghost{background:transparent;color:var(--ink-soft);border:1px solid var(--line)}
-  .pop .btn.ghost:hover{background:#fff;color:var(--accent)}
-  .conf{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--stone);margin:7px 0 0}
+  /* Button hierarchy by expected usage frequency (popup): .primary (once
+     per course, the core trip-building action) > base .btn (external
+     booking links — high-intent, occasional) > .ghost (secondary booking
+     alternates) > .subtle (utility: played/want/correct/anchor — least
+     used, kept out of the way visually). */
+  .pop .actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center}
+  .pop .btn{font:600 11.5px var(--font-sans);color:#fff;background:var(--ink);padding:8px 12px;border-radius:7px;text-decoration:none;border:none;cursor:pointer;transition:background .12s,box-shadow .12s,transform .12s;box-shadow:var(--shadow-sm)}
+  .pop .btn:hover{background:var(--ink-soft);box-shadow:var(--shadow-md);transform:translateY(-1px)}
+  .pop .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent-dark));order:-1;flex-basis:100%;padding:9px 12px;font-size:12px;box-shadow:var(--shadow-md)}
+  .pop .btn.primary:hover{background:linear-gradient(135deg,var(--accent),var(--accent-dark));filter:brightness(1.06);box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+  .pop .btn.ghost{background:transparent;color:var(--ink-soft);border:1px solid var(--line);box-shadow:none}
+  .pop .btn.ghost:hover{background:#fff;color:var(--accent);border-color:var(--accent);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
+  .pop .btn.subtle{background:none;color:var(--stone);border:none;padding:5px 6px;box-shadow:none;font-weight:500;text-decoration:underline;text-underline-offset:2px}
+  .pop .btn.subtle:hover{background:none;color:var(--accent);box-shadow:none;transform:none}
+  .conf{font-family:var(--font-mono);font-size:9.5px;color:var(--stone);margin:7px 0 0}
 
   .home{width:13px;height:13px;border-radius:50%;background:#fff;border:4px solid var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.4)}
-  .lnlabel{font:600 9px "IBM Plex Mono",monospace;letter-spacing:.04em;color:#fff;padding:1.5px 4px;border-radius:2.5px;white-space:nowrap;opacity:.95}
-  .stnlabel{font:500 9.5px "IBM Plex Sans",sans-serif;color:#33403A;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
+  .mcluster{display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:var(--accent);color:#fff;font:700 12px var(--font-sans);font-variant-numeric:tabular-nums;border:2.5px solid #fff;box-shadow:var(--shadow-md)}
+  .mcluster-md{background:var(--accent-dark);font-size:13px}
+  .mcluster-lg{background:var(--ink);font-size:14px}
+  .lnlabel{font:600 9px var(--font-mono);letter-spacing:.04em;color:#fff;padding:1.5px 4px;border-radius:2.5px;white-space:nowrap;opacity:.95}
+  .stnlabel{font:500 9.5px var(--font-sans);color:#33403A;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
 
-  .legend{background:var(--paper-2);border-radius:7px;border:1px solid var(--line);font-size:11px;line-height:1.55;box-shadow:0 3px 12px rgba(20,33,27,.16);max-width:200px}
-  .legend-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone);width:100%;border:none;background:none;text-align:left}
+  .legend{background:var(--paper-2);border-radius:9px;border:1px solid var(--line);font-size:11px;line-height:1.55;box-shadow:var(--shadow-lg);max-width:200px}
+  .legend-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;cursor:pointer;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone);width:100%;border:none;background:none;text-align:left}
   .legend-head:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
   .legend-head::after{content:'▸';font-size:9px;transition:transform .12s}
   .legend.open .legend-head::after{transform:rotate(90deg)}
   .legend-body{display:none;padding:0 11px 9px;max-height:60vh;overflow-y:auto}
   .legend.open .legend-body{display:block}
-  .legend b{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--stone);display:block;margin-bottom:5px;font-weight:500}
+  .legend b{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--stone);display:block;margin-bottom:5px;font-weight:500}
   .legend hr{border:0;border-top:1px solid var(--line);margin:7px 0}
   .legend .lr{display:flex;align-items:center;gap:7px;margin-bottom:2px}
   .legend svg{flex:0 0 auto}
 
   .drawer{position:fixed;inset:0;background:rgba(20,33,27,.5);display:none;z-index:2000;align-items:center;justify-content:center;padding:20px}
   .drawer.open{display:flex}
-  .sheet{background:var(--paper-2);border-radius:10px;max-width:560px;width:100%;max-height:88vh;overflow-y:auto;padding:22px 24px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
-  .sheet h2{font-family:"Fraunces",serif;font-size:21px;margin:0 0 4px}
+  .sheet{background:var(--paper-2);border-radius:14px;max-width:560px;width:100%;max-height:88vh;overflow-y:auto;padding:22px 24px;box-shadow:var(--shadow-lg)}
+  .sheet h2{font-family:var(--font-display);font-size:21px;margin:0 0 4px}
   .sheet p.lede{margin:0 0 16px;font-size:12.5px;color:var(--ink-soft);line-height:1.5}
   .fld{margin-bottom:12px}
-  .fld label{display:block;font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--stone);margin-bottom:4px}
-  .fld input,.fld select,.fld textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:5px;background:#fff;font:400 13px "IBM Plex Sans",sans-serif;color:var(--ink)}
-  .fld textarea{min-height:70px;resize:vertical;font-family:"IBM Plex Mono",monospace;font-size:12px}
+  .fld label{display:block;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--stone);margin-bottom:4px}
+  .fld input,.fld select,.fld textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:5px;background:#fff;font:400 13px var(--font-sans);color:var(--ink)}
+  .fld textarea{min-height:70px;resize:vertical;font-family:var(--font-mono);font-size:12px}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .sheet .bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
-  .btn2{font:600 12.5px "IBM Plex Sans",sans-serif;padding:9px 14px;border-radius:6px;border:1px solid var(--ink);background:var(--ink);color:var(--paper-2);cursor:pointer}
-  .btn2.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
-  .btn2.warn{background:transparent;color:#9A3412;border-color:#E5C7B5}
+  .btn2{font:600 12.5px var(--font-sans);padding:9px 14px;border-radius:8px;border:1px solid var(--accent);background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;cursor:pointer;box-shadow:var(--shadow-sm);transition:box-shadow .12s,transform .12s,filter .12s}
+  .btn2:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);filter:brightness(1.05)}
+  .btn2.ghost{background:transparent;color:var(--ink-soft);border-color:var(--line);box-shadow:none}
+  .btn2.ghost:hover{background:#fff;color:var(--accent);border-color:var(--accent);box-shadow:var(--shadow-sm)}
+  .btn2.warn{background:transparent;color:#9A3412;border-color:#E5C7B5;box-shadow:none}
+  .btn2.warn:hover{background:#FBEEE7;box-shadow:none;transform:none}
+  .btn2:disabled{opacity:.35;cursor:default;box-shadow:none;transform:none;filter:none}
   .hint{font-size:11.5px;color:var(--stone);margin:8px 0 0;line-height:1.5}
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
@@ -236,6 +278,7 @@
 <div class="drawer" id="drawer"><div class="sheet" id="sheet"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
 <script src="data/config.js"></script>
 <script src="data/stations.js"></script>
 <script src="data/courses-london.js"></script>
@@ -281,7 +324,7 @@ const isIX=n=>STN_LINES[n].size>1||MANUAL_IX.includes(n);
 const TFL_LINES=new Set(['met','jub','nor','pic','cen','dis','eli','ovg']);
 function nrBadge(lineKey){
   if(lineKey!==undefined&&TFL_LINES.has(lineKey))return'';
-  return ' <span title="National Rail service — not on the TfL network/Oyster cap" style="font-family:\'IBM Plex Mono\',monospace;font-size:9px;background:#B5121B;color:#fff;padding:1.5px 5px;border-radius:3px;font-weight:600;letter-spacing:.03em">NR</span>';
+  return ' <span title="National Rail service — not on the TfL network/Oyster cap" style="font-family:var(--font-mono);font-size:9px;background:#B5121B;color:#fff;padding:1.5px 5px;border-radius:3px;font-weight:600;letter-spacing:.03em">NR</span>';
 }
 /* GOLF: a small icon marker approximating the National Rail double-arrow
    roundel, placed directly at a station's coordinates — distinct from
@@ -502,7 +545,7 @@ Object.values(STN).forEach(s=>{
     }).addTo(stnLayer);
   }
   const dot=L.circleMarker([s.lat,s.lng],{
-    radius:stnRadius(ix),color:ix?'#14211B':col,weight:ix?1.6:1.2,fillColor:ix?'#ffffff':col,fillOpacity:1
+    radius:stnRadius(ix),color:ix?'#1B2733':col,weight:ix?1.6:1.2,fillColor:ix?'#ffffff':col,fillOpacity:1
   }).bindTooltip(`${s.n}${isNR?nrBadge():''}`,{direction:'top',offset:[0,-4]})
     .bindPopup(`<div class="pop"><h3 style="font-size:15px">${s.n}${isNR?nrBadge():''}</h3><p class="sub" style="margin:0">${stnLineKeys.map(k=>LINES[k].n).join(' · ')}${ix?' — interchange':''}</p></div>`)
     .addTo(stnLayer);
@@ -517,8 +560,15 @@ Object.values(STN).forEach(s=>{
    the rail/line-label layers come off the map entirely (not just dimmed),
    while still respecting the manual Rail/Labels toggles once you zoom in. */
 const RAIL_MIN_ZOOM=9;
+/* GOLF: station dots (with their NR rings) were always on whenever the
+   Stations toggle was on, even at the default country-wide zoom where
+   they're just clutter on top of the flag markers. Gated the same way as
+   rail — off entirely below STN_MIN_ZOOM regardless of the toggle state,
+   back once you're zoomed in far enough for them to be useful. */
+const STN_MIN_ZOOM=11;
 function railToggledOn(){return document.getElementById('t-rail').getAttribute('aria-pressed')==='true'}
 function lblToggledOn(){return document.getElementById('t-lbl').getAttribute('aria-pressed')==='true'}
+function stnToggledOn(){return document.getElementById('t-stn').getAttribute('aria-pressed')==='true'}
 function restyleRail(){
   const w=railWeight();
   railPolys.forEach(p=>p.setStyle({weight:w}));
@@ -534,13 +584,32 @@ function restyleRail(){
   const showLbl=lblToggledOn()&&z>=RAIL_MIN_ZOOM;
   if(showLbl&&!map.hasLayer(lblLayer))map.addLayer(lblLayer);
   if(!showLbl&&map.hasLayer(lblLayer))map.removeLayer(lblLayer);
+  const showStn=stnToggledOn()&&z>=STN_MIN_ZOOM;
+  if(showStn&&!map.hasLayer(stnLayer))map.addLayer(stnLayer);
+  if(!showStn&&map.hasLayer(stnLayer))map.removeLayer(stnLayer);
 }
 map.on('zoomend',restyleRail);restyleRail();
 
 L.marker(HOME,{icon:L.divIcon({className:'',html:'<div class="home"></div>',iconSize:[21,21],iconAnchor:[10.5,10.5]})})
  .addTo(map).bindPopup('<div class="pop"><h3>Finchley Road</h3><p class="sub">Your starting point</p><p class="note" style="border:0;padding:0">Jubilee and Metropolitan. West Hampstead Thameslink is a 6-minute walk — that unlocks Mill Hill Broadway, Elstree, Radlett, St Albans City, Harpenden and West Dulwich directly.</p></div>');
 
-const layer=L.layerGroup().addTo(map),markers=new Map();
+/* GOLF: 284 flag markers all rendering individually made the map
+   unreadable at any zoom wide enough to see more than one town at once —
+   swapped the plain layerGroup for markercluster so nearby courses collapse
+   into a single numbered badge until you're zoomed in close enough that
+   they'd actually be distinguishable as separate flags. disableClusteringAtZoom
+   matches roughly "one town/coastline visible" — past that every course
+   shows as its own flag again, same as before this change. */
+const layer=L.markerClusterGroup({
+  maxClusterRadius:50,
+  disableClusteringAtZoom:14,
+  spiderfyOnMaxZoom:true,
+  showCoverageOnHover:false,
+  iconCreateFunction(cluster){
+    const n=cluster.getChildCount(),tier=n<10?'sm':n<50?'md':'lg',size=n<10?30:n<50?36:42;
+    return L.divIcon({className:'',html:`<div class="mcluster mcluster-${tier}">${n}</div>`,iconSize:[size,size],iconAnchor:[size/2,size/2]});
+  }
+}).addTo(map),markers=new Map();
 const HC_TEES={};
 function ranked(i){const t=C[i].t100;return t&&(typeof t.gl==='number'||t.gbi||typeof t.eng==='number'||typeof t.sco==='number'||typeof t.wal==='number')}
 function pinFor(i){const a=ACCESS[V(i,'a')],rk=ranked(i),size=rk?28:20;
@@ -581,15 +650,15 @@ function popupHTML(i){
     <p class="note">${V(i,'note')}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${club.blurb}</span>`:''}</p>
     ${calcHTML(i)}
     <div class="actions">
-      <button class="btn ghost" onclick="togglePlayed(${i})">${PLAYED.has(i)?'Unmark played':'Mark played'}</button>
-      <button class="btn ghost" onclick="toggleWant(${i})">${WANT.has(i)?'Remove from want-to-play':'Want to play'}</button>
-      <button class="btn ghost" onclick="toggleTrip(${i})">${TRIP.has(i)?'Remove from trip':'Add to trip'}</button>
+      <button class="btn primary" onclick="toggleTrip(${i})">${TRIP.has(i)?'✓ In your trip — remove':'+ Add to trip'}</button>
       ${site?`<a class="btn" href="${site}" target="_blank" rel="noopener">Club website</a>`:`<a class="btn ghost" href="${search}" target="_blank" rel="noopener">Find the club site</a>`}
       ${book&&book!==site?`<a class="btn ghost" href="${book}" target="_blank" rel="noopener">Green fees</a>`:''}
       ${club&&club.teeBooking&&club.teeBooking!==site&&club.teeBooking!==book?`<a class="btn ghost" href="${club.teeBooking}" target="_blank" rel="noopener">Tee booking</a>`:''}
       ${club&&club.membership&&club.membership!==site?`<a class="btn ghost" href="${club.membership}" target="_blank" rel="noopener">Membership</a>`:''}
-      <button class="btn ghost" onclick="openEditor(${i})">Correct this</button>
-      <button class="btn ghost" onclick="setAsAnchor(${i})">Set as anchor course for a trip</button>
+      <button class="btn subtle" onclick="togglePlayed(${i})">${PLAYED.has(i)?'Unmark played':'Mark played'}</button>
+      <button class="btn subtle" onclick="toggleWant(${i})">${WANT.has(i)?'Remove from want-to-play':'Want to play'}</button>
+      <button class="btn subtle" onclick="openEditor(${i})">Correct this</button>
+      <button class="btn subtle" onclick="setAsAnchor(${i})">Set as anchor course for a trip</button>
     </div><p class="conf">${CONF[c.conf]}</p></div>`;
 }
 C.forEach((c,i)=>{
@@ -599,7 +668,7 @@ C.forEach((c,i)=>{
 });
 function drawLink(i){linkLayer.clearLayers();
   const stnObj=STN[V(i,'stn')],near=C[i].nearStation,s=stnObj||near;if(!s)return;
-  L.polyline([[s.lat,s.lng],[C[i].lat,C[i].lng]],{color:'#14211B',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(linkLayer);
+  L.polyline([[s.lat,s.lng],[C[i].lat,C[i].lng]],{color:'#1B2733',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(linkLayer);
   /* GOLF: nationwide nearStation lookups are always National Rail (no
      equivalent TfL data outside London); a London-network stn only gets
      the roundel if none of its lines are TfL. Without this, a course's
@@ -692,7 +761,7 @@ function tripShow(items,anchor,clear=true,fit=true){
     pts.push([C[i].lat,C[i].lng]);
   });
   if(anchor!=null){
-    L.circleMarker([C[anchor].lat,C[anchor].lng],{radius:11,color:'#14211B',weight:3,fillColor:'#E6B400',fillOpacity:1}).addTo(tripLayer);
+    L.circleMarker([C[anchor].lat,C[anchor].lng],{radius:11,color:'#1B2733',weight:3,fillColor:'#E6B400',fillOpacity:1}).addTo(tripLayer);
     pts.push([C[anchor].lat,C[anchor].lng]);
   }
   if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
@@ -737,7 +806,7 @@ function tripShowOrdered(order,clear=true,fit=true){
   if(clear)tripClear();
   const pts=[];
   order.forEach((i,idx)=>{
-    L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:'#14211B',weight:2.5,fillColor:'#E6B400',fillOpacity:1})
+    L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:'#1B2733',weight:2.5,fillColor:'#E6B400',fillOpacity:1})
       .bindTooltip(String(idx+1),{permanent:true,direction:'center',className:'trip-num'}).addTo(tripLayer);
     pts.push([C[i].lat,C[i].lng]);
     const stnObj=STN[V(i,'stn')],near=C[i].nearStation,s=stnObj||near;
@@ -746,7 +815,7 @@ function tripShowOrdered(order,clear=true,fit=true){
       if(isNR)nrStationMarker(s.lat,s.lng,18).addTo(tripLayer);
     }
   });
-  if(order.length>1)L.polyline(order.map(i=>[C[i].lat,C[i].lng]),{color:'#14211B',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(tripLayer);
+  if(order.length>1)L.polyline(order.map(i=>[C[i].lat,C[i].lng]),{color:'#1B2733',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(tripLayer);
   if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
   return pts;
 }
@@ -823,7 +892,7 @@ function tbResultsHTML(items){
       <div><a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${V(i,'n')}</a>
         ${border?' <span class="wt" title="Just over the border — nearest to a course in your chosen region, not itself in it">border</span>':''}
         <div style="color:var(--stone);font-size:11.5px">${dist} · ${C[i].r} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
-      <button class="btn2 ghost" onclick="tbSelect(${i})">Add</button>
+      <button class="btn2" style="padding:6px 12px;font-size:11.5px" onclick="tbSelect(${i})">Add</button>
     </div>`;
   }).join('');
 }
@@ -928,12 +997,12 @@ function calcHTML(i){
   const tees=(cs.tees&&cs.tees.length)?cs.tees:(cs.par!=null?[{name:'',par:cs.par,slope:cs.slope,rating:cs.rating}]:[]);
   HC_TEES[i]=tees;
   const first=tees[0]||{};
-  const fld=(id,label,val,step)=>`<div><label for="${id}" style="display:block;font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--stone);margin-bottom:3px">${label}</label><input id="${id}" type="number" step="${step||1}" value="${val!==undefined?val:''}" style="width:100%;padding:6px 7px;border:1px solid var(--line);border-radius:5px;font:400 12px 'IBM Plex Sans',sans-serif"></div>`;
-  const teeSelect=tees.length>1?`<div style="margin-bottom:7px"><label for="hc-tee-${i}" style="display:block;font:500 9px 'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--stone);margin-bottom:3px">Tee</label><select id="hc-tee-${i}" onchange="applyTee(${i})" style="width:100%;padding:6px 7px;border:1px solid var(--line);border-radius:5px;font:400 12px 'IBM Plex Sans',sans-serif">${tees.map((t,idx)=>`<option value="${idx}">${esc(t.name||'Tee '+(idx+1))}</option>`).join('')}</select></div>`:'';
+  const fld=(id,label,val,step)=>`<div><label for="${id}" style="display:block;font:500 9px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--stone);margin-bottom:3px">${label}</label><input id="${id}" type="number" step="${step||1}" value="${val!==undefined?val:''}" style="width:100%;padding:6px 7px;border:1px solid var(--line);border-radius:5px;font:400 12px var(--font-sans)"></div>`;
+  const teeSelect=tees.length>1?`<div style="margin-bottom:7px"><label for="hc-tee-${i}" style="display:block;font:500 9px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--stone);margin-bottom:3px">Tee</label><select id="hc-tee-${i}" onchange="applyTee(${i})" style="width:100%;padding:6px 7px;border:1px solid var(--line);border-radius:5px;font:400 12px var(--font-sans)">${tees.map((t,idx)=>`<option value="${idx}">${esc(t.name||'Tee '+(idx+1))}</option>`).join('')}</select></div>`:'';
   return `<div class="note" style="border-top:1px solid var(--line);padding-top:8px;margin-top:9px">
     <button class="btn ghost" id="hc-toggle-${i}" onclick="toggleCalc(${i})">Calculate your handicap</button>
     <div id="hc-body-${i}" style="display:none;margin-top:8px">
-      <b style="display:block;font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone);margin-bottom:5px">Course Handicap calculator</b>
+      <b style="display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone);margin-bottom:5px">Course Handicap calculator</b>
       <p style="margin:0 0 7px;font-size:11px;color:var(--stone)">${tees.length?`We have this course's par/slope/rating pre-filled below.`:`We don't have this course's par/slope/rating yet — enter them from your scorecard, or add it via "Correct this".`}</p>
       ${teeSelect}
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:7px">
@@ -944,7 +1013,7 @@ function calcHTML(i){
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn ghost" onclick="runCalc(${i})">Calculate</button>
-        <span id="hc-out-${i}" style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600"></span>
+        <span id="hc-out-${i}" style="font-variant-numeric:tabular-nums;font-size:13px;font-weight:600"></span>
       </div>
     </div>
   </div>`;
@@ -1011,11 +1080,10 @@ document.getElementById('reset').addEventListener('click',()=>{
 function toggle(id,lyr){const b=document.getElementById(id);
   b.addEventListener('click',()=>{const on=b.getAttribute('aria-pressed')==='true';
     b.setAttribute('aria-pressed',String(!on));on?map.removeLayer(lyr):map.addLayer(lyr)})}
-toggle('t-stn',stnLayer);
-/* t-rail/t-lbl don't add/remove their layer directly — restyleRail() also
-   gates them on zoom (RAIL_MIN_ZOOM), so flip the button state and let it
-   decide what's actually shown. */
-['t-rail','t-lbl'].forEach(id=>{
+/* t-rail/t-lbl/t-stn don't add/remove their layer directly — restyleRail()
+   also gates them on zoom (RAIL_MIN_ZOOM/STN_MIN_ZOOM), so flip the button
+   state and let it decide what's actually shown. */
+['t-rail','t-lbl','t-stn'].forEach(id=>{
   const b=document.getElementById(id);
   b.addEventListener('click',()=>{
     b.setAttribute('aria-pressed',String(b.getAttribute('aria-pressed')!=='true'));
@@ -1138,7 +1206,7 @@ legend.onAdd=()=>{const d=L.DomUtil.create('div','legend');
     '<div style="margin-top:4px;color:var(--stone);font-size:10.5px">Bigger flag + gold ring = Top 100 ranked</div><hr>'+
     '<b>Stations</b>'+
     '<div class="lr"><svg width="14" height="14"><circle cx="7" cy="7" r="3" fill="#9B0056" stroke="#9B0056"/></svg><span>Ordinary stop</span></div>'+
-    '<div class="lr"><svg width="14" height="14"><circle cx="7" cy="7" r="4.4" fill="#fff" stroke="#14211B" stroke-width="1.6"/></svg><span>Interchange</span></div><hr>'+
+    '<div class="lr"><svg width="14" height="14"><circle cx="7" cy="7" r="4.4" fill="#fff" stroke="#1B2733" stroke-width="1.6"/></svg><span>Interchange</span></div><hr>'+
     '<b>Rail — colour + dash</b>'+
     Object.values(LINES).map(l=>`<div class="lr"><svg width="24" height="5"><line x1="0" y1="2.5" x2="24" y2="2.5" stroke="${l.c}" stroke-width="2" ${l.d?`stroke-dasharray="${l.d}"`:''}/></svg><span>${l.n}</span></div>`).join('')+
     '<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Zone 1 omitted. Station positions are from TfL and National Rail open data; curves still run point-to-point through stations, not along the real track. "Sweep find" tags mark courses added from geographic search rather than the original topic search — verify details before relying on them. England Top 100 pins (national, black-flag clubs included) are from a published 2026 price list cross-checked against England Golf’s club directory for name and coordinates — most sit outside the London rail network drawn on this map, so instead they show the nearest station <i>nationally</i> as a straight-line (as-the-crow-flies) distance, not a walking route or real travel time. Scotland and Wales pins are a curated set of notable courses (not a full national directory), sourced the same way from Scottish Golf and Wales Golf’s club directories; fee/access/architect details for these are indicative and unverified (marked "est") pending direct confirmation from each club.</div>'+
