@@ -385,13 +385,19 @@ Object.entries(R).forEach(([rk,stations])=>{
 
 Object.values(STN).forEach(s=>{
   const ix=isIX(s.n),col=LINES[s.l].c;
+  /* GOLF: a station is a National Rail station (gets the NR badge) if
+     ANY line serving it is non-TfL — an interchange between, say, the
+     Metropolitan line and Chiltern Railways is still worth flagging,
+     since a Tube-only Oyster/contactless cap doesn't cover the NR leg. */
+  const stnLineKeys=[...STN_LINES[s.n]];
+  const isNR=stnLineKeys.some(k=>!TFL_LINES.has(k));
   const dot=L.circleMarker([s.lat,s.lng],{
     radius:stnRadius(ix),color:ix?'#14211B':col,weight:ix?1.6:1.2,fillColor:ix?'#ffffff':col,fillOpacity:1
-  }).bindTooltip(s.n,{direction:'top',offset:[0,-4]})
-    .bindPopup(`<div class="pop"><h3 style="font-size:15px">${s.n}</h3><p class="sub" style="margin:0">${[...STN_LINES[s.n]].map(k=>LINES[k].n).join(' · ')}${ix?' — interchange':''}</p></div>`)
+  }).bindTooltip(`${s.n}${isNR?nrBadge():''}`,{direction:'top',offset:[0,-4]})
+    .bindPopup(`<div class="pop"><h3 style="font-size:15px">${s.n}${isNR?nrBadge():''}</h3><p class="sub" style="margin:0">${stnLineKeys.map(k=>LINES[k].n).join(' · ')}${ix?' — interchange':''}</p></div>`)
     .addTo(stnLayer);
-  stnDots.push({dot,ix,s});
-  const lbl=L.marker([s.lat,s.lng],{interactive:false,icon:L.divIcon({className:'',html:`<div class="stnlabel">${s.n}</div>`,iconSize:[0,0],iconAnchor:[-6,6]})});
+  stnDots.push({dot,ix,s,isNR});
+  const lbl=L.marker([s.lat,s.lng],{interactive:false,icon:L.divIcon({className:'',html:`<div class="stnlabel">${s.n}${isNR?' <span style="color:#B5121B;font-weight:700">NR</span>':''}</div>`,iconSize:[0,0],iconAnchor:[-6,6]})});
   stnDots[stnDots.length-1].lbl=lbl;
 });
 
@@ -598,22 +604,32 @@ function tripPlannerMode(mode,presetAnchor){
       document.getElementById('tp-results').innerHTML=tripResultsHTML(res,null);
     });
   }else{
-    const opts=C.map((c,i)=>i).sort((a,b)=>V(a,'n').localeCompare(V(b,'n')))
-      .map(i=>`<option value="${i}"${presetAnchor===i?' selected':''}>${V(i,'n')}</option>`).join('');
+    /* GOLF: a plain <select> with 221 options was unusable for finding a
+       specific course — a text input backed by a <datalist> gives native
+       type-to-filter search (no JS library needed, keeps the zero-
+       dependency approach) while still resolving to an exact course by
+       name once the visitor picks/types a match. */
+    const order=C.map((c,i)=>i).sort((a,b)=>V(a,'n').localeCompare(V(b,'n')));
+    const nameToIdx=new Map(order.map(i=>[V(i,'n'),i]));
+    const opts=order.map(i=>`<option value="${V(i,'n')}">`).join('');
     body.innerHTML=`<div class="grid2">
-      <div class="fld"><label for="tp-anchor">Anchor course</label><select id="tp-anchor"><option value="">— choose a course —</option>${opts}</select></div>
+      <div class="fld"><label for="tp-anchor">Anchor course</label>
+        <input id="tp-anchor" list="tp-anchor-list" placeholder="Search by name…" autocomplete="off" value="${presetAnchor!=null?V(presetAnchor,'n'):''}">
+        <datalist id="tp-anchor-list">${opts}</datalist>
+      </div>
       <div class="fld"><label for="tp-radius">Radius (miles, straight-line)</label><input id="tp-radius" type="number" value="30" min="1" max="200"></div>
     </div>
     <div id="tp-results"></div>`;
     const run=()=>{
-      const a=document.getElementById('tp-anchor').value;
-      if(a===''){tripClear();document.getElementById('tp-results').innerHTML='';return}
-      const anchor=+a,radius=parseFloat(document.getElementById('tp-radius').value)||30;
+      const typed=document.getElementById('tp-anchor').value.trim();
+      const anchor=nameToIdx.get(typed);
+      if(anchor===undefined){tripClear();document.getElementById('tp-results').innerHTML=typed?'<p class="hint">No course matches that name exactly — pick one from the suggestions.</p>':'';return}
+      const radius=parseFloat(document.getElementById('tp-radius').value)||30;
       const res=tripByAnchor(anchor,radius);
       tripShow(res,anchor,radius);
       document.getElementById('tp-results').innerHTML=tripResultsHTML(res,anchor);
     };
-    document.getElementById('tp-anchor').addEventListener('change',run);
+    document.getElementById('tp-anchor').addEventListener('input',run);
     document.getElementById('tp-radius').addEventListener('change',run);
     if(presetAnchor!=null)run();
   }

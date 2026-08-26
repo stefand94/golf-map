@@ -80,6 +80,18 @@ that touches rendering, filters, or persistence:
    station name. A course on a TfL line (Tube/Overground/Elizabeth/DLR)
    should show no badge. Every Top 100 course's nationwide `nearStation`
    should always show the badge (that lookup is always National Rail).
+   The badge also shows directly on the map: zoom into a National Rail
+   station (e.g. Mill Hill Broadway, ≥ zoom 11 since it's an interchange,
+   ≥ 13 otherwise) — its persistent label and its tooltip/popup on click
+   should both show the red "NR" suffix; a Tube-only station shouldn't.
+10. **Trip Planning anchor search.** Open Trip Planning → By anchor
+    course — the anchor field should be a free-text search (not a plain
+    221-option dropdown): typing a partial name (e.g. "Sunning") should
+    narrow the suggestions to matching courses, and typing a full exact
+    name should immediately run the search and populate results/map.
+    Typing something that doesn't exactly match any course should show
+    "No course matches that name exactly" rather than silently doing
+    nothing or erroring.
 
 ## What's explicitly not covered
 
