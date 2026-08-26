@@ -363,11 +363,11 @@ L.control.zoom({position:'bottomright'}).addTo(map);
    links courses but were too busy at the country-wide "show all results"
    view, and Esri World Topo (compared side by side) was even busier —
    more place-name labels and a relief tint competing with the pins.
-   Voyager keeps colour (cream land, blue water, orange/yellow roads)
-   without contours or dense labelling, so the flag pins and rail lines
-   stay legible on top of it. Free, no API key, same CDN as the original
-   CartoDB Light basemap. */
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap contributors &copy; CARTO',maxZoom:19}).addTo(map);
+   Switched from CARTO's Voyager tiles to the standard OSM tile server —
+   CARTO started gating rastertiles behind a "API key required" watermark
+   for unauthenticated/high-volume traffic; the plain OSM tile server needs
+   no key at all and has no such gate. */
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',maxZoom:19}).addTo(map);
 
 const railLayer=L.layerGroup().addTo(map),lblLayer=L.layerGroup().addTo(map),
       stnLayer=L.layerGroup().addTo(map),stnLblLayer=L.layerGroup().addTo(map),
