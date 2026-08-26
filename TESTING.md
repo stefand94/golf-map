@@ -116,7 +116,28 @@ that touches rendering, filters, or persistence:
     "No course matches that name exactly" rather than silently doing
     nothing or erroring.
 
-11. **Scotland/Wales visibility (GOLF-25/26).** Toggle the "Scotland only"
+11. **Trip Planning — region border chip (GOLF-27).** Open Trip Planning
+    → By region → "S London & Surrey" with the default 8-mile border
+    threshold — results should include courses actually in that region
+    (no "border" chip) plus nearby courses from other regions (e.g. Kent,
+    West/SW London) tagged "border", with a gray dashed marker on the map
+    distinct from the gold in-region markers. Setting the border input to
+    0 should drop back to in-region-only results.
+12. **Trip Builder (GOLF-28).** From any course's popup, click "Add to
+    trip" (button label should flip to "Remove from trip", and the popup
+    header should show an "in trip" tag) — repeat for 3+ courses spanning
+    a real geography (e.g. a Scotland course + an England Top 100 course +
+    a London course). Open Trip Planning → "My trip (N)" — should list all
+    added courses in a greedy nearest-neighbour order starting from the
+    first one added, show a cost estimate with an accurate "N of M have a
+    parseable fee" coverage count, and draw them on the map as numbered
+    markers connected by a dashed line, each with a National Rail roundel
+    at its nearest station where applicable. Reload the page — the trip
+    should still be there (same persistence guarantee as Played/Want).
+    Remove a course from the list — it should disappear from both the list
+    and the map immediately. Open "Review & export corrections" — the
+    exported JSON should include a `trip` array matching the current cart.
+13. **Scotland/Wales visibility (GOLF-25/26).** Toggle the "Scotland only"
     chip — result count should drop to 41, and "Show all results on map"
     should fit the map bounds to Scotland (roughly Islay to Fraserburgh, not
     still centred on London). Same for "Wales only" (22 results, bounds

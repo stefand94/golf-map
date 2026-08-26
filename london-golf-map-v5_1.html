@@ -77,6 +77,8 @@
   .cmeta{margin:5px 0 0;font-size:11px;color:var(--ink-soft);display:flex;flex-wrap:wrap;gap:3px 8px;align-items:center}
   .rk{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.06em;background:var(--ink);color:#fff;padding:2px 5px;border-radius:3px;font-weight:500}
   .wt{font-family:"IBM Plex Mono",monospace;font-size:9.5px;background:#DCEBF3;color:#00537F;padding:2px 5px;border-radius:3px}
+  .trip-num{background:transparent;border:none;box-shadow:none;font:700 10px/1 "IBM Plex Mono",monospace;color:#14211B;padding:0}
+  .trip-num::before{display:none}
   .wt.played{background:#DCEFDC;color:#1D6B1D}
   .wt.want{background:#F3E6D8;color:#8A5A1E}
   .edited{font-family:"IBM Plex Mono",monospace;font-size:9px;background:#E69F00;color:#241a00;padding:2px 5px;border-radius:3px;font-weight:600}
@@ -305,6 +307,12 @@ const PLAYED=new Set(),WANT=new Set();
 function togglePlayed(i){if(PLAYED.has(i))PLAYED.delete(i);else{PLAYED.add(i);WANT.delete(i)}saveState();render();}
 function toggleWant(i){if(WANT.has(i))WANT.delete(i);else{WANT.add(i);PLAYED.delete(i)}saveState();render();}
 
+/* GOLF-28: the trip cart — a Set, same pattern as PLAYED/WANT. Insertion
+   order is preserved (JS Set iteration order), which "My trip" uses as the
+   starting point for its suggested visiting order. */
+const TRIP=new Set();
+function toggleTrip(i){if(TRIP.has(i))TRIP.delete(i);else TRIP.add(i);saveState();render();}
+
 /* ---- persistence (GOLF-9): filters, map view and corrections survive
    a reload via localStorage. The JSON export/import flow below stays
    as the manual backup path — this is just a convenience cache. ---- */
@@ -317,6 +325,7 @@ function loadStoredState(){
   if(saved.edits)Object.assign(EDITS,saved.edits);
   (saved.played||[]).forEach(i=>PLAYED.add(i));
   (saved.want||[]).forEach(i=>WANT.add(i));
+  (saved.trip||[]).forEach(i=>TRIP.add(i));
   if(saved.filters){['access','price','region','flag','arch'].forEach(k=>{
     (saved.filters[k]||[]).forEach(v=>state[k].add(v));});}
   if(saved.q)state.q=saved.q;
@@ -328,7 +337,7 @@ function saveState(){
     const c=map?map.getCenter():null;
     localStorage.setItem(LS_KEY,JSON.stringify({
       edits:EDITS,
-      played:[...PLAYED],want:[...WANT],
+      played:[...PLAYED],want:[...WANT],trip:[...TRIP],
       filters:{access:[...state.access],price:[...state.price],region:[...state.region],flag:[...state.flag],arch:[...state.arch]},
       q:state.q,sort:state.sort,
       mapCenter:c?[c.lat,c.lng]:undefined,mapZoom:map?map.getZoom():undefined
@@ -493,7 +502,7 @@ function popupHTML(i){
     :(V(i,'walk')||'Outside the rail catchment — no nearby station on this map');
   const search=`https://www.google.com/search?q=${encodeURIComponent(V(i,'n')+' golf club green fees')}`;
   const site=V(i,'site'),book=V(i,'book'),club=c.clubInfo;
-  return `<div class="pop">${c.logo?`<div style="width:100%;height:100px;background:var(--paper);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${c.logo}" alt="${V(i,'n')} club logo" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"></div>`:''}<h3>${V(i,'n')} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want to play</span>':''}</h3>
+  return `<div class="pop">${c.logo?`<div style="width:100%;height:100px;background:var(--paper);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${c.logo}" alt="${V(i,'n')} club logo" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"></div>`:''}<h3>${V(i,'n')} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want to play</span>':''}${TRIP.has(i)?' <span class="wt">in trip</span>':''}</h3>
     <p class="sub">${c.r} · ${a.label}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
     <div class="fees"><div class="fee-box"><b>Weekday</b><span>${V(i,'wd')}</span></div>
     <div class="fee-box"><b>Weekend</b><span>${V(i,'we')}</span></div></div>
@@ -503,6 +512,7 @@ function popupHTML(i){
     <div class="actions">
       <button class="btn ghost" onclick="togglePlayed(${i})">${PLAYED.has(i)?'Unmark played':'Mark played'}</button>
       <button class="btn ghost" onclick="toggleWant(${i})">${WANT.has(i)?'Remove from want-to-play':'Want to play'}</button>
+      <button class="btn ghost" onclick="toggleTrip(${i})">${TRIP.has(i)?'Remove from trip':'Add to trip'}</button>
       ${site?`<a class="btn" href="${site}" target="_blank" rel="noopener">Club website</a>`:`<a class="btn ghost" href="${search}" target="_blank" rel="noopener">Find the club site</a>`}
       ${book&&book!==site?`<a class="btn ghost" href="${book}" target="_blank" rel="noopener">Green fees</a>`:''}
       ${club&&club.teeBooking&&club.teeBooking!==site&&club.teeBooking!==book?`<a class="btn ghost" href="${club.teeBooking}" target="_blank" rel="noopener">Tee booking</a>`:''}
@@ -574,21 +584,36 @@ function haversineMiles(lat1,lng1,lat2,lng2){
    so an public/open-only definition returned zero results for exactly
    the coastal-cluster case this feature exists for. */
 function bookable(i){return['public','open','limited'].includes(V(i,'a'))}
-function tripByRegion(region){
-  return C.map((c,i)=>i).filter(i=>C[i].r===region&&bookable(i))
-    .sort((a,b)=>V(a,'n').localeCompare(V(b,'n')));
+/* GOLF-27: region mode has no real geometry to hand (REGIONS is a flat
+   label list), so "just over the border" is derived from actual course
+   geography instead of a hand-maintained adjacency table — any bookable
+   course outside the chosen region whose straight-line distance to its
+   single nearest course *inside* the region is within borderMiles is
+   included, flagged {border:true} so the UI can explain why it's there. */
+function tripByRegion(region,borderMiles){
+  const inRegion=C.map((c,i)=>i).filter(i=>C[i].r===region&&bookable(i));
+  const core=inRegion.map(i=>({i,border:false}));
+  if(!borderMiles)return core.sort((a,b)=>V(a.i,'n').localeCompare(V(b.i,'n')));
+  const outRegion=C.map((c,i)=>i).filter(i=>C[i].r!==region&&bookable(i));
+  const border=outRegion.filter(i=>{
+    let min=Infinity;
+    inRegion.forEach(j=>{const d=haversineMiles(C[i].lat,C[i].lng,C[j].lat,C[j].lng);if(d<min)min=d});
+    return min<=borderMiles;
+  }).map(i=>({i,border:true}));
+  return [...core,...border].sort((a,b)=>V(a.i,'n').localeCompare(V(b.i,'n')));
 }
 function tripByAnchor(anchor,radiusMiles){
   return C.map((c,i)=>i).filter(i=>i!==anchor&&bookable(i)&&haversineMiles(C[anchor].lat,C[anchor].lng,C[i].lat,C[i].lng)<=radiusMiles)
-    .sort((a,b)=>haversineMiles(C[anchor].lat,C[anchor].lng,C[a].lat,C[a].lng)-haversineMiles(C[anchor].lat,C[anchor].lng,C[b].lat,C[b].lng));
+    .sort((a,b)=>haversineMiles(C[anchor].lat,C[anchor].lng,C[a].lat,C[a].lng)-haversineMiles(C[anchor].lat,C[anchor].lng,C[b].lat,C[b].lng))
+    .map(i=>({i,border:false}));
 }
 const tripLayer=L.layerGroup().addTo(map);
 function tripClear(){tripLayer.clearLayers()}
-function tripShow(indices,anchor,radiusMiles){
+function tripShow(items,anchor,radiusMiles){
   tripClear();
   const pts=[];
-  indices.forEach(i=>{
-    L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:'#E6B400',weight:2.5,fillColor:'#fff',fillOpacity:.9}).addTo(tripLayer);
+  items.forEach(({i,border})=>{
+    L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:border?'#8C8478':'#E6B400',weight:2.5,fillColor:'#fff',fillOpacity:.9,dashArray:border?'2 3':null}).addTo(tripLayer);
     pts.push([C[i].lat,C[i].lng]);
   });
   if(anchor!=null){
@@ -602,28 +627,93 @@ function tripShow(indices,anchor,radiusMiles){
   }
   if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
 }
-function tripResultsHTML(indices,anchor){
-  if(!indices.length)return `<p class="hint">No bookable courses found${anchor!=null?' in range':' in this region'}. Try a wider radius or a different area.</p>`;
-  return indices.map(i=>{
+function tripResultsHTML(items,anchor){
+  if(!items.length)return `<p class="hint">No bookable courses found${anchor!=null?' in range':' in this region'}. Try a wider radius or a different area.</p>`;
+  return items.map(({i,border})=>{
     const dist=anchor!=null?` — ${haversineMiles(C[anchor].lat,C[anchor].lng,C[i].lat,C[i].lng).toFixed(1)} mi`:'';
     return `<div style="padding:7px 0;border-bottom:1px solid var(--line)">
       <a href="#" class="linkbtn" onclick="event.preventDefault();closeDrawer();goToCourse(${i})">${V(i,'n')}</a>
+      ${border?' <span class="wt" title="Just over the border — nearest to a course in your chosen region, not itself in it">border</span>':''}
       <span style="color:var(--stone);font-size:11.5px">${dist} · ${C[i].r} · ${ACCESS[V(i,'a')].label.toLowerCase()}</span>
     </div>`;
   }).join('');
 }
+
+/* GOLF-28: Trip Builder — best-effort numeric extractor over a course's
+   free-text fee field. Many fees are "Members only"/"Ask club"/ranges —
+   this deliberately returns null rather than guessing when nothing
+   numeric is found, so the caller can report an honest coverage count
+   instead of a misleadingly precise total. */
+function extractFee(s){
+  if(!s)return null;
+  const nums=[...String(s).matchAll(/(\d[\d,]*(?:\.\d+)?)/g)].map(m=>parseFloat(m[1].replace(/,/g,'')));
+  if(!nums.length)return null;
+  return nums.length>1?(nums[0]+nums[1])/2:nums[0];
+}
+function tripCostEstimate(indices){
+  let total=0,covered=0;
+  indices.forEach(i=>{const fee=extractFee(V(i,'wd'));if(fee!=null){total+=fee;covered++}});
+  return{total,covered,of:indices.length};
+}
+/* Greedy nearest-neighbour walk, starting from the first-added course —
+   "as the crow flies, not a real route," same disclaimer convention as
+   nearStation elsewhere in the app. */
+function tripOrder(indices){
+  if(!indices.length)return[];
+  const remaining=[...indices];
+  const order=[remaining.shift()];
+  while(remaining.length){
+    const last=order[order.length-1];
+    let bestIdx=0,bestDist=Infinity;
+    remaining.forEach((i,idx)=>{
+      const d=haversineMiles(C[last].lat,C[last].lng,C[i].lat,C[i].lng);
+      if(d<bestDist){bestDist=d;bestIdx=idx}
+    });
+    order.push(remaining.splice(bestIdx,1)[0]);
+  }
+  return order;
+}
+function tripShowOrdered(order){
+  tripClear();
+  const pts=[];
+  order.forEach((i,idx)=>{
+    L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:'#14211B',weight:2.5,fillColor:'#E6B400',fillOpacity:1})
+      .bindTooltip(String(idx+1),{permanent:true,direction:'center',className:'trip-num'}).addTo(tripLayer);
+    pts.push([C[i].lat,C[i].lng]);
+    const stnObj=STN[V(i,'stn')],near=C[i].nearStation,s=stnObj||near;
+    if(s){
+      const isNR=stnObj?[...STN_LINES[stnObj.n]].some(k=>!TFL_LINES.has(k)):true;
+      if(isNR)nrStationMarker(s.lat,s.lng,18).addTo(tripLayer);
+    }
+  });
+  if(order.length>1)L.polyline(order.map(i=>[C[i].lat,C[i].lng]),{color:'#14211B',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(tripLayer);
+  if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
+}
+function tripListHTML(order,cost){
+  if(!order.length)return`<p class="hint">No courses in your trip yet. Open any course's popup and hit <b>Add to trip</b>.</p>`;
+  return`<p style="font-size:11.5px;color:var(--stone);margin:0 0 6px">Suggested order — as the crow flies from the first course you added, not a real route.</p>
+    <p style="font-size:11.5px;color:var(--stone);margin:0 0 10px">Rough cost estimate (weekday fees) — ${cost.covered?`£${cost.total.toFixed(0)}`:'—'}, ${cost.covered} of ${cost.of} course${cost.of===1?'':'s'} have a parseable fee.</p>
+    ${order.map((i,idx)=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)">
+      <div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--stone)">${idx+1}.</span>
+        <a href="#" class="linkbtn" onclick="event.preventDefault();closeDrawer();goToCourse(${i})">${V(i,'n')}</a>
+        <span style="color:var(--stone);font-size:11.5px"> — ${C[i].r}</span></div>
+      <button class="btn2 ghost" onclick="toggleTrip(${i});tripPlannerMode('mine')">Remove</button>
+    </div>`).join('')}`;
+}
 function openTripPlanner(presetAnchor){
   map.closePopup();
   sheet.innerHTML=`<h2>Trip Planning</h2>
-    <p class="lede">Browse bookable courses (pay &amp; play or open-access) by region or around a chosen course. Nothing here is saved — this is just for browsing.</p>
+    <p class="lede">Browse bookable courses (pay &amp; play or open-access) by region or around a chosen course, or build your own trip from courses you've added along the way.</p>
     <div class="bar" style="margin-top:0;margin-bottom:14px">
       <button class="btn2" id="tp-mode-region">By region</button>
       <button class="btn2 ghost" id="tp-mode-anchor">By anchor course</button>
+      <button class="btn2 ghost" id="tp-mode-mine">My trip${TRIP.size?` (${TRIP.size})`:''}</button>
     </div>
     <div id="tp-body"></div>`;
   openDrawer();
   document.getElementById('tp-mode-region').addEventListener('click',()=>tripPlannerMode('region'));
   document.getElementById('tp-mode-anchor').addEventListener('click',()=>tripPlannerMode('anchor'));
+  document.getElementById('tp-mode-mine').addEventListener('click',()=>tripPlannerMode('mine'));
   tripPlannerMode(presetAnchor!=null?'anchor':'region',presetAnchor);
 }
 /* GOLF: jump straight into Trip Planning with a course pre-set as the
@@ -633,18 +723,31 @@ function setAsAnchor(i){closeDrawer();openTripPlanner(i)}
 function tripPlannerMode(mode,presetAnchor){
   document.getElementById('tp-mode-region').className=mode==='region'?'btn2':'btn2 ghost';
   document.getElementById('tp-mode-anchor').className=mode==='anchor'?'btn2':'btn2 ghost';
+  document.getElementById('tp-mode-mine').className=mode==='mine'?'btn2':'btn2 ghost';
+  document.getElementById('tp-mode-mine').textContent=`My trip${TRIP.size?` (${TRIP.size})`:''}`;
   const body=document.getElementById('tp-body');
   tripClear();
-  if(mode==='region'){
-    body.innerHTML=`<div class="fld"><label for="tp-region">Region</label>
-      <select id="tp-region"><option value="">— choose a region —</option>${REGIONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
-      <div id="tp-results"></div>`;
-    document.getElementById('tp-region').addEventListener('change',e=>{
-      if(!e.target.value){tripClear();document.getElementById('tp-results').innerHTML='';return}
-      const res=tripByRegion(e.target.value);
+  if(mode==='mine'){
+    const order=tripOrder([...TRIP]);
+    tripShowOrdered(order);
+    body.innerHTML=tripListHTML(order,tripCostEstimate(order));
+  }else if(mode==='region'){
+    body.innerHTML=`<div class="grid2">
+      <div class="fld"><label for="tp-region">Region</label>
+        <select id="tp-region"><option value="">— choose a region —</option>${REGIONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
+      <div class="fld"><label for="tp-border">Include courses just over the border, within (miles)</label><input id="tp-border" type="number" value="8" min="0" max="50"></div>
+    </div>
+    <div id="tp-results"></div>`;
+    const run=()=>{
+      const region=document.getElementById('tp-region').value;
+      if(!region){tripClear();document.getElementById('tp-results').innerHTML='';return}
+      const borderMiles=parseFloat(document.getElementById('tp-border').value)||0;
+      const res=tripByRegion(region,borderMiles);
       tripShow(res,null);
       document.getElementById('tp-results').innerHTML=tripResultsHTML(res,null);
-    });
+    };
+    document.getElementById('tp-region').addEventListener('change',run);
+    document.getElementById('tp-border').addEventListener('change',run);
   }else{
     /* GOLF: a plain <select> with 221 options was unusable for finding a
        specific course — a text input backed by a <datalist> gives native
@@ -1001,10 +1104,12 @@ function corrections(){return Object.keys(EDITS).filter(isEdited).map(i=>{
 document.getElementById('open-trip').addEventListener('click',openTripPlanner);
 document.getElementById('open-export').addEventListener('click',()=>{
   const list=corrections();
-  const json=JSON.stringify({source:"The Britain Golf Explorer",exported:new Date().toISOString().slice(0,10),corrections:list},null,2);
+  const tripOrdered=tripOrder([...TRIP]);
+  const trip=tripOrdered.map(i=>({course:C[i].n,region:C[i].r,weekdayFee:V(i,'wd')}));
+  const json=JSON.stringify({source:"The Britain Golf Explorer",exported:new Date().toISOString().slice(0,10),corrections:list,trip},null,2);
   sheet.innerHTML=`<h2>Your corrections</h2>
-    <p class="lede">${list.length?`${list.length} ${list.length===1?'entry':'entries'} changed. Your corrections, filters and map position are saved to this browser automatically — export below only if you want a portable copy to paste back into our chat.`:`Nothing corrected yet. Open any course and hit <b>Correct this</b>.`}</p>
-    ${list.length?`<div class="fld"><label for="ex">Correction patch</label><textarea id="ex" style="min-height:220px">${esc(json)}</textarea></div>
+    <p class="lede">${list.length?`${list.length} ${list.length===1?'entry':'entries'} changed.`:`Nothing corrected yet. Open any course and hit <b>Correct this</b>.`} ${trip.length?`Your trip (${trip.length} course${trip.length===1?'':'s'}) is included below too.`:''} Your corrections, trip, filters and map position are saved to this browser automatically — export below only if you want a portable copy to paste back into our chat.</p>
+    ${list.length||trip.length?`<div class="fld"><label for="ex">Export</label><textarea id="ex" style="min-height:220px">${esc(json)}</textarea></div>
     <div class="bar"><button class="btn2" onclick="copyPatch()">Copy to clipboard</button>
     <button class="btn2 ghost" onclick="downloadPatch()">Download .json</button>
     <button class="btn2 ghost" onclick="closeDrawer()">Close</button>
@@ -1013,9 +1118,9 @@ document.getElementById('open-export').addEventListener('click',()=>{
     <div class="bar"><button class="btn2 warn" onclick="wipeStoredState()">Clear saved filters &amp; corrections on this device</button></div>`;
   openDrawer()});
 function wipeStoredState(){
-  if(!confirm('Clear all saved filters, map position, corrections and played/want-to-play lists stored in this browser? This cannot be undone unless you exported a copy.'))return;
+  if(!confirm('Clear all saved filters, map position, corrections, played/want-to-play lists and your trip stored in this browser? This cannot be undone unless you exported a copy.'))return;
   Object.keys(EDITS).forEach(k=>delete EDITS[k]);
-  PLAYED.clear();WANT.clear();
+  PLAYED.clear();WANT.clear();TRIP.clear();
   clearStoredState();closeDrawer();render();
 }
 function copyPatch(){const t=document.getElementById('ex');t.select();

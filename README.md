@@ -28,9 +28,12 @@ available, and links to the club's own site and tee-booking page.
 
 Beyond browsing, the app includes:
 
-- **Trip Planning** — browse bookable courses by region, or around any
-  course as an anchor point within a chosen radius (straight-line miles),
-  shown on the map with the search radius drawn in.
+- **Trip Planning** — browse bookable courses by region (including nearby
+  courses just over the region border, tagged as such), or around any
+  course as an anchor point within a chosen radius (straight-line miles);
+  or build an actual trip — add courses to a cart from their popups, see
+  a rough total cost, a suggested visiting order, and the route drawn on
+  the map.
 - **Course Handicap calculator** — enter your Handicap Index plus a
   course's par/slope/rating (pre-filled where we have it, otherwise typed
   in from your scorecard) to get your Course Handicap for that round.
