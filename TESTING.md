@@ -58,12 +58,24 @@ that touches rendering, filters, or persistence:
    Also: click "Set as anchor course for a trip" on any course's popup —
    should open Trip Planning already in anchor mode with that course
    pre-selected and results populated.
-6. **Course Handicap calculator.** Visible on every popup — pre-filled
-   with `courseStats` where we have it (66 of 221 so far, e.g. Royal
-   Birkdale), otherwise all four fields (par/slope/rating/
-   index) are blank for manual entry. Verify one output against a
-   hand-calculated example, and that an incomplete set of fields shows
-   "Fill in all four fields." rather than a wrong number.
+6. **Course Handicap calculator.** Collapsed behind a "Calculate your
+   handicap" button on every popup — click it to reveal the calculator,
+   pre-filled with `courseStats` where we have it (66 of 221 so far, e.g.
+   Royal Birkdale), otherwise all four fields (par/slope/rating/index) are
+   blank for manual entry. If a course has multiple tees on record (via
+   "Correct this" — see #10a below), a Tee dropdown appears above the
+   fields; switching it re-fills par/slope/rating for that tee. Verify one
+   output against a hand-calculated example, and that an incomplete set of
+   fields shows "Fill in all four fields." rather than a wrong number.
+
+10a. **Multi-tee course stats via "Correct this".** Open any course's
+   editor — a "Course stats" section lets you add one row per tee (name/
+   par/slope/rating) via "+ Add tee", and remove a row via "Remove". Save,
+   reopen the popup, and confirm the handicap calculator now shows a Tee
+   dropdown pre-filled with the values you entered for each tee. A single
+   unnamed tee row saves in the plain `{par,slope,rating}` shape (backward
+   compatible with pre-existing `courseStats`); two or more (or one with a
+   name) save as `{tees:[...]}`.
 7. **Club logo popups.** Spot-check a course with a `logo` field (e.g.
    Sunningdale) — image should be fully visible (letterboxed, not
    cropped) inside its frame, and a course without one should render with
@@ -80,10 +92,13 @@ that touches rendering, filters, or persistence:
    station name. A course on a TfL line (Tube/Overground/Elizabeth/DLR)
    should show no badge. Every Top 100 course's nationwide `nearStation`
    should always show the badge (that lookup is always National Rail).
-   The badge also shows directly on the map: zoom into a National Rail
-   station (e.g. Mill Hill Broadway, ≥ zoom 11 since it's an interchange,
-   ≥ 13 otherwise) — its persistent label and its tooltip/popup on click
-   should both show the red "NR" suffix; a Tube-only station shouldn't.
+   The badge also shows directly on the map: any National Rail station
+   (e.g. Mill Hill Broadway) has a red halo ring drawn right around its dot
+   at any zoom the Stations layer is visible, not just once zoomed in far
+   enough for text labels to appear (≥ zoom 11 for interchanges, ≥ 13
+   otherwise, same as before) — its persistent label and its tooltip/popup
+   on click should also show the red "NR" suffix; a Tube-only station
+   shouldn't have a ring or an "NR" suffix anywhere.
 10. **Trip Planning anchor search.** Open Trip Planning → By anchor
     course — the anchor field should be a free-text search (not a plain
     221-option dropdown): typing a partial name (e.g. "Sunning") should
