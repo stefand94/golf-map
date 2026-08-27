@@ -317,22 +317,36 @@ that touches rendering, filters, or persistence:
     back to checked). No "undefined" anywhere in the pane or a full
     `popupHTML()` sweep.
 
-22. **Real driving times via the ORS proxy (GOLF-45).** With
-    `ORS_PROXY_URL` left at its default `''`, a multi-day trip's drive-time
-    fields must behave exactly as GOLF-43 documented above (AUTO chip,
-    straight-line heuristic) — confirms the feature is fully inert when
-    unconfigured. To test the live path, temporarily set `ORS_PROXY_URL`
-    to a real (or a stubbed `window.fetch`, in-browser) endpoint, build a
-    2-day trip, and confirm: the drive-time field is briefly unset/AUTO on
-    first render (cache miss fires an async fetch), then updates to a
-    "live" chip with "real driving time via OpenRouteService" copy once
-    the fetch resolves; reloading the page keeps showing the live value
-    instantly (no re-fetch) because it's cached in `localStorage` under
-    `golfmap:legcache:v1`, keyed by the course-pair's coordinates; a
-    stubbed failed/rejected fetch leaves the AUTO/heuristic chip in place
-    with no console error and no broken UI. Revert `ORS_PROXY_URL` back to
-    `''` after testing — it should never be committed non-empty without
-    the stakeholder's actual Worker URL. No "undefined" anywhere; `node
+22. **Real driving times via the ORS proxy (GOLF-45).** `ORS_PROXY_URL`
+    is live (points at the deployed Cloudflare Worker) — build a 2-day
+    trip with courses far enough apart to need a real leg and confirm:
+    the drive-time field is briefly unset/AUTO on first render (cache
+    miss fires an async fetch), then updates to a "live" chip with "real
+    driving time via OpenRouteService" copy once the fetch resolves;
+    reloading the page keeps showing the live value instantly (no
+    re-fetch) because it's cached in `localStorage` under
+    `golfmap:legcache:v1`, keyed by the course-pair's coordinates. To spot
+    check the not-configured fallback path still works (e.g. after a
+    local edit), temporarily blank `ORS_PROXY_URL` and confirm the field
+    falls straight back to GOLF-43's AUTO/heuristic chip with no errors —
+    then revert. No "undefined" anywhere; `node scripts/test_data.js`
+    unaffected (no data-file changes).
+
+23. **"Show POIs" per overnight stop (GOLF-46).** With a course scheduled
+    on a day, the "Staying near: `<town>`" line should show a "Show POIs"
+    link (only when `ORS_PROXY_URL` is configured — hidden entirely when
+    it's blank). Clicking it toggles to "Hide POIs" and, on first click,
+    shows a brief "Loading nearby food, fuel and places to stay…" message
+    followed by a short list of real nearby hotels/restaurants/fast
+    food/fuel (each with a category chip) once the proxy responds — small
+    purple dots for each also appear on the map near that day's last
+    course, without pulling the map's fit-bounds toward them. Toggling a
+    second day's POIs on works independently; toggling either back off
+    hides its list/markers without losing the cached data (re-toggling on
+    is instant, no re-fetch — confirm by wrapping `window.fetch` and
+    checking the call count on a repeat `tbPoisFor()` call). Removing a
+    day clears its POI toggle along with it; "Clear trip" resets all POI
+    toggles too. No "undefined" anywhere in the pane; `node
     scripts/test_data.js` unaffected (no data-file changes).
 
 ## What's explicitly not covered

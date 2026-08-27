@@ -102,6 +102,9 @@
   .tb-auto-chip-real{color:#1a7a3e;border-color:#1a7a3e}
   .tb-day-town{padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--stone)}
   .tb-day-town b{color:var(--ink)}
+  .tb-poi-list{padding:2px 10px 8px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:3px}
+  .tb-poi-row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11.5px;color:var(--ink)}
+  .tb-poi-row .wt{font-size:9.5px}
   .tb-trips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
   .tb-trips select{flex:1 1 140px;min-width:0}
   .tb-trips .btn2{padding:6px 10px;font-size:11.5px;flex:0 0 auto}
@@ -442,6 +445,7 @@ function tripDaySetCourse(i,dayId){
 }
 function tripDayRemove(dayId){
   tripDays=tripDays.filter(d=>d.id!==dayId);
+  tbPoiOn.delete(dayId);
   saveState();
 }
 function tripDaySetDriveIn(dayId,mins){
@@ -489,7 +493,7 @@ function tbMoveCourseTo(i,dayId,beforeI){
 function tripClearAll(){
   if(!TRIP.size)return;
   if(!confirm(`Clear all ${TRIP.size} course${TRIP.size===1?'':'s'} from your trip? This can't be undone.`))return;
-  TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;tripDays=[];tripDayNextId=1;
+  TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;tripDays=[];tripDayNextId=1;tbPoiOn.clear();
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(false);}
   render();
@@ -1206,12 +1210,29 @@ function tripDrawCart(fit){
 /* Draws the confirmed cart route AND the not-yet-added discovery
    candidates on the map at once — tripShow()/tripShowOrdered()'s clear/fit
    params exist specifically so these two draws don't wipe each other out. */
+/* GOLF-46: small muted dots for whichever days currently have "Show POIs"
+   toggled on — drawn from cache only (never triggers a fetch itself; the
+   pane's own render already called tbPoisFor() for that). Deliberately
+   NOT included in the fitBounds points below — a nearby petrol station
+   souldn't zoom the map away from the actual trip route. */
+function tbDrawPois(){
+  tripDays.forEach(d=>{
+    if(!tbPoiOn.has(d.id))return;
+    const pois=tbPoisFor(d);
+    if(!pois)return;
+    pois.forEach(p=>{
+      L.circleMarker([p.lat,p.lng],{radius:5,color:'#7A6BC9',weight:1.5,fillColor:'#fff',fillOpacity:.9})
+        .bindTooltip(p.name,{direction:'top'}).addTo(tripLayer);
+    });
+  });
+}
 function tbDrawMap(){
   tripClear();
   const{order,dayOf}=tripDayOrder();
   const pts1=tripShowOrdered(order,false,false,dayOf);
   const anchor=tbDiscoveryTab==='anchor'?tbEffectiveAnchor():null;
   const pts2=tripShow(tbDiscover(),anchor,false,false);
+  tbDrawPois();
   const pts=[...pts1,...pts2];
   if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
 }
@@ -1374,6 +1395,73 @@ function tripDaySuggestedTown(day){
   if(s&&s.n)return s.n;
   return C[i].r||null;
 }
+/* GOLF-46: "Show POIs" per overnight stop — food/fuel/accommodation near
+   where a day ends, via the same Cloudflare Worker proxy as GOLF-45's
+   drive times, hitting ORS's POI endpoint instead of its directions one
+   (routed server-side by a `mode:'pois'` field the Worker checks first).
+   Same "inert until ORS_PROXY_URL is set" and "cache, don't re-fetch a
+   view that hasn't changed" pattern as GOLF-45, so this never regresses
+   anything when the proxy isn't configured. */
+/* ORS caps category_ids at 5 values per request (confirmed against the
+   live API — a 6th silently 400s), so this is deliberately narrowed to
+   the 5 most useful "near tonight's stop" categories rather than every
+   food/fuel/stay id ORS knows about: fuel, restaurant, fast food, hotel,
+   guest house. Café/bar/hostel are dropped to fit the cap. */
+const POI_CATEGORIES=[596,570,566,108,106];
+const POI_CACHE_KEY='golfmap:poicache:v1';
+function poiCacheLoad(){try{return JSON.parse(localStorage.getItem(POI_CACHE_KEY)||'{}');}catch(e){return{};}}
+function poiCacheSave(c){try{localStorage.setItem(POI_CACHE_KEY,JSON.stringify(c));}catch(e){}}
+function poiKey(lat,lng){return lat.toFixed(4)+','+lng.toFixed(4);}
+let poiPending=new Set();
+/* dayIds currently toggled "on" — pure UI state, not persisted, same as
+   GOLF-44's cost-line checkboxes (resets to hidden on reload). */
+let tbPoiOn=new Set();
+function tbPoiPoint(day){
+  if(!day.courses.length)return null;
+  const i=day.courses[day.courses.length-1];
+  return{lat:C[i].lat,lng:C[i].lng};
+}
+/* Returns a cached POI array for this day's overnight point, or null if
+   not yet known (not configured, no point yet, still loading, or the
+   call failed) — mirrors tripDayRealEstimate()'s contract exactly. A
+   cache miss fires the async fetch + cache + re-render itself. */
+function tbPoisFor(day){
+  if(!ORS_PROXY_URL)return null;
+  const pt=tbPoiPoint(day);
+  if(!pt)return null;
+  const key=poiKey(pt.lat,pt.lng);
+  const cache=poiCacheLoad();
+  if(cache[key])return cache[key].pois;
+  if(poiPending.has(key))return null;
+  poiPending.add(key);
+  const categories=POI_CATEGORIES;
+  fetch(ORS_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({mode:'pois',point:[pt.lng,pt.lat],radius:1500,categories})})
+    .then(r=>r.ok?r.json():Promise.reject(new Error('proxy error '+r.status)))
+    .then(data=>{
+      if(data&&Array.isArray(data.pois)){
+        const c=poiCacheLoad();
+        c[key]={pois:data.pois,ts:Date.now()};
+        poiCacheSave(c);
+        if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
+      }
+    })
+    .catch(()=>{ /* silent — toggle just stays empty, nothing to show the user */ })
+    .finally(()=>{poiPending.delete(key);});
+  return null;
+}
+function tbTogglePois(dayId){
+  if(tbPoiOn.has(dayId))tbPoiOn.delete(dayId);else tbPoiOn.add(dayId);
+  renderTripBuilder();tbDrawMap();
+}
+function tbPoiListHTML(day){
+  if(!tbPoiOn.has(day.id))return'';
+  if(!ORS_PROXY_URL)return'';
+  const pois=tbPoisFor(day);
+  if(pois==null)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Loading nearby food, fuel and places to stay…</p></div>`;
+  if(!pois.length)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Nothing found nearby.</p></div>`;
+  return`<div class="tb-poi-list">${pois.map(p=>`<div class="tb-poi-row"><span>${p.name}</span>${p.category?`<span class="wt">${p.category}</span>`:''}</div>`).join('')}</div>`;
+}
 function tripDayScheduleHTML(){
   if(!tripSeq.length)return`<p class="hint">No courses in your trip yet. Open any course's popup and hit <b>Add to trip</b>, or search below.</p>`;
   const unscheduled=tripUnscheduled();
@@ -1388,7 +1476,8 @@ function tripDayScheduleHTML(){
         <button class="linkbtn" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">Remove day</button></div>
       ${tripDayDriveHTML(d,idx)}
       ${d.courses.length?d.courses.map(i=>tripDayCourseRowHTML(i,d.id)).join(''):`<p class="hint" style="margin:8px 10px">No courses assigned yet — drag one in, or use the dropdown on an unscheduled course below.</p>`}
-      ${tripDaySuggestedTown(d)?`<div class="tb-day-town">Staying near: <b>${tripDaySuggestedTown(d)}</b></div>`:''}
+      ${tripDaySuggestedTown(d)?`<div class="tb-day-town">Staying near: <b>${tripDaySuggestedTown(d)}</b>${d.courses.length&&ORS_PROXY_URL?` <a href="#" class="linkbtn" onclick="event.preventDefault();tbTogglePois(${d.id})">${tbPoiOn.has(d.id)?'Hide POIs':'Show POIs'}</a>`:''}</div>`:''}
+      ${tbPoiListHTML(d)}
     </div>`).join('');
   const unschedHTML=unscheduled.length?`
     <div class="tb-day" style="border-style:dashed" ondragover="event.preventDefault();" ondrop="event.preventDefault();if(tbDrag!=null)tbMoveCourseTo(tbDrag,null,null);tbDrag=null;">
