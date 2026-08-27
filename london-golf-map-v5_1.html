@@ -1299,7 +1299,7 @@ function tripDayAutoEstimate(dayIdx){
    configured yet" — every call below then returns null immediately and
    every caller already falls back to the GOLF-43 heuristic, so this is
    safe to leave blank indefinitely. */
-const ORS_PROXY_URL='';
+const ORS_PROXY_URL='https://geofftheworker.stefand94.workers.dev/';
 const ORS_CACHE_KEY='golfmap:legcache:v1';
 function orsCacheLoad(){try{return JSON.parse(localStorage.getItem(ORS_CACHE_KEY)||'{}');}catch(e){return{};}}
 function orsCacheSave(c){try{localStorage.setItem(ORS_CACHE_KEY,JSON.stringify(c));}catch(e){}}
