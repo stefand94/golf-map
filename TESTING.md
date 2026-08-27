@@ -217,6 +217,28 @@ that touches rendering, filters, or persistence:
     page with a non-empty cart — the route should be present on load
     (without forcing a re-fit/zoom). Opening and closing the "Correct
     this"/export drawer must not clear this route either.
+16. **Day-by-day itinerary schedule (GOLF-33).** With 4+ courses in the
+    cart, click "+ Add day" twice — Day 1 and Day 2 sections should
+    appear, all cart courses starting in "Unscheduled". Use a course row's
+    day dropdown to assign it to Day 1 — it should move out of Unscheduled
+    into the Day 1 section immediately, and the map marker for that course
+    should recolour to Day 1's colour and relabel to "D1·n". Assign two
+    more courses to Day 2 — Day 2's section should show a "Drive to
+    today's first stop" number input (Day 1 should NOT show one — no
+    previous day to drive from); enter a value (e.g. 45) and confirm it's
+    still there after switching discovery tabs or adding a search result
+    (i.e. survives a `renderTripBuilder()` re-render), and after a full
+    page reload. The map's numbered route should follow day order (all of
+    Day 1's stops, then all of Day 2's), with each day's markers a
+    distinct colour from the others and from any unscheduled/discovery
+    markers. Remove a scheduled course from the cart entirely (✕) — it
+    should disappear from its day with no leftover blank slot or console
+    error. Click "Remove day" on a day that still has courses — those
+    courses should fall back to "Unscheduled", not disappear from the
+    cart. Open "Review & export corrections" with a day schedule in
+    place — the exported JSON should include a `days` array (day number,
+    courses, and the manually-entered `driveInMinutes` where set) labelled
+    as a user estimate, alongside the existing flat `trip` array.
 
 ## What's explicitly not covered
 

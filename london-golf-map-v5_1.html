@@ -88,6 +88,14 @@
   .cart-total-label{color:var(--paper-2);font:600 10px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;opacity:.75}
   .cart-total-coverage{color:var(--paper-2);font-size:10.5px;opacity:.6}
   .cart-total-amount{color:#fff;font-variant-numeric:tabular-nums;font-size:22px;font-weight:700}
+  /* GOLF-33: day-schedule blocks in the Trip Builder pane */
+  .tb-day{border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:10px}
+  .tb-day-head{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--paper);font-weight:700;font-size:12.5px}
+  .tb-day-drive{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--paper-2);font-size:11.5px;color:var(--stone)}
+  .tb-day-drive input{width:60px}
+  .tb-day-course{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line)}
+  .tb-day-course:last-child{border-bottom:none}
+  .tb-day-course select{font-size:11px;max-width:120px}
 
   /* GOLF-31: the old eyebrow/h1/standfirst mast ate ~140px of the panel's
      vertical space on every screen, including Trip Builder — traded for a
@@ -394,6 +402,44 @@ function toggleWant(i){if(WANT.has(i))WANT.delete(i);else{WANT.add(i);PLAYED.del
 const TRIP=new Set();
 let tripSeq=[];
 let tripLastAdded=null;
+/* GOLF-33: day-by-day schedule layered over the flat cart. Each day is
+   {id, courses:[courseIndex,...], driveIn:minutes|null} — driveIn is a
+   manually-entered estimate of the drive to reach this day's first stop
+   from wherever the previous day ended (no per-course-within-a-day or
+   hotel-to-course timing, per this round's scope). Days are identified by
+   a stable `id` (not array position) specifically so a future revision
+   can attach a real calendar date to a day object without restructuring
+   anything already keyed on day order. A course can only be scheduled
+   once it's in TRIP — this is an arrangement of the existing cart, not a
+   separate selection step, so search-to-add/discovery keep feeding it the
+   same way they feed the flat cart today. */
+let tripDays=[];
+let tripDayNextId=1;
+function tripDayAdd(){tripDays.push({id:tripDayNextId++,courses:[],driveIn:null});saveState();}
+/* Removes a course from whichever day (if any) currently holds it —
+   called both when explicitly moving a course to a different day and
+   when the course leaves the cart entirely, so tripDays never holds a
+   dangling reference to a course no longer in TRIP. */
+function tripDayRemoveCourse(i){tripDays.forEach(d=>{d.courses=d.courses.filter(x=>x!==i)});}
+function tripDaySetCourse(i,dayId){
+  tripDayRemoveCourse(i);
+  if(dayId!=null){const d=tripDays.find(d=>d.id===dayId);if(d)d.courses.push(i);}
+  saveState();
+}
+function tripDayRemove(dayId){
+  tripDays=tripDays.filter(d=>d.id!==dayId);
+  saveState();
+}
+function tripDaySetDriveIn(dayId,mins){
+  const d=tripDays.find(d=>d.id===dayId);if(!d)return;
+  d.driveIn=(mins===''||mins==null||isNaN(mins))?null:Math.max(0,Math.round(mins));
+  saveState();
+}
+/* Courses in the cart not yet assigned to any day. */
+function tripUnscheduled(){
+  const scheduled=new Set(tripDays.flatMap(d=>d.courses));
+  return tripSeq.filter(i=>!scheduled.has(i));
+}
 function toggleTrip(i){
   /* GOLF-36 fix: tbAnchor previously only got set inside tbSelect() (the
      "pick a nearby suggestion" path) — adding a course straight from a
@@ -407,6 +453,7 @@ function toggleTrip(i){
     TRIP.delete(i);tripSeq=tripSeq.filter(x=>x!==i);
     if(tripLastAdded===i)tripLastAdded=tripSeq.length?tripSeq[tripSeq.length-1]:null;
     if(tbAnchor===i)tbAnchor=tripSeq.length?tripSeq[tripSeq.length-1]:null;
+    tripDayRemoveCourse(i); // GOLF-33: no orphaned day references once a course leaves the cart
   }
   else{TRIP.add(i);tripSeq.push(i);tripLastAdded=i;tbAnchor=i;}
   saveState();render();
@@ -457,6 +504,16 @@ function loadStoredState(){
      insertion order if the saved sequence is missing/stale (e.g. state
      saved before GOLF-31, or corrupted). */
   tripSeq=(Array.isArray(saved.tripSeq)&&saved.tripSeq.length===TRIP.size&&saved.tripSeq.every(i=>TRIP.has(i)))?saved.tripSeq.slice():[...TRIP];
+  /* GOLF-33: day-schedule layer over the cart. Validate defensively —
+     drop any day whose shape is wrong, and strip any scheduled course
+     that's no longer in TRIP (e.g. removed from the cart in a session
+     that predates this field, or storage corruption) rather than trusting
+     stale/foreign JSON. */
+  if(Array.isArray(saved.tripDays)){
+    tripDays=saved.tripDays.filter(d=>d&&typeof d.id!=='undefined'&&Array.isArray(d.courses))
+      .map(d=>({id:d.id,courses:d.courses.filter(i=>TRIP.has(i)),driveIn:typeof d.driveIn==='number'?d.driveIn:null}));
+    tripDayNextId=Math.max(0,...tripDays.map(d=>d.id))+1;
+  }
   if(saved.filters){['access','price','region','flag','arch'].forEach(k=>{
     (saved.filters[k]||[]).forEach(v=>state[k].add(v));});}
   if(saved.q)state.q=saved.q;
@@ -468,7 +525,7 @@ function saveState(){
     const c=map?map.getCenter():null;
     localStorage.setItem(LS_KEY,JSON.stringify({
       edits:EDITS,
-      played:[...PLAYED],want:[...WANT],trip:[...TRIP],tripSeq:tripSeq,
+      played:[...PLAYED],want:[...WANT],trip:[...TRIP],tripSeq:tripSeq,tripDays:tripDays,
       filters:{access:[...state.access],price:[...state.price],region:[...state.region],flag:[...state.flag],arch:[...state.arch]},
       q:state.q,sort:state.sort,
       mapCenter:c?[c.lat,c.lng]:undefined,mapZoom:map?map.getZoom():undefined
@@ -819,12 +876,20 @@ function tripOrder(indices){
   }
   return order;
 }
-function tripShowOrdered(order,clear=true,fit=true){
+/* GOLF-33: small fixed palette so each day's stops read as visually
+   distinct on the map — cycles if there are more days than colors rather
+   than erroring. Unscheduled stops (dayOf undefined/null) keep the
+   original gold fill, matching pre-GOLF-33 behavior exactly. */
+const TRIP_DAY_COLORS=['#E6B400','#4C8C6B','#B25A9E','#3E7CB1','#C1553D','#7A6BC9'];
+function tripShowOrdered(order,clear=true,fit=true,dayOf=null){
   if(clear)tripClear();
   const pts=[];
   order.forEach((i,idx)=>{
-    L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:'#1B2733',weight:2.5,fillColor:'#E6B400',fillOpacity:1})
-      .bindTooltip(String(idx+1),{permanent:true,direction:'center',className:'trip-num'}).addTo(tripLayer);
+    const day=dayOf?dayOf.get(i):null;
+    const fill=day!=null?TRIP_DAY_COLORS[(day-1)%TRIP_DAY_COLORS.length]:'#E6B400';
+    const label=day!=null?`D${day}·${idx+1}`:String(idx+1);
+    L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:'#1B2733',weight:2.5,fillColor:fill,fillOpacity:1})
+      .bindTooltip(label,{permanent:true,direction:'center',className:'trip-num'}).addTo(tripLayer);
     pts.push([C[i].lat,C[i].lng]);
     /* GOLF-35: nearest-station markers make sense in the normal popup view,
        but inside Trip Builder they zig-zag station->CourseA->station->CourseB
@@ -842,42 +907,12 @@ function tripShowOrdered(order,clear=true,fit=true){
   if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
   return pts;
 }
-/* GOLF-31: order is now tripSeq — the visitor's own arrangement (drag order
-   via tbMove()'s up/down controls below), not a recomputed greedy guess.
-   "Auto-order" stays available as an opt-in shortcut back to tripOrder()'s
-   nearest-neighbour walk, rather than silently overwriting a manual edit. */
-function tripListHTML(order,cost){
-  if(!order.length)return`<p class="hint">No courses in your trip yet. Open any course's popup and hit <b>Add to trip</b>.</p>`;
-  return`<p style="font-size:11.5px;color:var(--stone);margin:0 0 10px">Your order — as the crow flies, not a real route. Use the arrows to rearrange, or <a href="#" class="linkbtn" onclick="event.preventDefault();tripAutoOrder()">auto-order by nearest-neighbour</a>.</p>
-    <div class="cart">
-    ${order.map((i,idx)=>{
-      const fee=extractFee(V(i,'wd'));
-      return`<div class="cart-row">
-      <div style="display:flex;align-items:center;gap:6px;min-width:0">
-        <span class="cart-move">
-          <button class="btn2 ghost" title="Move earlier" ${idx===0?'disabled':''} onclick="tbMove(${i},-1)">▲</button>
-          <button class="btn2 ghost" title="Move later" ${idx===order.length-1?'disabled':''} onclick="tbMove(${i},1)">▼</button>
-        </span>
-        <div class="cart-course">
-          <span class="cart-idx">${idx+1}.</span>
-          <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${V(i,'n')}</a>
-          <div class="cart-region">${C[i].r}</div>
-        </div>
-      </div>
-      <div class="cart-price">
-        <span class="cart-fee">${fee!=null?`£${fee.toFixed(0)}`:'—'}</span>
-        <button class="btn2 ghost cart-remove" title="Remove from trip" onclick="toggleTrip(${i})">✕</button>
-      </div>
-    </div>`;}).join('')}
-    </div>
-    <div class="cart-total">
-      <div>
-        <div class="cart-total-label">Rough total (weekday fees)</div>
-        <div class="cart-total-coverage">${cost.covered} of ${cost.of} course${cost.of===1?'':'s'} have a parseable fee</div>
-      </div>
-      <div class="cart-total-amount">${cost.covered?`£${cost.total.toFixed(0)}`:'—'}</div>
-    </div>`;
-}
+/* GOLF-33 note: the flat cart list (tripListHTML(), with its ▲/▼ tbMove()
+   reordering) that used to render inside the pane here has been replaced
+   by tripDayScheduleHTML() below, which arranges the same tripSeq cart
+   into named days instead of one flat ordered list. tbMove() itself is
+   kept — order-within-tripSeq is still what drives the flat fallback
+   route (tripDayOrder() when no days exist yet) and the JSON export. */
 function tripAutoOrder(){
   tripSeq=tripOrder([...TRIP]);
   saveState();
@@ -923,9 +958,24 @@ function tbResultsHTML(items){
    the cart changes outside the pane (toggleTrip/tbMove from a popup), so
    there's always visible feedback on the map even when Trip Builder isn't
    open. */
+/* GOLF-33: full itinerary order for the map/route — scheduled days in
+   day order (each day's own course order preserved), then any
+   not-yet-scheduled cart courses appended at the end so they still show
+   on the route even before being assigned a day. Falls back to the plain
+   flat tripSeq order when no days exist yet (pre-GOLF-33 behavior). Also
+   returns a courseIndex->dayPosition map so the map/list can colour- and
+   label-code stops by day. */
+function tripDayOrder(){
+  if(!tripDays.length)return{order:tripSeq,dayOf:null};
+  const order=[...tripDays.flatMap(d=>d.courses),...tripUnscheduled()];
+  const dayOf=new Map();
+  tripDays.forEach((d,idx)=>d.courses.forEach(i=>dayOf.set(i,idx+1)));
+  return{order,dayOf};
+}
 function tripDrawCart(fit){
   tripClear();
-  const pts=tripShowOrdered(tripSeq,false,false);
+  const{order,dayOf}=tripDayOrder();
+  const pts=tripShowOrdered(order,false,false,dayOf);
   if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
 }
 /* Draws the confirmed cart route AND the not-yet-added discovery
@@ -933,7 +983,8 @@ function tripDrawCart(fit){
    params exist specifically so these two draws don't wipe each other out. */
 function tbDrawMap(){
   tripClear();
-  const pts1=tripShowOrdered(tripSeq,false,false);
+  const{order,dayOf}=tripDayOrder();
+  const pts1=tripShowOrdered(order,false,false,dayOf);
   const anchor=tbDiscoveryTab==='anchor'?tbEffectiveAnchor():null;
   const pts2=tripShow(tbDiscover(),anchor,false,false);
   const pts=[...pts1,...pts2];
@@ -958,6 +1009,57 @@ function tbSearchResultsHTML(){
       <button class="btn2" style="padding:6px 12px;font-size:11.5px" onclick="tbSelect(${i})">Add</button>
     </div>`).join('');
 }
+/* GOLF-33: day-by-day schedule view for the pane's cart section — a
+   "move to day" select per cart course (assign/reassign/unschedule),
+   a manually-entered drive-in estimate per day (except Day 1, which has
+   no previous day to drive from), and an "Unscheduled" bucket for cart
+   courses not yet placed on a day. Replaces the flat tripListHTML() only
+   inside the pane — exports/outside-pane map feedback keep using the
+   flat tripSeq order untouched. */
+function tripDaySelectHTML(i,currentDayId){
+  const opts=[`<option value=""${currentDayId==null?' selected':''}>Unscheduled</option>`]
+    .concat(tripDays.map((d,idx)=>`<option value="${d.id}"${d.id===currentDayId?' selected':''}>Day ${idx+1}</option>`));
+  return`<select onchange="tripDaySetCourse(${i},this.value===''?null:Number(this.value));renderTripBuilder();tbDrawMap();">${opts.join('')}</select>`;
+}
+function tripDayCourseRowHTML(i,dayId){
+  const fee=extractFee(V(i,'wd'));
+  return`<div class="tb-day-course">
+    <div style="min-width:0">
+      <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${V(i,'n')}</a>
+      <div class="cart-region">${C[i].r}${fee!=null?` · £${fee.toFixed(0)}`:''}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+      ${tripDaySelectHTML(i,dayId)}
+      <button class="btn2 ghost cart-remove" title="Remove from trip" onclick="toggleTrip(${i});renderTripBuilder();tbDrawMap();">✕</button>
+    </div>
+  </div>`;
+}
+function tripDayScheduleHTML(cost){
+  if(!tripSeq.length)return`<p class="hint">No courses in your trip yet. Open any course's popup and hit <b>Add to trip</b>, or search below.</p>`;
+  const unscheduled=tripUnscheduled();
+  const daysHTML=tripDays.map((d,idx)=>`
+    <div class="tb-day">
+      <div class="tb-day-head"><span>Day ${idx+1}${d.courses.length?` — ${d.courses.length} course${d.courses.length===1?'':'s'}`:''}</span>
+        <button class="linkbtn" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">Remove day</button></div>
+      ${idx>0?`<div class="tb-day-drive">Drive to today's first stop: <input type="number" min="0" step="5" value="${d.driveIn??''}" placeholder="—" onchange="tripDaySetDriveIn(${d.id},this.value===''?null:parseFloat(this.value));renderTripBuilder();"> min <span style="opacity:.75">(your estimate — real directions coming later)</span></div>`:''}
+      ${d.courses.length?d.courses.map(i=>tripDayCourseRowHTML(i,d.id)).join(''):`<p class="hint" style="margin:8px 10px">No courses assigned yet — use the dropdown on an unscheduled course below.</p>`}
+    </div>`).join('');
+  const unschedHTML=unscheduled.length?`
+    <div class="tb-day" style="border-style:dashed">
+      <div class="tb-day-head"><span>Unscheduled</span></div>
+      ${unscheduled.map(i=>tripDayCourseRowHTML(i,null)).join('')}
+    </div>`:'';
+  return`<p style="font-size:11.5px;color:var(--stone);margin:0 0 10px">Build your itinerary day by day — assign each course to a day below, or <a href="#" class="linkbtn" onclick="event.preventDefault();tripAutoOrder()">auto-order by nearest-neighbour</a> first to get a sensible starting sequence.</p>
+    ${daysHTML}${unschedHTML}
+    <button class="btn2" onclick="tripDayAdd();renderTripBuilder();tbDrawMap();">+ Add day</button>
+    <div class="cart-total">
+      <div>
+        <div class="cart-total-label">Rough total (weekday fees)</div>
+        <div class="cart-total-coverage">${cost.covered} of ${cost.of} course${cost.of===1?'':'s'} have a parseable fee</div>
+      </div>
+      <div class="cart-total-amount">${cost.covered?`£${cost.total.toFixed(0)}`:'—'}</div>
+    </div>`;
+}
 function renderTripBuilder(){
   const pane=document.getElementById('tb-pane');
   const cartOrder=tripSeq;
@@ -966,7 +1068,7 @@ function renderTripBuilder(){
     <div class="tb-section" style="display:flex;justify-content:space-between;align-items:center">
       <b>Trip Builder</b><button class="linkbtn" id="tb-exit">Exit</button>
     </div>
-    <div class="tb-section" id="tb-cart">${tripListHTML(cartOrder,cost)}</div>
+    <div class="tb-section" id="tb-cart">${tripDayScheduleHTML(cost)}</div>
     <div class="tb-section">
       <div class="fld"><label for="tb-search">Search &amp; add a course</label>
         <input id="tb-search" type="text" placeholder="Course name…" value="${tbSearchQ.replace(/"/g,'&quot;')}"></div>
@@ -1374,7 +1476,12 @@ document.getElementById('open-export').addEventListener('click',()=>{
   const list=corrections();
   const tripOrdered=tripSeq;
   const trip=tripOrdered.map(i=>({course:C[i].n,region:C[i].r,weekdayFee:V(i,'wd')}));
-  const json=JSON.stringify({source:"The Britain Golf Explorer",exported:new Date().toISOString().slice(0,10),corrections:list,trip},null,2);
+  /* GOLF-33: include the day-by-day schedule alongside the flat trip list
+     when one exists — driveIn is the visitor's own manual estimate, not a
+     real route, labelled accordingly so an exported copy stays honest
+     about what it is. */
+  const days=tripDays.length?tripDays.map((d,idx)=>({day:idx+1,driveInMinutes:d.driveIn,driveInNote:d.driveIn!=null?"user-entered estimate, not a real route":undefined,courses:d.courses.map(i=>C[i].n)})):undefined;
+  const json=JSON.stringify({source:"The Britain Golf Explorer",exported:new Date().toISOString().slice(0,10),corrections:list,trip,days},null,2);
   sheet.innerHTML=`<h2>Your corrections</h2>
     <p class="lede">${list.length?`${list.length} ${list.length===1?'entry':'entries'} changed.`:`Nothing corrected yet. Open any course and hit <b>Correct this</b>.`} ${trip.length?`Your trip (${trip.length} course${trip.length===1?'':'s'}) is included below too.`:''} Your corrections, trip, filters and map position are saved to this browser automatically — export below only if you want a portable copy to paste back into our chat.</p>
     ${list.length||trip.length?`<div class="fld"><label for="ex">Export</label><textarea id="ex" style="min-height:220px">${esc(json)}</textarea></div>
@@ -1388,7 +1495,7 @@ document.getElementById('open-export').addEventListener('click',()=>{
 function wipeStoredState(){
   if(!confirm('Clear all saved filters, map position, corrections, played/want-to-play lists and your trip stored in this browser? This cannot be undone unless you exported a copy.'))return;
   Object.keys(EDITS).forEach(k=>delete EDITS[k]);
-  PLAYED.clear();WANT.clear();TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;
+  PLAYED.clear();WANT.clear();TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;tripDays=[];tripDayNextId=1;
   clearStoredState();closeDrawer();render();
 }
 function copyPatch(){const t=document.getElementById('ex');t.select();
