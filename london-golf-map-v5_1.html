@@ -64,6 +64,12 @@
   .tb-pane{display:none;flex-direction:column;overflow-y:auto;flex:1}
   body.trip-mode .filters,body.trip-mode .list{display:none}
   body.trip-mode .tb-pane{display:flex}
+  /* GOLF-41: #trip is a real, bookmarkable/shareable route — give the pane
+     more room than the constrained list-panel width once it's the whole
+     point of the page (map stays visible throughout, just narrower). */
+  @media (min-width:901px){
+    body.trip-mode .app{grid-template-columns:minmax(480px,680px) 1fr}
+  }
   .tb-section{padding:11px 20px;border-bottom:1px solid var(--line)}
   .tb-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
   .tb-row:last-child{border-bottom:none}
@@ -1590,22 +1596,37 @@ function renderTripBuilder(){
     document.getElementById('tb-border').addEventListener('change',run);
   }
 }
-function enterTripBuilder(seedAnchor){
+function enterTripBuilder(seedAnchor,opts){
+  const pushHash=!opts||opts.pushHash!==false;
   map.closePopup();
   tripBuilderOn=true;
   document.body.classList.add('trip-mode');
   tbAnchor=seedAnchor??tbEffectiveAnchor();
   renderTripBuilder();
   tbDrawMap();
+  /* GOLF-41: #trip is a real, shareable/bookmarkable URL — pushState
+     (not a plain location.hash= assignment) so entering doesn't clobber
+     a legitimate earlier back-stack entry, and the popstate listener
+     below is the single source of truth for what "back" does. */
+  if(pushHash&&location.hash!=='#trip')history.pushState({trip:true},'','#trip');
 }
-function exitTripBuilder(){
+function exitTripBuilder(opts){
+  const pushHash=!opts||opts.pushHash!==false;
   tripBuilderOn=false;
   document.body.classList.remove('trip-mode');
   /* Keep the cart's route visible on the map after exiting — only the
      discovery-candidate overlay goes away, not the trip itself. */
   tripDrawCart(false);
   render();
+  if(pushHash&&location.hash==='#trip')history.pushState({trip:false},'',location.pathname+location.search);
 }
+/* GOLF-41: back/forward button support — popstate fires on both real
+   navigation and our own pushState calls above, so guard each branch
+   against re-entering a state we're already in. */
+window.addEventListener('popstate',()=>{
+  if(location.hash==='#trip'){if(!tripBuilderOn)enterTripBuilder(null,{pushHash:false});}
+  else{if(tripBuilderOn)exitTripBuilder({pushHash:false});}
+});
 /* tbSelect: the "pick a nearby course" action — set the anchor to the
    just-picked course BEFORE the mutating toggleTrip() call, since
    toggleTrip() synchronously triggers saveState()->render() which (via
@@ -2009,5 +2030,9 @@ function downloadPatch(){try{const blob=new Blob([document.getElementById('ex').
   catch(e){document.getElementById('copied').textContent='Download blocked here — use Copy instead.'}}
 
 render();
+/* GOLF-41: a direct/shared/bookmarked #trip link opens straight into the
+   Trip Builder pane — pushHash:false since the hash is already correct,
+   no need to push a duplicate history entry for it. */
+if(location.hash==='#trip')enterTripBuilder(null,{pushHash:false});
 if(TRIP.size)tripDrawCart(false);
 </script>

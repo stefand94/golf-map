@@ -361,6 +361,27 @@ that touches rendering, filters, or persistence:
     a plain `YYYY-MM-DD` string on load). No "undefined" anywhere; `node
     scripts/test_data.js` unaffected (no data-file changes).
 
+25. **Trip Builder gets a real URL (GOLF-41).** Navigate directly to
+    `london-golf-map-v5_1.html#trip` (no clicking through the UI first) —
+    the page should load straight into the Trip Builder pane (map/list
+    filters hidden, `body.trip-mode` set), not the normal course-browsing
+    view. Click "Exit" — the URL's hash should clear and the browser's
+    back button state is now "not in trip mode". Re-enter via the header's
+    "Trip Builder" button or a course popup's "Set as anchor course" —
+    both should set the URL to `#trip`. With the browser window wide
+    (>900px), trip mode's pane should be noticeably wider than the normal
+    360–420px list column (roughly 480–680px) since the itinerary is now
+    the point of the page, not a sidebar; the map stays visible throughout,
+    just narrower. Press the browser's Back button while in trip mode —
+    it should exit cleanly (same as clicking "Exit", cart contents
+    untouched); press Forward — it should re-enter cleanly. Bookmark/copy
+    the `#trip` URL, open it in a fresh tab (or reload) — it opens
+    straight into Trip Builder again, same cart (same `localStorage`).
+    Mobile-width pass: the list↔map toggle still works correctly with the
+    pane swapped in for the list. No "undefined" anywhere in a full
+    `popupHTML()` sweep; `node scripts/test_data.js` unaffected (no
+    data-file changes — pure app-state/UI/routing).
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
