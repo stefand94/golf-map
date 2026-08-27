@@ -8,19 +8,20 @@ Britain's golf and find the easiest way to get there.
 
 ## What this is
 
-A single-page interactive map covering 312 golf courses:
+A single-page interactive map covering 322 golf courses:
 
 - **123 London-catchment courses** — pay-and-play/visitor-friendly courses
   swept geographically across Greater London, Herts, Bucks, Surrey, Kent
   and Essex, each linked to its nearest National Rail/Underground station
   and a walk time, with the rail network itself drawn on the map.
-- **England's Top 100** — every nationally-ranked course, shown with its
-  nearest station nationally (straight-line distance, clearly labelled as
-  such) since most sit well outside the London rail network. 6 of these
-  (The Grove, Royal Wimbledon, both Walton Heath courses, The Addington,
-  Knole Park) are also genuinely London-catchment, so they're merged into
-  a single entry there instead of listed twice, and Coombe Hill is already
-  a London-catchment entry too — 100 remaining entries are Top-100-only.
+- **England's Top 100 (and beyond)** — every nationally-ranked course, plus
+  a further tier of notable courses just outside the strict top 100 (110
+  entries total), shown with its nearest station nationally (straight-line
+  distance, clearly labelled as such) since most sit well outside the
+  London rail network. 6 of these (The Grove, Royal Wimbledon, both Walton
+  Heath courses, The Addington, Knole Park) are also genuinely
+  London-catchment, so they're merged into a single entry there instead of
+  listed twice, and Coombe Hill is already a London-catchment entry too.
 - **51 curated Scotland courses + 38 curated Wales courses** — notable
   courses (not a full national directory) sourced from Scottish Golf's and
   Wales Golf's public club directories, shown the same way as the England

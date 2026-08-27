@@ -48,11 +48,11 @@ if (!Array.isArray(C) || !Array.isArray(C_TOP100) || !Array.isArray(C_SCOTLAND) 
   console.error('FAIL: C, C_TOP100, C_SCOTLAND, or C_WALES is not an array — data files did not populate expected globals');
   process.exit(1);
 }
-const EXPECTED_TOTAL = 312;
+const EXPECTED_TOTAL = 322;
 if (C.length !== EXPECTED_TOTAL) {
   fail(`C.length is ${C.length}, expected ${EXPECTED_TOTAL} — update EXPECTED_TOTAL in this script if a course was deliberately added/removed`);
 }
-if (C_TOP100.length !== 100) fail(`C_TOP100.length is ${C_TOP100.length}, expected 100`);
+if (C_TOP100.length !== 110) fail(`C_TOP100.length is ${C_TOP100.length}, expected 110`);
 if (C_SCOTLAND.length !== 51) fail(`C_SCOTLAND.length is ${C_SCOTLAND.length}, expected 51`);
 if (C_WALES.length !== 38) fail(`C_WALES.length is ${C_WALES.length}, expected 38`);
 

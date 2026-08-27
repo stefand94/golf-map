@@ -94,7 +94,7 @@ that touches rendering, filters, or persistence:
 8a. **Marker clustering.** At any zoom wide enough to see more than one
    town's worth of courses (the default country-wide view especially),
    nearby course flags should collapse into a single numbered circular
-   badge rather than rendering as 312 overlapping flags — badge color/size
+   badge rather than rendering as 322 overlapping flags — badge color/size
    should step up with count (small navy → larger ink-dark tiers). Clicking
    a cluster zooms/spiderfies it apart; past `disableClusteringAtZoom` (14)
    every course renders as its own individual flag again, and clicking one
@@ -125,7 +125,7 @@ that touches rendering, filters, or persistence:
    Tube-only station) shouldn't get the roundel.
 10. **Trip Planning anchor search.** Open Trip Planning → By anchor
     course — the anchor field should be a free-text search (not a plain
-    312-option dropdown): typing a partial name (e.g. "Sunning") should
+    322-option dropdown): typing a partial name (e.g. "Sunning") should
     narrow the suggestions to matching courses, and typing a full exact
     name should immediately run the search and populate results/map.
     Typing something that doesn't exactly match any course should show
@@ -204,4 +204,4 @@ that touches rendering, filters, or persistence:
 Visual regression (screenshots), cross-browser testing, real mobile
 devices (the Browser tool's mobile preset is an emulation, not the real
 thing), and load testing — none of these are proportionate for a
-312-course static site with no backend.
+322-course static site with no backend.
