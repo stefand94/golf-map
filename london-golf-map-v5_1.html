@@ -93,6 +93,7 @@
   .tb-day-head{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--paper);font-weight:700;font-size:12.5px}
   .tb-day-drive{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--paper-2);font-size:11.5px;color:var(--stone)}
   .tb-day-drive input{width:60px}
+  .tb-auto-chip{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent-dark);background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:1px 5px}
   .tb-day-town{padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--stone)}
   .tb-day-town b{color:var(--ink)}
   .tb-trips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
@@ -1201,6 +1202,44 @@ function tripDayCourseRowHTML(i,dayId){
     </div>
   </div>`;
 }
+/* GOLF-43: zero-API drive-time default — haversine distance (already used
+   elsewhere for anchor-radius discovery) between the previous day's last
+   course and this day's first course, x a routing-inefficiency factor
+   (real roads aren't straight lines — 1.3 is a standard rule-of-thumb
+   correction) / an assumed average UK A-road/motorway-blend speed,
+   rounded to the nearest 5 minutes. This is only ever a *default* shown
+   via the drive-time input's placeholder — the moment a visitor types a
+   real number, tripDaySetDriveIn() stores it as-is and this estimate is
+   never shown again for that day (the placeholder vanishes for free,
+   standard input behaviour). Superseded by GOLF-45's real ORS-backed
+   estimate once that's built; kept as its fallback even then. */
+const DRIVE_INEFFICIENCY=1.3,DRIVE_AVG_MPH=38;
+function tripDayAutoEstimate(dayIdx){
+  const prev=tripDays[dayIdx-1],day=tripDays[dayIdx];
+  if(!prev||!day||!prev.courses.length||!day.courses.length)return null;
+  const a=C[prev.courses[prev.courses.length-1]],b=C[day.courses[0]];
+  const miles=haversineMiles(a.lat,a.lng,b.lat,b.lng)*DRIVE_INEFFICIENCY;
+  return Math.max(5,Math.round((miles/DRIVE_AVG_MPH*60)/5)*5);
+}
+/* The value actually used wherever a drive time is needed (e.g. GOLF-44's
+   future cost total): the visitor's own typed number if they entered one,
+   else the auto-estimate above — so an unset day still contributes a
+   sensible number rather than silently being treated as zero. */
+function tripDayEffectiveDriveIn(dayIdx){
+  const d=tripDays[dayIdx];
+  if(!d)return{minutes:null,auto:false};
+  if(d.driveIn!=null)return{minutes:d.driveIn,auto:false};
+  return{minutes:tripDayAutoEstimate(dayIdx),auto:true};
+}
+function tripDayDriveHTML(d,idx){
+  if(idx<=0)return'';
+  const eff=tripDayEffectiveDriveIn(idx);
+  const note=eff.auto
+    ?(eff.minutes!=null?`<span class="tb-auto-chip">auto</span> <span style="opacity:.75">estimated from straight-line distance — type a real number if you know it</span>`
+      :`<span style="opacity:.75">(no estimate yet — add a course to both days)</span>`)
+    :`<span style="opacity:.75">(your estimate — real directions coming later)</span>`;
+  return`<div class="tb-day-drive">Drive to today's first stop: <input type="number" min="0" step="5" value="${d.driveIn??''}" placeholder="${eff.auto&&eff.minutes!=null?eff.minutes:'—'}" onchange="tripDaySetDriveIn(${d.id},this.value===''?null:parseFloat(this.value));renderTripBuilder();"> min ${note}</div>`;
+}
 /* GOLF-34a: a plain suggested overnight place per day — no new data
    source/API, just reuses whichever nearest-station name (stn/nearStation,
    both already carry a real place name, often a town) the day's LAST
@@ -1226,7 +1265,7 @@ function tripDayScheduleHTML(cost){
     <div class="tb-day" ondragover="event.preventDefault();" ondrop="event.preventDefault();if(tbDrag!=null)tbMoveCourseTo(tbDrag,${d.id},null);tbDrag=null;">
       <div class="tb-day-head"><span>Day ${idx+1}${d.courses.length?` — ${d.courses.length} course${d.courses.length===1?'':'s'}`:''}</span>
         <button class="linkbtn" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">Remove day</button></div>
-      ${idx>0?`<div class="tb-day-drive">Drive to today's first stop: <input type="number" min="0" step="5" value="${d.driveIn??''}" placeholder="—" onchange="tripDaySetDriveIn(${d.id},this.value===''?null:parseFloat(this.value));renderTripBuilder();"> min <span style="opacity:.75">(your estimate — real directions coming later)</span></div>`:''}
+      ${tripDayDriveHTML(d,idx)}
       ${d.courses.length?d.courses.map(i=>tripDayCourseRowHTML(i,d.id)).join(''):`<p class="hint" style="margin:8px 10px">No courses assigned yet — drag one in, or use the dropdown on an unscheduled course below.</p>`}
       ${tripDaySuggestedTown(d)?`<div class="tb-day-town">Staying near: <b>${tripDaySuggestedTown(d)}</b></div>`:''}
     </div>`).join('');

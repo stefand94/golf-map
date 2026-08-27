@@ -289,6 +289,19 @@ that touches rendering, filters, or persistence:
     reload — it should load cleanly as a single trip named "My trip" with
     nothing lost, not throw or show "undefined" anywhere in the pane.
 
+20. **Auto-estimated drive times (GOLF-43).** Build a 2-day trip with a
+    course far from the first day's course assigned to Day 2 — the Day 2
+    drive-time field should show a placeholder number (not empty) with an
+    "AUTO" chip and "estimated from straight-line distance" text, with the
+    input itself left blank (not pre-filled as a real value). Type a real
+    number into that field — the AUTO chip and estimate text should
+    immediately switch to the existing "(your estimate — real directions
+    coming later)" copy, and the typed value should persist across a
+    reload. Day 1 never shows a drive-time row at all (nothing to drive
+    from). A day with no courses yet, or whose previous day has no
+    courses yet, shows "(no estimate yet — add a course to both days)"
+    instead of a number.
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
