@@ -93,6 +93,8 @@
   .tb-day-head{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--paper);font-weight:700;font-size:12.5px}
   .tb-day-drive{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--paper-2);font-size:11.5px;color:var(--stone)}
   .tb-day-drive input{width:60px}
+  .tb-day-town{padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--stone)}
+  .tb-day-town b{color:var(--ink)}
   .tb-day-course{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);cursor:grab}
   .tb-day-course:last-child{border-bottom:none}
   .tb-day-course:active{cursor:grabbing}
@@ -1081,6 +1083,19 @@ function tripDayCourseRowHTML(i,dayId){
     </div>
   </div>`;
 }
+/* GOLF-34a: a plain suggested overnight place per day — no new data
+   source/API, just reuses whichever nearest-station name (stn/nearStation,
+   both already carry a real place name, often a town) the day's LAST
+   course already has, since that's roughly where the night starts.
+   Falls back to the course's region if no station data exists at all;
+   returns null (rendered as nothing) if neither is available. */
+function tripDaySuggestedTown(day){
+  if(!day.courses.length)return null;
+  const i=day.courses[day.courses.length-1];
+  const stnObj=STN[V(i,'stn')],near=C[i].nearStation,s=stnObj||near;
+  if(s&&s.n)return s.n;
+  return C[i].r||null;
+}
 function tripDayScheduleHTML(cost){
   if(!tripSeq.length)return`<p class="hint">No courses in your trip yet. Open any course's popup and hit <b>Add to trip</b>, or search below.</p>`;
   const unscheduled=tripUnscheduled();
@@ -1095,6 +1110,7 @@ function tripDayScheduleHTML(cost){
         <button class="linkbtn" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">Remove day</button></div>
       ${idx>0?`<div class="tb-day-drive">Drive to today's first stop: <input type="number" min="0" step="5" value="${d.driveIn??''}" placeholder="—" onchange="tripDaySetDriveIn(${d.id},this.value===''?null:parseFloat(this.value));renderTripBuilder();"> min <span style="opacity:.75">(your estimate — real directions coming later)</span></div>`:''}
       ${d.courses.length?d.courses.map(i=>tripDayCourseRowHTML(i,d.id)).join(''):`<p class="hint" style="margin:8px 10px">No courses assigned yet — drag one in, or use the dropdown on an unscheduled course below.</p>`}
+      ${tripDaySuggestedTown(d)?`<div class="tb-day-town">Staying near: <b>${tripDaySuggestedTown(d)}</b></div>`:''}
     </div>`).join('');
   const unschedHTML=unscheduled.length?`
     <div class="tb-day" style="border-style:dashed" ondragover="event.preventDefault();" ondrop="event.preventDefault();if(tbDrag!=null)tbMoveCourseTo(tbDrag,null,null);tbDrag=null;">

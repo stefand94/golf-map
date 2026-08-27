@@ -260,6 +260,18 @@ that touches rendering, filters, or persistence:
     happens to be centred near London. Click "Exit" — the full course
     marker layer should reappear immediately with the correct count.
 
+18. **Suggested overnight town per day (GOLF-34a).** Assign a course with
+    a known nearest station (e.g. any London-catchment course) to a day —
+    the day block should show "Staying near: `<station name>`" beneath
+    its courses. Assign a Scotland/Wales/Top-100 course whose only
+    location signal is `nearStation` (not `stn`) — same behavior, reading
+    the nearest-station name from that field instead. If a day's last
+    course has neither `stn` nor `nearStation`, the line should fall back
+    to the course's region rather than showing nothing broken; if even
+    that's missing, the line should simply not render (no "undefined",
+    no empty "Staying near:"). An empty day (no courses assigned yet)
+    shows no suggestion line at all.
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
