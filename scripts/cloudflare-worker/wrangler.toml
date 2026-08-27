@@ -6,7 +6,7 @@
 # Cloudflare will create a brand-new Worker (with its own new URL and no
 # ORS_API_KEY secret) instead of taking over deploys for the one you
 # already have. Update the line below to the real name before connecting.
-name = "golf-map-ors-proxy"
+name = "geoffthebuilder"
 main = "ors-proxy.js"
 compatibility_date = "2026-08-27"
 
