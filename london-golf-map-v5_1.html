@@ -361,7 +361,7 @@ function archTags(s){
   const t=s.toLowerCase(),out=new Set();
   if(/colt/.test(t))out.add("colt");
   if(/braid/.test(t))out.add("braid");
-  if(/mackenzie/.test(t))out.add("mackenzie");
+  if(/mackenzie/.test(t)&&!/mackenzie ross|tom mackenzie|mackenzie\s*(&|and)\s*ebert/.test(t))out.add("mackenzie");
   if(/abercromby/.test(t))out.add("abercromby");
   if(/taylor/.test(t))out.add("taylor");
   if(/hawtree/.test(t))out.add("hawtree");
