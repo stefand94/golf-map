@@ -302,6 +302,21 @@ that touches rendering, filters, or persistence:
     courses yet, shows "(no estimate yet — add a course to both days)"
     instead of a number.
 
+21. **Trip cost summary (GOLF-44).** Build a multi-day trip spanning 2+
+    scheduled days with courses that have parseable weekday fees. The pane
+    should show three separately-labelled, separately-checkable line
+    items — green fees (with a "X of Y courses have a parseable fee"
+    coverage note), accommodation (one night's typical rate per scheduled
+    day except the last, labelled "typical rate — not live pricing"), and
+    fuel (straight-line-derived mileage × a per-mile rate) — followed by
+    an "Estimated trip total" that sums whichever lines are still checked.
+    Unchecking a line item (e.g. accommodation) immediately drops it from
+    the total by exactly that line's amount, and the state persists across
+    a reload only for the session (the checkboxes are UI state, not saved
+    to `localStorage` — re-opening the pane after a reload defaults both
+    back to checked). No "undefined" anywhere in the pane or a full
+    `popupHTML()` sweep.
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
