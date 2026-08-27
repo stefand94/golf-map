@@ -100,6 +100,8 @@
   .tb-day-drive input{width:60px}
   .tb-auto-chip{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent-dark);background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:1px 5px}
   .tb-auto-chip-real{color:#1a7a3e;border-color:#1a7a3e}
+  .tb-day-date{padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--stone)}
+  .tb-day-date input{margin:0 4px}
   .tb-day-town{padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--stone)}
   .tb-day-town b{color:var(--ink)}
   .tb-poi-list{padding:2px 10px 8px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:3px}
@@ -432,7 +434,7 @@ let tripLastAdded=null;
    same way they feed the flat cart today. */
 let tripDays=[];
 let tripDayNextId=1;
-function tripDayAdd(){tripDays.push({id:tripDayNextId++,courses:[],driveIn:null});saveState();}
+function tripDayAdd(){tripDays.push({id:tripDayNextId++,courses:[],driveIn:null,date:null});saveState();}
 /* Removes a course from whichever day (if any) currently holds it —
    called both when explicitly moving a course to a different day and
    when the course leaves the cart entirely, so tripDays never holds a
@@ -451,6 +453,14 @@ function tripDayRemove(dayId){
 function tripDaySetDriveIn(dayId,mins){
   const d=tripDays.find(d=>d.id===dayId);if(!d)return;
   d.driveIn=(mins===''||mins==null||isNaN(mins))?null:Math.max(0,Math.round(mins));
+  saveState();
+}
+/* GOLF-48: attaching a real date to a day is what lets the cost estimate
+   pick the correct wd/we fee field for that day (see feeFieldForDate()) —
+   entirely optional, defaults to null (pre-GOLF-48 wd-only behavior). */
+function tripDaySetDate(dayId,value){
+  const d=tripDays.find(d=>d.id===dayId);if(!d)return;
+  d.date=(typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value))?value:null;
   saveState();
 }
 /* Courses in the cart not yet assigned to any day. */
@@ -663,7 +673,13 @@ function loadStoredState(){
     const validSet=new Set(trip);
     const tripSeq=(Array.isArray(t.tripSeq)&&t.tripSeq.length===validSet.size&&t.tripSeq.every(i=>validSet.has(i)))?t.tripSeq.slice():[...validSet];
     const tripDays=Array.isArray(t.tripDays)?t.tripDays.filter(d=>d&&typeof d.id!=='undefined'&&Array.isArray(d.courses))
-      .map(d=>({id:d.id,courses:d.courses.filter(i=>validSet.has(i)),driveIn:typeof d.driveIn==='number'?d.driveIn:null})):[];
+      .map(d=>({id:d.id,courses:d.courses.filter(i=>validSet.has(i)),driveIn:typeof d.driveIn==='number'?d.driveIn:null,
+        /* GOLF-48: optional real calendar date (YYYY-MM-DD), user-entered.
+           Validated as a plain well-formed date string here — actual use
+           (picking wd vs we for the cost estimate) lives in
+           feeFieldForDate(). Absent/invalid -> null, same as pre-GOLF-48
+           behavior (always wd). */
+        date:(typeof d.date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d.date))?d.date:null})):[];
     return{
       name:typeof t.name==='string'&&t.name.trim()?t.name.trim():'My trip',
       created:typeof t.created==='number'?t.created:Date.now(),
@@ -1031,6 +1047,41 @@ function tripCostEstimate(indices){
   indices.forEach(i=>{const fee=extractFee(V(i,'wd'));if(fee!=null){total+=fee;covered++}});
   return{total,covered,of:indices.length};
 }
+/* GOLF-48: which fee field (wd/we) a scheduled day should be costed at —
+   Saturday/Sunday if the day has a real calendar date attached, wd
+   otherwise. A day with no date (the default — GOLF-33 deliberately
+   ships day-numbers-only, no calendar anchoring) keeps exactly the old
+   wd-only behavior, so this never regresses anyone who hasn't opted into
+   dating their days. */
+function feeFieldForDate(dateStr){
+  if(!dateStr)return'wd';
+  const d=new Date(dateStr+'T00:00:00');
+  if(isNaN(d.getTime()))return'wd';
+  const dow=d.getDay(); // 0=Sun .. 6=Sat
+  return(dow===0||dow===6)?'we':'wd';
+}
+/* GOLF-48: weekend-aware replacement for tripCostEstimate(tripSeq) in the
+   cost summary below — a course scheduled on a dated day is costed at
+   that day's correct wd/we rate; a course with no day-date (including
+   every Unscheduled course, which has no day context at all) falls back
+   to the plain wd-only behavior tripCostEstimate() already had. */
+function tripCostEstimateByDay(){
+  let total=0,covered=0,of=0;
+  tripDays.forEach(d=>{
+    const field=feeFieldForDate(d.date);
+    d.courses.forEach(i=>{
+      of++;
+      const fee=extractFee(V(i,field));
+      if(fee!=null){total+=fee;covered++;}
+    });
+  });
+  tripUnscheduled().forEach(i=>{
+    of++;
+    const fee=extractFee(V(i,'wd'));
+    if(fee!=null){total+=fee;covered++;}
+  });
+  return{total,covered,of};
+}
 /* GOLF-44: typical UK hotel nightly-rate estimate by region — NOT live
    pricing, a ballpark grounded via web search (London ~£120-180,
    Scotland ~£90-150, Wales ~£60-100, rest of UK ~£80-120 as of Aug 2026)
@@ -1057,7 +1108,7 @@ function accomRateFor(region){return ACCOM_RATE_BY_REGION[region]??ACCOM_RATE_DE
 const FUEL_COST_PER_MILE=0.18;
 let tbIncludeAccom=true,tbIncludeFuel=true;
 function tripCostSummary(){
-  const fees=tripCostEstimate(tripSeq);
+  const fees=tripCostEstimateByDay();
   let fuelMiles=0;
   for(let idx=1;idx<tripDays.length;idx++){const m=tripDayLegMiles(idx);if(m!=null)fuelMiles+=m;}
   const fuelCost=fuelMiles*FUEL_COST_PER_MILE;
@@ -1474,6 +1525,7 @@ function tripDayScheduleHTML(){
     <div class="tb-day" ondragover="event.preventDefault();" ondrop="event.preventDefault();if(tbDrag!=null)tbMoveCourseTo(tbDrag,${d.id},null);tbDrag=null;">
       <div class="tb-day-head"><span>Day ${idx+1}${d.courses.length?` — ${d.courses.length} course${d.courses.length===1?'':'s'}`:''}</span>
         <button class="linkbtn" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">Remove day</button></div>
+      <div class="tb-day-date">Date <input type="date" value="${d.date??''}" onchange="tripDaySetDate(${d.id},this.value===''?null:this.value);renderTripBuilder();"> <span style="opacity:.75">optional — used to cost this day at the correct weekday/weekend rate</span></div>
       ${tripDayDriveHTML(d,idx)}
       ${d.courses.length?d.courses.map(i=>tripDayCourseRowHTML(i,d.id)).join(''):`<p class="hint" style="margin:8px 10px">No courses assigned yet — drag one in, or use the dropdown on an unscheduled course below.</p>`}
       ${tripDaySuggestedTown(d)?`<div class="tb-day-town">Staying near: <b>${tripDaySuggestedTown(d)}</b>${d.courses.length&&ORS_PROXY_URL?` <a href="#" class="linkbtn" onclick="event.preventDefault();tbTogglePois(${d.id})">${tbPoiOn.has(d.id)?'Hide POIs':'Show POIs'}</a>`:''}</div>`:''}
@@ -1920,7 +1972,7 @@ document.getElementById('open-export').addEventListener('click',()=>{
      when one exists — driveIn is the visitor's own manual estimate, not a
      real route, labelled accordingly so an exported copy stays honest
      about what it is. */
-  const days=tripDays.length?tripDays.map((d,idx)=>({day:idx+1,driveInMinutes:d.driveIn,driveInNote:d.driveIn!=null?"user-entered estimate, not a real route":undefined,courses:d.courses.map(i=>C[i].n)})):undefined;
+  const days=tripDays.length?tripDays.map((d,idx)=>({day:idx+1,date:d.date||undefined,driveInMinutes:d.driveIn,driveInNote:d.driveIn!=null?"user-entered estimate, not a real route":undefined,courses:d.courses.map(i=>C[i].n)})):undefined;
   /* GOLF-42: export every saved trip, not just the active one — a
      self-backup/share-by-file path that doesn't need any of Pillar 4's
      later sharing tiers. */
@@ -1928,7 +1980,7 @@ document.getElementById('open-export').addEventListener('click',()=>{
   const allTrips=tripListAll().length>1?tripListAll().map(t=>{
     const tt=trips[t.id];
     return{name:tt.name,active:t.id===activeTripId,courses:(tt.tripSeq||[]).map(i=>C[i].n),
-      days:(tt.tripDays||[]).length?tt.tripDays.map((d,idx)=>({day:idx+1,driveInMinutes:d.driveIn,courses:d.courses.map(i=>C[i].n)})):undefined};
+      days:(tt.tripDays||[]).length?tt.tripDays.map((d,idx)=>({day:idx+1,date:d.date||undefined,driveInMinutes:d.driveIn,courses:d.courses.map(i=>C[i].n)})):undefined};
   }):undefined;
   const json=JSON.stringify({source:"The Britain Golf Explorer",exported:new Date().toISOString().slice(0,10),corrections:list,trip,days,allTrips},null,2);
   sheet.innerHTML=`<h2>Your corrections</h2>

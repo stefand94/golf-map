@@ -349,6 +349,18 @@ that touches rendering, filters, or persistence:
     toggles too. No "undefined" anywhere in the pane; `node
     scripts/test_data.js` unaffected (no data-file changes).
 
+24. **Weekend-aware cost estimate (GOLF-48).** Find (or use) a course
+    whose weekday/weekend fees differ. With it scheduled on a day that has
+    no date set, the cost summary's green-fee line should use the weekday
+    rate (unchanged pre-GOLF-48 behavior). Set that day's new optional
+    date input to a real Saturday or Sunday — the green-fee total should
+    immediately switch to the weekend rate; set it to a weekday date and
+    it switches back. A course in Unscheduled (no day, no date context at
+    all) always costs at the weekday rate regardless of any other day's
+    date. The date persists across a reload (stored per-day, validated as
+    a plain `YYYY-MM-DD` string on load). No "undefined" anywhere; `node
+    scripts/test_data.js` unaffected (no data-file changes).
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
