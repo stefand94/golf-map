@@ -95,6 +95,9 @@
   .tb-day-drive input{width:60px}
   .tb-day-town{padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--stone)}
   .tb-day-town b{color:var(--ink)}
+  .tb-trips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+  .tb-trips select{flex:1 1 140px;min-width:0}
+  .tb-trips .btn2{padding:6px 10px;font-size:11.5px;flex:0 0 auto}
   .tb-day-course{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);cursor:grab}
   .tb-day-course:last-child{border-bottom:none}
   .tb-day-course:active{cursor:grabbing}
@@ -519,6 +522,100 @@ function tbMove(i,dir){
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(false);}
 }
 
+/* GOLF-42: multiple named trips, all local (no sharing/accounts). Rather
+   than thread a tripId through every function that already reads/writes
+   TRIP/tripSeq/tripDays/tripLastAdded/tbAnchor directly, `trips` holds a
+   dictionary of named snapshots and the live globals above stay exactly
+   what they were before this ticket: "the current trip's working state."
+   tripSnapshotActive() copies the live globals into trips[activeTripId]
+   (called from saveState(), so every existing mutation path — toggleTrip,
+   tripDayAdd, tbMoveCourseTo, etc. — keeps every trip's stored snapshot
+   fresh for free); tripRestoreActive() does the reverse when switching. */
+let trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1}};
+let activeTripId='default';
+function tripSnapshotActive(){
+  if(!trips[activeTripId])trips[activeTripId]={name:'My trip',created:Date.now()};
+  const t=trips[activeTripId];
+  t.trip=[...TRIP];t.tripSeq=[...tripSeq];t.tripDays=JSON.parse(JSON.stringify(tripDays));
+  t.tripLastAdded=tripLastAdded;t.tbAnchor=tbAnchor;t.tripDayNextId=tripDayNextId;
+  t.modified=Date.now();
+}
+function tripRestoreActive(){
+  const t=trips[activeTripId];
+  TRIP.clear();(t&&t.trip||[]).forEach(i=>TRIP.add(i));
+  tripSeq=t&&Array.isArray(t.tripSeq)?[...t.tripSeq]:[...TRIP];
+  tripDays=t&&Array.isArray(t.tripDays)?JSON.parse(JSON.stringify(t.tripDays)):[];
+  tripLastAdded=t?(t.tripLastAdded??null):null;
+  tbAnchor=t?(t.tbAnchor??null):null;
+  tripDayNextId=t&&t.tripDayNextId?t.tripDayNextId:(Math.max(0,...tripDays.map(d=>d.id))+1);
+}
+/* Fresh course count per trip needs the active trip's own snapshot to be
+   current, hence the snapshot call here too — cheap and idempotent. */
+function tripListAll(){
+  tripSnapshotActive();
+  return Object.entries(trips).map(([id,t])=>({id,name:t.name||'My trip',count:(t.trip||[]).length,modified:t.modified||0}))
+    .sort((a,b)=>b.modified-a.modified);
+}
+function tripSwitchTo(id){
+  if(id===activeTripId||!trips[id])return;
+  tripSnapshotActive();activeTripId=id;tripRestoreActive();
+  saveState();
+  if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(true);}
+  render();
+}
+function tripCreateNew(){
+  const name=prompt('Name this trip:','New trip');
+  if(name==null)return;
+  tripSnapshotActive();
+  const id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  trips[id]={name:name.trim()||'Untitled trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1};
+  activeTripId=id;tripRestoreActive();
+  saveState();
+  if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
+  render();
+}
+function tripRename(id){
+  if(!trips[id])return;
+  const name=prompt('Rename trip:',trips[id].name);
+  if(name==null||!name.trim())return;
+  trips[id].name=name.trim();trips[id].modified=Date.now();
+  saveState();
+  if(tripBuilderOn)renderTripBuilder();
+}
+function tripDuplicate(id){
+  tripSnapshotActive();
+  const src=trips[id];if(!src)return;
+  const newId='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  trips[newId]=JSON.parse(JSON.stringify(src));
+  trips[newId].name=(src.name||'My trip')+' (copy)';
+  trips[newId].created=Date.now();trips[newId].modified=Date.now();
+  activeTripId=newId;tripRestoreActive();
+  saveState();
+  if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
+  render();
+}
+function tripDelete(id){
+  if(!trips[id])return;
+  if(Object.keys(trips).length<=1){alert("You need at least one trip — clear it instead of deleting it.");return;}
+  if(!confirm(`Delete "${trips[id].name}"? This can't be undone.`))return;
+  delete trips[id];
+  if(activeTripId===id){activeTripId=Object.keys(trips)[0];tripRestoreActive();}
+  saveState();
+  if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
+  render();
+}
+function tripSwitcherHTML(){
+  const list=tripListAll();
+  const opts=list.map(t=>`<option value="${t.id}"${t.id===activeTripId?' selected':''}>${esc(t.name)} (${t.count})</option>`).join('');
+  return`<div class="tb-trips">
+    <select id="tb-trip-select" aria-label="Switch trip" onchange="tripSwitchTo(this.value)">${opts}</select>
+    <button class="btn2 ghost" title="New trip" onclick="tripCreateNew()">+ New</button>
+    <button class="btn2 ghost" title="Duplicate this trip" onclick="tripDuplicate(activeTripId)">Duplicate</button>
+    <button class="btn2 ghost" title="Rename this trip" onclick="tripRename(activeTripId)">Rename</button>
+    ${list.length>1?`<button class="btn2 ghost" title="Delete this trip" onclick="tripDelete(activeTripId)">Delete</button>`:''}
+  </div>`;
+}
+
 /* GOLF-31: Trip Builder pane state — a persistent left-pane mode (see
    .tb-pane/body.trip-mode in <style>), not a modal. tbAnchor seeds the
    "nearby" discovery list and moves forward to whatever was most recently
@@ -543,21 +640,41 @@ function loadStoredState(){
   if(saved.edits)Object.assign(EDITS,saved.edits);
   (saved.played||[]).forEach(i=>PLAYED.add(i));
   (saved.want||[]).forEach(i=>WANT.add(i));
-  (saved.trip||[]).forEach(i=>TRIP.add(i));
-  /* tripSeq must exactly match TRIP's membership — fall back to Set
-     insertion order if the saved sequence is missing/stale (e.g. state
-     saved before GOLF-31, or corrupted). */
-  tripSeq=(Array.isArray(saved.tripSeq)&&saved.tripSeq.length===TRIP.size&&saved.tripSeq.every(i=>TRIP.has(i)))?saved.tripSeq.slice():[...TRIP];
-  /* GOLF-33: day-schedule layer over the cart. Validate defensively —
-     drop any day whose shape is wrong, and strip any scheduled course
-     that's no longer in TRIP (e.g. removed from the cart in a session
-     that predates this field, or storage corruption) rather than trusting
-     stale/foreign JSON. */
-  if(Array.isArray(saved.tripDays)){
-    tripDays=saved.tripDays.filter(d=>d&&typeof d.id!=='undefined'&&Array.isArray(d.courses))
-      .map(d=>({id:d.id,courses:d.courses.filter(i=>TRIP.has(i)),driveIn:typeof d.driveIn==='number'?d.driveIn:null}));
-    tripDayNextId=Math.max(0,...tripDays.map(d=>d.id))+1;
+  /* GOLF-42: multiple named trips. Two shapes handled: the current
+     {trips:{id:{...}},activeTripId} shape, validated defensively per
+     trip exactly like the old single-trip validation used to; and a
+     one-time migration from the pre-GOLF-42 flat {trip,tripSeq,tripDays}
+     shape, wrapped into a single "My trip" entry so nobody's in-progress
+     trip is lost when this ships. A brand-new visitor with neither key
+     just keeps the empty default trip the globals already start with. */
+  const validateTripEntry=(t)=>{
+    const trip=Array.isArray(t.trip)?t.trip.filter(i=>Number.isInteger(i)&&C[i]):[];
+    const validSet=new Set(trip);
+    const tripSeq=(Array.isArray(t.tripSeq)&&t.tripSeq.length===validSet.size&&t.tripSeq.every(i=>validSet.has(i)))?t.tripSeq.slice():[...validSet];
+    const tripDays=Array.isArray(t.tripDays)?t.tripDays.filter(d=>d&&typeof d.id!=='undefined'&&Array.isArray(d.courses))
+      .map(d=>({id:d.id,courses:d.courses.filter(i=>validSet.has(i)),driveIn:typeof d.driveIn==='number'?d.driveIn:null})):[];
+    return{
+      name:typeof t.name==='string'&&t.name.trim()?t.name.trim():'My trip',
+      created:typeof t.created==='number'?t.created:Date.now(),
+      modified:typeof t.modified==='number'?t.modified:Date.now(),
+      trip,tripSeq,tripDays,
+      tripLastAdded:validSet.has(t.tripLastAdded)?t.tripLastAdded:null,
+      tbAnchor:validSet.has(t.tbAnchor)?t.tbAnchor:null,
+      tripDayNextId:Math.max(0,...tripDays.map(d=>d.id))+1
+    };
+  };
+  if(saved.trips&&typeof saved.trips==='object'&&Object.keys(saved.trips).length){
+    const nextTrips={};
+    Object.entries(saved.trips).forEach(([id,t])=>{if(t&&typeof t==='object')nextTrips[id]=validateTripEntry(t)});
+    if(Object.keys(nextTrips).length){
+      trips=nextTrips;
+      activeTripId=(typeof saved.activeTripId==='string'&&trips[saved.activeTripId])?saved.activeTripId:Object.keys(trips)[0];
+    }
+  }else if(Array.isArray(saved.trip)){
+    trips={default:validateTripEntry({name:'My trip',trip:saved.trip,tripSeq:saved.tripSeq,tripDays:saved.tripDays})};
+    activeTripId='default';
   }
+  tripRestoreActive();
   if(saved.filters){['access','price','region','flag','arch'].forEach(k=>{
     (saved.filters[k]||[]).forEach(v=>state[k].add(v));});}
   if(saved.q)state.q=saved.q;
@@ -566,10 +683,11 @@ function loadStoredState(){
 }
 function saveState(){
   try{
+    tripSnapshotActive();
     const c=map?map.getCenter():null;
     localStorage.setItem(LS_KEY,JSON.stringify({
       edits:EDITS,
-      played:[...PLAYED],want:[...WANT],trip:[...TRIP],tripSeq:tripSeq,tripDays:tripDays,
+      played:[...PLAYED],want:[...WANT],trips,activeTripId,
       filters:{access:[...state.access],price:[...state.price],region:[...state.region],flag:[...state.flag],arch:[...state.arch]},
       q:state.q,sort:state.sort,
       mapCenter:c?[c.lat,c.lng]:undefined,mapZoom:map?map.getZoom():undefined
@@ -1139,6 +1257,7 @@ function renderTripBuilder(){
     <div class="tb-section" style="display:flex;justify-content:space-between;align-items:center">
       <b>Trip Builder</b><button class="linkbtn" id="tb-exit">Exit</button>
     </div>
+    <div class="tb-section">${tripSwitcherHTML()}</div>
     <div class="tb-section" id="tb-cart">${tripDayScheduleHTML(cost)}</div>
     <div class="tb-section">
       <div class="fld"><label for="tb-search">Search &amp; add a course</label>
@@ -1561,7 +1680,16 @@ document.getElementById('open-export').addEventListener('click',()=>{
      real route, labelled accordingly so an exported copy stays honest
      about what it is. */
   const days=tripDays.length?tripDays.map((d,idx)=>({day:idx+1,driveInMinutes:d.driveIn,driveInNote:d.driveIn!=null?"user-entered estimate, not a real route":undefined,courses:d.courses.map(i=>C[i].n)})):undefined;
-  const json=JSON.stringify({source:"The Britain Golf Explorer",exported:new Date().toISOString().slice(0,10),corrections:list,trip,days},null,2);
+  /* GOLF-42: export every saved trip, not just the active one — a
+     self-backup/share-by-file path that doesn't need any of Pillar 4's
+     later sharing tiers. */
+  tripSnapshotActive();
+  const allTrips=tripListAll().length>1?tripListAll().map(t=>{
+    const tt=trips[t.id];
+    return{name:tt.name,active:t.id===activeTripId,courses:(tt.tripSeq||[]).map(i=>C[i].n),
+      days:(tt.tripDays||[]).length?tt.tripDays.map((d,idx)=>({day:idx+1,driveInMinutes:d.driveIn,courses:d.courses.map(i=>C[i].n)})):undefined};
+  }):undefined;
+  const json=JSON.stringify({source:"The Britain Golf Explorer",exported:new Date().toISOString().slice(0,10),corrections:list,trip,days,allTrips},null,2);
   sheet.innerHTML=`<h2>Your corrections</h2>
     <p class="lede">${list.length?`${list.length} ${list.length===1?'entry':'entries'} changed.`:`Nothing corrected yet. Open any course and hit <b>Correct this</b>.`} ${trip.length?`Your trip (${trip.length} course${trip.length===1?'':'s'}) is included below too.`:''} Your corrections, trip, filters and map position are saved to this browser automatically — export below only if you want a portable copy to paste back into our chat.</p>
     ${list.length||trip.length?`<div class="fld"><label for="ex">Export</label><textarea id="ex" style="min-height:220px">${esc(json)}</textarea></div>
@@ -1575,7 +1703,9 @@ document.getElementById('open-export').addEventListener('click',()=>{
 function wipeStoredState(){
   if(!confirm('Clear all saved filters, map position, corrections, played/want-to-play lists and your trip stored in this browser? This cannot be undone unless you exported a copy.'))return;
   Object.keys(EDITS).forEach(k=>delete EDITS[k]);
-  PLAYED.clear();WANT.clear();TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;tripDays=[];tripDayNextId=1;
+  PLAYED.clear();WANT.clear();
+  trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1}};
+  activeTripId='default';tripRestoreActive();
   clearStoredState();closeDrawer();render();
 }
 function copyPatch(){const t=document.getElementById('ex');t.select();

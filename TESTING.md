@@ -272,6 +272,23 @@ that touches rendering, filters, or persistence:
     no empty "Staying near:"). An empty day (no courses assigned yet)
     shows no suggestion line at all.
 
+19. **Multiple named trips (GOLF-42).** Open Trip Builder, add 2 courses,
+    add a day and assign one to it — this is trip "A". Click "+ New" (a
+    prompt asks for a name) — the pane should show an empty cart; add a
+    different course — trip "B". Switch back to "A" via the trip dropdown
+    — its 2 courses and day assignment should be exactly as left, with no
+    bleed-through from "B". Click "Duplicate" on "A" — the copy should
+    start identical, then diverge the moment you add/remove a course from
+    either copy (editing one must never touch the other). Reload the
+    page — all trips, the active-trip selection, and each trip's own day
+    schedule should survive intact. Try deleting the only remaining trip
+    — it should refuse (alert) rather than leave zero trips; deleting any
+    other trip should fall back to a remaining one cleanly. As a
+    migration check: manually set `localStorage['golfmap:v1']` to an
+    old-format flat `{trip,tripSeq,tripDays}` object (no `trips` key) and
+    reload — it should load cleanly as a single trip named "My trip" with
+    nothing lost, not throw or show "undefined" anywhere in the pane.
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
