@@ -93,9 +93,11 @@
   .tb-day-head{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--paper);font-weight:700;font-size:12.5px}
   .tb-day-drive{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--paper-2);font-size:11.5px;color:var(--stone)}
   .tb-day-drive input{width:60px}
-  .tb-day-course{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line)}
+  .tb-day-course{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);cursor:grab}
   .tb-day-course:last-child{border-bottom:none}
+  .tb-day-course:active{cursor:grabbing}
   .tb-day-course select{font-size:11px;max-width:120px}
+  .tb-drag-handle{color:var(--stone);font-size:14px;flex-shrink:0;line-height:1;user-select:none}
 
   /* GOLF-31: the old eyebrow/h1/standfirst mast ate ~140px of the panel's
      vertical space on every screen, including Trip Builder — traded for a
@@ -439,6 +441,46 @@ function tripDaySetDriveIn(dayId,mins){
 function tripUnscheduled(){
   const scheduled=new Set(tripDays.flatMap(d=>d.courses));
   return tripSeq.filter(i=>!scheduled.has(i));
+}
+/* Google-Maps-stops-style drag reordering. tbDrag holds the course index
+   currently being dragged (set on dragstart, cleared on drop). Dropping on
+   a row moves the dragged course to just before that row, in that row's
+   list (a day's `courses` array, or — for Unscheduled, which has no array
+   of its own — a reordering of tripSeq itself, since tripUnscheduled()'s
+   display order is simply "cart order minus whatever's scheduled").
+   Dropping into a day ALSO reassigns the course to that day (or clears it
+   to Unscheduled) in the same motion — matches how dragging a stop
+   between lists reads on a map-based trip planner: one drag both places
+   and orders it. */
+let tbDrag=null;
+function tbMoveCourseTo(i,dayId,beforeI){
+  tripDayRemoveCourse(i);
+  if(dayId!=null){
+    const d=tripDays.find(d=>d.id===dayId);
+    if(d){
+      const idx=beforeI!=null?d.courses.indexOf(beforeI):-1;
+      if(idx>=0)d.courses.splice(idx,0,i);else d.courses.push(i);
+    }
+  }else{
+    tripSeq=tripSeq.filter(x=>x!==i);
+    const idx=beforeI!=null?tripSeq.indexOf(beforeI):-1;
+    if(idx>=0)tripSeq.splice(idx,0,i);else tripSeq.push(i);
+  }
+  saveState();
+  renderTripBuilder();
+  tbDrawMap();
+}
+/* One-click "start over" — previously the only way to empty the cart was
+   removing each course individually. Confirms first since it's
+   destructive and (unlike most of this app's actions) not something a
+   page reload undoes — the cleared state persists to localStorage too. */
+function tripClearAll(){
+  if(!TRIP.size)return;
+  if(!confirm(`Clear all ${TRIP.size} course${TRIP.size===1?'':'s'} from your trip? This can't be undone.`))return;
+  TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;tripDays=[];tripDayNextId=1;
+  saveState();
+  if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(false);}
+  render();
 }
 function toggleTrip(i){
   /* GOLF-36 fix: tbAnchor previously only got set inside tbSelect() (the
@@ -1023,7 +1065,12 @@ function tripDaySelectHTML(i,currentDayId){
 }
 function tripDayCourseRowHTML(i,dayId){
   const fee=extractFee(V(i,'wd'));
-  return`<div class="tb-day-course">
+  const dayAttr=dayId==null?'':dayId;
+  return`<div class="tb-day-course" draggable="true"
+      ondragstart="tbDrag=${i};event.dataTransfer.effectAllowed='move';"
+      ondragover="event.preventDefault();event.dataTransfer.dropEffect='move';"
+      ondrop="event.preventDefault();event.stopPropagation();if(tbDrag!=null&&tbDrag!==${i})tbMoveCourseTo(tbDrag,${dayId==null?'null':dayId},${i});tbDrag=null;">
+    <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
     <div style="min-width:0">
       <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${V(i,'n')}</a>
       <div class="cart-region">${C[i].r}${fee!=null?` · £${fee.toFixed(0)}`:''}</div>
@@ -1037,21 +1084,29 @@ function tripDayCourseRowHTML(i,dayId){
 function tripDayScheduleHTML(cost){
   if(!tripSeq.length)return`<p class="hint">No courses in your trip yet. Open any course's popup and hit <b>Add to trip</b>, or search below.</p>`;
   const unscheduled=tripUnscheduled();
+  /* GOLF-33 follow-up: each day/unscheduled block is itself a drop target
+     for "append to the end of this list" — a drop that doesn't land on a
+     specific row (e.g. the empty area below the last course, or on the
+     header). Rows stopPropagation() on their own drop so a drop that DOES
+     land on a row isn't double-handled here. */
   const daysHTML=tripDays.map((d,idx)=>`
-    <div class="tb-day">
+    <div class="tb-day" ondragover="event.preventDefault();" ondrop="event.preventDefault();if(tbDrag!=null)tbMoveCourseTo(tbDrag,${d.id},null);tbDrag=null;">
       <div class="tb-day-head"><span>Day ${idx+1}${d.courses.length?` — ${d.courses.length} course${d.courses.length===1?'':'s'}`:''}</span>
         <button class="linkbtn" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">Remove day</button></div>
       ${idx>0?`<div class="tb-day-drive">Drive to today's first stop: <input type="number" min="0" step="5" value="${d.driveIn??''}" placeholder="—" onchange="tripDaySetDriveIn(${d.id},this.value===''?null:parseFloat(this.value));renderTripBuilder();"> min <span style="opacity:.75">(your estimate — real directions coming later)</span></div>`:''}
-      ${d.courses.length?d.courses.map(i=>tripDayCourseRowHTML(i,d.id)).join(''):`<p class="hint" style="margin:8px 10px">No courses assigned yet — use the dropdown on an unscheduled course below.</p>`}
+      ${d.courses.length?d.courses.map(i=>tripDayCourseRowHTML(i,d.id)).join(''):`<p class="hint" style="margin:8px 10px">No courses assigned yet — drag one in, or use the dropdown on an unscheduled course below.</p>`}
     </div>`).join('');
   const unschedHTML=unscheduled.length?`
-    <div class="tb-day" style="border-style:dashed">
+    <div class="tb-day" style="border-style:dashed" ondragover="event.preventDefault();" ondrop="event.preventDefault();if(tbDrag!=null)tbMoveCourseTo(tbDrag,null,null);tbDrag=null;">
       <div class="tb-day-head"><span>Unscheduled</span></div>
       ${unscheduled.map(i=>tripDayCourseRowHTML(i,null)).join('')}
     </div>`:'';
-  return`<p style="font-size:11.5px;color:var(--stone);margin:0 0 10px">Build your itinerary day by day — assign each course to a day below, or <a href="#" class="linkbtn" onclick="event.preventDefault();tripAutoOrder()">auto-order by nearest-neighbour</a> first to get a sensible starting sequence.</p>
+  return`<p style="font-size:11.5px;color:var(--stone);margin:0 0 10px">Drag <span class="tb-drag-handle" style="display:inline;font-size:11px">⠿</span> a course to reorder it or move it between days — like dragging stops on a map — or use each row's dropdown. <a href="#" class="linkbtn" onclick="event.preventDefault();tripAutoOrder()">Auto-order by nearest-neighbour</a> gives you a sensible starting sequence to drag from.</p>
     ${daysHTML}${unschedHTML}
-    <button class="btn2" onclick="tripDayAdd();renderTripBuilder();tbDrawMap();">+ Add day</button>
+    <div class="bar" style="margin-top:2px">
+      <button class="btn2" onclick="tripDayAdd();renderTripBuilder();tbDrawMap();">+ Add day</button>
+      <button class="btn2 ghost" onclick="tripClearAll();">Clear trip</button>
+    </div>
     <div class="cart-total">
       <div>
         <div class="cart-total-label">Rough total (weekday fees)</div>
@@ -1326,6 +1381,15 @@ function render(){
   document.getElementById('trip-badge').textContent=TRIP.size?String(TRIP.size):'';
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
   layer.clearLayers();
+  /* Map-clutter fix: with all 326 course markers still clustering
+     underneath it, the Trip Builder route got lost in whichever dense
+     area (usually London) happened to be on screen, regardless of where
+     the trip actually was. The pane already replaces the filter/course
+     list entirely — the full marker layer is redundant screen noise
+     while it's open, so skip populating it and let tripLayer (the
+     cart/discovery markers) be the only thing on the map. Filters/list
+     stay untouched underneath, ready the moment Trip Builder exits. */
+  if(tripBuilderOn)return;
   let shown=C.map((c,i)=>i).filter(passes);
   const S_={region:(a,b)=>REGIONS.indexOf(C[a].r)-REGIONS.indexOf(C[b].r)||feeNum(a)-feeNum(b),
     fee:(a,b)=>feeNum(a)-feeNum(b),rank:(a,b)=>rankNum(a)-rankNum(b),

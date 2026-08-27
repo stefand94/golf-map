@@ -239,6 +239,26 @@ that touches rendering, filters, or persistence:
     place — the exported JSON should include a `days` array (day number,
     courses, and the manually-entered `driveInMinutes` where set) labelled
     as a user estimate, alongside the existing flat `trip` array.
+17. **Clear trip, drag reordering, and map declutter (stakeholder
+    follow-up on GOLF-33).** With 3+ courses in the cart (mix of scheduled
+    and unscheduled), click "Clear trip" — a confirm dialog should appear
+    ("Clear all N courses..."); cancelling it must leave the cart
+    untouched, confirming it should empty TRIP/tripSeq/tripDays entirely
+    in one click (no need to remove each course individually), clear the
+    mast's cart badge, and clear the map. Drag a course's ⠿ handle onto
+    another course within the same day — it should reorder to just before
+    the drop target, both in the list and in the map's numbered route.
+    Drag an Unscheduled course onto a course inside a day — it should
+    both move into that day AND land at that position (not just append to
+    the end). Drag a scheduled course onto a course in the Unscheduled
+    section — it should move back to Unscheduled. Drop on the empty area
+    below a day's last course (or on an empty day) — the dragged course
+    should append to the end of that day. While the Trip Builder pane is
+    open, confirm the map shows **only** the trip's own markers (cart +
+    discovery candidates) — the full 326-course marker cluster should be
+    entirely absent, even when the trip is somewhere sparse and the map
+    happens to be centred near London. Click "Exit" — the full course
+    marker layer should reappear immediately with the correct count.
 
 ## What's explicitly not covered
 
