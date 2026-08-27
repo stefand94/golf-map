@@ -57,6 +57,6 @@ const LABEL_AT={met:0,met4:8,jub:0,nor:0,nor3:0,pic:0,pic2:0,cen:0,cen3:10,dis:0
 /* Isolated stations: real places, no drawn corridor on this map (either
    off-network for our purposes or too far from the nearest branch to
    fake convincingly). Added as markers only. */
-const ISOLATED=[["Kingston",51.412155,-0.301768,"swr"],["Woking",51.318470,-0.557814,"swr"],["Hemel Hempstead",51.742062,-0.490762,"wcml"]];
+const ISOLATED=[["Kingston",51.412155,-0.301768,"swr"],["Woking",51.318470,-0.557814,"swr"],["Hemel Hempstead",51.742062,-0.490762,"wcml"],["Hounslow West",51.473469,-0.386544,"pic"]];
 
 const MANUAL_IX=["West Hampstead","West Hampstead T'link","Kentish Town","Finsbury Park","Willesden Junction","Barking","Lewisham","Watford Junction","Clapham Junction","Camden Town","Finchley Central","Woodford","Leytonstone","Purley","South Croydon","Grove Park","Surbiton","Raynes Park","Chalfont & Latimer","Harrow & Wealdstone","Upminster","Acton Town","North Acton","Beckenham Junction","Alexandra Palace","Stratford","Blackheath","Bromley South","Sevenoaks","Epsom","Redhill","Bexleyheath"];
