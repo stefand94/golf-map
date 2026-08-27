@@ -434,6 +434,11 @@ function tbMove(i,dir){
    added, so picking Dornoch -> Castle Stuart -> Nairn keeps the discovery
    list walking up the coast rather than staying anchored to the first pick. */
 let tripBuilderOn=false,tbAnchor=null,tbRadius=30,tbDiscoveryTab='anchor';
+/* GOLF-37: free-text search-to-add inside the pane itself, reusing the
+   main list's searchMatches()/levenshtein() fuzzy logic rather than a new
+   scoring scheme — so "type a name, hit Add" behaves consistently with
+   the main search box elsewhere in the app. */
+let tbSearchQ='';
 
 /* ---- persistence (GOLF-9): filters, map view and corrections survive
    a reload via localStorage. The JSON export/import flow below stays
@@ -934,6 +939,25 @@ function tbDrawMap(){
   const pts=[...pts1,...pts2];
   if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
 }
+/* GOLF-37: search results for the pane's own search box — bookable courses
+   not already in the cart, matching tbSearchQ via the existing fuzzy
+   searchMatches(), capped so a broad query doesn't dump the whole dataset. */
+function tbSearchResults(){
+  const q=tbSearchQ.trim().toLowerCase();
+  if(!q)return[];
+  return C.map((c,i)=>i).filter(i=>!TRIP.has(i)&&bookable(i)&&searchMatches(i,q)).slice(0,20);
+}
+function tbSearchResultsHTML(){
+  const q=tbSearchQ.trim();
+  if(!q)return'';
+  const results=tbSearchResults();
+  if(!results.length)return`<p class="hint">No bookable courses match "${q}".</p>`;
+  return results.map(i=>`<div class="tb-row">
+      <div><a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${V(i,'n')}</a>
+        <div style="color:var(--stone);font-size:11.5px">${C[i].r} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
+      <button class="btn2" style="padding:6px 12px;font-size:11.5px" onclick="tbSelect(${i})">Add</button>
+    </div>`).join('');
+}
 function renderTripBuilder(){
   const pane=document.getElementById('tb-pane');
   const cartOrder=tripSeq;
@@ -943,6 +967,11 @@ function renderTripBuilder(){
       <b>Trip Builder</b><button class="linkbtn" id="tb-exit">Exit</button>
     </div>
     <div class="tb-section" id="tb-cart">${tripListHTML(cartOrder,cost)}</div>
+    <div class="tb-section">
+      <div class="fld"><label for="tb-search">Search &amp; add a course</label>
+        <input id="tb-search" type="text" placeholder="Course name…" value="${tbSearchQ.replace(/"/g,'&quot;')}"></div>
+      <div id="tb-search-results">${tbSearchResultsHTML()}</div>
+    </div>
     <div class="tb-section">
       <div class="toggles" style="margin-bottom:10px">
         <button class="togg" id="tb-tab-anchor" aria-pressed="${tbDiscoveryTab==='anchor'}">Nearby</button>
@@ -957,6 +986,11 @@ function renderTripBuilder(){
       <div id="tb-results">${tbResultsHTML(tbDiscover())}</div>
     </div>`;
   document.getElementById('tb-exit').addEventListener('click',exitTripBuilder);
+  const tbSearchEl=document.getElementById('tb-search');
+  tbSearchEl.addEventListener('input',()=>{
+    tbSearchQ=tbSearchEl.value;
+    document.getElementById('tb-search-results').innerHTML=tbSearchResultsHTML();
+  });
   document.getElementById('tb-tab-anchor').addEventListener('click',()=>{tbDiscoveryTab='anchor';renderTripBuilder();tbDrawMap();});
   document.getElementById('tb-tab-region').addEventListener('click',()=>{tbDiscoveryTab='region';renderTripBuilder();tbDrawMap();});
   if(tbDiscoveryTab==='anchor'){

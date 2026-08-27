@@ -189,7 +189,26 @@ that touches rendering, filters, or persistence:
     bug: with no filter active, a Scotland/Wales course should still be
     reachable within a couple of scrolls under the default "by name" sort,
     not buried at the end of an unfiltered list.
-14. **Persistent "Add to trip" map feedback (outside the pane).** With the
+14. **Trip Builder — no station clutter, no stale anchor, search-to-add
+    (GOLF-35/36/37).** Set Royal Dornoch as anchor, add Brora — confirm no
+    train-station marker or dashed station link appears anywhere on the
+    map while the pane is open (only the gold course markers and the trip
+    route itself); open a plain single-course popup outside the pane and
+    confirm its nearest-station marker still shows there as before (this
+    is a Trip-Builder-only suppression, not a global one). Remove both
+    cart entries via ✕ until the cart is empty — the "Nearby" tab should
+    fall back to its empty-state hint, not keep showing Dornoch-area
+    courses. Now, from a course's plain popup in a different part of the
+    country (e.g. Perranporth in Cornwall), click "Add to trip" — re-open
+    the pane and confirm the "Nearby" list shows genuinely nearby courses
+    (e.g. Trevose, St Enodoc) rather than anything left over from Dornoch.
+    Inside the pane, use the new "Search & add a course" box (above the
+    Nearby/By region tabs) to type a partial/misspelled course name — it
+    should reuse the same fuzzy matching as the main search box, list
+    matching bookable courses not already in the cart, and each one's
+    "Add" button should add it to the cart and re-seed the Nearby list
+    from it, same as clicking "Add" from the Nearby/By region lists.
+15. **Persistent "Add to trip" map feedback (outside the pane).** With the
     Trip Builder pane closed, open any course's popup and click "Add to
     trip" — the mast's "Trip Builder" link should immediately show a count
     badge, and the map should redraw/fit to a numbered dashed route
