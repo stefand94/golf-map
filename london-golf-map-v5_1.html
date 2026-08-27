@@ -395,8 +395,20 @@ const TRIP=new Set();
 let tripSeq=[];
 let tripLastAdded=null;
 function toggleTrip(i){
-  if(TRIP.has(i)){TRIP.delete(i);tripSeq=tripSeq.filter(x=>x!==i);if(tripLastAdded===i)tripLastAdded=tripSeq.length?tripSeq[tripSeq.length-1]:null;}
-  else{TRIP.add(i);tripSeq.push(i);tripLastAdded=i;}
+  /* GOLF-36 fix: tbAnchor previously only got set inside tbSelect() (the
+     "pick a nearby suggestion" path) — adding a course straight from a
+     popup's "Add to trip" button left the old anchor from a previous,
+     already-cleared trip in place, so the discovery list kept showing
+     courses near wherever that stale anchor was. Now every add/remove
+     keeps tbAnchor in sync with the cart itself: adding anchors to the
+     course just added; removing the currently-anchored course re-anchors
+     to whatever's now last, or clears to null once the cart is empty. */
+  if(TRIP.has(i)){
+    TRIP.delete(i);tripSeq=tripSeq.filter(x=>x!==i);
+    if(tripLastAdded===i)tripLastAdded=tripSeq.length?tripSeq[tripSeq.length-1]:null;
+    if(tbAnchor===i)tbAnchor=tripSeq.length?tripSeq[tripSeq.length-1]:null;
+  }
+  else{TRIP.add(i);tripSeq.push(i);tripLastAdded=i;tbAnchor=i;}
   saveState();render();
   /* GOLF-31: clicking "Add to trip" straight from a popup (not via the
      Trip Builder pane) previously gave no visible feedback beyond a small
@@ -809,10 +821,16 @@ function tripShowOrdered(order,clear=true,fit=true){
     L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:'#1B2733',weight:2.5,fillColor:'#E6B400',fillOpacity:1})
       .bindTooltip(String(idx+1),{permanent:true,direction:'center',className:'trip-num'}).addTo(tripLayer);
     pts.push([C[i].lat,C[i].lng]);
-    const stnObj=STN[V(i,'stn')],near=C[i].nearStation,s=stnObj||near;
-    if(s){
-      const isNR=stnObj?[...STN_LINES[stnObj.n]].some(k=>!TFL_LINES.has(k)):true;
-      if(isNR)nrStationMarker(s.lat,s.lng,18).addTo(tripLayer);
+    /* GOLF-35: nearest-station markers make sense in the normal popup view,
+       but inside Trip Builder they zig-zag station->CourseA->station->CourseB
+       across the actual trip route — suppress them entirely while the pane
+       is open; the trip route itself is the only line drawn there. */
+    if(!tripBuilderOn){
+      const stnObj=STN[V(i,'stn')],near=C[i].nearStation,s=stnObj||near;
+      if(s){
+        const isNR=stnObj?[...STN_LINES[stnObj.n]].some(k=>!TFL_LINES.has(k)):true;
+        if(isNR)nrStationMarker(s.lat,s.lng,18).addTo(tripLayer);
+      }
     }
   });
   if(order.length>1)L.polyline(order.map(i=>[C[i].lat,C[i].lng]),{color:'#1B2733',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(tripLayer);
@@ -980,7 +998,12 @@ function tbSelect(i){tbAnchor=i;toggleTrip(i);}
    Adds the course to the cart too (it's the first pick of the trip),
    not just anchor-only, matching "select Dornoch -> select Castle
    Stuart -> both are in my cart." */
-function setAsAnchor(i){if(!TRIP.has(i)){TRIP.add(i);saveState();}enterTripBuilder(i)}
+/* Bug found while testing GOLF-35/36: this used to add straight to the
+   TRIP Set without pushing onto tripSeq/tripLastAdded, desyncing the two —
+   the cart display (which renders from tripSeq) would silently drop the
+   anchor course. Route through toggleTrip() so cart/order/anchor all stay
+   in lockstep, same as every other add path. */
+function setAsAnchor(i){if(!TRIP.has(i))toggleTrip(i);enterTripBuilder(i)}
 
 /* GOLF-13: Course Handicap calculator. The formula itself needs no data
    source. courseStats (par/slope/course rating) pre-fills the inputs when
@@ -1331,7 +1354,7 @@ document.getElementById('open-export').addEventListener('click',()=>{
 function wipeStoredState(){
   if(!confirm('Clear all saved filters, map position, corrections, played/want-to-play lists and your trip stored in this browser? This cannot be undone unless you exported a copy.'))return;
   Object.keys(EDITS).forEach(k=>delete EDITS[k]);
-  PLAYED.clear();WANT.clear();TRIP.clear();tripSeq=[];
+  PLAYED.clear();WANT.clear();TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;
   clearStoredState();closeDrawer();render();
 }
 function copyPatch(){const t=document.getElementById('ex');t.select();
