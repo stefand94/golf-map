@@ -317,6 +317,24 @@ that touches rendering, filters, or persistence:
     back to checked). No "undefined" anywhere in the pane or a full
     `popupHTML()` sweep.
 
+22. **Real driving times via the ORS proxy (GOLF-45).** With
+    `ORS_PROXY_URL` left at its default `''`, a multi-day trip's drive-time
+    fields must behave exactly as GOLF-43 documented above (AUTO chip,
+    straight-line heuristic) — confirms the feature is fully inert when
+    unconfigured. To test the live path, temporarily set `ORS_PROXY_URL`
+    to a real (or a stubbed `window.fetch`, in-browser) endpoint, build a
+    2-day trip, and confirm: the drive-time field is briefly unset/AUTO on
+    first render (cache miss fires an async fetch), then updates to a
+    "live" chip with "real driving time via OpenRouteService" copy once
+    the fetch resolves; reloading the page keeps showing the live value
+    instantly (no re-fetch) because it's cached in `localStorage` under
+    `golfmap:legcache:v1`, keyed by the course-pair's coordinates; a
+    stubbed failed/rejected fetch leaves the AUTO/heuristic chip in place
+    with no console error and no broken UI. Revert `ORS_PROXY_URL` back to
+    `''` after testing — it should never be committed non-empty without
+    the stakeholder's actual Worker URL. No "undefined" anywhere; `node
+    scripts/test_data.js` unaffected (no data-file changes).
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile

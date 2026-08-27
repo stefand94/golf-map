@@ -99,6 +99,7 @@
   .tb-day-drive{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--paper-2);font-size:11.5px;color:var(--stone)}
   .tb-day-drive input{width:60px}
   .tb-auto-chip{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent-dark);background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:1px 5px}
+  .tb-auto-chip-real{color:#1a7a3e;border-color:#1a7a3e}
   .tb-day-town{padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--stone)}
   .tb-day-town b{color:var(--ink)}
   .tb-trips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
@@ -1290,22 +1291,73 @@ function tripDayAutoEstimate(dayIdx){
   if(miles==null)return null;
   return Math.max(5,Math.round((miles/DRIVE_AVG_MPH*60)/5)*5);
 }
+/* GOLF-45: real driving time/distance via OpenRouteService, called
+   through a small stateless Cloudflare Worker proxy — see
+   scripts/cloudflare-worker/. The ORS key lives only in the Worker's
+   encrypted secret store; it never appears in this file or in any
+   request this page makes. ORS_PROXY_URL empty ('') means "not
+   configured yet" — every call below then returns null immediately and
+   every caller already falls back to the GOLF-43 heuristic, so this is
+   safe to leave blank indefinitely. */
+const ORS_PROXY_URL='';
+const ORS_CACHE_KEY='golfmap:legcache:v1';
+function orsCacheLoad(){try{return JSON.parse(localStorage.getItem(ORS_CACHE_KEY)||'{}');}catch(e){return{};}}
+function orsCacheSave(c){try{localStorage.setItem(ORS_CACHE_KEY,JSON.stringify(c));}catch(e){}}
+function orsLegKey(aIdx,bIdx){const a=C[aIdx],b=C[bIdx];return a.lat.toFixed(4)+','+a.lng.toFixed(4)+'>'+b.lat.toFixed(4)+','+b.lng.toFixed(4);}
+let orsPending=new Set();
+/* Returns {minutes,miles} from cache, or null if not yet known (proxy
+   not configured, cache miss still loading, or the call failed) — every
+   caller has the GOLF-43 heuristic to fall back to in that case. A cache
+   miss fires an async fetch + localStorage cache + a re-render once it
+   resolves, so re-viewing an unchanged trip never re-hits the proxy. */
+function tripDayRealEstimate(dayIdx){
+  if(!ORS_PROXY_URL)return null;
+  const prev=tripDays[dayIdx-1],day=tripDays[dayIdx];
+  if(!prev||!day||!prev.courses.length||!day.courses.length)return null;
+  const aIdx=prev.courses[prev.courses.length-1],bIdx=day.courses[0];
+  const key=orsLegKey(aIdx,bIdx);
+  const cache=orsCacheLoad();
+  if(cache[key])return cache[key];
+  if(orsPending.has(key))return null;
+  orsPending.add(key);
+  const a=C[aIdx],b=C[bIdx];
+  fetch(ORS_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({origin:[a.lng,a.lat],destination:[b.lng,b.lat]})})
+    .then(r=>r.ok?r.json():Promise.reject(new Error('proxy error '+r.status)))
+    .then(data=>{
+      if(data&&typeof data.minutes==='number'){
+        const c=orsCacheLoad();
+        c[key]={minutes:Math.round(data.minutes),miles:data.miles!=null?Math.round(data.miles*10)/10:null,ts:Date.now()};
+        orsCacheSave(c);
+        if(tripBuilderOn)renderTripBuilder();
+      }
+    })
+    .catch(()=>{ /* silent — heuristic fallback stays in place, nothing to show the user */ })
+    .finally(()=>{orsPending.delete(key);});
+  return null;
+}
 /* The value actually used wherever a drive time is needed (e.g. GOLF-44's
-   future cost total): the visitor's own typed number if they entered one,
-   else the auto-estimate above — so an unset day still contributes a
+   cost total): the visitor's own typed number if they entered one, else
+   a real ORS-backed estimate if one's cached, else the GOLF-43
+   straight-line heuristic — so an unset day always contributes a
    sensible number rather than silently being treated as zero. */
 function tripDayEffectiveDriveIn(dayIdx){
   const d=tripDays[dayIdx];
-  if(!d)return{minutes:null,auto:false};
-  if(d.driveIn!=null)return{minutes:d.driveIn,auto:false};
-  return{minutes:tripDayAutoEstimate(dayIdx),auto:true};
+  if(!d)return{minutes:null,auto:false,real:false};
+  if(d.driveIn!=null)return{minutes:d.driveIn,auto:false,real:false};
+  const real=tripDayRealEstimate(dayIdx);
+  if(real)return{minutes:real.minutes,auto:true,real:true};
+  return{minutes:tripDayAutoEstimate(dayIdx),auto:true,real:false};
 }
 function tripDayDriveHTML(d,idx){
   if(idx<=0)return'';
   const eff=tripDayEffectiveDriveIn(idx);
   const note=eff.auto
-    ?(eff.minutes!=null?`<span class="tb-auto-chip">auto</span> <span style="opacity:.75">estimated from straight-line distance — type a real number if you know it</span>`
-      :`<span style="opacity:.75">(no estimate yet — add a course to both days)</span>`)
+    ?(eff.minutes!=null
+        ?(eff.real
+            ?`<span class="tb-auto-chip tb-auto-chip-real">live</span> <span style="opacity:.75">real driving time via OpenRouteService — type a number to override</span>`
+            :`<span class="tb-auto-chip">auto</span> <span style="opacity:.75">estimated from straight-line distance — type a real number if you know it</span>`)
+        :`<span style="opacity:.75">(no estimate yet — add a course to both days)</span>`)
     :`<span style="opacity:.75">(your estimate — real directions coming later)</span>`;
   return`<div class="tb-day-drive">Drive to today's first stop: <input type="number" min="0" step="5" value="${d.driveIn??''}" placeholder="${eff.auto&&eff.minutes!=null?eff.minutes:'—'}" onchange="tripDaySetDriveIn(${d.id},this.value===''?null:parseFloat(this.value));renderTripBuilder();"> min ${note}</div>`;
 }
