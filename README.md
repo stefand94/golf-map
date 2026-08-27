@@ -8,7 +8,7 @@ Britain's golf and find the easiest way to get there.
 
 ## What this is
 
-A single-page interactive map covering 295 golf courses:
+A single-page interactive map covering 302 golf courses:
 
 - **123 London-catchment courses** — pay-and-play/visitor-friendly courses
   swept geographically across Greater London, Herts, Bucks, Surrey, Kent
@@ -21,7 +21,7 @@ A single-page interactive map covering 295 golf courses:
   Knole Park) are also genuinely London-catchment, so they're merged into
   a single entry there instead of listed twice, and Coombe Hill is already
   a London-catchment entry too — 100 remaining entries are Top-100-only.
-- **44 curated Scotland courses + 28 curated Wales courses** — notable
+- **51 curated Scotland courses + 28 curated Wales courses** — notable
   courses (not a full national directory) sourced from Scottish Golf's and
   Wales Golf's public club directories, shown the same way as the England
   Top 100.
