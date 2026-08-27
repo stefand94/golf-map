@@ -1,5 +1,5 @@
 /**
- * GOLF-45 / GOLF-46 — ORS driving-time + POI proxy.
+ * GOLF-45 / GOLF-46 / GOLF-50 — ORS driving-time + route + POI proxy.
  *
  * A stateless Cloudflare Worker that stands between the golf map (a fully
  * static page with no backend of its own) and OpenRouteService. It exists
@@ -9,9 +9,10 @@
  * server-side (as an encrypted secret, never in this file) and forwards
  * two kinds of request:
  *
- *   1. Driving time/distance (GOLF-45, default — no "mode" field needed):
+ *   1. Driving time/distance/route (GOLF-45/GOLF-50, default — no "mode"
+ *      field needed):
  *      POST {origin:[lng,lat], destination:[lng,lat]}
- *      -> {minutes, miles}
+ *      -> {minutes, miles, route: [[lat,lng],...] | null}
  *
  *   2. Nearby points of interest (GOLF-46):
  *      POST {mode:'pois', point:[lng,lat], radius?:metres, categories?:[id,...]}
@@ -38,8 +39,15 @@
  *    ORS_API_KEY and the Worker's URL both stay exactly as they are.)
  */
 
-const ORS_DIRECTIONS_URL = 'https://api.openrouteservice.org/v2/directions/driving-car';
+// GOLF-50: the /geojson variant returns the actual route geometry
+// alongside the same duration/distance summary the plain endpoint gives —
+// no extra request, no extra cost, just a different response shape.
+const ORS_DIRECTIONS_URL = 'https://api.openrouteservice.org/v2/directions/driving-car/geojson';
 const ORS_POIS_URL = 'https://api.openrouteservice.org/pois';
+// A leg between two golf courses rarely needs more than a couple hundred
+// points to look like a real road at map zoom levels — cap it so the
+// response (and what ends up cached in localStorage) stays small.
+const ROUTE_MAX_POINTS = 150;
 
 export default {
   async fetch(request, env) {
@@ -102,15 +110,31 @@ async function handleRoute(body, env) {
     return json({ error: 'ORS returned invalid JSON' }, 502);
   }
 
-  const summary = data && data.routes && data.routes[0] && data.routes[0].summary;
+  // GOLF-50: the /geojson endpoint wraps the route in a FeatureCollection
+  // instead of the plain endpoint's { routes: [...] } shape.
+  const feature = data && Array.isArray(data.features) && data.features[0];
+  const summary = feature && feature.properties && feature.properties.summary;
   if (!summary) {
     return json({ error: 'no route found' }, 502);
   }
 
+  const coords = feature.geometry && feature.geometry.type === 'LineString' ? feature.geometry.coordinates : null;
   return json({
     minutes: summary.duration / 60,
     miles: summary.distance / 1609.344,
+    // [lat, lng] pairs (flipped from GeoJSON's [lng, lat]) so the client
+    // can feed this straight to Leaflet without any conversion.
+    route: coords ? simplifyRoute(coords.map((c) => [c[1], c[0]])) : null,
   });
+}
+
+function simplifyRoute(points) {
+  if (points.length <= ROUTE_MAX_POINTS) return points;
+  const step = points.length / ROUTE_MAX_POINTS;
+  const out = [];
+  for (let i = 0; i < ROUTE_MAX_POINTS; i++) out.push(points[Math.floor(i * step)]);
+  out.push(points[points.length - 1]);
+  return out;
 }
 
 async function handlePois(body, env) {

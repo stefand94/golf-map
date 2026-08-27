@@ -382,6 +382,58 @@ that touches rendering, filters, or persistence:
     `popupHTML()` sweep; `node scripts/test_data.js` unaffected (no
     data-file changes — pure app-state/UI/routing).
 
+26. **Real driving routes + per-leg colouring (GOLF-50).** With
+    `ORS_PROXY_URL` pointed at a Worker running the current
+    `ors-proxy.js` (the `/geojson` directions variant), build a trip with
+    2+ courses across 2+ days and let a leg's real drive time resolve
+    (the "live" chip appears). The map's route for that leg should draw
+    as a **solid** polyline following real roads (not a straight dashed
+    line), and each leg's colour should correspond to the *arriving*
+    stop's day — a 3-day trip should show visibly distinct colours per
+    day, not one uniform line. Any leg whose real route hasn't resolved
+    yet (or the Worker predates GOLF-50, i.e. no `route` field) falls
+    back to a dashed straight line in the same day colour — confirm this
+    fallback still renders (don't just test the happy path). With
+    `ORS_PROXY_URL` unset (shipped default), the whole trip should render
+    as dashed straight-line-only, colour-coded by day, unchanged from
+    pre-GOLF-50 behavior. No "undefined"; `node scripts/test_data.js`
+    unaffected (no data-file changes).
+
+27. **Free/start/end days (GOLF-51).** In the Trip Builder pane, add a
+    day and set its type dropdown to "Start point", "Free day", or
+    "End point" (in addition to the default "Golf day") — each should
+    show a distinct coloured left border (stone for start/end, purple for
+    free) and kind-appropriate header/hint copy (e.g. a start/end/free
+    day should say something like "no round scheduled" rather than
+    prompting to add a course). Type a place name into that day's place
+    input (e.g. "Edinburgh") — it should persist across a reload. A
+    start/free/end day with no courses should be silently skipped from
+    the map route and cost estimate (same as before this ticket — no
+    special-casing needed elsewhere). No "undefined"; `node
+    scripts/test_data.js` unaffected (no data-file changes).
+
+28. **Hover tooltips on course markers (GOLF-52).** Hover a course marker
+    on the map (or call `marker.openTooltip()` directly if testing via
+    automation, since synthetic hover doesn't reliably trigger Leaflet's
+    tooltip) — a small tooltip should appear showing the course name,
+    green fee, and ranking (where applicable), styled distinctly from the
+    full popup. Spot-check a course with no ranking (no "undefined" where
+    the ranking would go) and a course with no parseable fee. No
+    "undefined" across a full sweep of `courseTooltipHTML(i)` for all
+    courses.
+
+29. **Trip Builder pane layout: search box placement + nearest-5 nearby
+    list (GOLF-53/54).** Open the Trip Builder pane — "Search & add a
+    course" should render near the top, directly under the trip switcher
+    and above the day-schedule cart (not below it). Switch to the
+    "Nearby" discovery tab with an anchor set — it should always show
+    exactly the 5 closest bookable courses not already in the cart,
+    sorted nearest-first by straight-line distance, with no radius input
+    anywhere in the UI. Adding one of those 5 to the cart should
+    immediately re-seed the list from the newly-added course. No
+    "undefined"; `node scripts/test_data.js` unaffected (no data-file
+    changes — pure app-state/UI).
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
