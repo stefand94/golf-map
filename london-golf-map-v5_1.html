@@ -30,6 +30,13 @@
     --font-mono:var(--font-sans);
     --ink:#1B2733;--ink-soft:#3E4C5A;--paper:#EDF1F4;--paper-2:#F5F7F9;--line:#DCE2E7;--stone:#5C6672;
     --accent:#2E5C8A;--accent-dark:#1B4266;--accent-soft:#E4EDF4;
+    /* GOLF-57: Trip Builder sidebar redesign — accent-deep is the
+       text-on-tint colour for hero golf-price/name text (darker than
+       --accent-dark so it still reads clearly on the pale --accent-soft
+       fills used for pills/tags); radius tokens are new, this is the
+       first part of the app that wants rounded cards/pills consistently. */
+    --accent-deep:#122f76;
+    --radius-sm:6px;--radius-md:10px;--radius-lg:16px;
     --shadow-sm:0 1px 2px rgba(27,39,51,.06),0 1px 1px rgba(27,39,51,.08);
     --shadow-md:0 4px 14px rgba(27,39,51,.10),0 2px 4px rgba(27,39,51,.08);
     --shadow-lg:0 14px 40px rgba(27,39,51,.18),0 4px 10px rgba(27,39,51,.10);
@@ -132,6 +139,75 @@
   .tb-day-course:active{cursor:grabbing}
   .tb-day-course select{font-size:11px;max-width:120px}
   .tb-drag-handle{color:var(--stone);font-size:14px;flex-shrink:0;line-height:1;user-select:none}
+  .tb-day-hotel,.tb-day-pois{padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .tb-day-pois .wt{display:inline-flex;align-items:center;gap:4px}
+  .tb-day-pois .wt a{color:inherit;text-decoration:none;opacity:.7}
+  .tb-day-pois .wt a:hover{opacity:1}
+
+  /* GOLF-57: Trip Builder sidebar redesign — nav bar / unified search /
+     tab row / itinerary filter row, the shared chrome sitting above
+     whichever of the five tabs (Itinerary/Day/Costs/Add/Discover) is
+     active. Named tb-* (not itin-*) since these sit above tab content,
+     not inside any one tab. */
+  .tb-navbar{padding:12px 20px 4px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .tb-wordmark{font-family:var(--font-display);font-weight:700;font-size:15px;color:var(--ink)}
+  .tb-navbar-right{display:flex;align-items:center;gap:10px}
+  .tb-pill{font:700 11px var(--font-mono);background:var(--accent-soft);color:var(--accent-deep);padding:4px 10px;border-radius:999px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .tb-search-bar-wrap{padding:8px 20px;position:relative}
+  .tb-search-bar{width:100%;padding:9px 11px 9px 30px;border:1px solid var(--line);border-radius:var(--radius-md);background:#fff;font:400 13px var(--font-sans);color:var(--ink)}
+  .tb-search-bar:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .tb-search-bar-wrap::before{content:'';position:absolute;left:31px;top:50%;transform:translateY(-50%);width:13px;height:13px;
+    border:2px solid var(--stone);border-radius:50%;box-sizing:border-box;pointer-events:none}
+  .tb-search-bar-wrap::after{content:'';position:absolute;left:41px;top:50%;transform:translateY(4px) rotate(45deg);width:2px;height:7px;background:var(--stone);pointer-events:none}
+  .tb-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:6px 20px;border-bottom:1px solid var(--line)}
+  .tb-tab-btn{font:800 10.5px/1 var(--font-sans);letter-spacing:.04em;text-transform:uppercase;padding:8px 4px;border-radius:var(--radius-sm);border:1px solid transparent;background:transparent;color:var(--stone);cursor:pointer;transition:background .12s,color .12s}
+  .tb-tab-btn:hover{color:var(--ink)}
+  .tb-tab-btn[aria-pressed="true"]{background:var(--accent);color:#fff}
+  .tb-filter-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .tb-filter-pills{display:flex;gap:5px;flex-wrap:wrap}
+  .tb-pill-btn{font:600 10.5px var(--font-sans);padding:6px 10px;border-radius:var(--radius-sm);border:1px solid var(--line);background:#fff;color:var(--ink-soft);cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+  .tb-pill-btn:hover{border-color:var(--accent);color:var(--ink)}
+  .tb-pill-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .tb-drive-toggle{margin-left:auto}
+  .tb-tab-content{padding:12px 20px 24px;flex:1}
+
+  /* Itinerary tab: day cards, hero golf rows, flat filtered lists, hotel rail */
+  .itin-card{background:#fff;border-radius:var(--radius-md);box-shadow:var(--shadow-sm);margin-bottom:12px;padding:12px 14px}
+  .itin-card-head{font:800 10.5px var(--font-mono);letter-spacing:.06em;color:var(--accent-dark);margin-bottom:6px}
+  .itin-card-kicker{font:700 10px var(--font-mono);letter-spacing:.05em;text-transform:uppercase;color:var(--stone);margin-bottom:2px}
+  .itin-leg{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:5px 0}
+  .itin-leg-main{display:flex;align-items:baseline;gap:6px;min-width:0}
+  .itin-leg-drive{font-size:10.5px;color:var(--stone);padding-left:6px}
+  .itin-leg-golf{border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
+  .itin-golf-name{font:800 14px var(--font-sans);color:var(--ink)}
+  .itin-golf-price{font:800 16px var(--font-mono);color:var(--accent-deep);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .itin-hotel-name{font:700 11.5px var(--font-sans);color:var(--ink)}
+  .itin-hotel-price{font:700 11.5px var(--font-mono);color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .itin-poi-name{font:700 11.5px var(--font-sans);color:var(--ink)}
+  .itin-day-total{display:flex;justify-content:space-between;border-top:1px dashed var(--line);margin-top:7px;padding-top:7px}
+  .itin-day-total span:first-child{font:800 10px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--stone)}
+  .itin-day-total span:last-child{font:800 15px var(--font-mono);color:var(--ink);font-variant-numeric:tabular-nums}
+  .itin-flat{padding:10px 14px}
+  .itin-flat-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .itin-golf-name-lg{font:800 15px var(--font-sans)}
+  .itin-golf-price-lg{font:800 17px var(--font-mono);color:var(--accent-deep);font-variant-numeric:tabular-nums}
+  .itin-hotel-name-md{font:700 13px var(--font-sans)}
+  .itin-hotel-price-md{font:700 13px var(--font-mono);font-variant-numeric:tabular-nums}
+  .itin-rail{position:relative;padding-left:16px}
+  .itin-rail::before{content:'';position:absolute;left:3px;top:6px;bottom:6px;width:2px;background:var(--accent-soft)}
+  .itin-rail-row{position:relative;margin-bottom:14px}
+  .itin-rail-dot{position:absolute;left:-16px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+
+  /* Costs tab: receipt-style summary */
+  .cost-banner{background:linear-gradient(135deg,var(--accent),var(--accent-dark));border-radius:var(--radius-md);padding:16px 18px;margin-bottom:14px;box-shadow:var(--shadow-md)}
+  .cost-banner-label{font:800 11px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:#fff;opacity:.85}
+  .cost-banner-amount{font:800 40px var(--font-display);color:#fff;font-variant-numeric:tabular-nums;line-height:1.15}
+  .cost-summary-table,.cost-line-table{width:100%;border-collapse:collapse;margin-bottom:8px}
+  .cost-summary-table td,.cost-line-table td{padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+  .cost-summary-table td:first-child,.cost-line-table td:first-child{color:var(--ink)}
+  .cost-summary-table td:last-child,.cost-line-table td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .cost-line-items-label{font:800 10px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--stone);margin:14px 0 4px}
+  .cost-cov{margin:2px 0 0}
 
   /* GOLF-31: the old eyebrow/h1/standfirst mast ate ~140px of the panel's
      vertical space on every screen, including Trip Builder — traded for a
@@ -468,7 +544,43 @@ let tripDayNextId=1;
    result keeps placeLat/placeLng null and stays purely cosmetic, exactly
    as before this ticket. */
 const TRIP_DAY_KINDS={golf:'Golf day',start:'Start point',free:'Free day',end:'End point'};
-function tripDayAdd(){tripDays.push({id:tripDayNextId++,courses:[],driveIn:null,date:null,kind:'golf',place:null,placeLat:null,placeLng:null});saveState();}
+function tripDayAdd(){tripDays.push({id:tripDayNextId++,courses:[],driveIn:null,date:null,kind:'golf',place:null,placeLat:null,placeLng:null,hotel:null,pois:[]});saveState();}
+/* GOLF-57: a day's overnight stay and any points-of-interest stops —
+   manually entered (name + optional £ price), since there's no hotel/POI
+   database in this app to search against. hotel is null or {name,price};
+   price null falls back to accomRateFor() at cost-estimate time, same as
+   before this ticket. pois is a plain array of {name,price} — price is
+   almost always null (no cost data for a POI), kept purely so a priced
+   POI can still be added later without a schema change. */
+function tripDaySetHotel(dayId,name,price){
+  const d=tripDays.find(d=>d.id===dayId);if(!d)return;
+  d.hotel=(name&&String(name).trim())?{name:String(name).trim().slice(0,80),price:(typeof price==='number'&&isFinite(price))?price:null}:null;
+  saveState();
+}
+function tripDayAddPoi(dayId,name,price){
+  const d=tripDays.find(d=>d.id===dayId);if(!d)return;
+  if(!name||!String(name).trim())return;
+  if(!Array.isArray(d.pois))d.pois=[];
+  d.pois.push({name:String(name).trim().slice(0,80),price:(typeof price==='number'&&isFinite(price))?price:null});
+  saveState();
+}
+function tripDayRemovePoi(dayId,idx){
+  const d=tripDays.find(d=>d.id===dayId);if(!d||!Array.isArray(d.pois))return;
+  d.pois.splice(idx,1);
+  saveState();
+}
+function tbPromptHotel(dayId){
+  const name=prompt('Hotel / stay name:');if(name==null||!name.trim())return;
+  const priceStr=prompt('Nightly price in £ (leave blank to use a typical-rate estimate):','');
+  const price=priceStr&&priceStr.trim()?parseFloat(priceStr):null;
+  tripDaySetHotel(dayId,name,Number.isFinite(price)?price:null);
+  renderTripBuilder();
+}
+function tbPromptPoi(dayId){
+  const name=prompt('Point of interest name:');if(name==null||!name.trim())return;
+  tripDayAddPoi(dayId,name);
+  renderTripBuilder();
+}
 /* Removes a course from whichever day (if any) currently holds it —
    called both when explicitly moving a course to a different day and
    when the course leaves the cart entirely, so tripDays never holds a
@@ -746,7 +858,13 @@ function loadStoredState(){
         kind:TRIP_DAY_KINDS[d.kind]?d.kind:'golf',
         place:(typeof d.place==='string'&&d.place.trim())?d.place.trim().slice(0,80):null,
         placeLat:typeof d.placeLat==='number'&&isFinite(d.placeLat)?d.placeLat:null,
-        placeLng:typeof d.placeLng==='number'&&isFinite(d.placeLng)?d.placeLng:null})):[];
+        placeLng:typeof d.placeLng==='number'&&isFinite(d.placeLng)?d.placeLng:null,
+        /* GOLF-57: manually-entered hotel/POI stops — same defensive
+           validation discipline as every other saved field. */
+        hotel:(d.hotel&&typeof d.hotel==='object'&&typeof d.hotel.name==='string'&&d.hotel.name.trim())
+          ?{name:d.hotel.name.trim().slice(0,80),price:typeof d.hotel.price==='number'&&isFinite(d.hotel.price)?d.hotel.price:null}:null,
+        pois:Array.isArray(d.pois)?d.pois.filter(p=>p&&typeof p.name==='string'&&p.name.trim())
+          .map(p=>({name:p.name.trim().slice(0,80),price:typeof p.price==='number'&&isFinite(p.price)?p.price:null})):[]})):[];
     return{
       name:typeof t.name==='string'&&t.name.trim()?t.name.trim():'My trip',
       created:typeof t.created==='number'?t.created:Date.now(),
@@ -1424,8 +1542,14 @@ function tbDrawMap(){
   tripClear();
   const order=tripDayOrder();
   const pts1=tripShowOrdered(order,false,false);
-  const anchor=tbDiscoveryTab==='anchor'?tbEffectiveAnchor():null;
-  const pts2=tripShow(tbDiscover(),anchor,false,false);
+  /* GOLF-57: discovery candidates only clutter the map while the Discover
+     tab is actually the one showing them — other tabs (Itinerary/Day/
+     Costs/Add) just show the confirmed trip route. */
+  let pts2=[];
+  if(tbTab==='disc'){
+    const anchor=tbDiscoveryTab==='anchor'?tbEffectiveAnchor():null;
+    pts2=tripShow(tbDiscover(),anchor,false,false);
+  }
   tbDrawPois();
   const pts=[...pts1,...pts2];
   if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
@@ -1438,15 +1562,27 @@ function tbSearchResults(){
   if(!q)return[];
   return C.map((c,i)=>i).filter(i=>!TRIP.has(i)&&bookable(i)&&searchMatches(i,q)).slice(0,20);
 }
-function tbSearchResultsHTML(){
+/* GOLF-57: the pane's search bar now lives in the shared chrome above
+   every tab (moved up again per GOLF-53's spirit) and adds straight into
+   whichever day the Add tab currently has selected (tbDayShown), falling
+   back to a plain cart add (tbSelect) when no day exists yet. Search
+   itself is still course-only — there's no hotel/city database to search
+   against (see tbPromptHotel/tbPromptPoi for those, manual-entry only). */
+function tbAddToDay(i,dayId){
+  if(!TRIP.has(i)){TRIP.add(i);tripSeq.push(i);tripLastAdded=i;tbAnchor=i;}
+  tripDaySetCourse(i,dayId);
+  saveState();render();renderTripBuilder();tbDrawMap();
+}
+function tbUnifiedSearchResultsHTML(){
   const q=tbSearchQ.trim();
   if(!q)return'';
   const results=tbSearchResults();
-  if(!results.length)return`<p class="hint">No bookable courses match "${q}".</p>`;
+  if(!results.length)return`<p class="hint">No bookable courses match "${esc(q)}".</p>`;
+  const day=tripDays.find(d=>d.id===tbDayShown);
   return results.map(i=>`<div class="tb-row">
-      <div><a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${V(i,'n')}</a>
+      <div><a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         <div style="color:var(--stone);font-size:11.5px">${C[i].r} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
-      <button class="btn2" style="padding:6px 12px;font-size:11.5px" onclick="tbSelect(${i})">Add</button>
+      <button class="btn2" style="padding:6px 12px;font-size:11.5px" onclick="${day?`tbAddToDay(${i},${day.id})`:`tbSelect(${i})`}">${day?`+ Add to Day ${tripDays.indexOf(day)+1}`:'Add'}</button>
     </div>`).join('');
 }
 /* GOLF-33: day-by-day schedule view for the pane's cart section — a
@@ -1725,6 +1861,151 @@ function tbPoiListHTML(day){
   if(!pois.length)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Nothing found nearby.</p></div>`;
   return`<div class="tb-poi-list">${pois.map(p=>`<div class="tb-poi-row"><span>${p.name}</span>${p.category?`<span class="wt">${p.category}</span>`:''}</div>`).join('')}</div>`;
 }
+/* GOLF-57: Trip Builder sidebar redesign — a "leg" is one row in the
+   Itinerary tab's day cards: drive (getting to today), golf (a round),
+   poi (a manually-added stop), hotel (where the day ends). Built
+   entirely from tripDays — no new persisted shape beyond GOLF-57's own
+   hotel/pois fields, this is just a different way of laying the same
+   data out. Order is drive -> golf(s) -> poi(s) -> hotel, since a hotel
+   is naturally where the day *ends*. */
+function tripDayLegs(dayIdx){
+  const d=tripDays[dayIdx];if(!d)return[];
+  const legs=[];
+  if(dayIdx>0){
+    const prev=tripDayLastStop(dayIdx-1),cur=tripDayFirstStop(dayIdx);
+    const eff=tripDayEffectiveDriveIn(dayIdx);
+    const mins=d.driveIn??eff.minutes;
+    if(prev&&cur)legs.push({type:'drive',label:`${prev.name} → ${cur.name}`,mins});
+  }
+  const field=feeFieldForDate(d.date);
+  d.courses.forEach(i=>legs.push({type:'golf',name:V(i,'n'),price:extractFee(V(i,field)),i}));
+  (d.pois||[]).forEach((p,idx)=>legs.push({type:'poi',name:p.name,price:p.price,idx}));
+  if(d.hotel&&d.hotel.name){
+    const price=d.hotel.price??(d.courses.length?accomRateFor(C[d.courses[d.courses.length-1]].r):null);
+    legs.push({type:'hotel',name:d.hotel.name,price});
+  }
+  return legs;
+}
+function tripDayTotal(dayIdx){
+  return tripDayLegs(dayIdx).reduce((sum,l)=>sum+(l.type!=='drive'&&l.price!=null?l.price:0),0);
+}
+function itinLegRowHTML(l){
+  if(l.type==='drive')return`<div class="itin-leg itin-leg-drive">🚗 ${esc(l.label)}${l.mins!=null?` · ${fmtDriveMinutes(l.mins)}`:''}</div>`;
+  if(l.type==='golf')return`<div class="itin-leg itin-leg-golf"><span class="itin-leg-main">⛳ <span class="itin-golf-name">${esc(l.name)}</span></span><span class="itin-golf-price">${l.price!=null?`£${l.price.toFixed(0)}`:'—'}</span></div>`;
+  if(l.type==='hotel')return`<div class="itin-leg itin-leg-hotel"><span class="itin-leg-main">🛏 <span class="itin-hotel-name">${esc(l.name)}</span></span><span class="itin-hotel-price">${l.price!=null?`£${l.price.toFixed(0)}`:'—'}</span></div>`;
+  if(l.type==='poi')return`<div class="itin-leg itin-leg-poi"><span class="itin-leg-main">📷 <span class="itin-poi-name">${esc(l.name)}</span></span><span class="wt">POI</span></div>`;
+  return'';
+}
+function tbItinAllHTML(){
+  if(!tripDays.length)return`<p class="hint">Add a day (Day tab) to start building your itinerary.</p>`;
+  return tripDays.map((d,idx)=>{
+    const legs=tripDayLegs(idx).filter(l=>tbDriveToggle||l.type!=='drive');
+    const total=tripDayTotal(idx);
+    const dow=d.date?new Date(d.date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase():'';
+    return`<div class="itin-card">
+      <div class="itin-card-head">DAY ${String(idx+1).padStart(2,'0')}${dow?` · ${dow}`:''}${d.place?` · ${esc(d.place)}`:''}</div>
+      ${legs.length?legs.map(itinLegRowHTML).join(''):`<p class="hint" style="margin:4px 0">${d.kind!=='golf'?TRIP_DAY_KINDS[d.kind]:'No stops yet.'}</p>`}
+      <div class="itin-day-total"><span>Day total</span><span>${total?`£${total.toFixed(0)}`:'—'}</span></div>
+    </div>`;
+  }).join('');
+}
+function tbItinGolfListHTML(){
+  const rows=[];
+  tripDays.forEach((d,idx)=>{const field=feeFieldForDate(d.date);d.courses.forEach(i=>rows.push({day:idx+1,name:V(i,'n'),price:extractFee(V(i,field))}));});
+  if(!rows.length)return`<p class="hint">No golf rounds scheduled yet.</p>`;
+  return rows.map(r=>`<div class="itin-card itin-flat"><div class="itin-card-kicker">DAY ${r.day}</div>
+    <div class="itin-flat-row"><span class="itin-golf-name-lg">⛳ ${esc(r.name)}</span><span class="itin-golf-price-lg">${r.price!=null?`£${r.price.toFixed(0)}`:'—'}</span></div></div>`).join('');
+}
+function tbItinHotelRailHTML(){
+  const rows=[];
+  tripDays.forEach((d,idx)=>{
+    if(!(d.hotel&&d.hotel.name))return;
+    const price=d.hotel.price??(d.courses.length?accomRateFor(C[d.courses[d.courses.length-1]].r):null);
+    rows.push({day:idx+1,name:d.hotel.name,price});
+  });
+  if(!rows.length)return`<p class="hint">No stays added yet — add one from the Add tab.</p>`;
+  return`<div class="itin-rail">${rows.map(r=>`<div class="itin-rail-row"><div class="itin-rail-dot"></div>
+      <div class="itin-card-kicker">DAY ${r.day}</div>
+      <div class="itin-flat-row"><span class="itin-hotel-name-md">${esc(r.name)}</span><span class="itin-hotel-price-md">${r.price!=null?`£${r.price.toFixed(0)}`:'—'}</span></div>
+    </div>`).join('')}</div>`;
+}
+function tbItinPoiListHTML(){
+  const rows=[];
+  tripDays.forEach((d,idx)=>(d.pois||[]).forEach(p=>rows.push({day:idx+1,name:p.name})));
+  if(!rows.length)return`<p class="hint">No points of interest added yet.</p>`;
+  return rows.map(r=>`<div class="itin-card itin-flat"><div class="itin-flat-row"><span>📷 ${esc(r.name)}</span></div><div class="itin-card-kicker">DAY ${r.day}</div></div>`).join('');
+}
+function tbItineraryHTML(){
+  if(!tripSeq.length&&!tripDays.some(d=>d.hotel||d.place||(d.pois&&d.pois.length)))return`<p class="hint">No courses in your trip yet. Open any course's popup and hit <b>Add to trip</b>, or search above.</p>`;
+  if(tbItinFilter==='golf')return tbItinGolfListHTML();
+  if(tbItinFilter==='hotel')return tbItinHotelRailHTML();
+  if(tbItinFilter==='poi')return tbItinPoiListHTML();
+  return tbItinAllHTML();
+}
+/* Costs tab: a full line-item breakdown, distinct from the older
+   tripCostSummary()/tripCostSummaryHTML() (kept, defined but no longer
+   called — the Day tab now links to this Costs tab instead of repeating
+   a compact estimate inline) — this one itemises every
+   golf/hotel/POI cost individually rather than just totalling them, and
+   folds a day's explicit hotel price in ahead of the regional estimate. */
+function tripCostLineItems(){
+  const items=[];
+  tripDays.forEach((d,idx)=>{
+    const field=feeFieldForDate(d.date);
+    d.courses.forEach(i=>items.push({label:V(i,'n'),cat:'Golf',amount:extractFee(V(i,field)),day:idx+1}));
+    if(d.hotel&&d.hotel.name){
+      const price=d.hotel.price??(d.courses.length?accomRateFor(C[d.courses[d.courses.length-1]].r):null);
+      items.push({label:d.hotel.name,cat:'Stay',amount:price,day:idx+1});
+    }
+    (d.pois||[]).forEach(p=>items.push({label:p.name,cat:'POI',amount:p.price,day:idx+1}));
+  });
+  tripUnscheduled().forEach(i=>items.push({label:V(i,'n'),cat:'Golf',amount:extractFee(V(i,'wd')),day:null}));
+  return items;
+}
+function tripCostBreakdown(){
+  const items=tripCostLineItems();
+  const sum=arr=>arr.reduce((t,x)=>t+(x.amount||0),0);
+  const golf=items.filter(x=>x.cat==='Golf'),stay=items.filter(x=>x.cat==='Stay'),poi=items.filter(x=>x.cat==='POI');
+  let fuelMiles=0;for(let idx=1;idx<tripDays.length;idx++){const m=tripDayLegMiles(idx);if(m!=null)fuelMiles+=m;}
+  const fuelCost=fuelMiles*FUEL_COST_PER_MILE;
+  const golfTotal=sum(golf),stayTotal=sum(stay),poiTotal=sum(poi);
+  const grand=golfTotal+stayTotal+poiTotal+(tbIncludeFuel?fuelCost:0);
+  return{items,golfTotal,golfCov:golf.filter(x=>x.amount!=null).length,golfOf:golf.length,stayTotal,poiTotal,fuelMiles,fuelCost,grand};
+}
+function tbTripTotal(){return tripCostBreakdown().grand;}
+function tbCostsTabHTML(){
+  const b=tripCostBreakdown();
+  return`<div class="cost-banner"><div class="cost-banner-label">TRIP TOTAL</div><div class="cost-banner-amount">£${b.grand.toFixed(0)}</div></div>
+    <table class="cost-summary-table">
+      <tr><td>Golf</td><td>£${b.golfTotal.toFixed(0)}</td></tr>
+      <tr><td>Stays</td><td>£${b.stayTotal.toFixed(0)}</td></tr>
+      <tr><td>Points of interest</td><td>£${b.poiTotal.toFixed(0)}</td></tr>
+      <tr><td><label style="cursor:pointer"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel (est.)</label></td><td>£${b.fuelCost.toFixed(0)}</td></tr>
+    </table>
+    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} golf round${b.golfOf===1?'':'s'} have a parseable fee. Stays use your entered price where set, otherwise a typical regional rate — see <a href="#" class="linkbtn" onclick="event.preventDefault();tbTab='day';renderTripBuilder();">Day tab</a> to add one. Fuel is a straight-line estimate.</p>
+    <div class="cost-line-items-label">Line items</div>
+    <table class="cost-line-table">${b.items.length?b.items.map(x=>`<tr><td>${esc(x.label)} <span class="wt">${x.cat}</span></td><td>${x.amount!=null?`£${x.amount.toFixed(0)}`:'—'}</td></tr>`).join(''):`<tr><td colspan="2" class="hint" style="padding:8px 0">No costs yet.</td></tr>`}</table>`;
+}
+/* Add tab: pick a target day, then add a golf round (search, reusing the
+   nav search bar's results below), a hotel, or a POI to it. */
+function tbAddTabHTML(){
+  const day=tripDays.find(d=>d.id===tbDayShown)||tripDays[0];
+  if(!day)return`<p class="hint">Add a day first (Day tab) before adding stops.</p>`;
+  const idx=tripDays.indexOf(day);
+  return`<p class="hint" style="margin:0 0 8px">Adding to <b>Day ${idx+1}</b>${day.place?` · ${esc(day.place)}`:''}
+      <select onchange="tbDayShown=Number(this.value);renderTripBuilder();">${tripDays.map((d,i)=>`<option value="${d.id}"${d.id===day.id?' selected':''}>Day ${i+1}</option>`).join('')}</select></p>
+    <div class="toggles" style="margin-bottom:10px">
+      <button class="togg" aria-pressed="${tbAddCat==='golf'}" onclick="tbAddCat='golf';renderTripBuilder();">Golf</button>
+      <button class="togg" aria-pressed="${tbAddCat==='hotel'}" onclick="tbAddCat='hotel';renderTripBuilder();">Hotel</button>
+      <button class="togg" aria-pressed="${tbAddCat==='poi'}" onclick="tbAddCat='poi';renderTripBuilder();">POI</button>
+    </div>
+    ${tbAddCat==='golf'?`<p class="hint">Type a course name in the search bar above — results there add straight to Day ${idx+1}.</p>`
+      :tbAddCat==='hotel'?`<p class="hint">No hotel database yet — add one by name and (optionally) a nightly price.</p>
+        <button class="btn2" onclick="tbPromptHotel(${day.id})">+ Add hotel to Day ${idx+1}</button>`
+      :`<p class="hint">Add a point of interest by name.</p>
+        <button class="btn2" onclick="tbPromptPoi(${day.id})">+ Add point of interest to Day ${idx+1}</button>`}`;
+}
+let tbTab='itin',tbItinFilter='all',tbDriveToggle=true,tbAddCat='golf',tbDayShown=null;
 function tripDayScheduleHTML(){
   if(!tripSeq.length)return`<p class="hint">No courses in your trip yet. Open any course's popup and hit <b>Add to trip</b>, or search below.</p>`;
   const unscheduled=tripUnscheduled();
@@ -1754,6 +2035,11 @@ function tripDayScheduleHTML(){
       ${d.courses.length?d.courses.map(i=>tripDayCourseRowHTML(i,d.id)).join(''):`<p class="hint" style="margin:8px 10px">${noRoundHint||''} ${kind==='golf'?'Drag a course in, or use the dropdown on an unscheduled course below.':'Add a course too if you want one — a start/free/end day can still hold a round.'}</p>`}
       ${tripDaySuggestedTown(d)?`<div class="tb-day-town">Staying near: <b>${tripDaySuggestedTown(d)}</b>${d.courses.length&&ORS_PROXY_URL?` <a href="#" class="linkbtn" onclick="event.preventDefault();tbTogglePois(${d.id})">${tbPoiOn.has(d.id)?'Hide POIs':'Show POIs'}</a>`:''}</div>`:''}
       ${tbPoiListHTML(d)}
+      <div class="tb-day-hotel">${d.hotel&&d.hotel.name
+        ?`🛏 ${esc(d.hotel.name)}${d.hotel.price!=null?` · £${d.hotel.price.toFixed(0)}`:' · typical-rate estimate'} <button class="linkbtn" onclick="tripDaySetHotel(${d.id},null,null);renderTripBuilder();">Remove</button>`
+        :`<button class="linkbtn" onclick="tbPromptHotel(${d.id})">+ Add hotel/stay</button>`}</div>
+      <div class="tb-day-pois">${(d.pois||[]).map((p,pi)=>`<span class="wt">📷 ${esc(p.name)} <a href="#" onclick="event.preventDefault();tripDayRemovePoi(${d.id},${pi});renderTripBuilder();" title="Remove">✕</a></span>`).join('')}
+        <button class="linkbtn" onclick="tbPromptPoi(${d.id})">+ Add point of interest</button></div>
     </div>`}).join('');
   const unschedHTML=unscheduled.length?`
     <div class="tb-day" style="border-style:dashed" ondragover="event.preventDefault();" ondrop="event.preventDefault();if(tbDrag!=null)tbMoveCourseTo(tbDrag,null,null);tbDrag=null;">
@@ -1766,84 +2052,115 @@ function tripDayScheduleHTML(){
       <button class="btn2" onclick="tripDayAdd();renderTripBuilder();tbDrawMap();">+ Add day</button>
       <button class="btn2 ghost" onclick="tripClearAll();">Clear trip</button>
     </div>
-    ${tripCostSummaryHTML()}`;
+    <p class="hint" style="margin-top:10px">See the <a href="#" class="linkbtn" onclick="event.preventDefault();tbTab='cost';renderTripBuilder();">Costs tab</a> for a full trip total and line-item breakdown.</p>`;
 }
+/* GOLF-57: Trip Builder sidebar redesign — five tabs (Itinerary/Day/
+   Costs/Add/Discover) under one shared nav bar + unified search + tab
+   row, replacing the old always-everything-at-once pane. Trip switcher,
+   day editing/drag-reorder, and Nearby/By-region discovery are all kept
+   exactly as they were, just moved: switcher into the nav area, day
+   editing into the Day tab, discovery into the Discover tab. */
 function renderTripBuilder(){
   const pane=document.getElementById('tb-pane');
+  if(tbDayShown==null||!tripDays.find(d=>d.id===tbDayShown))tbDayShown=tripDays.length?tripDays[0].id:null;
+  const total=tbTripTotal();
+  const TABS=[['itin','Itinerary'],['day','Day'],['cost','Costs'],['add','Add'],['disc','Discover']];
   pane.innerHTML=`
-    <div class="tb-section" style="display:flex;justify-content:space-between;align-items:center">
-      <b>Trip Builder</b><button class="linkbtn" id="tb-exit">Exit</button>
+    <div class="tb-navbar">
+      <span class="tb-wordmark">Trip Builder</span>
+      <span class="tb-navbar-right"><span class="tb-pill">${tripDays.length} day${tripDays.length===1?'':'s'} · £${total.toFixed(0)}</span>
+        <button class="linkbtn" id="tb-exit">Exit</button></span>
     </div>
-    <div class="tb-section">${tripSwitcherHTML()}</div>
-    <div class="tb-section">
-      <div class="fld"><label for="tb-search">Search &amp; add a course</label>
-        <input id="tb-search" type="text" placeholder="Course name…" value="${tbSearchQ.replace(/"/g,'&quot;')}"></div>
-      <div id="tb-search-results">${tbSearchResultsHTML()}</div>
+    <div class="tb-section" style="padding:6px 20px">${tripSwitcherHTML()}</div>
+    <div class="tb-search-bar-wrap">
+      <input id="tb-unified-search" class="tb-search-bar" type="text" placeholder="Search courses, hotels, cities…" value="${tbSearchQ.replace(/"/g,'&quot;')}">
     </div>
-    <div class="tb-section" id="tb-cart">${tripDayScheduleHTML()}</div>
-    <div class="tb-section">
-      <div class="toggles" style="margin-bottom:10px">
-        <button class="togg" id="tb-tab-anchor" aria-pressed="${tbDiscoveryTab==='anchor'}">Nearby</button>
-        <button class="togg" id="tb-tab-region" aria-pressed="${tbDiscoveryTab==='region'}">By region</button>
-      </div>
-      ${tbDiscoveryTab==='anchor'?`
-        <p class="hint" style="margin:0 0 8px">${tbEffectiveAnchor()!=null?`Nearest 5 courses to <b>${V(tbEffectiveAnchor(),'n')}</b>, straight-line.`:'Add a course from the map, or search above, to see what\'s nearby.'}</p>`
-        :`<div class="fld" style="margin-bottom:8px"><label for="tb-region">Region</label>
-          <select id="tb-region"><option value="">— choose a region —</option>${REGIONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
-        <div class="fld" style="margin-bottom:8px"><label for="tb-border">Include courses just over the border, within (miles)</label><input id="tb-border" type="number" value="8" min="0" max="50"></div>`}
-      <div id="tb-results">${tbResultsHTML(tbDiscover())}</div>
-    </div>`;
+    <div class="tb-section" id="tb-search-results" style="border-top:none${tbSearchQ.trim()?'':';display:none'}">${tbSearchQ.trim()?tbUnifiedSearchResultsHTML():''}</div>
+    <div class="tb-tabs">${TABS.map(([k,label])=>`<button class="tb-tab-btn" data-tab="${k}" aria-pressed="${tbTab===k}">${label}</button>`).join('')}</div>
+    ${tbTab==='itin'?`<div class="tb-filter-row">
+      <div class="tb-filter-pills">${[['all','All'],['golf','Golf'],['hotel','Hotels'],['poi','POI']].map(([k,label])=>
+        `<button class="tb-pill-btn" data-itin-filter="${k}" aria-pressed="${tbItinFilter===k}">${label}</button>`).join('')}</div>
+      <button class="tb-pill-btn tb-drive-toggle" id="tb-drive-toggle" aria-pressed="${tbDriveToggle}">Drive times: ${tbDriveToggle?'On':'Off'}</button>
+    </div>`:''}
+    <div class="tb-tab-content">${
+      tbTab==='itin'?tbItineraryHTML()
+      :tbTab==='day'?tripDayScheduleHTML()
+      :tbTab==='cost'?tbCostsTabHTML()
+      :tbTab==='add'?tbAddTabHTML()
+      :tbDiscoverTabHTML()
+    }</div>`;
   document.getElementById('tb-exit').addEventListener('click',exitTripBuilder);
-  const tbSearchEl=document.getElementById('tb-search');
-  tbSearchEl.addEventListener('input',()=>{
-    tbSearchQ=tbSearchEl.value;
-    document.getElementById('tb-search-results').innerHTML=tbSearchResultsHTML();
-  });
-  /* GOLF-56: search-as-you-type wiring for each day's place box — mirrors
-     the tb-search pattern above exactly, one instance per day. mousedown
-     (not click) on a result row so the input's blur (fired by the
-     mousedown itself, before a click would land) doesn't clobber the
-     pick — event.preventDefault() on mousedown stops the blur/focus-loss
-     from happening at all, so the subsequent click handler is redundant
-     but harmless. */
-  tripDays.forEach(d=>{
-    const input=document.getElementById(`tb-place-${d.id}`);
-    const results=document.getElementById(`tb-place-results-${d.id}`);
-    if(!input||!results)return;
-    let debounce=null;
-    input.addEventListener('input',()=>{
-      const text=input.value;
-      clearTimeout(debounce);
-      if(!text.trim()){results.innerHTML='';return;}
-      debounce=setTimeout(()=>{
-        orsGeocode(text,list=>{
-          if(document.activeElement!==input)return; // user moved on already
-          if(list==null){results.innerHTML='';return;}
-          results.innerHTML=list.length?list.map(r=>
-            `<div class="tb-place-row" data-lat="${r.lat}" data-lng="${r.lng}" data-label="${r.label.replace(/"/g,'&quot;')}">${r.label}</div>`
-          ).join(''):'<div class="tb-place-empty">No matches</div>';
-        });
-      },300);
-    });
-    results.addEventListener('mousedown',e=>{
-      const row=e.target.closest('.tb-place-row');
-      if(!row)return;
-      e.preventDefault();
-      tripDaySetPlaceGeo(d.id,row.dataset.label,parseFloat(row.dataset.lat),parseFloat(row.dataset.lng));
-      renderTripBuilder();
-      tbDrawMap();
-    });
-    input.addEventListener('blur',()=>{setTimeout(()=>{results.innerHTML='';},150);});
-  });
-  document.getElementById('tb-tab-anchor').addEventListener('click',()=>{tbDiscoveryTab='anchor';renderTripBuilder();tbDrawMap();});
-  document.getElementById('tb-tab-region').addEventListener('click',()=>{tbDiscoveryTab='region';renderTripBuilder();tbDrawMap();});
-  if(tbDiscoveryTab==='anchor'){
-    // No control to wire up — the nearest-5 list has nothing to adjust.
-  }else{
-    const run=()=>{document.getElementById('tb-results').innerHTML=tbResultsHTML(tbDiscover());tbDrawMap();};
-    document.getElementById('tb-region').addEventListener('change',run);
-    document.getElementById('tb-border').addEventListener('change',run);
+  pane.querySelectorAll('.tb-tab-btn').forEach(btn=>btn.addEventListener('click',()=>{tbTab=btn.dataset.tab;renderTripBuilder();tbDrawMap();}));
+  const filterRow=pane.querySelector('.tb-filter-row');
+  if(filterRow){
+    filterRow.querySelectorAll('[data-itin-filter]').forEach(btn=>btn.addEventListener('click',()=>{tbItinFilter=btn.dataset.itinFilter;renderTripBuilder();}));
+    document.getElementById('tb-drive-toggle').addEventListener('click',()=>{tbDriveToggle=!tbDriveToggle;renderTripBuilder();});
   }
+  const searchEl=document.getElementById('tb-unified-search'),searchResultsEl=document.getElementById('tb-search-results');
+  // Only patch the results div on each keystroke (not a full renderTripBuilder())
+  // so the input keeps focus/caret position while typing — a full re-render
+  // here would rebuild the whole pane and drop focus on every character.
+  searchEl.addEventListener('input',()=>{
+    tbSearchQ=searchEl.value;
+    const q=tbSearchQ.trim();
+    searchResultsEl.style.display=q?'':'none';
+    searchResultsEl.innerHTML=q?tbUnifiedSearchResultsHTML():'';
+  });
+  if(tbTab==='day'){
+    /* GOLF-56: search-as-you-type wiring for each day's place box — mirrors
+       the search-bar pattern above, one instance per day. mousedown (not
+       click) on a result row so the input's blur doesn't clobber the pick. */
+    tripDays.forEach(d=>{
+      const input=document.getElementById(`tb-place-${d.id}`);
+      const results=document.getElementById(`tb-place-results-${d.id}`);
+      if(!input||!results)return;
+      let debounce=null;
+      input.addEventListener('input',()=>{
+        const text=input.value;
+        clearTimeout(debounce);
+        if(!text.trim()){results.innerHTML='';return;}
+        debounce=setTimeout(()=>{
+          orsGeocode(text,list=>{
+            if(document.activeElement!==input)return;
+            if(list==null){results.innerHTML='';return;}
+            results.innerHTML=list.length?list.map(r=>
+              `<div class="tb-place-row" data-lat="${r.lat}" data-lng="${r.lng}" data-label="${r.label.replace(/"/g,'&quot;')}">${r.label}</div>`
+            ).join(''):'<div class="tb-place-empty">No matches</div>';
+          });
+        },300);
+      });
+      results.addEventListener('mousedown',e=>{
+        const row=e.target.closest('.tb-place-row');
+        if(!row)return;
+        e.preventDefault();
+        tripDaySetPlaceGeo(d.id,row.dataset.label,parseFloat(row.dataset.lat),parseFloat(row.dataset.lng));
+        renderTripBuilder();
+        tbDrawMap();
+      });
+      input.addEventListener('blur',()=>{setTimeout(()=>{results.innerHTML='';},150);});
+    });
+  }
+  if(tbTab==='disc'){
+    document.getElementById('tb-tab-anchor').addEventListener('click',()=>{tbDiscoveryTab='anchor';renderTripBuilder();tbDrawMap();});
+    document.getElementById('tb-tab-region').addEventListener('click',()=>{tbDiscoveryTab='region';renderTripBuilder();tbDrawMap();});
+    if(tbDiscoveryTab==='region'){
+      const run=()=>{document.getElementById('tb-results').innerHTML=tbResultsHTML(tbDiscover());tbDrawMap();};
+      document.getElementById('tb-region').addEventListener('change',run);
+      document.getElementById('tb-border').addEventListener('change',run);
+    }
+  }
+}
+function tbDiscoverTabHTML(){
+  return`<div class="toggles" style="margin-bottom:10px">
+      <button class="togg" id="tb-tab-anchor" aria-pressed="${tbDiscoveryTab==='anchor'}">Nearby</button>
+      <button class="togg" id="tb-tab-region" aria-pressed="${tbDiscoveryTab==='region'}">By region</button>
+    </div>
+    ${tbDiscoveryTab==='anchor'?`
+      <p class="hint" style="margin:0 0 8px">${tbEffectiveAnchor()!=null?`Nearest 5 courses to <b>${esc(V(tbEffectiveAnchor(),'n'))}</b>, straight-line.`:'Add a course from the map, or search above, to see what\'s nearby.'}</p>`
+      :`<div class="fld" style="margin-bottom:8px"><label for="tb-region">Region</label>
+        <select id="tb-region"><option value="">— choose a region —</option>${REGIONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
+      <div class="fld" style="margin-bottom:8px"><label for="tb-border">Include courses just over the border, within (miles)</label><input id="tb-border" type="number" value="8" min="0" max="50"></div>`}
+    <div id="tb-results">${tbResultsHTML(tbDiscover())}</div>`;
 }
 function enterTripBuilder(seedAnchor,opts){
   const pushHash=!opts||opts.pushHash!==false;

@@ -452,6 +452,51 @@ that touches rendering, filters, or persistence:
     "undefined"; `node scripts/test_data.js` unaffected (no data-file
     changes — pure app-state/UI/Worker).
 
+31. **5-tab Trip Builder sidebar redesign (GOLF-57).** Open the Trip
+    Builder pane and confirm the shared chrome: nav bar (wordmark + "{n}
+    days · £{total}" pill), one unified search bar, and 5 tab buttons —
+    Itinerary / Day / Costs / Add / Discover. On the Itinerary tab only,
+    a filter row (All/Golf/Hotels/POI pills + a Drive times On/Off
+    toggle) should appear above the list.
+    - **Itinerary → All**: one card per day, golf legs as the bold hero
+      row (name + price), hotel/POI legs smaller/secondary, a drive-leg
+      row when the toggle is on (omitted when off), and a dashed-border
+      "DAY TOTAL" row per card.
+    - **Itinerary → Golf/Hotels/POI**: flat list (Golf/POI) or a
+      connected rail/timeline layout (Hotels) instead of day cards.
+    - **Day tab**: unchanged all-days drag-and-drop editor (`⠿` handles,
+      day dropdowns) plus a new hotel/POI mini-editor per day — "+ Add
+      hotel/stay" and "+ Add point of interest" prompt for a name (and,
+      for hotels, an optional nightly £ rate), and each added item shows
+      a "Remove" control. A link at the bottom points to the Costs tab
+      instead of the old inline cost summary.
+    - **Costs tab**: a full-bleed accent banner showing the grand total,
+      a 3-row category table (Golf/Stays/POI), then an itemized
+      "Line items" table with a category tag per row.
+    - **Add tab**: pick a target day from a dropdown, then use the
+      course search box — each result's button reads "+ Add to Day N"
+      and adds straight to that day (falls back to the old anchor-select
+      behavior if no day is chosen).
+    - **Discover tab**: unchanged Nearby/By-region course discovery,
+      just living under its own tab now; its gold-ring candidate markers
+      should only appear on the map while this tab is active (switch to
+      another tab and confirm they disappear).
+    - Type in the unified search bar character-by-character and confirm
+      the input never loses focus/caret position (a real regression risk
+      any time a search box's results share a re-render path with the
+      input itself).
+    - Add a hotel (with a price) and a POI to a day, reload the page, and
+      confirm both survive (`d.hotel`/`d.pois` round-trip through
+      `saveState()`/`loadStoredState()`/`validateTripEntry`).
+    - No "undefined" anywhere across the 5 tabs; `node
+      scripts/test_data.js` unaffected (no data-file changes — pure
+      app-state/UI). **Known deviations from the original handoff spec**
+      (see the plan file's Phase 13 entry): the Day tab still shows all
+      days at once rather than a single expanded day; the search bar is
+      course-only (no hotel/city search — hotels/POIs are manual-entry);
+      the Costs tab always includes Stays (no independent toggle, unlike
+      the old cost summary's separate Accommodation checkbox).
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
