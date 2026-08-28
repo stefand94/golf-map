@@ -139,6 +139,19 @@
   .tb-day-course:active{cursor:grabbing}
   .tb-day-course select{font-size:11px;max-width:120px}
   .tb-drag-handle{color:var(--stone);font-size:14px;flex-shrink:0;line-height:1;user-select:none}
+  /* GOLF-64: Plan mode has no sub-tabs, so plain section headings carry the
+     structure instead; Build keeps the tab row plus a back-link to Plan. */
+  .tb-section-title{font:700 11px var(--font-sans);text-transform:uppercase;letter-spacing:.08em;color:var(--stone);margin:0 0 8px}
+  .tb-backlink{padding:6px 20px 0}
+  .tb-day-total{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;font-weight:700}
+  /* GOLF-63: hotel/POI stops are ordinary rows in the day's item list now,
+     tinted just enough to scan a mixed day at a glance. */
+  .tb-item-hotel{background:rgba(122,107,201,.06)}
+  .tb-item-poi{background:rgba(178,90,158,.05)}
+  .tb-day-add{padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .tb-addstop{padding:8px 10px;border-bottom:1px solid var(--line);background:var(--paper-2)}
+  .tb-addstop-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  .tb-addstop-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .tb-day-hotel,.tb-day-pois{padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .tb-day-pois .wt{display:inline-flex;align-items:center;gap:4px}
   .tb-day-pois .wt a{color:inherit;text-decoration:none;opacity:.7}
@@ -544,55 +557,153 @@ let tripDayNextId=1;
    result keeps placeLat/placeLng null and stays purely cosmetic, exactly
    as before this ticket. */
 const TRIP_DAY_KINDS={golf:'Golf day',start:'Start point',free:'Free day',end:'End point'};
-function tripDayAdd(){tripDays.push({id:tripDayNextId++,courses:[],driveIn:null,date:null,kind:'golf',place:null,placeLat:null,placeLng:null,hotel:null,pois:[]});saveState();}
-/* GOLF-57: a day's overnight stay and any points-of-interest stops —
-   manually entered (name + optional £ price), since there's no hotel/POI
-   database in this app to search against. hotel is null or {name,price};
-   price null falls back to accomRateFor() at cost-estimate time, same as
-   before this ticket. pois is a plain array of {name,price} — price is
-   almost always null (no cost data for a POI), kept purely so a priced
-   POI can still be added later without a schema change. */
-function tripDaySetHotel(dayId,name,price){
-  const d=tripDays.find(d=>d.id===dayId);if(!d)return;
-  d.hotel=(name&&String(name).trim())?{name:String(name).trim().slice(0,80),price:(typeof price==='number'&&isFinite(price))?price:null}:null;
+/* GOLF-63: a day's stops are now ONE ordered `items` array — the single
+   source of truth, replacing the old parallel `courses[]` / `hotel` /
+   `pois[]` trio. Each item is:
+     {id, type:'golf', i:courseIndex}
+     {id, type:'hotel'|'poi', name, price, lat, lng}
+   `id` is a stable opaque string (not an array position), matching why
+   tripDays itself is keyed by id — drag-reordering rewrites positions
+   constantly, so nothing may be keyed on them. Coordinates on hotel/poi
+   items are new this ticket and are what let a drive leg be computed to
+   and from a hotel; they stay null when the visitor typed a plain name
+   instead of picking a geocoded result, in which case that item simply
+   contributes no leg (same graceful degradation as a day `place` with no
+   placeLat/placeLng).
+   Deliberate scope call: a day's `place` is NOT folded into items. It
+   stays the day's own location/waypoint field (rendered in the day
+   header, always the day's first stop), exactly as GOLF-56 defined it —
+   folding it in would change how every existing saved day renders, which
+   is the one thing this ticket's migration promises not to do. */
+function tripItemNewId(){return 'it'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function tripDayAdd(){tripDays.push({id:tripDayNextId++,items:[],driveIn:null,date:null,kind:'golf',place:null,placeLat:null,placeLng:null});saveState();}
+/* Every read of a day's items goes through here so a day that somehow
+   arrived without the field (hand-edited localStorage, a future partial
+   write) degrades to empty instead of throwing. */
+function tripDayItems(d){return d&&Array.isArray(d.items)?d.items:[];}
+/* GOLF-63 migration: an old-shape day (courses/hotel/pois, no items)
+   flattens ONCE into items in exactly today's fixed render order —
+   golf → poi → hotel (the "drive" row was always derived, never stored)
+   — so every trip saved before this ticket looks pixel-identical on the
+   first load after the upgrade, then behaves under free ordering from
+   then on. Idempotent: a day that already has items is left alone. */
+function tripDayMigrateItems(d){
+  if(!d||typeof d!=='object')return d;
+  if(Array.isArray(d.items)){delete d.courses;delete d.hotel;delete d.pois;return d;}
+  const items=[];
+  (Array.isArray(d.courses)?d.courses:[]).forEach(i=>items.push({id:tripItemNewId(),type:'golf',i}));
+  (Array.isArray(d.pois)?d.pois:[]).forEach(p=>{
+    if(p&&typeof p.name==='string'&&p.name.trim())
+      items.push({id:tripItemNewId(),type:'poi',name:p.name.trim().slice(0,80),price:typeof p.price==='number'&&isFinite(p.price)?p.price:null,lat:null,lng:null});
+  });
+  if(d.hotel&&typeof d.hotel==='object'&&typeof d.hotel.name==='string'&&d.hotel.name.trim())
+    items.push({id:tripItemNewId(),type:'hotel',name:d.hotel.name.trim().slice(0,80),price:typeof d.hotel.price==='number'&&isFinite(d.hotel.price)?d.hotel.price:null,lat:null,lng:null});
+  d.items=items;
+  delete d.courses;delete d.hotel;delete d.pois;
+  return d;
+}
+/* The course indices scheduled on a day, in item order — the read-side
+   replacement for every former `d.courses` access. */
+function tripDayCourses(d){return tripDayItems(d).filter(it=>it.type==='golf').map(it=>it.i);}
+/* {lat,lng} for any item, or null when it has none (a hand-typed hotel/
+   POI name). Everything routing-related funnels through this, so "does
+   this stop contribute a drive leg?" is asked in exactly one place. */
+function tripItemPoint(it){
+  if(!it)return null;
+  if(it.type==='golf')return C[it.i]?{lat:C[it.i].lat,lng:C[it.i].lng}:null;
+  return(typeof it.lat==='number'&&isFinite(it.lat)&&typeof it.lng==='number'&&isFinite(it.lng))?{lat:it.lat,lng:it.lng}:null;
+}
+function tripItemName(it){
+  if(!it)return'';
+  return it.type==='golf'?(C[it.i]?V(it.i,'n'):'Unknown course'):(it.name||'');
+}
+function tripDayFindItem(dayId,itemId){
+  const d=tripDays.find(d=>d.id===dayId);if(!d)return null;
+  return tripDayItems(d).find(it=>it.id===itemId)||null;
+}
+/* Append a hotel/POI item to a day. lat/lng are optional — passing them
+   (from the geocode picker) is what turns the stop into a real routable
+   waypoint; omitting them keeps the pre-GOLF-63 name-only behaviour. */
+function tripDayAddStop(dayId,type,name,price,lat,lng){
+  const d=tripDays.find(d=>d.id===dayId);if(!d)return null;
+  if(!name||!String(name).trim())return null;
+  if(!Array.isArray(d.items))d.items=[];
+  const it={id:tripItemNewId(),type:type==='hotel'?'hotel':'poi',
+    name:String(name).trim().slice(0,80),
+    price:(typeof price==='number'&&isFinite(price))?price:null,
+    lat:(typeof lat==='number'&&isFinite(lat))?lat:null,
+    lng:(typeof lng==='number'&&isFinite(lng))?lng:null};
+  d.items.push(it);
   saveState();
+  return it;
 }
-function tripDayAddPoi(dayId,name,price){
-  const d=tripDays.find(d=>d.id===dayId);if(!d)return;
-  if(!name||!String(name).trim())return;
-  if(!Array.isArray(d.pois))d.pois=[];
-  d.pois.push({name:String(name).trim().slice(0,80),price:(typeof price==='number'&&isFinite(price))?price:null});
+function tripDayRemoveItem(dayId,itemId){
+  const d=tripDays.find(d=>d.id===dayId);if(!d||!Array.isArray(d.items))return;
+  d.items=d.items.filter(it=>it.id!==itemId);
   saveState();
-}
-function tripDayRemovePoi(dayId,idx){
-  const d=tripDays.find(d=>d.id===dayId);if(!d||!Array.isArray(d.pois))return;
-  d.pois.splice(idx,1);
-  saveState();
-}
-function tbPromptHotel(dayId){
-  const name=prompt('Hotel / stay name:');if(name==null||!name.trim())return;
-  const priceStr=prompt('Nightly price in £ (leave blank to use a typical-rate estimate):','');
-  const price=priceStr&&priceStr.trim()?parseFloat(priceStr):null;
-  tripDaySetHotel(dayId,name,Number.isFinite(price)?price:null);
-  renderTripBuilder();
-}
-function tbPromptPoi(dayId){
-  const name=prompt('Point of interest name:');if(name==null||!name.trim())return;
-  tripDayAddPoi(dayId,name);
-  renderTripBuilder();
 }
 /* Removes a course from whichever day (if any) currently holds it —
    called both when explicitly moving a course to a different day and
    when the course leaves the cart entirely, so tripDays never holds a
    dangling reference to a course no longer in TRIP. */
-function tripDayRemoveCourse(i){tripDays.forEach(d=>{d.courses=d.courses.filter(x=>x!==i)});}
+function tripDayRemoveCourse(i){tripDays.forEach(d=>{if(Array.isArray(d.items))d.items=d.items.filter(it=>!(it.type==='golf'&&it.i===i))});}
 function tripDaySetCourse(i,dayId){
   tripDayRemoveCourse(i);
-  if(dayId!=null){const d=tripDays.find(d=>d.id===dayId);if(d)d.courses.push(i);}
+  if(dayId!=null){const d=tripDays.find(d=>d.id===dayId);if(d){if(!Array.isArray(d.items))d.items=[];d.items.push({id:tripItemNewId(),type:'golf',i});}}
   saveState();
+}
+/* GOLF-63: adding a hotel/POI used to be two stacked prompt() dialogs
+   capturing a name and a price and nothing else — which is precisely why
+   no drive leg could ever be computed to a hotel. This replaces them with
+   an inline form using the same debounced orsGeocode() search-as-you-type
+   picker already behind the day place-fields and the GOLF-61 unified
+   search bar, so a picked result carries real coordinates onto the item.
+   Typing a plain name and hitting Add still works exactly as before —
+   that item just contributes no leg, same as an un-geocoded day place.
+   tbAddStop is transient page state (one open form at a time, like
+   tbPoiOn), deliberately not persisted. */
+let tbAddStop=null;
+function tbPromptHotel(dayId){tbAddStop={dayId,type:'hotel',name:'',price:'',lat:null,lng:null};renderTripBuilder();}
+function tbPromptPoi(dayId){tbAddStop={dayId,type:'poi',name:'',price:'',lat:null,lng:null};renderTripBuilder();}
+function tbAddStopCancel(){tbAddStop=null;renderTripBuilder();}
+function tbAddStopCommit(){
+  if(!tbAddStop)return;
+  const s=tbAddStop;
+  const nameEl=document.getElementById('tb-addstop-name');
+  const priceEl=document.getElementById('tb-addstop-price');
+  const name=nameEl?nameEl.value:s.name;
+  if(!name||!name.trim()){if(nameEl)nameEl.focus();return;}
+  const rawPrice=priceEl&&priceEl.value.trim()?parseFloat(priceEl.value):NaN;
+  /* Only keep the picked coordinates if the name still matches what was
+     picked — typing over a geocoded pick makes those coordinates a lie. */
+  const keepGeo=s.lat!=null&&s.lng!=null&&s.name&&name.trim()===s.name;
+  tripDayAddStop(s.dayId,s.type,name,Number.isFinite(rawPrice)?rawPrice:null,keepGeo?s.lat:null,keepGeo?s.lng:null);
+  tbAddStop=null;
+  renderTripBuilder();tbDrawMap();
+}
+function tbAddStopFormHTML(dayId){
+  if(!tbAddStop||tbAddStop.dayId!==dayId)return'';
+  const isHotel=tbAddStop.type==='hotel';
+  return`<div class="tb-addstop">
+    <div class="tb-addstop-title">${isHotel?'Add a hotel / stay':'Add a point of interest'}</div>
+    <span class="tb-place-wrap" style="position:relative;display:block;margin-bottom:6px">
+      <input type="text" class="tb-place-input" id="tb-addstop-name" style="width:100%"
+        placeholder="${isHotel?'Search a hotel or place to stay…':'Search a place or landmark…'}" value="${esc(tbAddStop.name)}">
+      <div id="tb-addstop-results" class="tb-place-results"></div>
+    </span>
+    <div class="tb-addstop-row">
+      <input type="number" id="tb-addstop-price" min="0" step="5" style="width:130px"
+        placeholder="${isHotel?'£ per night (optional)':'£ cost (optional)'}" value="${esc(tbAddStop.price)}">
+      <button class="btn2" onclick="tbAddStopCommit()">Add</button>
+      <button class="btn2 ghost" onclick="tbAddStopCancel()">Cancel</button>
+    </div>
+    <p class="hint" style="margin:6px 0 0">${tbAddStop.lat!=null?'📍 Location picked — this stop will get real drive times.'
+      :'Pick a search result to give this stop a real location (and drive times). A plain typed name works too — it just won’t add a drive leg.'}</p>
+  </div>`;
 }
 function tripDayRemove(dayId){
   tripDays=tripDays.filter(d=>d.id!==dayId);
+  if(tbAddStop&&tbAddStop.dayId===dayId)tbAddStop=null;
   tbPoiOn.delete(dayId);
   saveState();
 }
@@ -635,7 +746,7 @@ function tripDaySetPlaceGeo(dayId,label,lat,lng){
 }
 /* Courses in the cart not yet assigned to any day. */
 function tripUnscheduled(){
-  const scheduled=new Set(tripDays.flatMap(d=>d.courses));
+  const scheduled=new Set(tripDays.flatMap(d=>tripDayCourses(d)));
   return tripSeq.filter(i=>!scheduled.has(i));
 }
 /* Google-Maps-stops-style drag reordering. tbDrag holds the course index
@@ -648,19 +759,57 @@ function tripUnscheduled(){
    to Unscheduled) in the same motion — matches how dragging a stop
    between lists reads on a map-based trip planner: one drag both places
    and orders it. */
+/* GOLF-63: tbDrag used to be a bare course index, which is why only golf
+   rounds were draggable. It now carries a ref — either
+   {kind:'item', dayId, id} (a scheduled golf/hotel/POI item) or
+   {kind:'course', i} (a wishlist course, which has no item of its own
+   until it lands on a day) — so hotel and POI rows drag into any position
+   alongside rounds through the exact same interaction, no new pattern. */
 let tbDrag=null;
-function tbMoveCourseTo(i,dayId,beforeI){
-  tripDayRemoveCourse(i);
-  if(dayId!=null){
-    const d=tripDays.find(d=>d.id===dayId);
-    if(d){
-      const idx=beforeI!=null?d.courses.indexOf(beforeI):-1;
-      if(idx>=0)d.courses.splice(idx,0,i);else d.courses.push(i);
+function tbDragSetItem(dayId,id){tbDrag={kind:'item',dayId,id};}
+function tbDragSetCourse(i){tbDrag={kind:'course',i};}
+/* Drop target: a day (dayId) or the wishlist (dayId null), positioned
+   before `beforeRef` — an item id when dropping into a day, a course
+   index when dropping into the wishlist, or null to append. */
+function tbDropOn(dayId,beforeRef){
+  const drag=tbDrag;tbDrag=null;
+  if(!drag)return;
+  if(dayId==null){
+    /* Wishlist: only golf can live here — it's a pool of courses, not of
+       stops. A hotel/POI dragged out of a day has nowhere to go, so this
+       is a deliberate no-op (the row snaps back) rather than a silent
+       delete of something the visitor typed. */
+    let i=null;
+    if(drag.kind==='course')i=drag.i;
+    else{
+      const it=tripDayFindItem(drag.dayId,drag.id);
+      if(!it||it.type!=='golf')return;
+      i=it.i;
+      tripDayRemoveItem(drag.dayId,drag.id);
     }
-  }else{
+    if(i==null)return;
+    tripDayRemoveCourse(i);
     tripSeq=tripSeq.filter(x=>x!==i);
-    const idx=beforeI!=null?tripSeq.indexOf(beforeI):-1;
+    const idx=beforeRef!=null?tripSeq.indexOf(beforeRef):-1;
     if(idx>=0)tripSeq.splice(idx,0,i);else tripSeq.push(i);
+  }else{
+    const target=tripDays.find(d=>d.id===dayId);
+    if(!target)return;
+    if(!Array.isArray(target.items))target.items=[];
+    let moving=null;
+    if(drag.kind==='course'){
+      moving={id:tripItemNewId(),type:'golf',i:drag.i};
+      tripDayRemoveCourse(drag.i); // can't be on a day, but keeps the invariant honest
+    }else{
+      const src=tripDays.find(d=>d.id===drag.dayId);
+      if(!src)return;
+      const at=tripDayItems(src).findIndex(it=>it.id===drag.id);
+      if(at<0)return;
+      moving=src.items.splice(at,1)[0];
+    }
+    if(beforeRef===moving.id)return; // dropped on itself
+    const idx=beforeRef!=null?target.items.findIndex(it=>it.id===beforeRef):-1;
+    if(idx>=0)target.items.splice(idx,0,moving);else target.items.push(moving);
   }
   saveState();
   renderTripBuilder();
@@ -720,7 +869,7 @@ function tbMove(i,dir){
    what they were before this ticket: "the current trip's working state."
    tripSnapshotActive() copies the live globals into trips[activeTripId]
    (called from saveState(), so every existing mutation path — toggleTrip,
-   tripDayAdd, tbMoveCourseTo, etc. — keeps every trip's stored snapshot
+   tripDayAdd, tbDropOn, etc. — keeps every trip's stored snapshot
    fresh for free); tripRestoreActive() does the reverse when switching. */
 let trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1}};
 let activeTripId='default';
@@ -735,7 +884,9 @@ function tripRestoreActive(){
   const t=trips[activeTripId];
   TRIP.clear();(t&&t.trip||[]).forEach(i=>TRIP.add(i));
   tripSeq=t&&Array.isArray(t.tripSeq)?[...t.tripSeq]:[...TRIP];
-  tripDays=t&&Array.isArray(t.tripDays)?JSON.parse(JSON.stringify(t.tripDays)):[];
+  // GOLF-63: migrate defensively here too — a snapshot can also arrive from
+  // tripDuplicate()'s deep copy, not only from the validated load path.
+  tripDays=(t&&Array.isArray(t.tripDays)?JSON.parse(JSON.stringify(t.tripDays)):[]).map(tripDayMigrateItems);
   tripLastAdded=t?(t.tripLastAdded??null):null;
   tbAnchor=t?(t.tbAnchor??null):null;
   tripDayNextId=t&&t.tripDayNextId?t.tripDayNextId:(Math.max(0,...tripDays.map(d=>d.id))+1);
@@ -771,9 +922,12 @@ function tripCreateNew(){
   // empty Nearby list with no obvious next step.
   // GOLF-60b: also clear tbSearchQ (previously only tbPlaceAnchor was reset
   // here) so no stale search text carries over into the new trip either.
-  tbTab='disc';tbDiscoveryTab='place';tbPlaceAnchor=null;tbSearchQ='';
+  // GOLF-64: a brand-new trip always drops you back at the start of the
+  // workflow — and via setAppMode(), so the URL follows the mode instead of
+  // leaving a stale #trip pointing at Plan-mode content.
+  tbDiscoveryTab='place';tbPlaceAnchor=null;tbSearchQ='';
   saveState();
-  if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
+  if(tripBuilderOn)setAppMode('plan');
   render();
 }
 function tripRename(id){
@@ -819,9 +973,9 @@ function tripStartFresh(){
   if(!confirm('Start fresh? This deletes every saved trip on this device and creates one new, empty trip. This cannot be undone.'))return;
   trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1}};
   activeTripId='default';tripRestoreActive();
-  tbSearchQ='';tbPlaceAnchor=null;tbAnchor=null;tbDayShown=null;tbTab='disc';tbDiscoveryTab='place';
+  tbSearchQ='';tbPlaceAnchor=null;tbAnchor=null;tbDayShown=null;tbDiscoveryTab='place';
   saveState();
-  if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
+  if(tripBuilderOn)setAppMode('plan'); // GOLF-64: URL follows the mode
   render();
 }
 function tripSwitcherHTML(){
@@ -882,8 +1036,28 @@ function loadStoredState(){
     const trip=Array.isArray(t.trip)?t.trip.filter(i=>Number.isInteger(i)&&C[i]):[];
     const validSet=new Set(trip);
     const tripSeq=(Array.isArray(t.tripSeq)&&t.tripSeq.length===validSet.size&&t.tripSeq.every(i=>validSet.has(i)))?t.tripSeq.slice():[...validSet];
-    const tripDays=Array.isArray(t.tripDays)?t.tripDays.filter(d=>d&&typeof d.id!=='undefined'&&Array.isArray(d.courses))
-      .map(d=>({id:d.id,courses:d.courses.filter(i=>validSet.has(i)),driveIn:typeof d.driveIn==='number'?d.driveIn:null,
+    /* GOLF-63: a saved day may be either shape — the new `items` array, or
+       the pre-GOLF-63 courses/hotel/pois trio. Both are accepted here;
+       tripDayMigrateItems() below folds the old one into the new one once,
+       in today's exact render order, so an existing saved trip looks
+       identical on the first load after this upgrade. */
+    const validItems=(d)=>{
+      if(!Array.isArray(d.items))return null;
+      return d.items.filter(it=>it&&typeof it==='object'&&typeof it.id==='string').map(it=>{
+        if(it.type==='golf')return validSet.has(it.i)?{id:it.id,type:'golf',i:it.i}:null;
+        if(it.type!=='hotel'&&it.type!=='poi')return null;
+        if(typeof it.name!=='string'||!it.name.trim())return null;
+        return{id:it.id,type:it.type,name:it.name.trim().slice(0,80),
+          price:typeof it.price==='number'&&isFinite(it.price)?it.price:null,
+          lat:typeof it.lat==='number'&&isFinite(it.lat)?it.lat:null,
+          lng:typeof it.lng==='number'&&isFinite(it.lng)?it.lng:null};
+      }).filter(Boolean);
+    };
+    const tripDays=Array.isArray(t.tripDays)?t.tripDays.filter(d=>d&&typeof d.id!=='undefined'&&(Array.isArray(d.items)||Array.isArray(d.courses)))
+      .map(d=>tripDayMigrateItems({id:d.id,
+        items:validItems(d),
+        courses:Array.isArray(d.courses)?d.courses.filter(i=>validSet.has(i)):[],
+        driveIn:typeof d.driveIn==='number'?d.driveIn:null,
         /* GOLF-48: optional real calendar date (YYYY-MM-DD), user-entered.
            Validated as a plain well-formed date string here — actual use
            (picking wd vs we for the cost estimate) lives in
@@ -1138,7 +1312,7 @@ function popupHTML(i){
     <p class="note">${V(i,'note')}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${club.blurb}</span>`:''}</p>
     ${calcHTML(i)}
     <div class="actions">
-      <button class="btn primary" onclick="toggleTrip(${i})">${TRIP.has(i)?'✓ In your trip — remove':'+ Add to trip'}</button>
+      <button class="btn primary" onclick="${TRIP.has(i)?`toggleTrip(${i})`:`tbAddToPlan(${i})`}">${TRIP.has(i)?'✓ In your trip — remove':'+ Add to trip'}</button>
       ${site?`<a class="btn" href="${site}" target="_blank" rel="noopener">Club website</a>`:`<a class="btn ghost" href="${search}" target="_blank" rel="noopener">Find the club site</a>`}
       ${book&&book!==site?`<a class="btn ghost" href="${book}" target="_blank" rel="noopener">Green fees</a>`:''}
       ${club&&club.teeBooking&&club.teeBooking!==site&&club.teeBooking!==book?`<a class="btn ghost" href="${club.teeBooking}" target="_blank" rel="noopener">Tee booking</a>`:''}
@@ -1325,7 +1499,7 @@ function tripCostEstimateByDay(){
   let total=0,covered=0,of=0;
   tripDays.forEach(d=>{
     const field=feeFieldForDate(d.date);
-    d.courses.forEach(i=>{
+    tripDayCourses(d).forEach(i=>{
       of++;
       const fee=extractFee(V(i,field));
       if(fee!=null){total+=fee;covered++;}
@@ -1355,6 +1529,29 @@ const ACCOM_RATE_BY_REGION={
 };
 const ACCOM_RATE_DEFAULT=95;
 function accomRateFor(region){return ACCOM_RATE_BY_REGION[region]??ACCOM_RATE_DEFAULT;}
+/* GOLF-63: the "no explicit nightly price entered — fall back to a typical
+   regional rate, taken from this day's last round" formula was copy-pasted
+   independently into three separate places (tripDayLegs, tripCostLineItems,
+   tbItinHotelRailHTML) and was about to be pasted a fourth time. It lives
+   here once now, and every hotel price in the app reads through
+   tripItemPrice() below. */
+function tripDayAccomFallback(d){
+  const cs=tripDayCourses(d);
+  return cs.length?accomRateFor(C[cs[cs.length-1]].r):null;
+}
+/* The one place any item's £ figure is derived: a round is priced at this
+   day's correct weekday/weekend fee field, a hotel at its entered price or
+   the regional fallback, a POI at its entered price.
+   GOLF-63 bugfix: tbItinPoiListHTML() used to drop `price` on POI rows
+   entirely (unlike every other reader of the same field), so a priced POI
+   showed as free there while counting in the cost table. Routing all four
+   readers through this helper is what fixes it. */
+function tripItemPrice(d,it){
+  if(!it)return null;
+  if(it.type==='golf')return extractFee(V(it.i,feeFieldForDate(d&&d.date)));
+  if(it.type==='hotel')return it.price??tripDayAccomFallback(d);
+  return it.price??null;
+}
 /* GOLF-44: fuel-cost estimate — same straight-line leg distances as the
    GOLF-43 drive-time default, x an assumed £/mile (roughly what a
    40mpg petrol car costs to run in Aug 2026 fuel prices). Both this and
@@ -1365,16 +1562,15 @@ const FUEL_COST_PER_MILE=0.18;
 let tbIncludeAccom=true,tbIncludeFuel=true;
 function tripCostSummary(){
   const fees=tripCostEstimateByDay();
-  let fuelMiles=0;
-  for(let idx=1;idx<tripDays.length;idx++){const m=tripDayLegMiles(idx);if(m!=null)fuelMiles+=m;}
+  const fuelMiles=tripTotalDriveMiles();
   const fuelCost=fuelMiles*FUEL_COST_PER_MILE;
-  const scheduledDays=tripDays.filter(d=>d.courses.length);
+  const scheduledDays=tripDays.filter(d=>tripDayCourses(d).length);
   /* One night's stay per scheduled day except the last — no accommodation
      needed the night after the final round. */
   let accomCost=0;
   scheduledDays.forEach((d,idx)=>{
     if(idx===scheduledDays.length-1)return;
-    accomCost+=accomRateFor(C[d.courses[d.courses.length-1]].r);
+    accomCost+=tripDayAccomFallback(d)??ACCOM_RATE_DEFAULT;
   });
   const nights=Math.max(0,scheduledDays.length-1);
   const grand=(fees.covered?fees.total:0)+(tbIncludeAccom?accomCost:0)+(tbIncludeFuel?fuelCost:0);
@@ -1575,15 +1771,72 @@ function tbResultsHTML(items){
    start/free/end day's searched location act as a real routable waypoint
    alongside golf courses, with zero special-casing in the leg/route
    machinery below (which only ever reads {lat,lng} off a stop). */
+/* GOLF-63: a day's stops are now its place (when geocoded, still always
+   first — see the tripDays comment) followed by its items in their own
+   free order. Only items that actually carry coordinates become stops; a
+   hand-typed hotel with no location is real to the itinerary and the cost
+   table but invisible to the router, which is what lets it degrade
+   gracefully instead of breaking the chain. A stop keeps `itemId` so the
+   leg machinery can attribute a drive to the item it arrives at. */
 function tripDayStops(dayIdx){
   const d=tripDays[dayIdx];if(!d)return[];
   const stops=[];
   if(d.placeLat!=null&&d.placeLng!=null)stops.push({type:'place',lat:d.placeLat,lng:d.placeLng,name:d.place||'Place',day:dayIdx+1});
-  d.courses.forEach(i=>stops.push({type:'course',i,lat:C[i].lat,lng:C[i].lng,name:V(i,'n'),day:dayIdx+1}));
+  tripDayItems(d).forEach(it=>{
+    const pt=tripItemPoint(it);
+    if(!pt)return;
+    stops.push(it.type==='golf'
+      ?{type:'course',i:it.i,lat:pt.lat,lng:pt.lng,name:tripItemName(it),day:dayIdx+1,itemId:it.id}
+      :{type:it.type,lat:pt.lat,lng:pt.lng,name:tripItemName(it),day:dayIdx+1,itemId:it.id});
+  });
   return stops;
 }
 function tripDayFirstStop(dayIdx){const s=tripDayStops(dayIdx);return s.length?s[0]:null;}
 function tripDayLastStop(dayIdx){const s=tripDayStops(dayIdx);return s.length?s[s.length-1]:null;}
+/* GOLF-63: the whole trip's scheduled stops as one flat ordered chain —
+   the thing drive legs are actually computed over now. Previously a leg
+   only ever existed at a day boundary (previous day's last course -> this
+   day's first), so hotel -> course -> POI -> different hotel within one
+   day produced no driving at all. Every consecutive pair in this chain is
+   a leg, exactly as the day-to-day legs always were; unscheduled wishlist
+   courses are excluded (they have no position in the trip yet). */
+function tripStopChain(){
+  const chain=[];
+  tripDays.forEach((d,idx)=>tripDayStops(idx).forEach(s=>chain.push(Object.assign({dayIdx:idx},s))));
+  return chain;
+}
+/* The stop immediately before this one in the trip-wide chain, or null for
+   the very first stop of the trip. */
+function tripPrevStop(chain,pos){return pos>0?chain[pos-1]:null;}
+/* One leg's {minutes,miles,real} — a real ORS-backed figure when one is
+   cached for this pair, otherwise the GOLF-43 straight-line heuristic, so
+   a leg always contributes a sensible number rather than nothing. Same
+   "fire the fetch, fall back for now, re-render when it lands" contract as
+   tripDayRealEstimate(), which this generalizes. */
+function tripLegEstimate(a,b){
+  if(!a||!b)return null;
+  const miles=haversineMiles(a.lat,a.lng,b.lat,b.lng)*DRIVE_INEFFICIENCY;
+  if(ORS_PROXY_URL){
+    const key=orsLegKey(a,b);
+    const hit=orsCacheLoad()[key];
+    if(hit&&typeof hit.minutes==='number')
+      return{minutes:hit.minutes,miles:hit.miles!=null?hit.miles:miles,real:true};
+    orsEnsureLeg(key,a,b);
+  }
+  return{minutes:Math.max(5,Math.round((miles/DRIVE_AVG_MPH*60)/5)*5),miles,real:false};
+}
+/* Total driving distance across the whole trip — every consecutive pair in
+   the chain, not just the day boundaries, so the fuel estimate reflects
+   the real shape of a multi-stop day. */
+function tripTotalDriveMiles(){
+  const chain=tripStopChain();
+  let miles=0;
+  for(let k=1;k<chain.length;k++){
+    const leg=tripLegEstimate(chain[k-1],chain[k]);
+    if(leg)miles+=leg.miles;
+  }
+  return miles;
+}
 function tripDayOrder(){
   if(!tripDays.length)return tripSeq.map(i=>({type:'course',i,lat:C[i].lat,lng:C[i].lng,name:V(i,'n'),day:null}));
   const order=[...tripDays.flatMap((d,idx)=>tripDayStops(idx)),
@@ -1623,7 +1876,7 @@ function tbDrawMap(){
      tab is actually the one showing them — other tabs (Itinerary/Day/
      Costs/Add) just show the confirmed trip route. */
   let pts2=[];
-  if(tbTab==='disc'){
+  if(appMode==='plan'){
     const anchor=tbDiscoveryTab==='anchor'?tbEffectiveAnchor():null;
     pts2=tripShow(tbDiscover(),anchor,false,false);
     if(tbDiscoveryTab==='place'&&tbPlaceAnchor)pts2=[...pts2,[tbPlaceAnchor.lat,tbPlaceAnchor.lng]];
@@ -1691,10 +1944,10 @@ let tbUnifiedPlaceResults=null;
    main search bar now instead of a second, buried box. */
 function tbAnchorTripToPlace(lat,lng,label){
   tbPlaceAnchor={label,lat,lng};
-  tbDiscoveryTab='place';tbTab='disc';
+  tbDiscoveryTab='place';
   tbSearchQ='';tbUnifiedPlaceResults=null;
   saveState();
-  renderTripBuilder();tbDrawMap();
+  setAppMode('plan'); // GOLF-64: anchoring to a place is a Plan-mode action
 }
 function tbUnifiedSearchResultsHTML(){
   const q=tbSearchQ.trim();
@@ -1717,7 +1970,7 @@ function tbUnifiedSearchResultsHTML(){
   // day assignment); a specific day being focused in the Day tab grows a
   // second, explicit "+ Add to Day N" button next to it — direct-to-day
   // stays available as a deliberate power path, just not the default.
-  const day=(tbTab==='day'&&tbDayShown!=null)?tripDays.find(d=>d.id===tbDayShown):null;
+  const day=(appMode==='build'&&tbBuildTab==='itin'&&tbDayShown!=null)?tripDays.find(d=>d.id===tbDayShown):null;
   html+=`<p class="hint" style="margin:8px 0 4px;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.06em">Golf courses</p>`+
     results.map(i=>`<div class="tb-row">
       <div><a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
@@ -1752,21 +2005,50 @@ function tripDaySelectHTML(i,currentDayId){
     .concat([`<option value="new">+ New day</option>`]);
   return`<select onchange="tbAssignCourseDay(${i},this.value);">${opts.join('')}</select>`;
 }
+/* A wishlist (unscheduled) course row — no item of its own yet, so it
+   drags by course index. Unchanged behaviour from pre-GOLF-63. */
 function tripDayCourseRowHTML(i,dayId){
   const fee=extractFee(V(i,'wd'));
-  const dayAttr=dayId==null?'':dayId;
   return`<div class="tb-day-course" draggable="true"
-      ondragstart="tbDrag=${i};event.dataTransfer.effectAllowed='move';"
+      ondragstart="tbDragSetCourse(${i});event.dataTransfer.effectAllowed='move';"
       ondragover="event.preventDefault();event.dataTransfer.dropEffect='move';"
-      ondrop="event.preventDefault();event.stopPropagation();if(tbDrag!=null&&tbDrag!==${i})tbMoveCourseTo(tbDrag,${dayId==null?'null':dayId},${i});tbDrag=null;">
+      ondrop="event.preventDefault();event.stopPropagation();tbDropOn(${dayId==null?'null':dayId},${i});">
     <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
     <div style="min-width:0">
-      <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${V(i,'n')}</a>
-      <div class="cart-region">${C[i].r}${fee!=null?` · £${fee.toFixed(0)}`:''}</div>
+      <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
+      <div class="cart-region">${esc(C[i].r)}${fee!=null?` · £${fee.toFixed(0)}`:''}</div>
     </div>
     <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
       ${tripDaySelectHTML(i,dayId)}
       <button class="btn2 ghost cart-remove" title="Remove from trip" onclick="toggleTrip(${i});renderTripBuilder();tbDrawMap();">✕</button>
+    </div>
+  </div>`;
+}
+/* GOLF-63: one scheduled stop of any type, draggable into any position in
+   any day. Golf rows keep their existing "move to day" dropdown and
+   remove-from-trip action; hotel/POI rows get a remove of their own (they
+   exist only on that day, so there's nothing to unschedule them to). The
+   drag/drop wiring is identical across all three types — that's the whole
+   point of collapsing the old three fields into one list. */
+function tripDayItemRowHTML(d,it){
+  const price=tripItemPrice(d,it);
+  const icon=it.type==='golf'?'⛳':it.type==='hotel'?'🛏':'📷';
+  const noGeo=it.type!=='golf'&&tripItemPoint(it)==null;
+  const main=it.type==='golf'
+    ?`<a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${it.i})">${esc(tripItemName(it))}</a>
+       <div class="cart-region">${esc(C[it.i]?C[it.i].r:'')}${price!=null?` · £${price.toFixed(0)}`:''}</div>`
+    :`<span>${esc(tripItemName(it))}</span>
+       <div class="cart-region">${it.type==='hotel'?'Stay':'Point of interest'}${price!=null?` · £${price.toFixed(0)}`:''}${noGeo?' · <span title="No location picked, so no drive time to this stop">no location</span>':''}</div>`;
+  return`<div class="tb-day-course tb-item-${it.type}" draggable="true"
+      ondragstart="tbDragSetItem(${d.id},'${it.id}');event.dataTransfer.effectAllowed='move';"
+      ondragover="event.preventDefault();event.dataTransfer.dropEffect='move';"
+      ondrop="event.preventDefault();event.stopPropagation();tbDropOn(${d.id},'${it.id}');">
+    <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
+    <div style="min-width:0">${icon} ${main}</div>
+    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+      ${it.type==='golf'?tripDaySelectHTML(it.i,d.id):''}
+      <button class="btn2 ghost cart-remove" title="Remove from this day"
+        onclick="${it.type==='golf'?`toggleTrip(${it.i});`:`tripDayRemoveItem(${d.id},'${it.id}');`}renderTripBuilder();tbDrawMap();">✕</button>
     </div>
   </div>`;
 }
@@ -1812,8 +2094,18 @@ const ORS_PROXY_URL='https://geofftheworker.stefand94.workers.dev/';
    simply abandoned, a fresh v2 cache starts empty and refetches as
    needed, same one-time cost as any other cache-key bump would have. */
 const ORS_CACHE_KEY='golfmap:legcache:v2';
-function orsCacheLoad(){try{return JSON.parse(localStorage.getItem(ORS_CACHE_KEY)||'{}');}catch(e){return{};}}
-function orsCacheSave(c){try{localStorage.setItem(ORS_CACHE_KEY,JSON.stringify(c));}catch(e){}}
+/* GOLF-63: legs are now computed per item rather than per day boundary, so
+   this is read once per leg in loops that got an order of magnitude longer
+   — memoised in-memory (invalidated by our own writes, the only writer) so
+   a multi-stop trip doesn't JSON.parse localStorage dozens of times per
+   render. Behaviour is otherwise identical. */
+let orsCacheMemo=null;
+function orsCacheLoad(){
+  if(orsCacheMemo)return orsCacheMemo;
+  try{orsCacheMemo=JSON.parse(localStorage.getItem(ORS_CACHE_KEY)||'{}');}catch(e){orsCacheMemo={};}
+  return orsCacheMemo;
+}
+function orsCacheSave(c){orsCacheMemo=c;try{localStorage.setItem(ORS_CACHE_KEY,JSON.stringify(c));}catch(e){}}
 /* GOLF-56: keyed off plain {lat,lng} points rather than course indices,
    so a leg touching a searched place (which has no course index) works
    identically to a leg between two courses. */
@@ -1943,8 +2235,9 @@ function tripDayDriveHTML(d,idx){
    Falls back to the course's region if no station data exists at all;
    returns null (rendered as nothing) if neither is available. */
 function tripDaySuggestedTown(day){
-  if(!day.courses.length)return null;
-  const i=day.courses[day.courses.length-1];
+  const cs=tripDayCourses(day);
+  if(!cs.length)return null;
+  const i=cs[cs.length-1];
   const stnObj=STN[V(i,'stn')],near=C[i].nearStation,s=stnObj||near;
   if(s&&s.n)return s.n;
   return C[i].r||null;
@@ -1971,8 +2264,9 @@ let poiPending=new Set();
    GOLF-44's cost-line checkboxes (resets to hidden on reload). */
 let tbPoiOn=new Set();
 function tbPoiPoint(day){
-  if(!day.courses.length)return null;
-  const i=day.courses[day.courses.length-1];
+  const cs=tripDayCourses(day);
+  if(!cs.length)return null;
+  const i=cs[cs.length-1];
   return{lat:C[i].lat,lng:C[i].lng};
 }
 /* Returns a cached POI array for this day's overnight point, or null if
@@ -2023,22 +2317,42 @@ function tbPoiListHTML(day){
    hotel/pois fields, this is just a different way of laying the same
    data out. Order is drive -> golf(s) -> poi(s) -> hotel, since a hotel
    is naturally where the day *ends*. */
+/* GOLF-63: rows for one day of the itinerary, now driven entirely by the
+   day's own free item order rather than the old fixed golf->poi->hotel
+   sequence — and with a drive row emitted before EVERY stop that has a
+   predecessor in the trip-wide chain, not just before the day's first one.
+   That's what makes "hotel in Aberdeen -> course -> drive to St Andrews ->
+   POI -> different hotel" show real driving at each hop. The day's manual
+   driveIn override still applies to the day's first stop only, exactly as
+   before; intra-day hops are always computed. An item with no coordinates
+   simply gets no drive row above it. */
 function tripDayLegs(dayIdx){
   const d=tripDays[dayIdx];if(!d)return[];
+  const chain=tripStopChain();
+  const posOf=new Map();
+  let firstPos=-1,placePos=-1;
+  chain.forEach((s,k)=>{
+    if(s.dayIdx!==dayIdx)return;
+    if(firstPos<0)firstPos=k;
+    if(s.type==='place'&&placePos<0)placePos=k;
+    if(s.itemId)posOf.set(s.itemId,k);
+  });
+  const driveRow=(pos)=>{
+    const prev=tripPrevStop(chain,pos);
+    if(!prev)return null;
+    const cur=chain[pos];
+    const leg=tripLegEstimate(prev,cur);
+    const isDayFirst=pos===firstPos;
+    const mins=(isDayFirst&&d.driveIn!=null)?d.driveIn:(leg?leg.minutes:null);
+    return{type:'drive',label:`${prev.name} → ${cur.name}`,mins,real:!!(leg&&leg.real),dayFirst:isDayFirst};
+  };
   const legs=[];
-  if(dayIdx>0){
-    const prev=tripDayLastStop(dayIdx-1),cur=tripDayFirstStop(dayIdx);
-    const eff=tripDayEffectiveDriveIn(dayIdx);
-    const mins=d.driveIn??eff.minutes;
-    if(prev&&cur)legs.push({type:'drive',label:`${prev.name} → ${cur.name}`,mins});
-  }
-  const field=feeFieldForDate(d.date);
-  d.courses.forEach(i=>legs.push({type:'golf',name:V(i,'n'),price:extractFee(V(i,field)),i}));
-  (d.pois||[]).forEach((p,idx)=>legs.push({type:'poi',name:p.name,price:p.price,idx}));
-  if(d.hotel&&d.hotel.name){
-    const price=d.hotel.price??(d.courses.length?accomRateFor(C[d.courses[d.courses.length-1]].r):null);
-    legs.push({type:'hotel',name:d.hotel.name,price});
-  }
+  if(placePos>=0){const r=driveRow(placePos);if(r)legs.push(r);}
+  tripDayItems(d).forEach(it=>{
+    const pos=posOf.get(it.id);
+    if(pos!=null){const r=driveRow(pos);if(r)legs.push(r);}
+    legs.push({type:it.type,name:tripItemName(it),price:tripItemPrice(d,it),id:it.id,i:it.type==='golf'?it.i:undefined});
+  });
   return legs;
 }
 function tripDayTotal(dayIdx){
@@ -2048,7 +2362,7 @@ function itinLegRowHTML(l){
   if(l.type==='drive')return`<div class="itin-leg itin-leg-drive">🚗 ${esc(l.label)}${l.mins!=null?` · ${fmtDriveMinutes(l.mins)}`:''}</div>`;
   if(l.type==='golf')return`<div class="itin-leg itin-leg-golf"><span class="itin-leg-main">⛳ <span class="itin-golf-name">${esc(l.name)}</span></span><span class="itin-golf-price">${l.price!=null?`£${l.price.toFixed(0)}`:'—'}</span></div>`;
   if(l.type==='hotel')return`<div class="itin-leg itin-leg-hotel"><span class="itin-leg-main">🛏 <span class="itin-hotel-name">${esc(l.name)}</span></span><span class="itin-hotel-price">${l.price!=null?`£${l.price.toFixed(0)}`:'—'}</span></div>`;
-  if(l.type==='poi')return`<div class="itin-leg itin-leg-poi"><span class="itin-leg-main">📷 <span class="itin-poi-name">${esc(l.name)}</span></span><span class="wt">POI</span></div>`;
+  if(l.type==='poi')return`<div class="itin-leg itin-leg-poi"><span class="itin-leg-main">📷 <span class="itin-poi-name">${esc(l.name)}</span></span>${l.price!=null?`<span class="itin-hotel-price">£${l.price.toFixed(0)}</span>`:`<span class="wt">POI</span>`}</div>`;
   return'';
 }
 function tbItinAllHTML(){
@@ -2066,19 +2380,15 @@ function tbItinAllHTML(){
 }
 function tbItinGolfListHTML(){
   const rows=[];
-  tripDays.forEach((d,idx)=>{const field=feeFieldForDate(d.date);d.courses.forEach(i=>rows.push({day:idx+1,name:V(i,'n'),price:extractFee(V(i,field))}));});
+  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='golf')rows.push({day:idx+1,name:tripItemName(it),price:tripItemPrice(d,it)});}));
   if(!rows.length)return`<p class="hint">No golf rounds scheduled yet.</p>`;
   return rows.map(r=>`<div class="itin-card itin-flat"><div class="itin-card-kicker">DAY ${r.day}</div>
     <div class="itin-flat-row"><span class="itin-golf-name-lg">⛳ ${esc(r.name)}</span><span class="itin-golf-price-lg">${r.price!=null?`£${r.price.toFixed(0)}`:'—'}</span></div></div>`).join('');
 }
 function tbItinHotelRailHTML(){
   const rows=[];
-  tripDays.forEach((d,idx)=>{
-    if(!(d.hotel&&d.hotel.name))return;
-    const price=d.hotel.price??(d.courses.length?accomRateFor(C[d.courses[d.courses.length-1]].r):null);
-    rows.push({day:idx+1,name:d.hotel.name,price});
-  });
-  if(!rows.length)return`<p class="hint">No stays added yet — add one from the Add tab.</p>`;
+  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='hotel')rows.push({day:idx+1,name:tripItemName(it),price:tripItemPrice(d,it)});}));
+  if(!rows.length)return`<p class="hint">No stays added yet — add one with a day's <b>+ Add hotel/stay</b> button.</p>`;
   return`<div class="itin-rail">${rows.map(r=>`<div class="itin-rail-row"><div class="itin-rail-dot"></div>
       <div class="itin-card-kicker">DAY ${r.day}</div>
       <div class="itin-flat-row"><span class="itin-hotel-name-md">${esc(r.name)}</span><span class="itin-hotel-price-md">${r.price!=null?`£${r.price.toFixed(0)}`:'—'}</span></div>
@@ -2086,12 +2396,15 @@ function tbItinHotelRailHTML(){
 }
 function tbItinPoiListHTML(){
   const rows=[];
-  tripDays.forEach((d,idx)=>(d.pois||[]).forEach(p=>rows.push({day:idx+1,name:p.name})));
+  // GOLF-63: `price` is carried through here now — this list used to drop it
+  // silently, so a priced POI read as free on this tab while still counting
+  // in the cost table.
+  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='poi')rows.push({day:idx+1,name:tripItemName(it),price:tripItemPrice(d,it)});}));
   if(!rows.length)return`<p class="hint">No points of interest added yet.</p>`;
-  return rows.map(r=>`<div class="itin-card itin-flat"><div class="itin-flat-row"><span>📷 ${esc(r.name)}</span></div><div class="itin-card-kicker">DAY ${r.day}</div></div>`).join('');
+  return rows.map(r=>`<div class="itin-card itin-flat"><div class="itin-flat-row"><span>📷 ${esc(r.name)}</span><span class="itin-golf-price-lg">${r.price!=null?`£${r.price.toFixed(0)}`:'—'}</span></div><div class="itin-card-kicker">DAY ${r.day}</div></div>`).join('');
 }
 function tbItineraryHTML(){
-  if(!tripSeq.length&&!tripDays.some(d=>d.hotel||d.place||(d.pois&&d.pois.length)))return`<p class="hint">No courses in your trip yet. Open any course's popup and hit <b>Add to trip</b>, or search above.</p>`;
+  if(!tripSeq.length&&!tripDays.some(d=>d.place||tripDayItems(d).length))return`<p class="hint">No courses in your trip yet. Open any course's popup and hit <b>Add to trip</b>, or search above.</p>`;
   if(tbItinFilter==='golf')return tbItinGolfListHTML();
   if(tbItinFilter==='hotel')return tbItinHotelRailHTML();
   if(tbItinFilter==='poi')return tbItinPoiListHTML();
@@ -2105,15 +2418,11 @@ function tbItineraryHTML(){
    folds a day's explicit hotel price in ahead of the regional estimate. */
 function tripCostLineItems(){
   const items=[];
-  tripDays.forEach((d,idx)=>{
-    const field=feeFieldForDate(d.date);
-    d.courses.forEach(i=>items.push({label:V(i,'n'),cat:'Golf',amount:extractFee(V(i,field)),day:idx+1}));
-    if(d.hotel&&d.hotel.name){
-      const price=d.hotel.price??(d.courses.length?accomRateFor(C[d.courses[d.courses.length-1]].r):null);
-      items.push({label:d.hotel.name,cat:'Stay',amount:price,day:idx+1});
-    }
-    (d.pois||[]).forEach(p=>items.push({label:p.name,cat:'POI',amount:p.price,day:idx+1}));
-  });
+  // GOLF-63: itemised in the day's own order, so the breakdown reads down
+  // the day the same way the itinerary does.
+  const CAT={golf:'Golf',hotel:'Stay',poi:'POI'};
+  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>
+    items.push({label:tripItemName(it),cat:CAT[it.type]||'POI',amount:tripItemPrice(d,it),day:idx+1})));
   tripUnscheduled().forEach(i=>items.push({label:V(i,'n'),cat:'Golf',amount:extractFee(V(i,'wd')),day:null}));
   return items;
 }
@@ -2121,7 +2430,7 @@ function tripCostBreakdown(){
   const items=tripCostLineItems();
   const sum=arr=>arr.reduce((t,x)=>t+(x.amount||0),0);
   const golf=items.filter(x=>x.cat==='Golf'),stay=items.filter(x=>x.cat==='Stay'),poi=items.filter(x=>x.cat==='POI');
-  let fuelMiles=0;for(let idx=1;idx<tripDays.length;idx++){const m=tripDayLegMiles(idx);if(m!=null)fuelMiles+=m;}
+  const fuelMiles=tripTotalDriveMiles(); // GOLF-63: every hop, not just day boundaries
   const fuelCost=fuelMiles*FUEL_COST_PER_MILE;
   const golfTotal=sum(golf),stayTotal=sum(stay),poiTotal=sum(poi);
   const grand=golfTotal+stayTotal+poiTotal+(tbIncludeFuel?fuelCost:0);
@@ -2137,32 +2446,26 @@ function tbCostsTabHTML(){
       <tr><td>Points of interest</td><td>£${b.poiTotal.toFixed(0)}</td></tr>
       <tr><td><label style="cursor:pointer"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel (est.)</label></td><td>£${b.fuelCost.toFixed(0)}</td></tr>
     </table>
-    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} golf round${b.golfOf===1?'':'s'} have a parseable fee. Stays use your entered price where set, otherwise a typical regional rate — see <a href="#" class="linkbtn" onclick="event.preventDefault();tbTab='day';renderTripBuilder();">Day tab</a> to add one. Fuel is a straight-line estimate.</p>
+    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} golf round${b.golfOf===1?'':'s'} have a parseable fee. Stays use your entered price where set, otherwise a typical regional rate — see <a href="#" class="linkbtn" onclick="event.preventDefault();tbBuildTab='itin';renderTripBuilder();">Itinerary tab</a> to add one. Fuel is a straight-line estimate.</p>
     <div class="cost-line-items-label">Line items</div>
     <table class="cost-line-table">${b.items.length?b.items.map(x=>`<tr><td>${esc(x.label)} <span class="wt">${x.cat}</span></td><td>${x.amount!=null?`£${x.amount.toFixed(0)}`:'—'}</td></tr>`).join(''):`<tr><td colspan="2" class="hint" style="padding:8px 0">No costs yet.</td></tr>`}</table>`;
 }
-/* Add tab: pick a target day, then add a golf round (search, reusing the
-   nav search bar's results below), a hotel, or a POI to it. */
-function tbAddTabHTML(){
-  if(!tripDays.length){tripDayAdd();tbDayShown=tripDays[0].id;}
-  const day=tripDays.find(d=>d.id===tbDayShown)||tripDays[0];
-  const idx=tripDays.indexOf(day);
-  return`<p class="hint" style="margin:0 0 8px">Adding to <b>Day ${idx+1}</b>${day.place?` · ${esc(day.place)}`:''}
-      <select onchange="tbDayShown=Number(this.value);renderTripBuilder();">${tripDays.map((d,i)=>`<option value="${d.id}"${d.id===day.id?' selected':''}>Day ${i+1}</option>`).join('')}</select></p>
-    <div class="toggles" style="margin-bottom:10px">
-      <button class="togg" aria-pressed="${tbAddCat==='golf'}" onclick="tbAddCat='golf';renderTripBuilder();">Golf</button>
-      <button class="togg" aria-pressed="${tbAddCat==='hotel'}" onclick="tbAddCat='hotel';renderTripBuilder();">Hotel</button>
-      <button class="togg" aria-pressed="${tbAddCat==='poi'}" onclick="tbAddCat='poi';renderTripBuilder();">POI</button>
-    </div>
-    ${tbAddCat==='golf'?`<p class="hint">Type a course name in the search bar above — results there add straight to Day ${idx+1}.</p>`
-      :tbAddCat==='hotel'?`<p class="hint">No hotel database yet — add one by name and (optionally) a nightly price.</p>
-        <button class="btn2" onclick="tbPromptHotel(${day.id})">+ Add hotel to Day ${idx+1}</button>`
-      :`<p class="hint">Add a point of interest by name.</p>
-        <button class="btn2" onclick="tbPromptPoi(${day.id})">+ Add point of interest to Day ${idx+1}</button>`}`;
-}
-let tbTab='itin',tbItinFilter='all',tbDriveToggle=true,tbAddCat='golf',tbDayShown=null;
+/* GOLF-64: the standalone "Add" tab that used to live here is retired. Its
+   three jobs are all reachable in fewer steps now: golf via the unified
+   search bar (GOLF-61) or Plan mode's discover lists, hotel and POI via each
+   day's own inline "+ Add hotel/stay" / "+ Add point of interest" buttons
+   (GOLF-63) — which also carry real coordinates, which this tab never did.
+   That removes a whole tab's worth of indirection, the "too many steps"
+   complaint this round set out to fix. */
+/* GOLF-64: the old 5-tab set (Itinerary/Day/Costs/Add/Discover) inside one
+   pane is retired. Discover moved into Plan mode, Day + Itinerary merged
+   into Build's single editable Itinerary tab, Costs sits under Build, and
+   the standalone Add tab is gone entirely — its job is covered by the
+   unified search bar (GOLF-61) plus each day's own inline "+" buttons
+   (GOLF-63). tbBuildTab is all that's left: two tabs, inside Build only. */
+let tbBuildTab='itin',tbItinFilter='all',tbDriveToggle=true,tbDayShown=null;
 function tripDayScheduleHTML(){
-  if(!tripSeq.length)return`<p class="hint">No courses in your trip yet. Open any course's popup and hit <b>Add to trip</b>, or search below.</p>`;
+  if(!tripSeq.length&&!tripDays.length)return`<p class="hint">Nothing scheduled yet. Add a day below, or go <a href="#" class="linkbtn" onclick="event.preventDefault();setAppMode('plan')">← back to the wishlist</a> to gather some courses first.</p>`;
   const unscheduled=tripUnscheduled();
   /* GOLF-33 follow-up: each day/unscheduled block is itself a drop target
      for "append to the end of this list" — a drop that doesn't land on a
@@ -2171,10 +2474,23 @@ function tripDayScheduleHTML(){
      land on a row isn't double-handled here. */
   const daysHTML=tripDays.map((d,idx)=>{
     const kind=TRIP_DAY_KINDS[d.kind]?d.kind:'golf';
+    const items=tripDayItems(d);
+    const nCourses=items.filter(it=>it.type==='golf').length,nOther=items.length-nCourses;
     const noRoundHint={start:'Arrival — no round scheduled.',free:'Free day — no round scheduled.',end:'Departure — no round scheduled.'}[kind];
+    /* GOLF-64: this is where the old read-only Itinerary tab and the old
+       editable Day tab become one view — the day's editable, draggable item
+       rows with the computed 🚗 drive legs (tripDayLegs) interleaved between
+       them, instead of the two being separate tabs showing the same day two
+       different ways. Every reference app treats view and edit as one screen. */
+    const byId=new Map(items.map(it=>[it.id,it]));
+    const rowsHTML=tripDayLegs(idx).map(l=>{
+      if(l.type==='drive')return tbDriveToggle?itinLegRowHTML(l):'';
+      const it=byId.get(l.id);
+      return it?tripDayItemRowHTML(d,it):'';
+    }).join('');
     return`
-    <div class="tb-day tb-day-${kind}" ondragover="event.preventDefault();" ondrop="event.preventDefault();if(tbDrag!=null)tbMoveCourseTo(tbDrag,${d.id},null);tbDrag=null;">
-      <div class="tb-day-head"><span>Day ${idx+1}${d.courses.length?` — ${d.courses.length} course${d.courses.length===1?'':'s'}`:kind!=='golf'?` — ${TRIP_DAY_KINDS[kind]}`:''}</span>
+    <div class="tb-day tb-day-${kind}" ondragover="event.preventDefault();" ondrop="event.preventDefault();tbDropOn(${d.id},null);">
+      <div class="tb-day-head"><span>Day ${idx+1}${nCourses?` — ${nCourses} course${nCourses===1?'':'s'}`:kind!=='golf'?` — ${TRIP_DAY_KINDS[kind]}`:''}${nOther?` · ${nOther} stop${nOther===1?'':'s'}`:''}</span>
         <button class="linkbtn" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">Remove day</button></div>
       <div class="tb-day-date">
         <select onchange="tripDaySetKind(${d.id},this.value);renderTripBuilder();">${Object.entries(TRIP_DAY_KINDS).map(([k,label])=>`<option value="${k}"${k===kind?' selected':''}>${label}</option>`).join('')}</select>
@@ -2187,17 +2503,16 @@ function tripDayScheduleHTML(){
         <span style="opacity:.75">date is optional — used to cost this day at the correct weekday/weekend rate</span>
       </div>
       ${tripDayDriveHTML(d,idx)}
-      ${d.courses.length?d.courses.map(i=>tripDayCourseRowHTML(i,d.id)).join(''):`<p class="hint" style="margin:8px 10px">${noRoundHint||''} ${kind==='golf'?'Drag a course in, or use the dropdown on an unscheduled course below.':'Add a course too if you want one — a start/free/end day can still hold a round.'}</p>`}
-      ${tripDaySuggestedTown(d)?`<div class="tb-day-town">Staying near: <b>${tripDaySuggestedTown(d)}</b>${d.courses.length&&ORS_PROXY_URL?` <a href="#" class="linkbtn" onclick="event.preventDefault();tbTogglePois(${d.id})">${tbPoiOn.has(d.id)?'Hide POIs':'Show POIs'}</a>`:''}</div>`:''}
+      ${items.length?rowsHTML:`<p class="hint" style="margin:8px 10px">${noRoundHint||''} ${kind==='golf'?'Drag a course in, or use the dropdown on a wishlist course below.':'Add a course too if you want one — a start/free/end day can still hold a round.'}</p>`}
+      <div class="tb-day-total"><span>Day total</span><span>${tripDayTotal(idx)?`£${tripDayTotal(idx).toFixed(0)}`:'—'}</span></div>
+      ${tripDaySuggestedTown(d)?`<div class="tb-day-town">Staying near: <b>${esc(tripDaySuggestedTown(d))}</b>${nCourses&&ORS_PROXY_URL?` <a href="#" class="linkbtn" onclick="event.preventDefault();tbTogglePois(${d.id})">${tbPoiOn.has(d.id)?'Hide POIs':'Show POIs'}</a>`:''}</div>`:''}
       ${tbPoiListHTML(d)}
-      <div class="tb-day-hotel">${d.hotel&&d.hotel.name
-        ?`🛏 ${esc(d.hotel.name)}${d.hotel.price!=null?` · £${d.hotel.price.toFixed(0)}`:' · typical-rate estimate'} <button class="linkbtn" onclick="tripDaySetHotel(${d.id},null,null);renderTripBuilder();">Remove</button>`
-        :`<button class="linkbtn" onclick="tbPromptHotel(${d.id})">+ Add hotel/stay</button>`}</div>
-      <div class="tb-day-pois">${(d.pois||[]).map((p,pi)=>`<span class="wt">📷 ${esc(p.name)} <a href="#" onclick="event.preventDefault();tripDayRemovePoi(${d.id},${pi});renderTripBuilder();" title="Remove">✕</a></span>`).join('')}
+      ${tbAddStopFormHTML(d.id)}
+      <div class="tb-day-add"><button class="linkbtn" onclick="tbPromptHotel(${d.id})">+ Add hotel/stay</button>
         <button class="linkbtn" onclick="tbPromptPoi(${d.id})">+ Add point of interest</button></div>
     </div>`}).join('');
   const unschedHTML=unscheduled.length?`
-    <div class="tb-day" style="border-style:dashed" ondragover="event.preventDefault();" ondrop="event.preventDefault();if(tbDrag!=null)tbMoveCourseTo(tbDrag,null,null);tbDrag=null;">
+    <div class="tb-day" style="border-style:dashed" ondragover="event.preventDefault();" ondrop="event.preventDefault();tbDropOn(null,null);">
       <div class="tb-day-head"><span>Unscheduled (Wishlist)</span></div>
       ${tripWishlistSummaryHTML(unscheduled)}
       ${unscheduled.map(i=>tripDayCourseRowHTML(i,null)).join('')}
@@ -2208,23 +2523,58 @@ function tripDayScheduleHTML(){
       <button class="btn2" onclick="tripDayAdd();renderTripBuilder();tbDrawMap();">+ Add day</button>
       <button class="btn2 ghost" onclick="tripClearAll();">Clear trip</button>
     </div>
-    <p class="hint" style="margin-top:10px">See the <a href="#" class="linkbtn" onclick="event.preventDefault();tbTab='cost';renderTripBuilder();">Costs tab</a> for a full trip total and line-item breakdown.</p>`;
+    <p class="hint" style="margin-top:10px">See the <a href="#" class="linkbtn" onclick="event.preventDefault();tbBuildTab='cost';renderTripBuilder();">Costs tab</a> for a full trip total and line-item breakdown.</p>`;
 }
-/* GOLF-57: Trip Builder sidebar redesign — five tabs (Itinerary/Day/
-   Costs/Add/Discover) under one shared nav bar + unified search + tab
-   row, replacing the old always-everything-at-once pane. Trip switcher,
-   day editing/drag-reorder, and Nearby/By-region discovery are all kept
-   exactly as they were, just moved: switcher into the nav area, day
-   editing into the Day tab, discovery into the Discover tab. */
+/* GOLF-64: Plan mode's wishlist — GOLF-62's unscheduled pool promoted from a
+   block at the bottom of the old Day tab into a first-class section, with
+   its suggested order/running totals and the one clear forward action into
+   Build mode. Rows are deliberately simpler than Build's: no "move to day"
+   dropdown, because in Plan mode there are no days yet to move to — that's
+   the whole point of the Plan/Build split. */
+function tbWishlistHTML(){
+  const unscheduled=tripUnscheduled();
+  if(!unscheduled.length)return`<p class="hint">Your wishlist is empty. Search above, or browse what's nearby, and hit <b>+ Wishlist</b> on anything you fancy playing.</p>`;
+  const rows=unscheduled.map(i=>{
+    const fee=extractFee(V(i,'wd'));
+    return`<div class="tb-day-course">
+      <div style="min-width:0">⛳ <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
+        <div class="cart-region">${esc(C[i].r)}${fee!=null?` · £${fee.toFixed(0)}`:''}</div></div>
+      <button class="btn2 ghost cart-remove" title="Remove from wishlist" onclick="toggleTrip(${i});renderTripBuilder();tbDrawMap();">✕</button>
+    </div>`;}).join('');
+  return`<div class="tb-day" style="border-style:dashed">
+      <div class="tb-day-head"><span>Wishlist — ${unscheduled.length} course${unscheduled.length===1?'':'s'}</span>
+        <button class="linkbtn" onclick="tripClearAll();">Clear</button></div>
+      ${tripWishlistSummaryHTML(unscheduled)}
+      ${rows}
+    </div>
+    <div class="bar" style="margin-top:10px">
+      <button class="btn primary" onclick="enterBuildMode()">Start scheduling days →</button>
+    </div>`;
+}
+function tbPlanHTML(){
+  return`<div class="tb-section-title">Find courses</div>
+    ${tbDiscoverTabHTML()}
+    <div class="tb-section-title" style="margin-top:16px">Your wishlist</div>
+    ${tbWishlistHTML()}`;
+}
+/* GOLF-64: one pane, two modes. The shared chrome (wordmark + total pill +
+   exit, trip switcher, unified search) is identical in both — only what sits
+   under it changes: Plan renders a single scrolling view (discover +
+   wishlist, no sub-tabs, deliberately), Build renders two tabs (Itinerary,
+   Costs) plus a "← Back to wishlist" link. Net: 5 flat unordered tabs
+   become 0 tabs in Plan + 2 in Build, and the structure itself narrates the
+   workflow instead of offering five destinations with no implied order. */
 function renderTripBuilder(){
   const pane=document.getElementById('tb-pane');
   if(tbDayShown==null||!tripDays.find(d=>d.id===tbDayShown))tbDayShown=tripDays.length?tripDays[0].id:null;
   const total=tbTripTotal();
-  const TABS=[['itin','Itinerary'],['day','Day'],['cost','Costs'],['add','Add'],['disc','Discover']];
+  const isBuild=appMode==='build';
+  const TABS=[['itin','Itinerary'],['cost','Costs']];
+  const showItinFilters=isBuild&&tbBuildTab==='itin';
   pane.innerHTML=`
     <div class="tb-navbar">
-      <span class="tb-wordmark">Trip Builder</span>
-      <span class="tb-navbar-right"><span class="tb-pill">${tripDays.length} day${tripDays.length===1?'':'s'} · £${total.toFixed(0)}</span>
+      <span class="tb-wordmark">${isBuild?'Build your trip':'Plan a trip'}</span>
+      <span class="tb-navbar-right"><span class="tb-pill">${isBuild?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}£${total.toFixed(0)}</span>
         <button class="linkbtn" id="tb-exit">← Back to Explore</button></span>
     </div>
     <div class="tb-section" style="padding:6px 20px">${tripSwitcherHTML()}</div>
@@ -2232,21 +2582,25 @@ function renderTripBuilder(){
       <input id="tb-unified-search" class="tb-search-bar" type="text" placeholder="Search courses, hotels, cities…" value="${tbSearchQ.replace(/"/g,'&quot;')}">
     </div>
     <div class="tb-section" id="tb-search-results" style="border-top:none${tbSearchQ.trim()?'':';display:none'}">${tbSearchQ.trim()?tbUnifiedSearchResultsHTML():''}</div>
-    <div class="tb-tabs">${TABS.map(([k,label])=>`<button class="tb-tab-btn" data-tab="${k}" aria-pressed="${tbTab===k}">${label}</button>`).join('')}</div>
-    ${tbTab==='itin'?`<div class="tb-filter-row">
+    ${isBuild?`<div class="tb-backlink"><button class="linkbtn" id="tb-back-wishlist">← Back to wishlist</button></div>
+    <div class="tb-tabs">${TABS.map(([k,label])=>`<button class="tb-tab-btn" data-tab="${k}" aria-pressed="${tbBuildTab===k}">${label}</button>`).join('')}</div>`:''}
+    ${showItinFilters?`<div class="tb-filter-row">
       <div class="tb-filter-pills">${[['all','All'],['golf','Golf'],['hotel','Hotels'],['poi','POI']].map(([k,label])=>
         `<button class="tb-pill-btn" data-itin-filter="${k}" aria-pressed="${tbItinFilter===k}">${label}</button>`).join('')}</div>
       <button class="tb-pill-btn tb-drive-toggle" id="tb-drive-toggle" aria-pressed="${tbDriveToggle}">Drive times: ${tbDriveToggle?'On':'Off'}</button>
     </div>`:''}
     <div class="tb-tab-content">${
-      tbTab==='itin'?tbItineraryHTML()
-      :tbTab==='day'?tripDayScheduleHTML()
-      :tbTab==='cost'?tbCostsTabHTML()
-      :tbTab==='add'?tbAddTabHTML()
-      :tbDiscoverTabHTML()
+      !isBuild?tbPlanHTML()
+      :tbBuildTab==='cost'?tbCostsTabHTML()
+      /* 'all' is the merged editable timeline; the golf/hotel/POI filters
+         keep the old Itinerary tab's flat read-only lists. */
+      :tbItinFilter==='all'?tripDayScheduleHTML()
+      :tbItineraryHTML()
     }</div>`;
-  document.getElementById('tb-exit').addEventListener('click',exitTripBuilder);
-  pane.querySelectorAll('.tb-tab-btn').forEach(btn=>btn.addEventListener('click',()=>{tbTab=btn.dataset.tab;renderTripBuilder();tbDrawMap();}));
+  document.getElementById('tb-exit').addEventListener('click',()=>exitTripBuilder());
+  const backEl=document.getElementById('tb-back-wishlist');
+  if(backEl)backEl.addEventListener('click',()=>setAppMode('plan'));
+  pane.querySelectorAll('.tb-tab-btn').forEach(btn=>btn.addEventListener('click',()=>{tbBuildTab=btn.dataset.tab;renderTripBuilder();tbDrawMap();}));
   const filterRow=pane.querySelector('.tb-filter-row');
   if(filterRow){
     filterRow.querySelectorAll('[data-itin-filter]').forEach(btn=>btn.addEventListener('click',()=>{tbItinFilter=btn.dataset.itinFilter;renderTripBuilder();}));
@@ -2281,7 +2635,44 @@ function renderTripBuilder(){
     e.preventDefault();
     tbAnchorTripToPlace(parseFloat(row.dataset.lat),parseFloat(row.dataset.lng),row.dataset.label);
   });
-  if(tbTab==='day'){
+  /* GOLF-63: search-as-you-type wiring for the open "add hotel/POI" form —
+     same debounce + mousedown-to-pick pattern as the day place boxes below,
+     but a pick fills the name field and stashes the coordinates on tbAddStop
+     rather than committing anything (the visitor still confirms with Add). */
+  if(tbAddStop){
+    const input=document.getElementById('tb-addstop-name'),results=document.getElementById('tb-addstop-results');
+    if(input&&results){
+      let debounce=null;
+      input.addEventListener('input',()=>{
+        tbAddStop.name=input.value;tbAddStop.lat=null;tbAddStop.lng=null;
+        const text=input.value;
+        clearTimeout(debounce);
+        if(!text.trim()){results.innerHTML='';return;}
+        debounce=setTimeout(()=>{
+          orsGeocode(text,list=>{
+            if(document.activeElement!==input)return;
+            if(list==null){results.innerHTML='';return;}
+            results.innerHTML=list.length?list.map(r=>
+              `<div class="tb-place-row" data-lat="${r.lat}" data-lng="${r.lng}" data-label="${r.label.replace(/"/g,'&quot;')}">${r.label}</div>`
+            ).join(''):'<div class="tb-place-empty">No matches</div>';
+          });
+        },300);
+      });
+      results.addEventListener('mousedown',e=>{
+        const row=e.target.closest('.tb-place-row');
+        if(!row)return;
+        e.preventDefault();
+        const priceEl=document.getElementById('tb-addstop-price');
+        tbAddStop.price=priceEl?priceEl.value:'';
+        tbAddStop.name=row.dataset.label;
+        tbAddStop.lat=parseFloat(row.dataset.lat);tbAddStop.lng=parseFloat(row.dataset.lng);
+        results.innerHTML='';
+        renderTripBuilder();
+      });
+      input.addEventListener('blur',()=>{setTimeout(()=>{if(document.getElementById('tb-addstop-results')===results)results.innerHTML='';},150);});
+    }
+  }
+  if(appMode==='build'&&tbBuildTab==='itin'&&tbItinFilter==='all'){
     /* GOLF-56: search-as-you-type wiring for each day's place box — mirrors
        the search-bar pattern above, one instance per day. mousedown (not
        click) on a result row so the input's blur doesn't clobber the pick. */
@@ -2315,7 +2706,7 @@ function renderTripBuilder(){
       input.addEventListener('blur',()=>{setTimeout(()=>{results.innerHTML='';},150);});
     });
   }
-  if(tbTab==='disc'){
+  if(appMode==='plan'){
     document.getElementById('tb-tab-place').addEventListener('click',()=>{tbDiscoveryTab='place';renderTripBuilder();tbDrawMap();});
     document.getElementById('tb-tab-anchor').addEventListener('click',()=>{tbDiscoveryTab='anchor';renderTripBuilder();tbDrawMap();});
     document.getElementById('tb-tab-region').addEventListener('click',()=>{tbDiscoveryTab='region';renderTripBuilder();tbDrawMap();});
@@ -2376,36 +2767,63 @@ function tbDiscoverTabHTML(){
       <div class="fld" style="margin-bottom:8px"><label for="tb-border">Include courses just over the border, within (miles)</label><input id="tb-border" type="number" value="8" min="0" max="50"></div>`}
     <div id="tb-results">${tbResultsHTML(tbDiscover())}</div>`;
 }
-function enterTripBuilder(seedAnchor,opts){
-  const pushHash=!opts||opts.pushHash!==false;
-  map.closePopup();
-  tripBuilderOn=true;
-  document.body.classList.add('trip-mode');
-  tbAnchor=seedAnchor??tbEffectiveAnchor();
-  renderTripBuilder();
-  tbDrawMap();
-  /* GOLF-41: #trip is a real, shareable/bookmarkable URL — pushState
-     (not a plain location.hash= assignment) so entering doesn't clobber
-     a legitimate earlier back-stack entry, and the popstate listener
-     below is the single source of truth for what "back" does. */
-  if(pushHash&&location.hash!=='#trip')history.pushState({trip:true},'','#trip');
+/* GOLF-64: three explicit top-level modes, layered on the EXISTING pane-swap
+   architecture rather than replacing it — 'plan' and 'build' both still mean
+   "the #tb-pane is showing and body.trip-mode is on", exactly as GOLF-31 set
+   it up; all that's new is which content the pane renders and which URL
+   describes it. `tripBuilderOn` therefore keeps its original meaning ("the
+   pane is open"), so every existing `if(tripBuilderOn)` redraw hook across
+   the file keeps working untouched.
+     ''      -> Explore  (map + filters + list, unchanged)
+     '#plan' -> Plan     (search/discover/wishlist — the conceptual half)
+     '#trip' -> Build    (days, items, costs — the concrete half)
+   '#trip' is deliberately NOT renamed: every GOLF-41 bookmark/shared link
+   still lands somewhere sensible. */
+let appMode='explore';
+function appModeFromHash(){return location.hash==='#trip'?'build':location.hash==='#plan'?'plan':'explore';}
+function appModeHash(m){return m==='plan'?'#plan':m==='build'?'#trip':'';}
+function setAppMode(mode,opts){
+  opts=opts||{};
+  const pushHash=opts.pushHash!==false;
+  const prev=appMode;
+  appMode=mode;
+  if(mode==='explore'){
+    tripBuilderOn=false;
+    document.body.classList.remove('trip-mode');
+    /* Keep the cart's route visible on the map after exiting — only the
+       discovery-candidate overlay goes away, not the trip itself. */
+    tripDrawCart(false);
+    render();
+  }else{
+    map.closePopup();
+    tripBuilderOn=true;
+    document.body.classList.add('trip-mode');
+    if(opts.seedAnchor!=null)tbAnchor=opts.seedAnchor;
+    else if(prev==='explore')tbAnchor=tbEffectiveAnchor();
+    renderTripBuilder();
+    tbDrawMap();
+  }
+  /* GOLF-41: a real, shareable/bookmarkable URL per mode — pushState (not a
+     plain location.hash= assignment) so a mode change doesn't clobber a
+     legitimate earlier back-stack entry, and the popstate listener below
+     stays the single source of truth for what Back/Forward do. */
+  if(pushHash){
+    const h=appModeHash(mode);
+    if((location.hash||'')!==h)history.pushState({appMode:mode},'',h||location.pathname+location.search);
+  }
 }
-function exitTripBuilder(opts){
-  const pushHash=!opts||opts.pushHash!==false;
-  tripBuilderOn=false;
-  document.body.classList.remove('trip-mode');
-  /* Keep the cart's route visible on the map after exiting — only the
-     discovery-candidate overlay goes away, not the trip itself. */
-  tripDrawCart(false);
-  render();
-  if(pushHash&&location.hash==='#trip')history.pushState({trip:false},'',location.pathname+location.search);
-}
-/* GOLF-41: back/forward button support — popstate fires on both real
-   navigation and our own pushState calls above, so guard each branch
-   against re-entering a state we're already in. */
+/* GOLF-64: the header's "Plan a trip" and a popup's "Add to trip" both land
+   in PLAN mode now, never straight in Build — you gather candidates into the
+   wishlist first (GOLF-62) and commit them to days second. */
+function enterTripBuilder(seedAnchor,opts){setAppMode('plan',Object.assign({seedAnchor:seedAnchor??null},opts||{}));}
+function enterBuildMode(opts){setAppMode('build',opts);}
+function exitTripBuilder(opts){setAppMode('explore',opts);}
+/* GOLF-41/64: back/forward support — popstate fires on both real navigation
+   and our own pushState calls above, so this guards against re-entering a
+   mode we're already in. Extended from two states to three. */
 window.addEventListener('popstate',()=>{
-  if(location.hash==='#trip'){if(!tripBuilderOn)enterTripBuilder(null,{pushHash:false});}
-  else{if(tripBuilderOn)exitTripBuilder({pushHash:false});}
+  const m=appModeFromHash();
+  if(m!==appMode)setAppMode(m,{pushHash:false});
 });
 /* tbSelect: the "pick a nearby course" action — set the anchor to the
    just-picked course BEFORE the mutating toggleTrip() call, since
@@ -2428,6 +2846,14 @@ function tbSelect(i){tbAddToWishlist(i);}
    anchor course. Route through toggleTrip() so cart/order/anchor all stay
    in lockstep, same as every other add path. */
 function setAsAnchor(i){if(!TRIP.has(i))toggleTrip(i);enterTripBuilder(i)}
+/* GOLF-64: a popup's "+ Add to trip" now lands the course in the wishlist
+   (GOLF-62) and opens PLAN mode — the natural next question after "I like
+   this course" is "what else is near it?", which is exactly what Plan mode
+   answers. It never jumps straight into Build/day-scheduling. */
+function tbAddToPlan(i){
+  tbAddToWishlist(i);
+  if(appMode!=='plan')setAppMode('plan',{seedAnchor:i});
+}
 
 /* GOLF-13: Course Handicap calculator. The formula itself needs no data
    source. courseStats (par/slope/course rating) pre-fills the inputs when
@@ -2777,7 +3203,12 @@ document.getElementById('open-export').addEventListener('click',()=>{
      when one exists — driveIn is the visitor's own manual estimate, not a
      real route, labelled accordingly so an exported copy stays honest
      about what it is. */
-  const days=tripDays.length?tripDays.map((d,idx)=>({day:idx+1,kind:d.kind,place:d.place||undefined,placeLat:d.placeLat??undefined,placeLng:d.placeLng??undefined,date:d.date||undefined,driveInMinutes:d.driveIn,driveInNote:d.driveIn!=null?"user-entered estimate, not a real route":undefined,courses:d.courses.map(i=>C[i].n)})):undefined;
+  const days=tripDays.length?tripDays.map((d,idx)=>({day:idx+1,kind:d.kind,place:d.place||undefined,placeLat:d.placeLat??undefined,placeLng:d.placeLng??undefined,date:d.date||undefined,driveInMinutes:d.driveIn,driveInNote:d.driveIn!=null?"user-entered estimate, not a real route":undefined,
+    /* GOLF-63: `courses` stays in the export for backwards compatibility
+       with anything already reading it; `stops` is the full ordered
+       timeline (golf/hotel/POI as one list), which is now the real shape. */
+    courses:tripDayCourses(d).map(i=>C[i].n),
+    stops:tripDayItems(d).map(it=>({type:it.type,name:tripItemName(it),price:tripItemPrice(d,it)??undefined,lat:it.lat??undefined,lng:it.lng??undefined}))})):undefined;
   /* GOLF-42: export every saved trip, not just the active one — a
      self-backup/share-by-file path that doesn't need any of Pillar 4's
      later sharing tiers. */
@@ -2785,7 +3216,8 @@ document.getElementById('open-export').addEventListener('click',()=>{
   const allTrips=tripListAll().length>1?tripListAll().map(t=>{
     const tt=trips[t.id];
     return{name:tt.name,active:t.id===activeTripId,courses:(tt.tripSeq||[]).map(i=>C[i].n),
-      days:(tt.tripDays||[]).length?tt.tripDays.map((d,idx)=>({day:idx+1,kind:d.kind,place:d.place||undefined,placeLat:d.placeLat??undefined,placeLng:d.placeLng??undefined,date:d.date||undefined,driveInMinutes:d.driveIn,courses:d.courses.map(i=>C[i].n)})):undefined};
+      days:(tt.tripDays||[]).length?tt.tripDays.map((d,idx)=>({day:idx+1,kind:d.kind,place:d.place||undefined,placeLat:d.placeLat??undefined,placeLng:d.placeLng??undefined,date:d.date||undefined,driveInMinutes:d.driveIn,courses:tripDayCourses(d).map(i=>C[i].n),
+        stops:tripDayItems(d).map(it=>({type:it.type,name:tripItemName(it),price:it.price??undefined}))})):undefined};
   }):undefined;
   const json=JSON.stringify({source:"The Britain Golf Explorer",exported:new Date().toISOString().slice(0,10),corrections:list,trip,days,allTrips},null,2);
   sheet.innerHTML=`<h2>Your corrections</h2>
@@ -2818,6 +3250,9 @@ render();
 /* GOLF-41: a direct/shared/bookmarked #trip link opens straight into the
    Trip Builder pane — pushHash:false since the hash is already correct,
    no need to push a duplicate history entry for it. */
-if(location.hash==='#trip')enterTripBuilder(null,{pushHash:false});
+/* GOLF-64: three URL states now, not two — a cold load on #plan or #trip
+   restores that mode directly (and a bookmarked GOLF-41 #trip link still
+   works, landing in Build exactly as it used to). */
+if(appModeFromHash()!=='explore')setAppMode(appModeFromHash(),{pushHash:false});
 if(TRIP.size)tripDrawCart(false);
 </script>

@@ -544,6 +544,43 @@ that touches rendering, filters, or persistence:
     restructure) — see the plan file's Phase 15 section for why those were
     deferred rather than rushed.
 
+34. **Item-level day timeline + Explore/Plan/Build modes (GOLF-63/64).**
+    Note: this supersedes step 33's "Day tab"/"Discover tab" wording — the
+    old 5-tab pane (Itinerary/Day/Costs/Add/Discover) is retired.
+    *Modes:* from the map, hit **"Plan a trip"** — you should land in
+    **Plan** mode at URL `#plan` (trip switcher + search + Nearby/By
+    region/Near a place + a Wishlist section), never straight in day
+    scheduling. A course popup's **"+ Add to trip"** should do the same,
+    with that course in the wishlist. With at least one wishlist course,
+    **"Start scheduling days →"** switches to **Build** mode at `#trip`
+    (Itinerary + Costs tabs, plus a **"← Back to wishlist"** link back to
+    Plan with the trip intact). Browser Back should walk Build → Plan →
+    Explore and Forward should walk back up, with `#trip`/`#plan`/empty
+    hashes matching the mode at every hop; a cold load on `#plan` or
+    `#trip` should open that mode directly (old GOLF-41 `#trip` bookmarks
+    still work).
+    *Items:* in Build → Itinerary, on one day add a hotel, two rounds, a
+    point of interest and a second, different hotel. Hotel/POI now open an
+    inline **search-as-you-type** picker (not the old `prompt()` boxes) —
+    picking a real result gives that stop coordinates; a plain typed name
+    still works and just shows "no location". Every consecutive pair of
+    located stops should show a 🚗 drive row *between* them, not just at
+    day boundaries. Drag ⠿ any row — hotel, POI or round — into any
+    position, including into another day: the drive rows, day total and
+    Costs breakdown should all re-derive from the new order. Dragging a
+    round to the Wishlist unschedules it; dragging a hotel/POI there is a
+    no-op (it snaps back rather than being deleted). A priced POI should
+    show its £ figure on the POI filter list (it used to be dropped).
+    *Migration:* a trip saved before this round (day shape
+    `courses`/`hotel`/`pois`) should load looking identical, flattened
+    once into golf → POI → hotel order.
+    No "undefined" in any mode/tab, no horizontal overflow at 375px;
+    `node scripts/test_data.js` unaffected (no data-file changes — pure
+    app-state/UI). Expect proxy 502s in the console for absurdly long legs
+    (e.g. a London course and an Aberdeen hotel on one day) — that is ORS
+    refusing the route, and the app falls back to its straight-line
+    estimate by design.
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
