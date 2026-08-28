@@ -1,6 +1,7 @@
 /**
  * GOLF-45 / GOLF-46 / GOLF-50 / GOLF-55 — ORS driving-time + route + POI
- * proxy, now auto-deployed via Cloudflare's Git integration.
+ * proxy, auto-deployed via Cloudflare's Git integration (build root
+ * directory: scripts/cloudflare-worker).
  *
  * A stateless Cloudflare Worker that stands between the golf map (a fully
  * static page with no backend of its own) and OpenRouteService. It exists
