@@ -108,6 +108,10 @@
   .tb-day-free{border-left:4px solid #B25A9E}
   .tb-day-date select{margin-right:6px}
   .tb-day-date input[type="text"]{margin:0 6px}
+  .tb-place-results{position:absolute;top:100%;left:6px;z-index:20;min-width:200px;max-height:180px;overflow-y:auto;background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+  .tb-place-row{padding:6px 10px;font-size:12px;cursor:pointer}
+  .tb-place-row:hover{background:var(--paper-2)}
+  .tb-place-empty{padding:6px 10px;font-size:12px;color:var(--stone)}
   .tb-day-head{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--paper);font-weight:700;font-size:12.5px}
   .tb-day-drive{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--paper-2);font-size:11.5px;color:var(--stone)}
   .tb-day-drive input{width:60px}
@@ -456,11 +460,15 @@ let tripDayNextId=1;
 /* GOLF-51: kind labels a day that isn't a round of golf — 'start'/'end'
    for arrival/departure days with no course, 'free' for a rest day — vs
    the default 'golf'. place is a free-text town/city name shown on the
-   day header (e.g. "Arrive in Edinburgh"); no coordinates are attached,
-   so kind/place are purely display — the route/map (tripDayOrder()) only
-   ever draws through days that actually have courses, exactly as before. */
+   day header (e.g. "Arrive in Edinburgh").
+   GOLF-56: place can now also carry real coordinates (placeLat/placeLng,
+   from the geocode search box) — when set, the place becomes a genuine
+   waypoint in the route/drive-time/fuel model (tripDayStops() below),
+   not just a display label. A day typed by hand without picking a search
+   result keeps placeLat/placeLng null and stays purely cosmetic, exactly
+   as before this ticket. */
 const TRIP_DAY_KINDS={golf:'Golf day',start:'Start point',free:'Free day',end:'End point'};
-function tripDayAdd(){tripDays.push({id:tripDayNextId++,courses:[],driveIn:null,date:null,kind:'golf',place:null});saveState();}
+function tripDayAdd(){tripDays.push({id:tripDayNextId++,courses:[],driveIn:null,date:null,kind:'golf',place:null,placeLat:null,placeLng:null});saveState();}
 /* Removes a course from whichever day (if any) currently holds it —
    called both when explicitly moving a course to a different day and
    when the course leaves the cart entirely, so tripDays never holds a
@@ -494,9 +502,23 @@ function tripDaySetKind(dayId,kind){
   d.kind=TRIP_DAY_KINDS[kind]?kind:'golf';
   saveState();
 }
+/* Manual free-text edit — clears any previously-geocoded coordinates,
+   since typed-over text is no longer verified against a real place. Use
+   tripDaySetPlaceGeo() below for picking a real search result instead. */
 function tripDaySetPlace(dayId,value){
   const d=tripDays.find(d=>d.id===dayId);if(!d)return;
   d.place=(typeof value==='string'&&value.trim())?value.trim().slice(0,80):null;
+  d.placeLat=null;d.placeLng=null;
+  saveState();
+}
+/* GOLF-56: picking a real result from the place search box — sets both
+   the display label and real coordinates, turning this day's place into
+   a genuine routable waypoint (see tripDayStops()). */
+function tripDaySetPlaceGeo(dayId,label,lat,lng){
+  const d=tripDays.find(d=>d.id===dayId);if(!d)return;
+  d.place=(typeof label==='string'?label.trim():'').slice(0,80)||null;
+  d.placeLat=typeof lat==='number'&&isFinite(lat)?lat:null;
+  d.placeLng=typeof lng==='number'&&isFinite(lng)?lng:null;
   saveState();
 }
 /* Courses in the cart not yet assigned to any day. */
@@ -716,10 +738,15 @@ function loadStoredState(){
            feeFieldForDate(). Absent/invalid -> null, same as pre-GOLF-48
            behavior (always wd). */
         date:(typeof d.date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d.date))?d.date:null,
-        /* GOLF-51: kind/place — see TRIP_DAY_KINDS. Both display-only,
-           validated defensively the same way every other saved field is. */
+        /* GOLF-51: kind/place — see TRIP_DAY_KINDS.
+           GOLF-56: placeLat/placeLng are optional real coordinates from
+           the geocode search — validated as finite numbers or null, same
+           defensive pattern as every other saved field. A place with no
+           coordinates stays exactly the pre-GOLF-56 display-only label. */
         kind:TRIP_DAY_KINDS[d.kind]?d.kind:'golf',
-        place:(typeof d.place==='string'&&d.place.trim())?d.place.trim().slice(0,80):null})):[];
+        place:(typeof d.place==='string'&&d.place.trim())?d.place.trim().slice(0,80):null,
+        placeLat:typeof d.placeLat==='number'&&isFinite(d.placeLat)?d.placeLat:null,
+        placeLng:typeof d.placeLng==='number'&&isFinite(d.placeLng)?d.placeLng:null})):[];
     return{
       name:typeof t.name==='string'&&t.name.trim()?t.name.trim():'My trip',
       created:typeof t.created==='number'?t.created:Date.now(),
@@ -1220,24 +1247,41 @@ function tripOrder(indices){
 }
 /* GOLF-33: small fixed palette so each day's stops read as visually
    distinct on the map — cycles if there are more days than colors rather
-   than erroring. Unscheduled stops (dayOf undefined/null) keep the
-   original gold fill, matching pre-GOLF-33 behavior exactly. */
+   than erroring. Unscheduled stops (stop.day null) keep the original
+   gold fill, matching pre-GOLF-33 behavior exactly. */
 const TRIP_DAY_COLORS=['#E6B400','#4C8C6B','#B25A9E','#3E7CB1','#C1553D','#7A6BC9'];
-function tripShowOrdered(order,clear=true,fit=true,dayOf=null){
+/* GOLF-56: `order` is now an array of stop objects — {type:'course',i,
+   lat,lng,name,day} or {type:'place',lat,lng,name,day} — rather than a
+   flat list of course indices, so a searched start/free/end-day place
+   can sit in the route alongside courses. Every reader of a leg
+   (orsLegRoute, orsLegKey) already only needs {lat,lng}, so a place stop
+   slots in with zero special-casing there; the only thing that differs
+   per type is how each stop is drawn. */
+function tripShowOrdered(order,clear=true,fit=true){
   if(clear)tripClear();
   const pts=[];
-  order.forEach((i,idx)=>{
-    const day=dayOf?dayOf.get(i):null;
+  order.forEach((stop,idx)=>{
+    const day=stop.day;
     const fill=day!=null?TRIP_DAY_COLORS[(day-1)%TRIP_DAY_COLORS.length]:'#E6B400';
     const label=day!=null?`D${day}·${idx+1}`:String(idx+1);
-    L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:'#1B2733',weight:2.5,fillColor:fill,fillOpacity:1})
-      .bindTooltip(label,{permanent:true,direction:'center',className:'trip-num'}).addTo(tripLayer);
-    pts.push([C[i].lat,C[i].lng]);
+    if(stop.type==='place'){
+      // Hollow diamond-ish ring (via a plain circleMarker with a white
+      // fill and a thick coloured border) so a searched place reads as
+      // visually distinct from a solid golf-course stop at a glance.
+      L.circleMarker([stop.lat,stop.lng],{radius:8,color:fill,weight:3,fillColor:'#fff',fillOpacity:1})
+        .bindTooltip(label,{permanent:true,direction:'center',className:'trip-num'}).addTo(tripLayer);
+    }else{
+      L.circleMarker([stop.lat,stop.lng],{radius:9,color:'#1B2733',weight:2.5,fillColor:fill,fillOpacity:1})
+        .bindTooltip(label,{permanent:true,direction:'center',className:'trip-num'}).addTo(tripLayer);
+    }
+    pts.push([stop.lat,stop.lng]);
     /* GOLF-35: nearest-station markers make sense in the normal popup view,
        but inside Trip Builder they zig-zag station->CourseA->station->CourseB
        across the actual trip route — suppress them entirely while the pane
-       is open; the trip route itself is the only line drawn there. */
-    if(!tripBuilderOn){
+       is open; the trip route itself is the only line drawn there. Only
+       ever applies to course stops — a searched place has no station. */
+    if(stop.type==='course'&&!tripBuilderOn){
+      const i=stop.i;
       const stnObj=STN[V(i,'stn')],near=C[i].nearStation,s=stnObj||near;
       if(s){
         const isNR=stnObj?[...STN_LINES[stnObj.n]].some(k=>!TFL_LINES.has(k)):true;
@@ -1245,21 +1289,23 @@ function tripShowOrdered(order,clear=true,fit=true,dayOf=null){
       }
     }
   });
-  /* GOLF-50/GOLF-51: each leg is drawn as its own segment, coloured by the
-     day it arrives into (falling back to the departing day for a leg that
-     ends on an unscheduled/non-golf stop) — "each chunk individually"
-     rather than one continuous line, matching the day-coloured stop
-     markers above. A leg with cached real route geometry draws as a
-     solid road-following line; one still on the straight-line heuristic
-     (proxy unset, or genuinely not fetched yet) draws thin and dashed,
-     the same "auto vs real" visual convention used for drive times. */
+  /* GOLF-50/GOLF-51/GOLF-56: each leg is drawn as its own segment, coloured
+     by the day it arrives into (falling back to the departing day for a
+     leg that ends on an unscheduled/non-golf stop) — "each chunk
+     individually" rather than one continuous line, matching the
+     day-coloured stop markers above. A leg with cached real route
+     geometry draws as a solid road-following line; one still on the
+     straight-line heuristic (proxy unset, or genuinely not fetched yet)
+     draws thin and dashed, the same "auto vs real" visual convention
+     used for drive times. orsLegRoute() only ever reads {lat,lng} off
+     each stop, so this works identically for course->course,
+     course->place, and place->place legs. */
   for(let idx=1;idx<order.length;idx++){
-    const aIdx=order[idx-1],bIdx=order[idx];
-    const dayA=dayOf?dayOf.get(aIdx):null,dayB=dayOf?dayOf.get(bIdx):null;
-    const segDay=dayB??dayA;
+    const a=order[idx-1],b=order[idx];
+    const segDay=b.day??a.day;
     const segColor=segDay!=null?TRIP_DAY_COLORS[(segDay-1)%TRIP_DAY_COLORS.length]:'#1B2733';
-    const route=orsLegRoute(aIdx,bIdx);
-    const latlngs=(route&&route.length)?route:[[C[aIdx].lat,C[aIdx].lng],[C[bIdx].lat,C[bIdx].lng]];
+    const route=orsLegRoute(a,b);
+    const latlngs=(route&&route.length)?route:[[a.lat,a.lng],[b.lat,b.lng]];
     L.polyline(latlngs,route&&route.length
       ?{color:segColor,weight:4,opacity:.8,lineCap:'round'}
       :{color:segColor,weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(tripLayer);
@@ -1327,17 +1373,32 @@ function tbResultsHTML(items){
    flat tripSeq order when no days exist yet (pre-GOLF-33 behavior). Also
    returns a courseIndex->dayPosition map so the map/list can colour- and
    label-code stops by day. */
+/* GOLF-56: a "stop" is either a golf course ({type:'course',i,lat,lng,
+   name,day}) or a searched place ({type:'place',lat,lng,name,day}) — a
+   day's place (its start/free/end-day location, when geocoded) is always
+   the day's first stop, followed by its courses in order. Lets a
+   start/free/end day's searched location act as a real routable waypoint
+   alongside golf courses, with zero special-casing in the leg/route
+   machinery below (which only ever reads {lat,lng} off a stop). */
+function tripDayStops(dayIdx){
+  const d=tripDays[dayIdx];if(!d)return[];
+  const stops=[];
+  if(d.placeLat!=null&&d.placeLng!=null)stops.push({type:'place',lat:d.placeLat,lng:d.placeLng,name:d.place||'Place',day:dayIdx+1});
+  d.courses.forEach(i=>stops.push({type:'course',i,lat:C[i].lat,lng:C[i].lng,name:V(i,'n'),day:dayIdx+1}));
+  return stops;
+}
+function tripDayFirstStop(dayIdx){const s=tripDayStops(dayIdx);return s.length?s[0]:null;}
+function tripDayLastStop(dayIdx){const s=tripDayStops(dayIdx);return s.length?s[s.length-1]:null;}
 function tripDayOrder(){
-  if(!tripDays.length)return{order:tripSeq,dayOf:null};
-  const order=[...tripDays.flatMap(d=>d.courses),...tripUnscheduled()];
-  const dayOf=new Map();
-  tripDays.forEach((d,idx)=>d.courses.forEach(i=>dayOf.set(i,idx+1)));
-  return{order,dayOf};
+  if(!tripDays.length)return tripSeq.map(i=>({type:'course',i,lat:C[i].lat,lng:C[i].lng,name:V(i,'n'),day:null}));
+  const order=[...tripDays.flatMap((d,idx)=>tripDayStops(idx)),
+    ...tripUnscheduled().map(i=>({type:'course',i,lat:C[i].lat,lng:C[i].lng,name:V(i,'n'),day:null}))];
+  return order;
 }
 function tripDrawCart(fit){
   tripClear();
-  const{order,dayOf}=tripDayOrder();
-  const pts=tripShowOrdered(order,false,false,dayOf);
+  const order=tripDayOrder();
+  const pts=tripShowOrdered(order,false,false);
   if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
 }
 /* Draws the confirmed cart route AND the not-yet-added discovery
@@ -1361,8 +1422,8 @@ function tbDrawPois(){
 }
 function tbDrawMap(){
   tripClear();
-  const{order,dayOf}=tripDayOrder();
-  const pts1=tripShowOrdered(order,false,false,dayOf);
+  const order=tripDayOrder();
+  const pts1=tripShowOrdered(order,false,false);
   const anchor=tbDiscoveryTab==='anchor'?tbEffectiveAnchor():null;
   const pts2=tripShow(tbDiscover(),anchor,false,false);
   tbDrawPois();
@@ -1435,9 +1496,8 @@ const DRIVE_INEFFICIENCY=1.3,DRIVE_AVG_MPH=38;
    physical distance regardless of anyone's time guess, so this is the
    shared source of truth for both that and the time estimate below. */
 function tripDayLegMiles(dayIdx){
-  const prev=tripDays[dayIdx-1],day=tripDays[dayIdx];
-  if(!prev||!day||!prev.courses.length||!day.courses.length)return null;
-  const a=C[prev.courses[prev.courses.length-1]],b=C[day.courses[0]];
+  const a=tripDayLastStop(dayIdx-1),b=tripDayFirstStop(dayIdx);
+  if(!a||!b)return null;
   return haversineMiles(a.lat,a.lng,b.lat,b.lng)*DRIVE_INEFFICIENCY;
 }
 function tripDayAutoEstimate(dayIdx){
@@ -1463,17 +1523,20 @@ const ORS_PROXY_URL='https://geofftheworker.stefand94.workers.dev/';
 const ORS_CACHE_KEY='golfmap:legcache:v2';
 function orsCacheLoad(){try{return JSON.parse(localStorage.getItem(ORS_CACHE_KEY)||'{}');}catch(e){return{};}}
 function orsCacheSave(c){try{localStorage.setItem(ORS_CACHE_KEY,JSON.stringify(c));}catch(e){}}
-function orsLegKey(aIdx,bIdx){const a=C[aIdx],b=C[bIdx];return a.lat.toFixed(4)+','+a.lng.toFixed(4)+'>'+b.lat.toFixed(4)+','+b.lng.toFixed(4);}
+/* GOLF-56: keyed off plain {lat,lng} points rather than course indices,
+   so a leg touching a searched place (which has no course index) works
+   identically to a leg between two courses. */
+function orsLegKey(a,b){return a.lat.toFixed(4)+','+a.lng.toFixed(4)+'>'+b.lat.toFixed(4)+','+b.lng.toFixed(4);}
 let orsPending=new Set();
-/* GOLF-50: shared fetch+cache logic for a single leg — both
+/* GOLF-50/GOLF-56: shared fetch+cache logic for a single leg — both
    tripDayRealEstimate() (drive time) and orsLegRoute() (route geometry)
    read/write the same cache entry under the same key, so whichever one
    asks first fires the single fetch that satisfies both; orsPending
-   guards against a duplicate in-flight request for the same leg. */
-function orsEnsureLeg(key,aIdx,bIdx){
+   guards against a duplicate in-flight request for the same leg. a/b are
+   plain {lat,lng} points (a course or a searched place, either way). */
+function orsEnsureLeg(key,a,b){
   if(orsPending.has(key))return;
   orsPending.add(key);
-  const a=C[aIdx],b=C[bIdx];
   fetch(ORS_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({origin:[a.lng,a.lat],destination:[b.lng,b.lat]})})
     .then(r=>r.ok?r.json():Promise.reject(new Error('proxy error '+r.status)))
@@ -1496,13 +1559,12 @@ function orsEnsureLeg(key,aIdx,bIdx){
    resolves, so re-viewing an unchanged trip never re-hits the proxy. */
 function tripDayRealEstimate(dayIdx){
   if(!ORS_PROXY_URL)return null;
-  const prev=tripDays[dayIdx-1],day=tripDays[dayIdx];
-  if(!prev||!day||!prev.courses.length||!day.courses.length)return null;
-  const aIdx=prev.courses[prev.courses.length-1],bIdx=day.courses[0];
-  const key=orsLegKey(aIdx,bIdx);
+  const a=tripDayLastStop(dayIdx-1),b=tripDayFirstStop(dayIdx);
+  if(!a||!b)return null;
+  const key=orsLegKey(a,b);
   const cache=orsCacheLoad();
   if(cache[key])return cache[key];
-  orsEnsureLeg(key,aIdx,bIdx);
+  orsEnsureLeg(key,a,b);
   return null;
 }
 /* GOLF-50: real road-following geometry for a single leg (any two
@@ -1515,14 +1577,36 @@ function tripDayRealEstimate(dayIdx){
    alone) still triggers exactly one fetch to backfill it; an entry where
    ORS genuinely returned no geometry (route explicitly null) is not
    retried forever. */
-function orsLegRoute(aIdx,bIdx){
+function orsLegRoute(a,b){
   if(!ORS_PROXY_URL)return null;
-  const key=orsLegKey(aIdx,bIdx);
+  const key=orsLegKey(a,b);
   const cache=orsCacheLoad();
   const hit=cache[key];
   if(hit&&'route'in hit)return hit.route;
-  orsEnsureLeg(key,aIdx,bIdx);
+  orsEnsureLeg(key,a,b);
   return null;
+}
+/* GOLF-56: place search (start/free/end day locations) via the same
+   Worker's geocode mode. In-memory only (no localStorage cache — search
+   text is transient/per-keystroke, not worth persisting) keyed by the
+   raw query text; a fresh keystroke that repeats an earlier query in the
+   same session is served from this map instead of re-hitting the proxy.
+   cb(results|null) — null means "still loading/unavailable", same
+   contract as the leg-estimate helpers above. */
+const orsGeocodeCache=new Map();
+function orsGeocode(text,cb){
+  const q=text.trim();
+  if(!ORS_PROXY_URL||!q){cb([]);return;}
+  if(orsGeocodeCache.has(q)){cb(orsGeocodeCache.get(q));return;}
+  fetch(ORS_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({mode:'geocode',text:q})})
+    .then(r=>r.ok?r.json():Promise.reject(new Error('proxy error '+r.status)))
+    .then(data=>{
+      const results=Array.isArray(data&&data.results)?data.results:[];
+      orsGeocodeCache.set(q,results);
+      cb(results);
+    })
+    .catch(()=>cb(null));
 }
 /* The value actually used wherever a drive time is needed (e.g. GOLF-44's
    cost total): the visitor's own typed number if they entered one, else
@@ -1646,8 +1730,11 @@ function tripDayScheduleHTML(){
         <button class="linkbtn" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">Remove day</button></div>
       <div class="tb-day-date">
         <select onchange="tripDaySetKind(${d.id},this.value);renderTripBuilder();">${Object.entries(TRIP_DAY_KINDS).map(([k,label])=>`<option value="${k}"${k===kind?' selected':''}>${label}</option>`).join('')}</select>
-        <input type="text" placeholder="Place (e.g. Edinburgh)" value="${(d.place||'').replace(/"/g,'&quot;')}" style="width:150px"
-          onchange="tripDaySetPlace(${d.id},this.value);renderTripBuilder();">
+        <span class="tb-place-wrap" style="position:relative;display:inline-block">
+          <input type="text" class="tb-place-input" id="tb-place-${d.id}" placeholder="Place (e.g. Edinburgh)" value="${(d.place||'').replace(/"/g,'&quot;')}" style="width:150px"
+            onchange="tripDaySetPlace(${d.id},this.value);renderTripBuilder();">
+          <div id="tb-place-results-${d.id}" class="tb-place-results"></div>
+        </span>
         Date <input type="date" value="${d.date??''}" onchange="tripDaySetDate(${d.id},this.value===''?null:this.value);renderTripBuilder();">
         <span style="opacity:.75">date is optional — used to cost this day at the correct weekday/weekend rate</span>
       </div>
@@ -1699,6 +1786,42 @@ function renderTripBuilder(){
   tbSearchEl.addEventListener('input',()=>{
     tbSearchQ=tbSearchEl.value;
     document.getElementById('tb-search-results').innerHTML=tbSearchResultsHTML();
+  });
+  /* GOLF-56: search-as-you-type wiring for each day's place box — mirrors
+     the tb-search pattern above exactly, one instance per day. mousedown
+     (not click) on a result row so the input's blur (fired by the
+     mousedown itself, before a click would land) doesn't clobber the
+     pick — event.preventDefault() on mousedown stops the blur/focus-loss
+     from happening at all, so the subsequent click handler is redundant
+     but harmless. */
+  tripDays.forEach(d=>{
+    const input=document.getElementById(`tb-place-${d.id}`);
+    const results=document.getElementById(`tb-place-results-${d.id}`);
+    if(!input||!results)return;
+    let debounce=null;
+    input.addEventListener('input',()=>{
+      const text=input.value;
+      clearTimeout(debounce);
+      if(!text.trim()){results.innerHTML='';return;}
+      debounce=setTimeout(()=>{
+        orsGeocode(text,list=>{
+          if(document.activeElement!==input)return; // user moved on already
+          if(list==null){results.innerHTML='';return;}
+          results.innerHTML=list.length?list.map(r=>
+            `<div class="tb-place-row" data-lat="${r.lat}" data-lng="${r.lng}" data-label="${r.label.replace(/"/g,'&quot;')}">${r.label}</div>`
+          ).join(''):'<div class="tb-place-empty">No matches</div>';
+        });
+      },300);
+    });
+    results.addEventListener('mousedown',e=>{
+      const row=e.target.closest('.tb-place-row');
+      if(!row)return;
+      e.preventDefault();
+      tripDaySetPlaceGeo(d.id,row.dataset.label,parseFloat(row.dataset.lat),parseFloat(row.dataset.lng));
+      renderTripBuilder();
+      tbDrawMap();
+    });
+    input.addEventListener('blur',()=>{setTimeout(()=>{results.innerHTML='';},150);});
   });
   document.getElementById('tb-tab-anchor').addEventListener('click',()=>{tbDiscoveryTab='anchor';renderTripBuilder();tbDrawMap();});
   document.getElementById('tb-tab-region').addEventListener('click',()=>{tbDiscoveryTab='region';renderTripBuilder();tbDrawMap();});
@@ -2107,7 +2230,7 @@ document.getElementById('open-export').addEventListener('click',()=>{
      when one exists — driveIn is the visitor's own manual estimate, not a
      real route, labelled accordingly so an exported copy stays honest
      about what it is. */
-  const days=tripDays.length?tripDays.map((d,idx)=>({day:idx+1,kind:d.kind,place:d.place||undefined,date:d.date||undefined,driveInMinutes:d.driveIn,driveInNote:d.driveIn!=null?"user-entered estimate, not a real route":undefined,courses:d.courses.map(i=>C[i].n)})):undefined;
+  const days=tripDays.length?tripDays.map((d,idx)=>({day:idx+1,kind:d.kind,place:d.place||undefined,placeLat:d.placeLat??undefined,placeLng:d.placeLng??undefined,date:d.date||undefined,driveInMinutes:d.driveIn,driveInNote:d.driveIn!=null?"user-entered estimate, not a real route":undefined,courses:d.courses.map(i=>C[i].n)})):undefined;
   /* GOLF-42: export every saved trip, not just the active one — a
      self-backup/share-by-file path that doesn't need any of Pillar 4's
      later sharing tiers. */
@@ -2115,7 +2238,7 @@ document.getElementById('open-export').addEventListener('click',()=>{
   const allTrips=tripListAll().length>1?tripListAll().map(t=>{
     const tt=trips[t.id];
     return{name:tt.name,active:t.id===activeTripId,courses:(tt.tripSeq||[]).map(i=>C[i].n),
-      days:(tt.tripDays||[]).length?tt.tripDays.map((d,idx)=>({day:idx+1,kind:d.kind,place:d.place||undefined,date:d.date||undefined,driveInMinutes:d.driveIn,courses:d.courses.map(i=>C[i].n)})):undefined};
+      days:(tt.tripDays||[]).length?tt.tripDays.map((d,idx)=>({day:idx+1,kind:d.kind,place:d.place||undefined,placeLat:d.placeLat??undefined,placeLng:d.placeLng??undefined,date:d.date||undefined,driveInMinutes:d.driveIn,courses:d.courses.map(i=>C[i].n)})):undefined};
   }):undefined;
   const json=JSON.stringify({source:"The Britain Golf Explorer",exported:new Date().toISOString().slice(0,10),corrections:list,trip,days,allTrips},null,2);
   sheet.innerHTML=`<h2>Your corrections</h2>

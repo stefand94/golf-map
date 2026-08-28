@@ -434,6 +434,24 @@ that touches rendering, filters, or persistence:
     "undefined"; `node scripts/test_data.js` unaffected (no data-file
     changes — pure app-state/UI).
 
+30. **Place search for start/free/end days (GOLF-56).** In the Trip
+    Builder pane, type into a day's place input (e.g. "Newquay") — after
+    a short pause a dropdown of real geocoded matches should appear below
+    the input (via the Worker's `mode:'geocode'` endpoint); clicking a
+    result should fill the input, close the dropdown, and set that day's
+    coordinates. Build a trip spanning a start-day place, a free-day
+    place with a course, and a course-only day (e.g. London → Newquay +
+    Perranporth) — the map route and drive-time/fuel estimates should
+    treat the geocoded places as real waypoints alongside the golf
+    courses (verify via `tripDayOrder()` returning place-then-course
+    stops in the right sequence, and `tripDayLegMiles()`/
+    `tripDayEffectiveDriveIn()` producing a sane, non-null estimate for
+    the place-to-place leg). Place stops should render as a visually
+    distinct hollow-ring marker vs. a solid golf-course marker. Reload
+    the page and confirm the place name and coordinates both persist. No
+    "undefined"; `node scripts/test_data.js` unaffected (no data-file
+    changes — pure app-state/UI/Worker).
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
