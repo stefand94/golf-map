@@ -1,9 +1,10 @@
 /**
- * GOLF-45 / GOLF-46 / GOLF-50 / GOLF-55 — ORS driving-time + route + POI
- * proxy, auto-deployed via Cloudflare's Git integration (build root
- * directory: scripts/cloudflare-worker). ORS_API_KEY is set under the
- * Build's own "Variables and secrets" section and needs a fresh build
- * to bind — it doesn't apply retroactively to a running deployment.
+ * GOLF-45 / GOLF-46 / GOLF-50 / GOLF-55 / GOLF-56 — ORS driving-time +
+ * route + POI + geocoding proxy, auto-deployed via Cloudflare's Git
+ * integration (build root directory: scripts/cloudflare-worker).
+ * ORS_API_KEY is set under the Build's own "Variables and secrets"
+ * section and needs a fresh build to bind — it doesn't apply
+ * retroactively to a running deployment.
  *
  * A stateless Cloudflare Worker that stands between the golf map (a fully
  * static page with no backend of its own) and OpenRouteService. It exists
@@ -11,7 +12,7 @@
  * the ORS API key in the page's own JS, where anyone could copy it and
  * burn the free 2,500-req/day quota. This Worker holds the key
  * server-side (as an encrypted secret, never in this file) and forwards
- * two kinds of request:
+ * three kinds of request:
  *
  *   1. Driving time/distance/route (GOLF-45/GOLF-50, default — no "mode"
  *      field needed):
@@ -21,6 +22,10 @@
  *   2. Nearby points of interest (GOLF-46):
  *      POST {mode:'pois', point:[lng,lat], radius?:metres, categories?:[id,...]}
  *      -> {pois:[{name, category, lat, lng}, ...]}
+ *
+ *   3. Place search / geocoding (GOLF-56 — start/free/end day locations):
+ *      POST {mode:'geocode', text:'Newquay'}
+ *      -> {results:[{label, lat, lng}, ...]}
  *
  * No database, no state, no logging of requests beyond Cloudflare's own
  * standard request logs — a pure pass-through either way.
@@ -48,6 +53,7 @@
 // no extra request, no extra cost, just a different response shape.
 const ORS_DIRECTIONS_URL = 'https://api.openrouteservice.org/v2/directions/driving-car/geojson';
 const ORS_POIS_URL = 'https://api.openrouteservice.org/pois';
+const ORS_GEOCODE_URL = 'https://api.openrouteservice.org/geocode/autocomplete';
 // A leg between two golf courses rarely needs more than a couple hundred
 // points to look like a real road at map zoom levels — cap it so the
 // response (and what ends up cached in localStorage) stays small.
@@ -75,6 +81,9 @@ export default {
 
     if (body && body.mode === 'pois') {
       return handlePois(body, env);
+    }
+    if (body && body.mode === 'geocode') {
+      return handleGeocode(body, env);
     }
     return handleRoute(body, env);
   },
@@ -211,6 +220,59 @@ async function handlePois(body, env) {
     .filter((p) => typeof p.lat === 'number' && typeof p.lng === 'number');
 
   return json({ pois });
+}
+
+// GOLF-56: place search for start/free/end day locations. ORS's geocoder
+// takes its key as a query param (not the Authorization header the
+// directions/POI endpoints use — a real, confirmed difference between
+// those two parts of the ORS API, not an oversight). Boundary is fixed to
+// Great Britain/Northern Ireland since that's the app's whole map — a
+// bare "Newquay" shouldn't have to compete with a same-named place
+// abroad.
+async function handleGeocode(body, env) {
+  const text = typeof body.text === 'string' ? body.text.trim() : '';
+  if (!text) {
+    return json({ results: [] });
+  }
+
+  const url = new URL(ORS_GEOCODE_URL);
+  url.searchParams.set('api_key', env.ORS_API_KEY);
+  url.searchParams.set('text', text.slice(0, 200));
+  url.searchParams.set('boundary.country', 'GBR');
+  url.searchParams.set('size', '6');
+
+  let orsRes;
+  try {
+    orsRes = await fetch(url.toString());
+  } catch (e) {
+    return json({ error: 'could not reach OpenRouteService' }, 502);
+  }
+
+  if (!orsRes.ok) {
+    return json({ error: 'ORS request failed', status: orsRes.status }, 502);
+  }
+
+  let data;
+  try {
+    data = await orsRes.json();
+  } catch (e) {
+    return json({ error: 'ORS returned invalid JSON' }, 502);
+  }
+
+  const features = Array.isArray(data && data.features) ? data.features : [];
+  const results = features
+    .map((f) => {
+      const props = (f && f.properties) || {};
+      const coords = f && f.geometry && f.geometry.coordinates;
+      return {
+        label: props.label || props.name || 'Unknown place',
+        lat: Array.isArray(coords) ? coords[1] : null,
+        lng: Array.isArray(coords) ? coords[0] : null,
+      };
+    })
+    .filter((r) => typeof r.lat === 'number' && typeof r.lng === 'number');
+
+  return json({ results });
 }
 
 function isCoord(v) {
