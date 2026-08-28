@@ -1,7 +1,8 @@
 /**
  * GOLF-45 / GOLF-46 / GOLF-50 / GOLF-55 — ORS driving-time + route + POI
  * proxy, auto-deployed via Cloudflare's Git integration (build root
- * directory: scripts/cloudflare-worker).
+ * directory: scripts/cloudflare-worker). ORS_API_KEY is a dashboard
+ * secret and needs a fresh deploy to bind after being (re-)added.
  *
  * A stateless Cloudflare Worker that stands between the golf map (a fully
  * static page with no backend of its own) and OpenRouteService. It exists
