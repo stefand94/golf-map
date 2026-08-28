@@ -1621,6 +1621,16 @@ function tripDayEffectiveDriveIn(dayIdx){
   if(real)return{minutes:real.minutes,auto:true,real:true};
   return{minutes:tripDayAutoEstimate(dayIdx),auto:true,real:false};
 }
+/* Friendly "Xh Ym" display for a minutes value over an hour — the
+   underlying <input> stays a plain minutes number (simplest to type/step
+   into), this is purely the human-readable label shown alongside it. */
+function fmtDriveMinutes(mins){
+  if(mins==null)return'—';
+  const m=Math.round(mins);
+  if(m<60)return`${m} min`;
+  const h=Math.floor(m/60),rem=m%60;
+  return rem===0?`${h}h`:`${h}h ${rem}m`;
+}
 function tripDayDriveHTML(d,idx){
   if(idx<=0)return'';
   const eff=tripDayEffectiveDriveIn(idx);
@@ -1631,7 +1641,9 @@ function tripDayDriveHTML(d,idx){
             :`<span class="tb-auto-chip">auto</span> <span style="opacity:.75">estimated from straight-line distance — type a real number if you know it</span>`)
         :`<span style="opacity:.75">(no estimate yet — add a course to both days)</span>`)
     :`<span style="opacity:.75">(your estimate — real directions coming later)</span>`;
-  return`<div class="tb-day-drive">Drive to today's first stop: <input type="number" min="0" step="5" value="${d.driveIn??''}" placeholder="${eff.auto&&eff.minutes!=null?eff.minutes:'—'}" onchange="tripDaySetDriveIn(${d.id},this.value===''?null:parseFloat(this.value));renderTripBuilder();"> min ${note}</div>`;
+  const shown=d.driveIn??eff.minutes;
+  const friendly=shown!=null?` <b>(${fmtDriveMinutes(shown)})</b>`:'';
+  return`<div class="tb-day-drive">Drive to today's first stop: <input type="number" min="0" step="5" value="${d.driveIn??''}" placeholder="${eff.auto&&eff.minutes!=null?eff.minutes:'—'}" onchange="tripDaySetDriveIn(${d.id},this.value===''?null:parseFloat(this.value));renderTripBuilder();"> min${friendly} ${note}</div>`;
 }
 /* GOLF-34a: a plain suggested overnight place per day — no new data
    source/API, just reuses whichever nearest-station name (stn/nearStation,
