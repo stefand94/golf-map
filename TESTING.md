@@ -515,6 +515,35 @@ that touches rendering, filters, or persistence:
     scripts/test_data.js` unaffected (no data-file changes — pure
     app-state/UI).
 
+33. **Trip lifecycle bugs + wishlist-default add + place search in the
+    unified bar (GOLF-60/61/62).** Note: this supersedes step 32's "lands
+    directly in Day 1" behavior — adding a course now defaults to the
+    wishlist instead. Open Trip Builder, create 2 extra trips (trip
+    switcher "+ New"), add a couple of courses to each, then click
+    **"Start fresh"** next to the trip switcher and confirm the dialog —
+    you should land on exactly one new, empty trip, with no leftover
+    trips reachable from the switcher dropdown. Type into the top search
+    bar, switch/create/duplicate/delete a trip, and confirm the search box
+    is empty and no stale place-anchor state carries over on the new
+    active trip. Type a course name in the top search bar with zero days
+    scheduled and hit **"+ Wishlist"** on 2-3 results — they should land
+    in "Unscheduled (Wishlist)" at the bottom of the Day tab, never on a
+    day, and that block should show a suggested nearest-neighbour order
+    plus a running £ fee total and straight-line drive estimate across the
+    pool. With a day open/focused (Day tab, a day's rows visible), the
+    same search results should grow a second "+ Day N" button next to
+    "+ Wishlist" — clicking it adds straight to that day instead. Type a
+    real place name (e.g. "Inverness") into the top search bar — a
+    "Places" group should appear above "Golf courses" with a "📍 Start a
+    trip here" action; clicking it should anchor the trip to that place
+    (Discover tab's "Near a place" sub-tab, map re-fit around it) and
+    clear the search box. No "undefined" anywhere in the pane; `node
+    scripts/test_data.js` unaffected (no data-file changes — pure
+    app-state/UI). Note: this round did not implement GOLF-63 (item-level
+    `items[]` day timeline) or GOLF-64 (Explore/Plan/Build three-mode
+    restructure) — see the plan file's Phase 15 section for why those were
+    deferred rather than rushed.
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
