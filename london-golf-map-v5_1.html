@@ -358,7 +358,7 @@
   <aside class="panel">
     <header class="mast">
       <span class="wordmark">Golf Explorer</span>
-      <button class="linkbtn" id="open-trip">Trip Builder<span id="trip-badge"></span></button>
+      <button class="linkbtn" id="open-trip">Plan a trip<span id="trip-badge"></span></button>
     </header>
     <div class="filters">
       <div><span class="flabel">Who can play</span><div class="chips" id="f-access"></div></div>
@@ -761,6 +761,10 @@ function tripCreateNew(){
   const id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   trips[id]={name:name.trim()||'Untitled trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1};
   activeTripId=id;tripRestoreActive();
+  // GOLF-58: a brand-new trip has nothing to anchor "nearby" from yet —
+  // land straight on the "search a place" starting point instead of an
+  // empty Nearby list with no obvious next step.
+  tbTab='disc';tbDiscoveryTab='place';tbPlaceAnchor=null;
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
   render();
@@ -797,7 +801,7 @@ function tripDelete(id){
 }
 function tripSwitcherHTML(){
   const list=tripListAll();
-  const opts=list.map(t=>`<option value="${t.id}"${t.id===activeTripId?' selected':''}>${esc(t.name)} (${t.count})</option>`).join('');
+  const opts=list.map(t=>`<option value="${t.id}"${t.id===activeTripId?' selected':''}>${esc(t.name)}</option>`).join('');
   return`<div class="tb-trips">
     <select id="tb-trip-select" aria-label="Switch trip" onchange="tripSwitchTo(this.value)">${opts}</select>
     <button class="btn2 ghost" title="New trip" onclick="tripCreateNew()">+ New</button>
@@ -813,6 +817,12 @@ function tripSwitcherHTML(){
    added, so picking Dornoch -> Castle Stuart -> Nairn keeps the discovery
    list walking up the coast rather than staying anchored to the first pick. */
 let tripBuilderOn=false,tbAnchor=null,tbDiscoveryTab='anchor';
+/* GOLF-58: "start a trip by searching a place" — a plain {label,lat,lng}
+   (via the same ORS geocode endpoint the day-place boxes already use),
+   not tied to any course. Lets a brand-new trip begin "take me to
+   Newquay, show me what's around it" instead of requiring an existing
+   course to anchor from. */
+let tbPlaceAnchor=null;
 /* GOLF-37: free-text search-to-add inside the pane itself, reusing the
    main list's searchMatches()/levenshtein() fuzzy logic rather than a new
    scoring scheme — so "type a name, hit Add" behaves consistently with
@@ -1221,6 +1231,15 @@ function tripByAnchor(anchor,limit){
     .slice(0,limit)
     .map(i=>({i,border:false}));
 }
+/* GOLF-58: same "nearest N" promise as tripByAnchor(), but anchored to a
+   raw searched point instead of an existing course — powers "search a
+   city, see what's around it" when starting a trip from scratch. */
+function nearestCoursesToPoint(lat,lng,limit){
+  return C.map((c,i)=>i).filter(bookable)
+    .sort((a,b)=>haversineMiles(lat,lng,C[a].lat,C[a].lng)-haversineMiles(lat,lng,C[b].lat,C[b].lng))
+    .slice(0,limit)
+    .map(i=>({i,border:false}));
+}
 const tripLayer=L.layerGroup().addTo(map);
 function tripClear(){tripLayer.clearLayers()}
 function tripShow(items,anchor,clear=true,fit=true){
@@ -1461,6 +1480,10 @@ function tbDiscover(){
     if(!region)return[];
     return tripByRegion(region,parseFloat(document.getElementById('tb-border')?.value)||0).filter(({i})=>!TRIP.has(i));
   }
+  if(tbDiscoveryTab==='place'){
+    if(!tbPlaceAnchor)return[];
+    return nearestCoursesToPoint(tbPlaceAnchor.lat,tbPlaceAnchor.lng,5+TRIP.size).filter(({i})=>!TRIP.has(i)).slice(0,5);
+  }
   const anchor=tbEffectiveAnchor();
   if(anchor==null)return[];
   // Over-fetch past the 5 we'll show, since some of the nearest courses
@@ -1468,10 +1491,11 @@ function tbDiscover(){
   return tripByAnchor(anchor,5+TRIP.size).filter(({i})=>!TRIP.has(i)).slice(0,5);
 }
 function tbResultsHTML(items){
-  if(!items.length)return`<p class="hint">${tbDiscoveryTab==='region'?'Pick a region above, or none found nearby.':'Add a course to seed nearby suggestions.'}</p>`;
-  const anchor=tbDiscoveryTab==='anchor'?tbEffectiveAnchor():null;
+  if(!items.length)return`<p class="hint">${tbDiscoveryTab==='region'?'Pick a region above, or none found nearby.':tbDiscoveryTab==='place'?'Search a place above to see courses around it.':'Add a course to seed nearby suggestions.'}</p>`;
+  const anchorPt=tbDiscoveryTab==='anchor'?(tbEffectiveAnchor()!=null?{lat:C[tbEffectiveAnchor()].lat,lng:C[tbEffectiveAnchor()].lng}:null)
+    :tbDiscoveryTab==='place'?tbPlaceAnchor:null;
   return items.map(({i,border})=>{
-    const dist=anchor!=null?` — ${haversineMiles(C[anchor].lat,C[anchor].lng,C[i].lat,C[i].lng).toFixed(1)} mi`:'';
+    const dist=anchorPt?` — ${haversineMiles(anchorPt.lat,anchorPt.lng,C[i].lat,C[i].lng).toFixed(1)} mi`:'';
     return`<div class="tb-row">
       <div><a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${V(i,'n')}</a>
         ${border?' <span class="wt" title="Just over the border — nearest to a course in your chosen region, not itself in it">border</span>':''}
@@ -1549,6 +1573,7 @@ function tbDrawMap(){
   if(tbTab==='disc'){
     const anchor=tbDiscoveryTab==='anchor'?tbEffectiveAnchor():null;
     pts2=tripShow(tbDiscover(),anchor,false,false);
+    if(tbDiscoveryTab==='place'&&tbPlaceAnchor)pts2=[...pts2,[tbPlaceAnchor.lat,tbPlaceAnchor.lng]];
   }
   tbDrawPois();
   const pts=[...pts1,...pts2];
@@ -1568,9 +1593,23 @@ function tbSearchResults(){
    back to a plain cart add (tbSelect) when no day exists yet. Search
    itself is still course-only — there's no hotel/city database to search
    against (see tbPromptHotel/tbPromptPoi for those, manual-entry only). */
+/* GOLF-58: adding a course used to leave it in "Unscheduled" unless a day
+   already existed and was explicitly chosen — a real 3-step tax (add
+   course, add a day, then assign it) on every single addition. Now: no
+   day picked and none exist yet -> silently create Day 1 and drop it
+   there; no day picked but days already exist -> use whichever day is
+   currently showing (tbDayShown), defaulting to the last day. A course
+   only ever lands in Unscheduled if the visitor explicitly picks
+   "Unscheduled" from a row's own dropdown afterwards. */
 function tbAddToDay(i,dayId){
+  if(dayId==null){
+    if(!tripDays.length)tripDayAdd();
+    const shown=tripDays.find(d=>d.id===tbDayShown);
+    dayId=(shown||tripDays[tripDays.length-1]).id;
+  }
   if(!TRIP.has(i)){TRIP.add(i);tripSeq.push(i);tripLastAdded=i;tbAnchor=i;}
   tripDaySetCourse(i,dayId);
+  tbDayShown=dayId;
   saveState();render();renderTripBuilder();tbDrawMap();
 }
 function tbUnifiedSearchResultsHTML(){
@@ -1578,11 +1617,12 @@ function tbUnifiedSearchResultsHTML(){
   if(!q)return'';
   const results=tbSearchResults();
   if(!results.length)return`<p class="hint">No bookable courses match "${esc(q)}".</p>`;
-  const day=tripDays.find(d=>d.id===tbDayShown);
+  const day=tripDays.find(d=>d.id===tbDayShown)||tripDays[tripDays.length-1]||null;
+  const label=day?`+ Add to Day ${tripDays.indexOf(day)+1}`:'+ Add';
   return results.map(i=>`<div class="tb-row">
       <div><a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         <div style="color:var(--stone);font-size:11.5px">${C[i].r} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
-      <button class="btn2" style="padding:6px 12px;font-size:11.5px" onclick="${day?`tbAddToDay(${i},${day.id})`:`tbSelect(${i})`}">${day?`+ Add to Day ${tripDays.indexOf(day)+1}`:'Add'}</button>
+      <button class="btn2" style="padding:6px 12px;font-size:11.5px" onclick="tbAddToDay(${i},${day?day.id:'null'})">${label}</button>
     </div>`).join('');
 }
 /* GOLF-33: day-by-day schedule view for the pane's cart section — a
@@ -1592,10 +1632,21 @@ function tbUnifiedSearchResultsHTML(){
    courses not yet placed on a day. Replaces the flat tripListHTML() only
    inside the pane — exports/outside-pane map feedback keep using the
    flat tripSeq order untouched. */
+/* GOLF-58: "+ New day" is picked straight from the row's own dropdown —
+   no more leaving the course editor to hit "+ Add day" separately then
+   coming back to assign it. */
+function tbAssignCourseDay(i,val){
+  let dayId=val===''?null:Number(val);
+  if(val==='new'){tripDayAdd();dayId=tripDays[tripDays.length-1].id;}
+  tripDaySetCourse(i,dayId);
+  if(dayId!=null)tbDayShown=dayId;
+  renderTripBuilder();tbDrawMap();
+}
 function tripDaySelectHTML(i,currentDayId){
   const opts=[`<option value=""${currentDayId==null?' selected':''}>Unscheduled</option>`]
-    .concat(tripDays.map((d,idx)=>`<option value="${d.id}"${d.id===currentDayId?' selected':''}>Day ${idx+1}</option>`));
-  return`<select onchange="tripDaySetCourse(${i},this.value===''?null:Number(this.value));renderTripBuilder();tbDrawMap();">${opts.join('')}</select>`;
+    .concat(tripDays.map((d,idx)=>`<option value="${d.id}"${d.id===currentDayId?' selected':''}>Day ${idx+1}</option>`))
+    .concat([`<option value="new">+ New day</option>`]);
+  return`<select onchange="tbAssignCourseDay(${i},this.value);">${opts.join('')}</select>`;
 }
 function tripDayCourseRowHTML(i,dayId){
   const fee=extractFee(V(i,'wd'));
@@ -1989,8 +2040,8 @@ function tbCostsTabHTML(){
 /* Add tab: pick a target day, then add a golf round (search, reusing the
    nav search bar's results below), a hotel, or a POI to it. */
 function tbAddTabHTML(){
+  if(!tripDays.length){tripDayAdd();tbDayShown=tripDays[0].id;}
   const day=tripDays.find(d=>d.id===tbDayShown)||tripDays[0];
-  if(!day)return`<p class="hint">Add a day first (Day tab) before adding stops.</p>`;
   const idx=tripDays.indexOf(day);
   return`<p class="hint" style="margin:0 0 8px">Adding to <b>Day ${idx+1}</b>${day.place?` · ${esc(day.place)}`:''}
       <select onchange="tbDayShown=Number(this.value);renderTripBuilder();">${tripDays.map((d,i)=>`<option value="${d.id}"${d.id===day.id?' selected':''}>Day ${i+1}</option>`).join('')}</select></p>
@@ -2069,7 +2120,7 @@ function renderTripBuilder(){
     <div class="tb-navbar">
       <span class="tb-wordmark">Trip Builder</span>
       <span class="tb-navbar-right"><span class="tb-pill">${tripDays.length} day${tripDays.length===1?'':'s'} · £${total.toFixed(0)}</span>
-        <button class="linkbtn" id="tb-exit">Exit</button></span>
+        <button class="linkbtn" id="tb-exit">← Back to Explore</button></span>
     </div>
     <div class="tb-section" style="padding:6px 20px">${tripSwitcherHTML()}</div>
     <div class="tb-search-bar-wrap">
@@ -2141,6 +2192,7 @@ function renderTripBuilder(){
     });
   }
   if(tbTab==='disc'){
+    document.getElementById('tb-tab-place').addEventListener('click',()=>{tbDiscoveryTab='place';renderTripBuilder();tbDrawMap();});
     document.getElementById('tb-tab-anchor').addEventListener('click',()=>{tbDiscoveryTab='anchor';renderTripBuilder();tbDrawMap();});
     document.getElementById('tb-tab-region').addEventListener('click',()=>{tbDiscoveryTab='region';renderTripBuilder();tbDrawMap();});
     if(tbDiscoveryTab==='region'){
@@ -2148,14 +2200,52 @@ function renderTripBuilder(){
       document.getElementById('tb-region').addEventListener('change',run);
       document.getElementById('tb-border').addEventListener('change',run);
     }
+    if(tbDiscoveryTab==='place'){
+      /* GOLF-58: same search-as-you-type pattern as the day place boxes —
+         mousedown (not click) on a result so blur doesn't clobber the pick. */
+      const input=document.getElementById('tb-start-place'),results=document.getElementById('tb-start-place-results');
+      let debounce=null;
+      input.addEventListener('input',()=>{
+        const text=input.value;
+        clearTimeout(debounce);
+        if(!text.trim()){results.innerHTML='';return;}
+        debounce=setTimeout(()=>{
+          orsGeocode(text,list=>{
+            if(document.activeElement!==input)return;
+            if(list==null){results.innerHTML='';return;}
+            results.innerHTML=list.length?list.map(r=>
+              `<div class="tb-place-row" data-lat="${r.lat}" data-lng="${r.lng}" data-label="${r.label.replace(/"/g,'&quot;')}">${r.label}</div>`
+            ).join(''):'<div class="tb-place-empty">No matches</div>';
+          });
+        },300);
+      });
+      results.addEventListener('mousedown',e=>{
+        const row=e.target.closest('.tb-place-row');
+        if(!row)return;
+        e.preventDefault();
+        tbPlaceAnchor={label:row.dataset.label,lat:parseFloat(row.dataset.lat),lng:parseFloat(row.dataset.lng)};
+        results.innerHTML='';
+        // tbDrawMap()'s own fitBounds (below) takes us to the place and its
+        // nearby courses together — a separate flyTo here would just race it.
+        renderTripBuilder();tbDrawMap();
+      });
+      input.addEventListener('blur',()=>{setTimeout(()=>{results.innerHTML='';},150);});
+    }
   }
 }
 function tbDiscoverTabHTML(){
   return`<div class="toggles" style="margin-bottom:10px">
+      <button class="togg" id="tb-tab-place" aria-pressed="${tbDiscoveryTab==='place'}">Near a place</button>
       <button class="togg" id="tb-tab-anchor" aria-pressed="${tbDiscoveryTab==='anchor'}">Nearby</button>
       <button class="togg" id="tb-tab-region" aria-pressed="${tbDiscoveryTab==='region'}">By region</button>
     </div>
-    ${tbDiscoveryTab==='anchor'?`
+    ${tbDiscoveryTab==='place'?`
+      <p class="hint" style="margin:0 0 6px">Starting a new trip? Search a city or town — we'll take you there on the map and show the nearest bookable courses.</p>
+      <span class="tb-place-wrap" style="position:relative;display:block;margin-bottom:8px">
+        <input type="text" class="tb-place-input" id="tb-start-place" placeholder="Search a city or town…" value="${tbPlaceAnchor?tbPlaceAnchor.label.replace(/"/g,'&quot;'):''}" style="width:100%">
+        <div id="tb-start-place-results" class="tb-place-results"></div>
+      </span>`
+      :tbDiscoveryTab==='anchor'?`
       <p class="hint" style="margin:0 0 8px">${tbEffectiveAnchor()!=null?`Nearest 5 courses to <b>${esc(V(tbEffectiveAnchor(),'n'))}</b>, straight-line.`:'Add a course from the map, or search above, to see what\'s nearby.'}</p>`
       :`<div class="fld" style="margin-bottom:8px"><label for="tb-region">Region</label>
         <select id="tb-region"><option value="">— choose a region —</option>${REGIONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select></div>
@@ -2198,7 +2288,7 @@ window.addEventListener('popstate',()=>{
    toggleTrip() synchronously triggers saveState()->render() which (via
    the tripBuilderOn hook in render()) re-renders this pane immediately;
    this is what re-seeds "nearby" from Dornoch -> Castle Stuart -> Nairn. */
-function tbSelect(i){tbAnchor=i;toggleTrip(i);}
+function tbSelect(i){tbAddToDay(i,null);}
 /* Jump straight into Trip Builder from a course's own popup — the
    fastest path from "I like this course" to "what else is nearby."
    Adds the course to the cart too (it's the first pick of the trip),

@@ -497,6 +497,24 @@ that touches rendering, filters, or persistence:
       the Costs tab always includes Stays (no independent toggle, unlike
       the old cost summary's separate Accommodation checkbox).
 
+32. **Trip Builder usability round 2 (GOLF-58).** Trip switcher dropdown
+    should show just the trip name, no "(N)" course count. On a course
+    row in the Day tab, its "move to day" dropdown should include a
+    "+ New day" option — picking it creates a new day and assigns the
+    course to it in one step. Search for a course (via the top search bar
+    or the Discover tab's "Nearby"/"By region"/"Near a place" lists) and
+    hit Add on a brand-new trip with zero days — it should land directly
+    in an auto-created "Day 1", never in Unscheduled. The header button
+    should read "Plan a trip" and the pane's own exit link should read
+    "← Back to Explore". In the Discover tab, click "Near a place",
+    search a city/town — a dropdown of real geocoded matches should
+    appear; picking one should re-fit the map around that place plus the
+    5 nearest bookable courses to it, each with a working "Add" button.
+    Starting a brand-new trip (trip switcher "+ New") should land
+    directly on this "Near a place" sub-tab. No "undefined"; `node
+    scripts/test_data.js` unaffected (no data-file changes — pure
+    app-state/UI).
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
