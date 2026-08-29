@@ -119,7 +119,14 @@
   .tb-place-row{padding:6px 10px;font-size:12px;cursor:pointer}
   .tb-place-row:hover{background:var(--paper-2)}
   .tb-place-empty{padding:6px 10px;font-size:12px;color:var(--stone)}
-  .tb-day-head{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--paper);font-weight:700;font-size:12.5px}
+  .tb-day-head{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--paper);font-weight:700;font-size:12.5px;cursor:grab}
+  .tb-day-head:active{cursor:grabbing}
+  /* GOLF-65: the whole-day handle sits in the header, visually the same
+     glyph as an item's so the gesture reads as "the same drag, one level up". */
+  .tb-day-handle{margin-right:4px;vertical-align:-1px}
+  /* GOLF-65: the "+ Add day" bar doubles as the drop zone for moving a day
+     to the very end (every other day drop lands *before* its target). */
+  .tb-day-endzone{border-radius:8px}
   .tb-day-drive{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--paper-2);font-size:11.5px;color:var(--stone)}
   .tb-day-drive input{width:60px}
   .tb-auto-chip{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent-dark);background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:1px 5px}
@@ -577,6 +584,24 @@ const TRIP_DAY_KINDS={golf:'Golf day',start:'Start point',free:'Free day',end:'E
    is the one thing this ticket's migration promises not to do. */
 function tripItemNewId(){return 'it'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 function tripDayAdd(){tripDays.push({id:tripDayNextId++,items:[],driveIn:null,date:null,kind:'golf',place:null,placeLat:null,placeLng:null});saveState();}
+/* GOLF-66: "+ Add day" used to drop an anonymous, placeless day at the
+   bottom and leave the visitor to notice the small place box and click
+   into it. The stakeholder's ask was "when adding a day make it easier to
+   add in a city — copy this from the search bar", so rather than build a
+   second place-search UI this simply creates the day and hands focus to
+   the place input that GOLF-56 already wired with the debounced
+   orsGeocode() picker. The day is created first (not after a city is
+   picked) deliberately: a day with no city is a legitimate, common thing
+   — a rest day, a travel day — so the picker is an offer, not a gate.
+   tbFocusDayPlace is transient one-shot page state, consumed by the
+   place-box wiring in renderTripBuilder(). */
+let tbFocusDayPlace=null;
+function tbAddDayWithPlace(){
+  tripDayAdd();
+  tbFocusDayPlace=tripDays[tripDays.length-1].id;
+  tbDayShown=tbFocusDayPlace;
+  renderTripBuilder();tbDrawMap();
+}
 /* Every read of a day's items goes through here so a day that somehow
    arrived without the field (hand-edited localStorage, a future partial
    write) degrades to empty instead of throwing. */
@@ -768,11 +793,71 @@ function tripUnscheduled(){
 let tbDrag=null;
 function tbDragSetItem(dayId,id){tbDrag={kind:'item',dayId,id};}
 function tbDragSetCourse(i){tbDrag={kind:'course',i};}
+/* GOLF-65: dragging a WHOLE DAY. Deliberately a second, separate global
+   rather than a third `kind` on tbDrag, because the two drags have
+   different drop grammars — an item drop asks "before which row?", a day
+   drop asks "before which day?" — and every existing tbDropOn() caller
+   would otherwise have to learn about days. Instead every in-day drop
+   handler funnels through tbDropInDay() below, which checks tbDayDrag
+   first and falls through to the untouched item logic when it's null.
+   Net: zero changes to tbDropOn()'s behaviour. */
+let tbDayDrag=null;
+function tbDayDragSet(dayId){tbDayDrag=dayId;tbDrag=null;}
+/* A day's stored `driveIn` is a manual override of the leg driven INTO
+   that day (GOLF-43) — it describes the gap between it and whatever day
+   precedes it. Reordering changes which day that is, so an override that
+   was entered against a different predecessor is now describing a leg
+   that no longer exists. We clear the override on exactly those days
+   whose predecessor changed (computed before/after, so an untouched
+   day's hand-typed number survives a reorder elsewhere in the list) and
+   let tripDayAutoEstimate() take over again. Dates are deliberately NOT
+   touched: a date is the visitor's own fact about that day, not a
+   derived property of its position. */
+function tbDayPredecessors(){
+  const m=new Map();
+  tripDays.forEach((d,idx)=>m.set(d.id,idx>0?tripDays[idx-1].id:null));
+  return m;
+}
+/* Move day `dragId` to sit immediately before `targetId` — or to the end
+   when targetId is null. "Before the target" matches the item-drag
+   convention above, so both drags read the same way. */
+function tbDayMoveTo(dragId,targetId){
+  if(dragId==null||dragId===targetId)return false;
+  const from=tripDays.findIndex(d=>d.id===dragId);
+  if(from<0)return false;
+  const before=tbDayPredecessors();
+  const moving=tripDays.splice(from,1)[0];
+  const to=targetId==null?-1:tripDays.findIndex(d=>d.id===targetId);
+  if(to<0)tripDays.push(moving);else tripDays.splice(to,0,moving);
+  const after=tbDayPredecessors();
+  tripDays.forEach(d=>{if(before.get(d.id)!==after.get(d.id))d.driveIn=null;});
+  saveState();
+  return true;
+}
+/* The single drop entry point for anything dropped inside a day block.
+   A day being dragged wins (it's the coarser gesture and can only mean
+   one thing); otherwise this is exactly the old tbDropOn() call. */
+function tbDropInDay(dayId,beforeRef){
+  if(tbDayDrag!=null){
+    const drag=tbDayDrag;tbDayDrag=null;
+    if(tbDayMoveTo(drag,dayId)){renderTripBuilder();tbDrawMap();}
+    return;
+  }
+  tbDropOn(dayId,beforeRef===undefined?null:beforeRef);
+}
+/* Drop past the last day (the "+ Add day" bar) — the only way to move a
+   day to the final position, since every day drop lands *before* its
+   target. */
+function tbDropDayAtEnd(){
+  if(tbDayDrag==null)return;
+  const drag=tbDayDrag;tbDayDrag=null;
+  if(tbDayMoveTo(drag,null)){renderTripBuilder();tbDrawMap();}
+}
 /* Drop target: a day (dayId) or the wishlist (dayId null), positioned
    before `beforeRef` — an item id when dropping into a day, a course
    index when dropping into the wishlist, or null to append. */
 function tbDropOn(dayId,beforeRef){
-  const drag=tbDrag;tbDrag=null;
+  const drag=tbDrag;tbDrag=null;tbDayDrag=null; // GOLF-65: a day dropped outside any day block is a no-op, not a stuck drag
   if(!drag)return;
   if(dayId==null){
     /* Wishlist: only golf can live here — it's a pool of courses, not of
@@ -823,6 +908,7 @@ function tripClearAll(){
   if(!TRIP.size)return;
   if(!confirm(`Clear all ${TRIP.size} course${TRIP.size===1?'':'s'} from your trip? This can't be undone.`))return;
   TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;tripDays=[];tripDayNextId=1;tbPoiOn.clear();
+  tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null; // GOLF-65/66/67 transient state
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(false);}
   render();
@@ -905,7 +991,7 @@ function tripSwitchTo(id){
   // per-trip snapshot — reset them on every lifecycle transition so a
   // switched-to trip never inherits stale search text/anchor from whatever
   // trip was active before.
-  tbSearchQ='';tbPlaceAnchor=null;
+  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(true);}
   render();
@@ -946,7 +1032,7 @@ function tripDuplicate(id){
   trips[newId].name=(src.name||'My trip')+' (copy)';
   trips[newId].created=Date.now();trips[newId].modified=Date.now();
   activeTripId=newId;tripRestoreActive();
-  tbSearchQ='';tbPlaceAnchor=null; // GOLF-60b
+  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null; // GOLF-60b
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
   render();
@@ -957,7 +1043,7 @@ function tripDelete(id){
   if(!confirm(`Delete "${trips[id].name}"? This can't be undone.`))return;
   delete trips[id];
   if(activeTripId===id){activeTripId=Object.keys(trips)[0];tripRestoreActive();}
-  tbSearchQ='';tbPlaceAnchor=null; // GOLF-60b
+  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null; // GOLF-60b
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
   render();
@@ -973,7 +1059,7 @@ function tripStartFresh(){
   if(!confirm('Start fresh? This deletes every saved trip on this device and creates one new, empty trip. This cannot be undone.'))return;
   trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1}};
   activeTripId='default';tripRestoreActive();
-  tbSearchQ='';tbPlaceAnchor=null;tbAnchor=null;tbDayShown=null;tbDiscoveryTab='place';
+  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbAnchor=null;tbDayShown=null;tbDiscoveryTab='place';
   saveState();
   if(tripBuilderOn)setAppMode('plan'); // GOLF-64: URL follows the mode
   render();
@@ -1949,6 +2035,32 @@ function tbAnchorTripToPlace(lat,lng,label){
   saveState();
   setAppMode('plan'); // GOLF-64: anchoring to a place is a Plan-mode action
 }
+/* GOLF-67: the second action on a place result — add this city to the trip
+   as a stop, WITHOUT re-anchoring. Anchoring (above) is a discovery lens:
+   it moves "show me what's nearby" to a new point and touches no trip
+   data. This adds actual trip data and leaves the lens alone, which is
+   precisely the stakeholder's ask ("start in Edinburgh, then search St
+   Andrews and add St Andrews itself, not just courses near it").
+   Landing spot: appended as a new day, not into the wishlist. The
+   wishlist is a pool of *courses* by construction — tripUnscheduled()
+   derives from tripSeq (course indices) and tbDropOn() refuses to put a
+   non-golf item there — so a city has no representation in it. A day,
+   by contrast, already has exactly the right shape for "a place we'll
+   be": place/placeLat/placeLng, geocoded, routable (GOLF-56).
+   kind:'free' because an added city carries no round yet; the visitor
+   can switch it to Golf/Start/End from the day's own dropdown, and drag
+   it anywhere in the sequence with GOLF-65's day drag. */
+let tbPlaceAddedNote=null;
+function tbAddPlaceToTrip(lat,lng,label){
+  tripDayAdd();
+  const d=tripDays[tripDays.length-1];
+  d.kind='free';
+  tripDaySetPlaceGeo(d.id,label,lat,lng);
+  tbDayShown=d.id;
+  tbPlaceAddedNote={label,day:tripDays.length};
+  saveState();
+  renderTripBuilder();tbDrawMap();
+}
 function tbUnifiedSearchResultsHTML(){
   const q=tbSearchQ.trim();
   if(!q)return'';
@@ -1956,11 +2068,21 @@ function tbUnifiedSearchResultsHTML(){
   const places=tbUnifiedPlaceResults;
   let html='';
   if(places&&places.length){
+    /* GOLF-67: "add to trip" only appears once there's a trip to add to —
+       an anchor has been set, or days already exist. Before that the only
+       sensible thing a place can do is start the trip, and showing two
+       near-identical buttons on an empty trip would just be a choice with
+       no meaning. */
+    const started=tbPlaceAnchor!=null||tripDays.length>0;
     html+=`<p class="hint" style="margin:0 0 4px;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.06em">Places</p>`+
       places.map(p=>`<div class="tb-row">
         <div>${esc(p.label)}</div>
-        <button class="btn2 tb-unified-place-add" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" style="padding:6px 12px;font-size:11.5px">📍 Start a trip here</button>
+        <div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn2 tb-unified-place-add" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" style="padding:6px 12px;font-size:11.5px">📍 ${started?'Anchor here':'Start a trip here'}</button>
+          ${started?`<button class="btn2 ghost tb-unified-place-trip" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" style="padding:6px 12px;font-size:11.5px">+ Add to trip</button>`:''}
+        </div>
       </div>`).join('');
+    if(tbPlaceAddedNote)html+=`<p class="hint" style="margin:2px 0 0">Added <b>${esc(tbPlaceAddedNote.label)}</b> as Day ${tbPlaceAddedNote.day} — see it in <a href="#" class="linkbtn" onclick="event.preventDefault();enterBuildMode()">Build</a>.</p>`;
   }
   if(!results.length){
     if(html)return html;
@@ -2042,7 +2164,7 @@ function tripDayItemRowHTML(d,it){
   return`<div class="tb-day-course tb-item-${it.type}" draggable="true"
       ondragstart="tbDragSetItem(${d.id},'${it.id}');event.dataTransfer.effectAllowed='move';"
       ondragover="event.preventDefault();event.dataTransfer.dropEffect='move';"
-      ondrop="event.preventDefault();event.stopPropagation();tbDropOn(${d.id},'${it.id}');">
+      ondrop="event.preventDefault();event.stopPropagation();tbDropInDay(${d.id},'${it.id}');">
     <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
     <div style="min-width:0">${icon} ${main}</div>
     <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
@@ -2489,13 +2611,15 @@ function tripDayScheduleHTML(){
       return it?tripDayItemRowHTML(d,it):'';
     }).join('');
     return`
-    <div class="tb-day tb-day-${kind}" ondragover="event.preventDefault();" ondrop="event.preventDefault();tbDropOn(${d.id},null);">
-      <div class="tb-day-head"><span>Day ${idx+1}${nCourses?` — ${nCourses} course${nCourses===1?'':'s'}`:kind!=='golf'?` — ${TRIP_DAY_KINDS[kind]}`:''}${nOther?` · ${nOther} stop${nOther===1?'':'s'}`:''}</span>
+    <div class="tb-day tb-day-${kind}" ondragover="event.preventDefault();" ondrop="event.preventDefault();tbDropInDay(${d.id},null);">
+      <div class="tb-day-head" draggable="true"
+        ondragstart="tbDayDragSet(${d.id});event.dataTransfer.effectAllowed='move';"
+        ondragend="tbDayDrag=null;"><span><span class="tb-drag-handle tb-day-handle" title="Drag to move this whole day">⠿</span> Day ${idx+1}${nCourses?` — ${nCourses} course${nCourses===1?'':'s'}`:kind!=='golf'?` — ${TRIP_DAY_KINDS[kind]}`:''}${nOther?` · ${nOther} stop${nOther===1?'':'s'}`:''}</span>
         <button class="linkbtn" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">Remove day</button></div>
       <div class="tb-day-date">
         <select onchange="tripDaySetKind(${d.id},this.value);renderTripBuilder();">${Object.entries(TRIP_DAY_KINDS).map(([k,label])=>`<option value="${k}"${k===kind?' selected':''}>${label}</option>`).join('')}</select>
         <span class="tb-place-wrap" style="position:relative;display:inline-block">
-          <input type="text" class="tb-place-input" id="tb-place-${d.id}" placeholder="Place (e.g. Edinburgh)" value="${(d.place||'').replace(/"/g,'&quot;')}" style="width:150px"
+          <input type="text" class="tb-place-input" id="tb-place-${d.id}" placeholder="Search a city (e.g. Edinburgh)" value="${(d.place||'').replace(/"/g,'&quot;')}" style="width:150px"
             onchange="tripDaySetPlace(${d.id},this.value);renderTripBuilder();">
           <div id="tb-place-results-${d.id}" class="tb-place-results"></div>
         </span>
@@ -2517,10 +2641,10 @@ function tripDayScheduleHTML(){
       ${tripWishlistSummaryHTML(unscheduled)}
       ${unscheduled.map(i=>tripDayCourseRowHTML(i,null)).join('')}
     </div>`:'';
-  return`<p style="font-size:11.5px;color:var(--stone);margin:0 0 10px">Drag <span class="tb-drag-handle" style="display:inline;font-size:11px">⠿</span> a course to reorder it or move it between days — like dragging stops on a map — or use each row's dropdown. <a href="#" class="linkbtn" onclick="event.preventDefault();tripAutoOrder()">Auto-order by nearest-neighbour</a> gives you a sensible starting sequence to drag from.</p>
+  return`<p style="font-size:11.5px;color:var(--stone);margin:0 0 10px">Drag <span class="tb-drag-handle" style="display:inline;font-size:11px">⠿</span> a course to reorder it or move it between days — like dragging stops on a map — or use each row's dropdown. Drag a <b>day header</b>'s ⠿ to move that whole day (and everything on it) to a different slot — handy for trying "what if the rest day were Day 2 instead?". <a href="#" class="linkbtn" onclick="event.preventDefault();tripAutoOrder()">Auto-order by nearest-neighbour</a> gives you a sensible starting sequence to drag from.</p>
     ${daysHTML}${unschedHTML}
-    <div class="bar" style="margin-top:2px">
-      <button class="btn2" onclick="tripDayAdd();renderTripBuilder();tbDrawMap();">+ Add day</button>
+    <div class="bar tb-day-endzone" style="margin-top:2px" ondragover="event.preventDefault();" ondrop="event.preventDefault();tbDropDayAtEnd();">
+      <button class="btn2" onclick="tbAddDayWithPlace();">+ Add day</button>
       <button class="btn2 ghost" onclick="tripClearAll();">Clear trip</button>
     </div>
     <p class="hint" style="margin-top:10px">See the <a href="#" class="linkbtn" onclick="event.preventDefault();tbBuildTab='cost';renderTripBuilder();">Costs tab</a> for a full trip total and line-item breakdown.</p>`;
@@ -2615,6 +2739,7 @@ function renderTripBuilder(){
     const q=tbSearchQ.trim();
     searchResultsEl.style.display=q?'':'none';
     tbUnifiedPlaceResults=null;
+    tbPlaceAddedNote=null; // GOLF-67: the "added as Day N" note belongs to the query that produced it
     searchResultsEl.innerHTML=q?tbUnifiedSearchResultsHTML():'';
     clearTimeout(tbUnifiedSearchGeoDebounce);
     if(!q)return;
@@ -2630,6 +2755,15 @@ function renderTripBuilder(){
     },300);
   });
   searchResultsEl.addEventListener('click',e=>{
+    // GOLF-67: two actions share this delegated handler — anchor (moves the
+    // discovery lens, clears the search) and add-to-trip (adds a day, keeps
+    // the search open so several cities can be added in one go).
+    const trip=e.target.closest('.tb-unified-place-trip');
+    if(trip){
+      e.preventDefault();
+      tbAddPlaceToTrip(parseFloat(trip.dataset.lat),parseFloat(trip.dataset.lng),trip.dataset.label);
+      return;
+    }
     const row=e.target.closest('.tb-unified-place-add');
     if(!row)return;
     e.preventDefault();
@@ -2704,6 +2838,11 @@ function renderTripBuilder(){
         tbDrawMap();
       });
       input.addEventListener('blur',()=>{setTimeout(()=>{results.innerHTML='';},150);});
+      /* GOLF-66: a just-created day hands focus straight to its place box,
+         so "+ Add day" lands the visitor in the same search-and-pick flow
+         the search bar uses. One-shot — cleared here so the next ordinary
+         re-render doesn't yank focus back. */
+      if(tbFocusDayPlace===d.id){tbFocusDayPlace=null;input.focus();}
     });
   }
   if(appMode==='plan'){
@@ -3236,7 +3375,7 @@ function wipeStoredState(){
   PLAYED.clear();WANT.clear();
   trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1}};
   activeTripId='default';tripRestoreActive();
-  tbSearchQ='';tbPlaceAnchor=null;tbAnchor=null;tbDayShown=null; // GOLF-60b
+  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbAnchor=null;tbDayShown=null; // GOLF-60b
   clearStoredState();closeDrawer();render();
 }
 function copyPatch(){const t=document.getElementById('ex');t.select();

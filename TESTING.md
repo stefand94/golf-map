@@ -581,6 +581,50 @@ that touches rendering, filters, or persistence:
     refusing the route, and the app falls back to its straight-line
     estimate by design.
 
+35. **Day drag-reorder, city-picker on day creation, add-a-city-to-trip
+    (GOLF-65/66/67).**
+    *Day drag:* in Build → Itinerary, build a 3-day trip (two rounds on
+    Day 1, one on Day 2, Day 3 set to "Free day" with a place). Each day
+    header now carries its own ⠿ handle and is draggable as a whole.
+    Drag the free day's header onto Day 2 — it should land *before* Day 2
+    (matching the item-drag convention), the Day 1/2/3 labels should
+    renumber by position, and each day's kind, place, date and full item
+    list should travel with it. Drive rows, day totals and the Costs
+    breakdown should all re-derive from the new order. Drop a day onto
+    the "+ Add day" bar to move it to the very last position (the only
+    way to get there, since every other day drop lands before its
+    target). A hand-typed "Drive to today's first stop" override is
+    cleared on exactly the days whose *predecessor* changed, and only
+    those — an override elsewhere in the list survives the reorder, and
+    dates are never touched. Item drag (a round/hotel/POI within or
+    between days, and out to the Wishlist) must still work unchanged.
+    Reload — the new day order should persist.
+    *City picker on add:* hit **"+ Add day"** — the new day's place box
+    should be created *and focused*, ready to type, with placeholder
+    "Search a city (e.g. Edinburgh)" and the same GOLF-56 debounced
+    search-as-you-type picker wired. A day with no city is still valid
+    (rest/travel days) — the picker is an offer, not a gate.
+    *Add a city to the trip:* in Plan mode with **no** trip started, a
+    place result offers only "📍 Start a trip here". Once a start city is
+    anchored (or any day exists), the same result grows a second
+    **"+ Add to trip"** action and the first relabels to "📍 Anchor
+    here". Clicking "+ Add to trip" must add that place as a new
+    `kind:'free'` day with real placeLat/placeLng and **must not**
+    re-anchor the trip or change mode — anchor stays where it was, you
+    stay in Plan, the search box stays open (so several cities can be
+    added in a row), and an "Added <city> as Day N" note appears.
+    "📍 Anchor here" must still anchor and clear the search (GOLF-61
+    behaviour unchanged).
+    No "undefined" across all 9 mode/tab/filter views, no horizontal
+    overflow at 375px, and "Start fresh" must clear the new transients
+    (`tbPlaceAddedNote`, `tbFocusDayPlace`, `tbDayDrag`) as well as the
+    trip. `node scripts/test_data.js` unaffected (no data-file changes).
+    Note: if the ORS proxy is returning 502/504 (upstream
+    OpenRouteService outage — it was during this round's verification),
+    the geocode dropdowns return nothing and the pickers degrade to
+    plain typed text by design. Stub `window.orsGeocode` in the console
+    to exercise the picker UI in that case.
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
