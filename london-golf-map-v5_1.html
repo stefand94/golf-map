@@ -141,11 +141,43 @@
   .tb-trips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
   .tb-trips select{flex:1 1 140px;min-width:0}
   .tb-trips .btn2{padding:6px 10px;font-size:11.5px;flex:0 0 auto}
-  .tb-day-course{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);cursor:grab}
+  /* GOLF-69: rows used to be three bare flex children under
+     justify-content:space-between, which centres the MIDDLE one — so every
+     row's name started at a different x depending on how wide its trailing
+     controls happened to be (a golf row carries a day <select>, a hotel row
+     doesn't). Now the name block is the flex:1 growing child and the icon
+     sits in a fixed-width cell, so every row's first letter lines up in one
+     column regardless of type or controls. */
+  .tb-day-course{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);cursor:grab}
   .tb-day-course:last-child{border-bottom:none}
   .tb-day-course:active{cursor:grabbing}
   .tb-day-course select{font-size:11px;max-width:120px}
+  .tb-item-icon{flex:0 0 20px;width:20px;text-align:center;font-size:13px;line-height:1;user-select:none}
+  .tb-item-main{flex:1 1 auto;min-width:0;text-align:left}
+  .tb-item-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
   .tb-drag-handle{color:var(--stone);font-size:14px;flex-shrink:0;line-height:1;user-select:none}
+  /* GOLF-69 (item 9): golf keeps visual prominence inside the mixed
+     chronological list — heavier name, accent rule down the left edge —
+     while hotels/POIs read as the connective tissue between rounds. */
+  .tb-item-golf{box-shadow:inset 3px 0 0 var(--accent)}
+  .tb-item-golf .tb-item-main>a,.tb-item-golf .tb-item-main>.tb-item-name{font-weight:700;font-size:13.5px}
+  .tb-item-hotel .tb-item-name,.tb-item-poi .tb-item-name{font-weight:500;font-size:12.5px;color:var(--ink)}
+  /* GOLF-69 (item 5): an explicit "append to the end of this day" target.
+     Dropping on a row always inserts BEFORE it, so without this the last
+     position was only reachable by hitting the few pixels of dead space
+     under the final row. Hidden until a drag is actually in progress so it
+     costs nothing at rest. */
+  /* GOLF-69 (item 10): emoji marker for a day's own hotel/POI stops. */
+  .tb-emoji-marker{background:none;border:none;text-align:center;line-height:1}
+  .tb-emoji-marker span{font-size:19px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
+  .tb-dropzone{display:none}
+  body.tb-dragging .tb-dropzone{display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 10px 8px;padding:9px 10px;border:1.5px dashed var(--line);border-radius:7px;font-size:11.5px;color:var(--stone);background:var(--paper-2)}
+  body.tb-dragging .tb-dropzone.tb-drop-over{border-color:var(--accent);border-style:solid;background:var(--accent-soft);color:var(--accent-deep);font-weight:700}
+  /* Highlight whatever the pointer is currently over, so "where will this
+     land?" is answerable mid-drag instead of after it. */
+  body.tb-dragging .tb-day{outline:1px dashed var(--line);outline-offset:2px}
+  .tb-day-course.tb-drop-over{box-shadow:inset 0 3px 0 var(--accent);background:var(--accent-soft)}
+  .tb-day.tb-drop-over{outline:2px solid var(--accent);outline-offset:2px}
   /* GOLF-64: Plan mode has no sub-tabs, so plain section headings carry the
      structure instead; Build keeps the tab row plus a back-link to Plan. */
   .tb-section-title{font:700 11px var(--font-sans);text-transform:uppercase;letter-spacing:.08em;color:var(--stone);margin:0 0 8px}
@@ -249,6 +281,38 @@
   .fgroup[open] summary::before{transform:rotate(90deg)}
   .fgroup summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .fbadge{font-family:var(--font-mono);font-size:9.5px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:8px;font-weight:600}
+  /* GOLF-69 (item 2): all filters behind one dropdown, so the search box is
+     the first thing in the panel instead of the sixth. */
+  .fdrop>summary{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper-2);margin-bottom:0}
+  .fdrop[open]>summary{margin-bottom:9px}
+  .fdrop-body{display:flex;flex-direction:column;gap:10px;padding:0 2px 2px}
+  /* Green-fee range: two overlaid range inputs (a native two-thumb slider
+     doesn't exist) plus typed min/max boxes, which is what the stakeholder
+     asked for. pointer-events are off on the tracks and back on for the
+     thumbs so both thumbs stay grabbable where they overlap. */
+  .fee-range{display:flex;flex-direction:column;gap:7px;margin-top:4px}
+  .fee-slider-wrap{position:relative;height:20px}
+  .fee-slider-wrap input[type=range]{position:absolute;left:0;top:0;width:100%;margin:0;height:20px;background:none;pointer-events:none;-webkit-appearance:none;appearance:none}
+  .fee-slider-wrap input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--line);border-radius:2px}
+  .fee-slider-wrap input[type=range]::-moz-range-track{height:3px;background:var(--line);border-radius:2px}
+  .fee-slider-wrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:15px;height:15px;margin-top:-6px;border-radius:50%;background:var(--accent);border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:pointer}
+  .fee-slider-wrap input[type=range]::-moz-range-thumb{pointer-events:auto;width:15px;height:15px;border-radius:50%;background:var(--accent);border:2px solid #fff;cursor:pointer}
+  .fee-inputs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--stone)}
+  .fee-inputs label{display:inline-flex;align-items:center;gap:4px}
+  .fee-inputs input{width:66px;padding:5px 6px;border:1px solid var(--line);border-radius:5px;font:400 12px var(--font-sans)}
+  .fee-readout{font:600 11px var(--font-mono);color:var(--accent-deep)}
+  /* GOLF-69 (item 1): place hits from the geocoder, above the course list. */
+  .explore-places{border:1px solid var(--line);border-radius:8px;padding:6px;background:var(--paper-2);display:flex;flex-direction:column;gap:4px}
+  .explore-places[hidden],.list-mode[hidden]{display:none} /* [hidden] must beat the display:flex above */
+  .explore-place{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px}
+  .explore-place .ep-name{min-width:0;overflow:hidden;text-overflow:ellipsis}
+  .explore-place .ep-actions{display:flex;gap:4px;flex-shrink:0}
+  .explore-place .ep-actions button{padding:5px 9px;font-size:11px}
+  /* GOLF-69 (item 3): the list's own mode strip. */
+  .list-mode{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 20px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--stone);flex-wrap:wrap}
+  .list-mode-pills{display:flex;gap:4px}
+  .list-mode-pills button{font:600 11px var(--font-sans);padding:4px 9px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--stone);cursor:pointer}
+  .list-mode-pills button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
   .fgroup .chips{margin-top:2px}
   .chips{display:flex;flex-wrap:wrap;gap:5px}
   .chip{display:inline-flex;align-items:center;gap:5px;font:500 11.5px/1 var(--font-sans);padding:6px 10px;border:1px solid var(--line);border-radius:20px;background:#fff;color:var(--ink-soft);cursor:pointer;transition:background .12s,border-color .12s,color .12s,box-shadow .12s,transform .12s}
@@ -380,13 +444,35 @@
       <span class="wordmark">Golf Explorer</span>
       <button class="linkbtn" id="open-trip">Plan a trip<span id="trip-badge"></span></button>
     </header>
+    <!-- GOLF-69 (items 1+2): search first, filters folded into one dropdown
+         under it. The search box now matches the Trip Builder's unified bar
+         — it finds towns and cities via the same geocoder, not just
+         courses, and place hits render above the course list in #place-results. -->
     <div class="filters">
-      <div><span class="flabel">Who can play</span><div class="chips" id="f-access"></div></div>
-      <div><span class="flabel">Green fee</span><div class="chips" id="f-price"></div></div>
-      <details class="fgroup" id="g-arch"><summary><span class="flabel" style="margin:0">Architect</span><span class="fbadge" id="b-arch" hidden></span></summary><div class="chips" id="f-arch"></div></details>
-      <details class="fgroup" id="g-region"><summary><span class="flabel" style="margin:0">Area</span><span class="fbadge" id="b-region" hidden></span></summary><div class="chips" id="f-region"></div></details>
-      <details class="fgroup" id="g-flag"><summary><span class="flabel" style="margin:0">Show only</span><span class="fbadge" id="b-flag" hidden></span></summary><div class="chips" id="f-flag"></div></details>
-      <input id="q" type="search" placeholder="Search club, town, architect or station…" autocomplete="off" aria-label="Search courses">
+      <input id="q" type="search" placeholder="Search a club, town or city…" autocomplete="off" aria-label="Search courses and places">
+      <div id="place-results" class="explore-places" hidden></div>
+      <details class="fgroup fdrop" id="g-filters">
+        <summary><span class="flabel" style="margin:0">Filters</span><span class="fbadge" id="b-filters" hidden></span></summary>
+        <div class="fdrop-body">
+          <div><span class="flabel">Who can play</span><div class="chips" id="f-access"></div></div>
+          <div><span class="flabel">Green fee</span>
+            <div class="fee-range">
+              <div class="fee-slider-wrap">
+                <input id="fee-min-r" type="range" aria-label="Minimum green fee">
+                <input id="fee-max-r" type="range" aria-label="Maximum green fee">
+              </div>
+              <div class="fee-inputs">
+                <label for="fee-min">Min £<input id="fee-min" type="number" min="0" step="5" aria-label="Minimum green fee in pounds"></label>
+                <label for="fee-max">Max £<input id="fee-max" type="number" min="0" step="5" aria-label="Maximum green fee in pounds"></label>
+                <span class="fee-readout" id="fee-readout"></span>
+              </div>
+            </div>
+          </div>
+          <details class="fgroup" id="g-arch"><summary><span class="flabel" style="margin:0">Architect</span><span class="fbadge" id="b-arch" hidden></span></summary><div class="chips" id="f-arch"></div></details>
+          <details class="fgroup" id="g-region"><summary><span class="flabel" style="margin:0">Area</span><span class="fbadge" id="b-region" hidden></span></summary><div class="chips" id="f-region"></div></details>
+          <details class="fgroup" id="g-flag"><summary><span class="flabel" style="margin:0">Show only</span><span class="fbadge" id="b-flag" hidden></span></summary><div class="chips" id="f-flag"></div></details>
+        </div>
+      </details>
       <div class="row">
         <div class="toggles">
           <button class="togg" id="t-rail" aria-pressed="true">Rail</button>
@@ -415,6 +501,9 @@
         <button class="linkbtn" id="open-export">Review &amp; export corrections (<span id="editcount">0</span>)</button>
       </div>
     </div>
+    <!-- GOLF-69 (item 3): once the trip has a course, this strip appears and
+         the list below switches to "nearest to your trip". -->
+    <div class="list-mode" id="list-mode" hidden></div>
     <div class="list" id="list"></div>
     <div class="tb-pane" id="tb-pane"></div>
   </aside>
@@ -791,8 +880,24 @@ function tripUnscheduled(){
    until it lands on a day) — so hotel and POI rows drag into any position
    alongside rounds through the exact same interaction, no new pattern. */
 let tbDrag=null;
-function tbDragSetItem(dayId,id){tbDrag={kind:'item',dayId,id};}
-function tbDragSetCourse(i){tbDrag={kind:'course',i};}
+/* GOLF-69 (item 5): every dragstart/dragend in the pane funnels through
+   these two so the "a drag is happening" flag lives in exactly one place.
+   body.tb-dragging is what reveals the end-of-day drop zones and the
+   dashed day outlines — the stakeholder's "highlight the area you are
+   dropping it into once you have grabbed a course". dragend fires even on
+   a cancelled/failed drop, so the flag can't get stuck on. */
+function tbDragBegin(){document.body.classList.add('tb-dragging');}
+function tbDragEnd(){
+  document.body.classList.remove('tb-dragging');
+  document.querySelectorAll('.tb-drop-over').forEach(el=>el.classList.remove('tb-drop-over'));
+  tbDrag=null;tbDayDrag=null;
+}
+/* Per-target hover highlight. Kept as tiny globals rather than inline
+   class juggling in each of the four handlers that need them. */
+function tbDropOver(el){if(el&&el.classList)el.classList.add('tb-drop-over');}
+function tbDropOut(el){if(el&&el.classList)el.classList.remove('tb-drop-over');}
+function tbDragSetItem(dayId,id){tbDrag={kind:'item',dayId,id};tbDragBegin();}
+function tbDragSetCourse(i){tbDrag={kind:'course',i};tbDragBegin();}
 /* GOLF-65: dragging a WHOLE DAY. Deliberately a second, separate global
    rather than a third `kind` on tbDrag, because the two drags have
    different drop grammars — an item drop asks "before which row?", a day
@@ -802,7 +907,7 @@ function tbDragSetCourse(i){tbDrag={kind:'course',i};}
    first and falls through to the untouched item logic when it's null.
    Net: zero changes to tbDropOn()'s behaviour. */
 let tbDayDrag=null;
-function tbDayDragSet(dayId){tbDayDrag=dayId;tbDrag=null;}
+function tbDayDragSet(dayId){tbDayDrag=dayId;tbDrag=null;tbDragBegin();}
 /* A day's stored `driveIn` is a manual override of the leg driven INTO
    that day (GOLF-43) — it describes the gap between it and whatever day
    precedes it. Reordering changes which day that is, so an override that
@@ -839,7 +944,7 @@ function tbDayMoveTo(dragId,targetId){
    one thing); otherwise this is exactly the old tbDropOn() call. */
 function tbDropInDay(dayId,beforeRef){
   if(tbDayDrag!=null){
-    const drag=tbDayDrag;tbDayDrag=null;
+    const drag=tbDayDrag;tbDayDrag=null;tbDragEnd();
     if(tbDayMoveTo(drag,dayId)){renderTripBuilder();tbDrawMap();}
     return;
   }
@@ -849,8 +954,8 @@ function tbDropInDay(dayId,beforeRef){
    day to the final position, since every day drop lands *before* its
    target. */
 function tbDropDayAtEnd(){
-  if(tbDayDrag==null)return;
-  const drag=tbDayDrag;tbDayDrag=null;
+  if(tbDayDrag==null){tbDragEnd();return;}
+  const drag=tbDayDrag;tbDayDrag=null;tbDragEnd();
   if(tbDayMoveTo(drag,null)){renderTripBuilder();tbDrawMap();}
 }
 /* Drop target: a day (dayId) or the wishlist (dayId null), positioned
@@ -858,6 +963,7 @@ function tbDropDayAtEnd(){
    index when dropping into the wishlist, or null to append. */
 function tbDropOn(dayId,beforeRef){
   const drag=tbDrag;tbDrag=null;tbDayDrag=null; // GOLF-65: a day dropped outside any day block is a no-op, not a stuck drag
+  tbDragEnd(); // GOLF-69: clears the body flag + any lingering hover highlights (drag captured above first)
   if(!drag)return;
   if(dayId==null){
     /* Wishlist: only golf can live here — it's a pool of courses, not of
@@ -928,7 +1034,16 @@ function toggleTrip(i){
     if(tbAnchor===i)tbAnchor=tripSeq.length?tripSeq[tripSeq.length-1]:null;
     tripDayRemoveCourse(i); // GOLF-33: no orphaned day references once a course leaves the cart
   }
-  else{TRIP.add(i);tripSeq.push(i);tripLastAdded=i;tbAnchor=i;}
+  else{
+    /* GOLF-69 (item 8): same "the first thing added starts the trip, and
+       the trip starts in Day 1" rule as tbAddToWishlist() — this is the
+       other way a first course gets added (straight from a map popup on
+       the Explore page), and it would be incoherent for the two paths to
+       disagree about whether a trip has a Day 1 yet. */
+    const fresh=!tripDays.length&&!tripSeq.length;
+    TRIP.add(i);tripSeq.push(i);tripLastAdded=i;tbAnchor=i;
+    if(fresh){tripDayAdd();tripDaySetCourse(i,tripDays[0].id);tbDayShown=tripDays[0].id;}
+  }
   saveState();render();
   /* GOLF-31: clicking "Add to trip" straight from a popup (not via the
      Trip Builder pane) previously gave no visible feedback beyond a small
@@ -1189,6 +1304,12 @@ function loadStoredState(){
   tripRestoreActive();
   if(saved.filters){['access','price','region','flag','arch'].forEach(k=>{
     (saved.filters[k]||[]).forEach(v=>state[k].add(v));});}
+  // GOLF-69: fee range, same defensive "finite number or null" discipline
+  // as every other saved field.
+  if(saved.filters){
+    const n=v=>typeof v==='number'&&isFinite(v)?v:null;
+    state.feeMin=n(saved.filters.feeMin);state.feeMax=n(saved.filters.feeMax);
+  }
   if(saved.q)state.q=saved.q;
   if(saved.sort)state.sort=saved.sort;
   if(saved.mapCenter&&saved.mapZoom)restoredView={center:saved.mapCenter,zoom:saved.mapZoom};
@@ -1200,7 +1321,7 @@ function saveState(){
     localStorage.setItem(LS_KEY,JSON.stringify({
       edits:EDITS,
       played:[...PLAYED],want:[...WANT],trips,activeTripId,
-      filters:{access:[...state.access],price:[...state.price],region:[...state.region],flag:[...state.flag],arch:[...state.arch]},
+      filters:{access:[...state.access],price:[...state.price],region:[...state.region],flag:[...state.flag],arch:[...state.arch],feeMin:state.feeMin,feeMax:state.feeMax},
       q:state.q,sort:state.sort,
       mapCenter:c?[c.lat,c.lng]:undefined,mapZoom:map?map.getZoom():undefined
     }));
@@ -1213,7 +1334,11 @@ const HOME=[51.5467873,-0.1798875];
    regions after the 8 original London ones, so a course like Royal Birkdale
    ended up literally last of 221 in the default view. "by name" interleaves
    everything instead, so nothing is structurally buried by default. */
-const state={access:new Set(),price:new Set(),region:new Set(),flag:new Set(),arch:new Set(),q:"",sort:"name"};
+/* GOLF-69: `price` (the old band-chip Set) is retired in favour of
+   feeMin/feeMax — null on either side meaning "no bound on this end". The
+   key itself is kept in the shape so a localStorage payload written by an
+   older build still loads without special-casing; nothing reads it. */
+const state={access:new Set(),price:new Set(),region:new Set(),flag:new Set(),arch:new Set(),q:"",sort:"name",feeMin:null,feeMax:null};
 let map; // assigned below; loadStoredState reads state before map exists
 loadStoredState();
 
@@ -1954,6 +2079,63 @@ function tbDrawPois(){
     });
   });
 }
+/* GOLF-69 (item 10): the day's own hotel/POI stops on the map — "hotels can
+   be marked with little hotel emojis and POIs with location pins. Since we
+   don't have hotel information, you can drop the pin somewhere in the
+   nearest city."
+   Note this is a different thing from tbDrawPois() above, which draws
+   *suggested* nearby POIs fetched from the ORS proxy; these are the stops
+   the visitor actually put on a day.
+   Location, in priority order: the stop's own geocoded point (set when it
+   was picked from the search picker) → the day's own city/place point
+   (GOLF-56's placeLat/placeLng) → the day's last golf course → the nearest
+   day in either direction that has one of those. A stop placed by fallback
+   is jittered a few hundred metres and says so in its tooltip, so two
+   locationless stops on the same day don't stack into one invisible pin
+   and nobody mistakes an approximate pin for a real address. */
+function tbDayFallbackPoint(idx){
+  const d=tripDays[idx];
+  if(!d)return null;
+  if(typeof d.placeLat==='number'&&isFinite(d.placeLat)&&typeof d.placeLng==='number'&&isFinite(d.placeLng))
+    return{lat:d.placeLat,lng:d.placeLng};
+  const pt=tbPoiPoint(d); // that day's last golf course, or null
+  if(pt)return pt;
+  for(let step=1;step<tripDays.length;step++){
+    for(const j of[idx-step,idx+step]){
+      if(j<0||j>=tripDays.length)continue;
+      const o=tripDays[j];
+      if(typeof o.placeLat==='number'&&isFinite(o.placeLat)&&typeof o.placeLng==='number'&&isFinite(o.placeLng))
+        return{lat:o.placeLat,lng:o.placeLng};
+      const op=tbPoiPoint(o);
+      if(op)return op;
+    }
+  }
+  return null;
+}
+function tbEmojiIcon(emoji){
+  return L.divIcon({className:'tb-emoji-marker',html:`<span>${emoji}</span>`,iconSize:[24,24],iconAnchor:[12,20],popupAnchor:[0,-18]});
+}
+function tbDrawTripItems(){
+  tripDays.forEach((d,idx)=>{
+    let fallbackN=0;
+    tripDayItems(d).forEach(it=>{
+      if(it.type==='golf')return; // already drawn as a numbered route stop
+      let pt=tripItemPoint(it),approx=false;
+      if(!pt){
+        const fb=tbDayFallbackPoint(idx);
+        if(!fb)return;
+        // ~0.004° ≈ 250–450m: enough to separate stacked pins, small enough
+        // to still read as "in this town".
+        const a=fallbackN++*(Math.PI*2/3);
+        pt={lat:fb.lat+Math.cos(a)*0.004,lng:fb.lng+Math.sin(a)*0.006};
+        approx=true;
+      }
+      L.marker([pt.lat,pt.lng],{icon:tbEmojiIcon(it.type==='hotel'?'🏨':'📍')})
+        .bindTooltip(`${esc(tripItemName(it))} — Day ${idx+1}${approx?' (approximate — no address set)':''}`,{direction:'top'})
+        .addTo(tripLayer);
+    });
+  });
+}
 function tbDrawMap(){
   tripClear();
   const order=tripDayOrder();
@@ -1968,6 +2150,7 @@ function tbDrawMap(){
     if(tbDiscoveryTab==='place'&&tbPlaceAnchor)pts2=[...pts2,[tbPlaceAnchor.lat,tbPlaceAnchor.lng]];
   }
   tbDrawPois();
+  tbDrawTripItems();
   const pts=[...pts1,...pts2];
   if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
 }
@@ -2001,8 +2184,21 @@ function tbSearchResults(){
    to a specific day (tbAddToDay below) stays available as an explicit
    secondary action while a day is focused — not removed, just no longer
    the default. */
+/* GOLF-69 (item 8): GOLF-62's wishlist-first default stands for every add
+   after the first. The one exception the stakeholder asked for is the very
+   first thing added to an empty trip — that starts the trip, so it goes
+   straight onto Day 1 rather than sitting in an unscheduled pool the
+   visitor then has to assign ("that will remove the ambiguity around which
+   day to assign a course to"). Second and subsequent courses land in the
+   wishlist exactly as before. */
 function tbAddToWishlist(i){
+  const fresh=!tripDays.length&&!tripSeq.length;
   if(!TRIP.has(i)){TRIP.add(i);tripSeq.push(i);tripLastAdded=i;tbAnchor=i;}
+  if(fresh){
+    tripDayAdd();
+    tripDaySetCourse(i,tripDays[0].id);
+    tbDayShown=tripDays[0].id;
+  }
   saveState();render();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(true);}
 }
@@ -2028,12 +2224,33 @@ let tbUnifiedPlaceResults=null;
    "Near a place" tab to this point and clears the search, same behavior
    as the existing Discover-tab place box, just reachable from the one
    main search bar now instead of a second, buried box. */
+/* GOLF-69 (items 7 + 8): picking a place still moves the discovery lens,
+   but two things changed on the stakeholder's instruction.
+   (a) It no longer yanks a visitor who is mid-Build back to Plan/Discover
+       ("when I search and then select a city to start a trip there, it
+       automatically switches me to the discover tab. It shouldn't do
+       that") — the mode switch is now only for the not-yet-in-Build case.
+   (b) Starting a trip at a place puts that place straight into DAY 1
+       ("when you start a trip it should automatically get added to day 1
+       — that will remove the ambiguity around which day to assign a course
+       to"). There is no separate "start slot" any more: Day 1 IS the start
+       of the trip, and the city lands as its first card. When days already
+       exist we leave them alone — this is only about how a trip begins. */
+function tbTripStarted(){return tripDays.length>0||tripSeq.length>0;}
 function tbAnchorTripToPlace(lat,lng,label){
+  const fresh=tripDays.length===0;
   tbPlaceAnchor={label,lat,lng};
   tbDiscoveryTab='place';
   tbSearchQ='';tbUnifiedPlaceResults=null;
+  if(fresh){
+    tripDayAdd();
+    const d=tripDays[0];
+    tripDaySetPlaceGeo(d.id,label,lat,lng);
+    tbDayShown=d.id;
+  }
   saveState();
-  setAppMode('plan'); // GOLF-64: anchoring to a place is a Plan-mode action
+  if(appMode!=='build')setAppMode('plan'); // GOLF-64 intent kept, minus the Build-mode hijack
+  else{renderTripBuilder();tbDrawMap();}
 }
 /* GOLF-67: the second action on a place result — add this city to the trip
    as a stop, WITHOUT re-anchoring. Anchoring (above) is a discovery lens:
@@ -2051,10 +2268,17 @@ function tbAnchorTripToPlace(lat,lng,label){
    can switch it to Golf/Start/End from the day's own dropdown, and drag
    it anywhere in the sequence with GOLF-65's day drag. */
 let tbPlaceAddedNote=null;
+/* GOLF-69: unchanged for an in-progress trip (a city added later is a later
+   day, appended). The only new case is the empty trip, where tripDayAdd()
+   creates Day 1 and this lands there — same "the trip starts in Day 1"
+   rule as tbAnchorTripToPlace() above. kind stays 'golf' (the default) for
+   that first day so a round can be added to it; a later added city is
+   still 'free', since it carries no round yet. */
 function tbAddPlaceToTrip(lat,lng,label){
+  const fresh=tripDays.length===0;
   tripDayAdd();
   const d=tripDays[tripDays.length-1];
-  d.kind='free';
+  if(!fresh)d.kind='free';
   tripDaySetPlaceGeo(d.id,label,lat,lng);
   tbDayShown=d.id;
   tbPlaceAddedNote={label,day:tripDays.length};
@@ -2131,16 +2355,19 @@ function tripDaySelectHTML(i,currentDayId){
    drags by course index. Unchanged behaviour from pre-GOLF-63. */
 function tripDayCourseRowHTML(i,dayId){
   const fee=extractFee(V(i,'wd'));
-  return`<div class="tb-day-course" draggable="true"
+  return`<div class="tb-day-course tb-item-golf" draggable="true"
       ondragstart="tbDragSetCourse(${i});event.dataTransfer.effectAllowed='move';"
-      ondragover="event.preventDefault();event.dataTransfer.dropEffect='move';"
-      ondrop="event.preventDefault();event.stopPropagation();tbDropOn(${dayId==null?'null':dayId},${i});">
+      ondragend="tbDragEnd();"
+      ondragover="event.preventDefault();event.dataTransfer.dropEffect='move';tbDropOver(this);"
+      ondragleave="tbDropOut(this);"
+      ondrop="event.preventDefault();event.stopPropagation();tbDropOut(this);tbDropOn(${dayId==null?'null':dayId},${i});">
     <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
-    <div style="min-width:0">
+    <span class="tb-item-icon">⛳</span>
+    <div class="tb-item-main">
       <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
       <div class="cart-region">${esc(C[i].r)}${fee!=null?` · £${fee.toFixed(0)}`:''}</div>
     </div>
-    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+    <div class="tb-item-actions">
       ${tripDaySelectHTML(i,dayId)}
       <button class="btn2 ghost cart-remove" title="Remove from trip" onclick="toggleTrip(${i});renderTripBuilder();tbDrawMap();">✕</button>
     </div>
@@ -2154,20 +2381,25 @@ function tripDayCourseRowHTML(i,dayId){
    point of collapsing the old three fields into one list. */
 function tripDayItemRowHTML(d,it){
   const price=tripItemPrice(d,it);
-  const icon=it.type==='golf'?'⛳':it.type==='hotel'?'🛏':'📷';
+  // GOLF-69 (item 10): one icon vocabulary shared by the list rows and the
+  // map markers — hotel emoji for stays, location pin for POIs.
+  const icon=it.type==='golf'?'⛳':it.type==='hotel'?'🏨':'📍';
   const noGeo=it.type!=='golf'&&tripItemPoint(it)==null;
   const main=it.type==='golf'
     ?`<a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${it.i})">${esc(tripItemName(it))}</a>
        <div class="cart-region">${esc(C[it.i]?C[it.i].r:'')}${price!=null?` · £${price.toFixed(0)}`:''}</div>`
-    :`<span>${esc(tripItemName(it))}</span>
+    :`<span class="tb-item-name">${esc(tripItemName(it))}</span>
        <div class="cart-region">${it.type==='hotel'?'Stay':'Point of interest'}${price!=null?` · £${price.toFixed(0)}`:''}${noGeo?' · <span title="No location picked, so no drive time to this stop">no location</span>':''}</div>`;
   return`<div class="tb-day-course tb-item-${it.type}" draggable="true"
       ondragstart="tbDragSetItem(${d.id},'${it.id}');event.dataTransfer.effectAllowed='move';"
-      ondragover="event.preventDefault();event.dataTransfer.dropEffect='move';"
-      ondrop="event.preventDefault();event.stopPropagation();tbDropInDay(${d.id},'${it.id}');">
+      ondragend="tbDragEnd();"
+      ondragover="event.preventDefault();event.dataTransfer.dropEffect='move';tbDropOver(this);"
+      ondragleave="tbDropOut(this);"
+      ondrop="event.preventDefault();event.stopPropagation();tbDropOut(this);tbDropInDay(${d.id},'${it.id}');">
     <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
-    <div style="min-width:0">${icon} ${main}</div>
-    <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+    <span class="tb-item-icon">${icon}</span>
+    <div class="tb-item-main">${main}</div>
+    <div class="tb-item-actions">
       ${it.type==='golf'?tripDaySelectHTML(it.i,d.id):''}
       <button class="btn2 ghost cart-remove" title="Remove from this day"
         onclick="${it.type==='golf'?`toggleTrip(${it.i});`:`tripDayRemoveItem(${d.id},'${it.id}');`}renderTripBuilder();tbDrawMap();">✕</button>
@@ -2597,7 +2829,10 @@ function tripDayScheduleHTML(){
   const daysHTML=tripDays.map((d,idx)=>{
     const kind=TRIP_DAY_KINDS[d.kind]?d.kind:'golf';
     const items=tripDayItems(d);
-    const nCourses=items.filter(it=>it.type==='golf').length,nOther=items.length-nCourses;
+    /* GOLF-69 (item 8): the day header is now just "Day N" — the
+       "— 1 course · 2 stops" suffix is gone per the stakeholder. The count
+       is still needed here for the POI-toggle condition below. */
+    const nCourses=items.filter(it=>it.type==='golf').length;
     const noRoundHint={start:'Arrival — no round scheduled.',free:'Free day — no round scheduled.',end:'Departure — no round scheduled.'}[kind];
     /* GOLF-64: this is where the old read-only Itinerary tab and the old
        editable Day tab become one view — the day's editable, draggable item
@@ -2611,10 +2846,12 @@ function tripDayScheduleHTML(){
       return it?tripDayItemRowHTML(d,it):'';
     }).join('');
     return`
-    <div class="tb-day tb-day-${kind}" ondragover="event.preventDefault();" ondrop="event.preventDefault();tbDropInDay(${d.id},null);">
+    <div class="tb-day tb-day-${kind}"
+      ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this);"
+      ondrop="event.preventDefault();tbDropOut(this);tbDropInDay(${d.id},null);">
       <div class="tb-day-head" draggable="true"
         ondragstart="tbDayDragSet(${d.id});event.dataTransfer.effectAllowed='move';"
-        ondragend="tbDayDrag=null;"><span><span class="tb-drag-handle tb-day-handle" title="Drag to move this whole day">⠿</span> Day ${idx+1}${nCourses?` — ${nCourses} course${nCourses===1?'':'s'}`:kind!=='golf'?` — ${TRIP_DAY_KINDS[kind]}`:''}${nOther?` · ${nOther} stop${nOther===1?'':'s'}`:''}</span>
+        ondragend="tbDragEnd();"><span><span class="tb-drag-handle tb-day-handle" title="Drag to move this whole day">⠿</span> Day ${idx+1}</span>
         <button class="linkbtn" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">Remove day</button></div>
       <div class="tb-day-date">
         <select onchange="tripDaySetKind(${d.id},this.value);renderTripBuilder();">${Object.entries(TRIP_DAY_KINDS).map(([k,label])=>`<option value="${k}"${k===kind?' selected':''}>${label}</option>`).join('')}</select>
@@ -2628,13 +2865,18 @@ function tripDayScheduleHTML(){
       </div>
       ${tripDayDriveHTML(d,idx)}
       ${items.length?rowsHTML:`<p class="hint" style="margin:8px 10px">${noRoundHint||''} ${kind==='golf'?'Drag a course in, or use the dropdown on a wishlist course below.':'Add a course too if you want one — a start/free/end day can still hold a round.'}</p>`}
+      <div class="tb-dropzone"
+        ondragover="event.preventDefault();event.dataTransfer.dropEffect='move';tbDropOver(this);"
+        ondragleave="tbDropOut(this);"
+        ondrop="event.preventDefault();event.stopPropagation();tbDropOut(this);tbDropInDay(${d.id},null);">↓ Drop here to put it last on Day ${idx+1}</div>
       <div class="tb-day-total"><span>Day total</span><span>${tripDayTotal(idx)?`£${tripDayTotal(idx).toFixed(0)}`:'—'}</span></div>
       ${tripDaySuggestedTown(d)?`<div class="tb-day-town">Staying near: <b>${esc(tripDaySuggestedTown(d))}</b>${nCourses&&ORS_PROXY_URL?` <a href="#" class="linkbtn" onclick="event.preventDefault();tbTogglePois(${d.id})">${tbPoiOn.has(d.id)?'Hide POIs':'Show POIs'}</a>`:''}</div>`:''}
       ${tbPoiListHTML(d)}
       ${tbAddStopFormHTML(d.id)}
       <div class="tb-day-add"><button class="linkbtn" onclick="tbPromptHotel(${d.id})">+ Add hotel/stay</button>
         <button class="linkbtn" onclick="tbPromptPoi(${d.id})">+ Add point of interest</button></div>
-    </div>`}).join('');
+    </div>
+    ${idx===0?`<div class="bar" style="margin:0 0 10px"><button class="btn2" onclick="tbAddDayWithPlace();">+ Add day</button><span></span></div>`:''}`}).join('');
   const unschedHTML=unscheduled.length?`
     <div class="tb-day" style="border-style:dashed" ondragover="event.preventDefault();" ondrop="event.preventDefault();tbDropOn(null,null);">
       <div class="tb-day-head"><span>Unscheduled (Wishlist)</span></div>
@@ -2643,8 +2885,13 @@ function tripDayScheduleHTML(){
     </div>`:'';
   return`<p style="font-size:11.5px;color:var(--stone);margin:0 0 10px">Drag <span class="tb-drag-handle" style="display:inline;font-size:11px">⠿</span> a course to reorder it or move it between days — like dragging stops on a map — or use each row's dropdown. Drag a <b>day header</b>'s ⠿ to move that whole day (and everything on it) to a different slot — handy for trying "what if the rest day were Day 2 instead?". <a href="#" class="linkbtn" onclick="event.preventDefault();tripAutoOrder()">Auto-order by nearest-neighbour</a> gives you a sensible starting sequence to drag from.</p>
     ${daysHTML}${unschedHTML}
-    <div class="bar tb-day-endzone" style="margin-top:2px" ondragover="event.preventDefault();" ondrop="event.preventDefault();tbDropDayAtEnd();">
-      <button class="btn2" onclick="tbAddDayWithPlace();">+ Add day</button>
+    <!-- GOLF-69 (item 8): "+ Add day" moved up to sit directly under Day 1's
+         card (rendered in the day loop above). This bar keeps "Clear trip"
+         and stays the drop target that moves a dragged day to last place —
+         every day drop lands *before* its target, so the final slot is only
+         reachable past the last card. -->
+    <div class="bar tb-day-endzone" style="margin-top:2px" ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this);" ondrop="event.preventDefault();tbDropOut(this);tbDropDayAtEnd();">
+      ${tripDays.length>1?`<button class="btn2" onclick="tbAddDayWithPlace();">+ Add day at the end</button>`:'<span></span>'}
       <button class="btn2 ghost" onclick="tripClearAll();">Clear trip</button>
     </div>
     <p class="hint" style="margin-top:10px">See the <a href="#" class="linkbtn" onclick="event.preventDefault();tbBuildTab='cost';renderTripBuilder();">Costs tab</a> for a full trip total and line-item breakdown.</p>`;
@@ -3056,7 +3303,6 @@ function buildChips(id,items,key,withIcon){
   document.getElementById(id).innerHTML=items.map(([v,l,colOrArch,pole])=>
     `<button class="chip" aria-pressed="false" data-k="${key}" data-v="${v}">${withIcon?flagSVG(colOrArch,pole,13,false):''}${l}</button>`).join('')}
 buildChips('f-access',Object.entries(ACCESS).map(([k,v])=>[k,v.label,v.colour,v.pole]),'access',true);
-buildChips('f-price',Object.entries(BANDS).map(([k,v])=>[k,v]),'price',false);
 buildChips('f-arch',ARCHS,'arch',false);
 buildChips('f-region',REGIONS.map(r=>[r,r]),'region',false);
 buildChips('f-flag',[['ranked','Top 100 ranked'],['top100','England Top 100 only'],['topScot','Scotland only'],['topWales','Wales only'],['weekend','Open at weekends'],['walk','Walk from station'],['winter','Good in winter'],['sweep','Sweep finds'],['edited','My corrections'],['played','Played'],['want','Want to play']],'flag',false);
@@ -3064,7 +3310,70 @@ function updateFilterBadges(){
   [['arch','b-arch'],['region','b-region'],['flag','b-flag']].forEach(([k,id])=>{
     const b=document.getElementById(id),n=state[k].size;
     b.hidden=!n;if(n)b.textContent=n;});
+  /* GOLF-69: with everything behind one collapsed dropdown, the summary
+     needs its own count or an active filter becomes invisible. Counts each
+     group that's narrowing anything, plus the fee range as one. */
+  const total=state.access.size+state.arch.size+state.region.size+state.flag.size
+    +((state.feeMin!=null||state.feeMax!=null)?1:0);
+  const b=document.getElementById('b-filters');
+  b.hidden=!total;if(total)b.textContent=total;
 }
+/* GOLF-69 (item 2): the green-fee range control. Bounds come from the data
+   itself (rounded out to a tidy £25) rather than a hardcoded ceiling, so
+   the slider still spans the real spread if the dataset grows a pricier
+   course later. A thumb parked at either extreme means "no bound on this
+   end" (state stays null) — otherwise dragging max to the top would
+   silently exclude every unpriced course. */
+/* Scaled to the 95th percentile, not the absolute maximum: one £1,150
+   championship green fee would otherwise squash every ordinary course into
+   the leftmost 10% of the track, where a £10 difference is sub-pixel. The
+   top of the slider therefore means "and up" (the bound goes null), so
+   nothing is ever hidden by the scale — the readout shows "£N+" to say so.
+   Typing a number above the top of the scale in the max box lands on that
+   same unbounded top: broader than asked for, never narrower, so it can't
+   silently hide a course that matched. */
+const FEE_SLIDER_MAX=(()=>{
+  const fees=C.map((c,i)=>feeNum(i)).filter(f=>f<9999).sort((a,b)=>a-b);
+  if(!fees.length)return 300;
+  return Math.max(50,Math.ceil(fees[Math.floor(fees.length*0.95)]/25)*25);
+})();
+function feeRangeEls(){return{
+  minR:document.getElementById('fee-min-r'),maxR:document.getElementById('fee-max-r'),
+  minN:document.getElementById('fee-min'),maxN:document.getElementById('fee-max'),
+  out:document.getElementById('fee-readout')};}
+function feeRangeSync(){
+  const e=feeRangeEls();
+  const lo=state.feeMin!=null?state.feeMin:0,hi=state.feeMax!=null?state.feeMax:FEE_SLIDER_MAX;
+  e.minR.value=lo;e.maxR.value=hi;
+  e.minN.value=state.feeMin!=null?state.feeMin:'';
+  e.maxN.value=state.feeMax!=null?state.feeMax:'';
+  e.out.textContent=(state.feeMin==null&&state.feeMax==null)?'any price'
+    :`£${lo} – ${hi>=FEE_SLIDER_MAX?`${FEE_SLIDER_MAX}+`:`£${hi}`}`;
+}
+/* Takes the two raw numbers, keeps them in order, and normalises an
+   at-the-extreme value back to null ("unbounded"). */
+function feeRangeSet(lo,hi){
+  lo=Math.max(0,Math.min(FEE_SLIDER_MAX,isFinite(lo)?lo:0));
+  hi=Math.max(0,Math.min(FEE_SLIDER_MAX,isFinite(hi)?hi:FEE_SLIDER_MAX));
+  if(lo>hi){const t=lo;lo=hi;hi=t;}
+  state.feeMin=lo<=0?null:lo;
+  state.feeMax=hi>=FEE_SLIDER_MAX?null:hi;
+  feeRangeSync();updateFilterBadges();saveState();render();
+}
+(function wireFeeRange(){
+  const e=feeRangeEls();
+  [e.minR,e.maxR].forEach(r=>{r.min=0;r.max=FEE_SLIDER_MAX;r.step=5;});
+  [e.minN,e.maxN].forEach(n=>{n.max=FEE_SLIDER_MAX;n.placeholder=n===e.minN?'0':String(FEE_SLIDER_MAX);});
+  const fromSliders=()=>feeRangeSet(parseFloat(e.minR.value),parseFloat(e.maxR.value));
+  e.minR.addEventListener('input',fromSliders);
+  e.maxR.addEventListener('input',fromSliders);
+  const fromNumbers=()=>feeRangeSet(
+    e.minN.value.trim()===''?0:parseFloat(e.minN.value),
+    e.maxN.value.trim()===''?FEE_SLIDER_MAX:parseFloat(e.maxN.value));
+  e.minN.addEventListener('change',fromNumbers);
+  e.maxN.addEventListener('change',fromNumbers);
+  feeRangeSync();
+})();
 document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{
   const k=ch.dataset.k,v=ch.dataset.v,on=ch.getAttribute('aria-pressed')==='true';
   ch.setAttribute('aria-pressed',String(!on));on?state[k].delete(v):state[k].add(v);updateFilterBadges();saveState();render();
@@ -3079,15 +3388,67 @@ document.querySelectorAll('.chip').forEach(ch=>{
   const k=['arch','region','flag'][idx];
   if(state[k].size)document.getElementById(id).open=true;
 });
+// GOLF-69: a filter restored from localStorage would otherwise be invisible
+// inside the new collapsed Filters dropdown.
+if(state.access.size||state.arch.size||state.region.size||state.flag.size||state.feeMin!=null||state.feeMax!=null)
+  document.getElementById('g-filters').open=true;
 updateFilterBadges();
 document.getElementById('q').value=state.q;
 document.getElementById('sort').value=state.sort;
-document.getElementById('q').addEventListener('input',e=>{state.q=e.target.value.toLowerCase();saveState();render()});
+/* GOLF-69 (item 1): "on the explore page, I am unable to search for a town
+   or city. This should work the same as the unified search bar." The Explore
+   search stays a course filter — that's what the list below it is — and
+   additionally runs the same debounced orsGeocode() the Trip Builder's
+   unified bar uses, rendering any place hits in their own strip above the
+   list with the same two actions (start a trip here / add it to the trip).
+   Deliberately the same 300ms debounce and same stale-response guard, so
+   the two search boxes behave identically. null = nothing fetched yet. */
+let explorePlaceResults=null,explorePlaceDebounce=null,explorePlaceQ='';
+function renderExplorePlaces(){
+  const box=document.getElementById('place-results');
+  const list=explorePlaceResults;
+  if(!list||!list.length){box.hidden=true;box.innerHTML='';return;}
+  const started=tbTripStarted();
+  box.hidden=false;
+  box.innerHTML=`<span class="flabel" style="margin:0">Towns &amp; cities</span>`+
+    list.map(p=>`<div class="explore-place">
+      <span class="ep-name">📍 ${esc(p.label)}</span>
+      <span class="ep-actions">
+        <button class="btn2" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" data-act="anchor">${started?'Anchor here':'Start a trip here'}</button>
+        ${started?`<button class="btn2 ghost" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" data-act="add">+ Add to trip</button>`:''}
+      </span>
+    </div>`).join('');
+}
+document.getElementById('place-results').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-act]');
+  if(!b)return;
+  const lat=parseFloat(b.dataset.lat),lng=parseFloat(b.dataset.lng),label=b.dataset.label;
+  if(b.dataset.act==='anchor')tbAnchorTripToPlace(lat,lng,label);
+  else{tbAddPlaceToTrip(lat,lng,label);setAppMode('build');}
+});
+function exploreSearchPlaces(q){
+  clearTimeout(explorePlaceDebounce);
+  explorePlaceQ=q;
+  if(!q){explorePlaceResults=null;renderExplorePlaces();return;}
+  explorePlaceDebounce=setTimeout(()=>{
+    orsGeocode(q,list=>{
+      if(explorePlaceQ!==q)return; // stale — a newer keystroke has since fired
+      explorePlaceResults=list||[];
+      renderExplorePlaces();
+    });
+  },300);
+}
+document.getElementById('q').addEventListener('input',e=>{
+  state.q=e.target.value.toLowerCase();saveState();render();
+  exploreSearchPlaces(e.target.value.trim());
+});
 document.getElementById('sort').addEventListener('change',e=>{state.sort=e.target.value;saveState();render()});
 map.on('moveend zoomend',saveState);
 document.getElementById('reset').addEventListener('click',()=>{
   ['access','price','region','flag','arch'].forEach(k=>state[k].clear());state.q="";
+  state.feeMin=null;state.feeMax=null;feeRangeSync(); // GOLF-69
   document.getElementById('q').value="";document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed','false'));
+  explorePlaceResults=null;renderExplorePlaces(); // GOLF-69: clearing the search clears its place hits too
   updateFilterBadges();linkLayer.clearLayers();saveState();render();map.setView([51.45,-0.15],9)});
 function toggle(id,lyr){const b=document.getElementById(id);
   b.addEventListener('click',()=>{const on=b.getAttribute('aria-pressed')==='true';
@@ -3112,7 +3473,19 @@ function distMiles(i){return Math.round(distOut(i)*69)}
 function rankNum(i){const t=C[i].t100;if(!t)return 9999;if(typeof t.gl==='number')return t.gl;if(t.gbi)return t.gbi/20;return 500}
 function passes(i){const c=C[i];
   if(state.access.size&&!state.access.has(V(i,'a')))return false;
-  if(state.price.size&&!state.price.has(V(i,'band')))return false;
+  /* GOLF-69 (item 2): the four fixed BANDS chips became a real min/max
+     range. A course whose weekday fee doesn't parse to a number (feeNum
+     returns its 9999 sentinel — "POA", "members only", blank) can't be
+     compared against a range, so it passes while the range is untouched
+     and drops out the moment a bound is set. Stating a price ceiling and
+     still being shown unpriced courses would be the more surprising
+     behaviour of the two. */
+  if(state.feeMin!=null||state.feeMax!=null){
+    const f=feeNum(i);
+    if(f>=9999)return false;
+    if(state.feeMin!=null&&f<state.feeMin)return false;
+    if(state.feeMax!=null&&f>state.feeMax)return false;
+  }
   if(state.region.size&&!state.region.has(c.r))return false;
   if(state.arch.size){const tags=archTags(V(i,'arch'));if(![...state.arch].some(a=>tags.has(a)))return false}
   if(state.flag.has('ranked')&&!ranked(i))return false;
@@ -3171,6 +3544,61 @@ function fitToResults(){
 }
 document.getElementById('fit-map').addEventListener('click',fitToResults);
 
+/* GOLF-69 (item 3): the Explore list's two modes. 'near' is the default the
+   moment a trip has something to be near; the visitor can flip back to
+   'all' and that choice sticks for the session (not persisted — a new
+   session with a saved trip should still open on the more useful view). */
+let exploreListMode='near';
+/* The point everything is measured from: the last course added to the trip,
+   falling back to the trip's own anchor. Returns a course index, or null
+   when there's nothing in the trip yet. */
+function exploreNearAnchor(){
+  if(tripLastAdded!=null&&C[tripLastAdded])return tripLastAdded;
+  if(tbAnchor!=null&&C[tbAnchor])return tbAnchor;
+  if(tripSeq.length&&C[tripSeq[tripSeq.length-1]])return tripSeq[tripSeq.length-1];
+  return null;
+}
+function renderListMode(anchorIdx){
+  const bar=document.getElementById('list-mode');
+  if(anchorIdx==null){bar.hidden=true;bar.innerHTML='';return;}
+  bar.hidden=false;
+  bar.innerHTML=`<span>Nearest to <b>${esc(V(anchorIdx,'n'))}</b></span>
+    <span class="list-mode-pills">
+      <button data-lm="near" aria-pressed="${exploreListMode==='near'}">Near my trip</button>
+      <button data-lm="all" aria-pressed="${exploreListMode==='all'}">All results</button>
+    </span>`;
+  bar.querySelectorAll('[data-lm]').forEach(b=>b.addEventListener('click',()=>{
+    exploreListMode=b.dataset.lm;render();
+  }));
+}
+/* Bookable courses not already in the trip, closest first. Deliberately
+   ignores the filter chips: this list answers "what else could I play while
+   I'm there?", and silently hiding a neighbouring course because an
+   unrelated filter is still set would make it untrustworthy. */
+const NEAR_LIST_MAX=25;
+function renderNearestList(anchorIdx){
+  const a=C[anchorIdx];
+  const rows=C.map((c,i)=>i)
+    .filter(i=>i!==anchorIdx&&!TRIP.has(i)&&bookable(i))
+    .map(i=>({i,mi:haversineMiles(a.lat,a.lng,C[i].lat,C[i].lng)}))
+    .sort((x,y)=>x.mi-y.mi).slice(0,NEAR_LIST_MAX);
+  const list=document.getElementById('list');
+  document.getElementById('count').textContent=`${rows.length} near${rows.length===NEAR_LIST_MAX?'est':''}`;
+  if(!rows.length){list.innerHTML=`<p class="empty">Nothing else bookable nearby — try "All results".</p>`;return;}
+  list.innerHTML=rows.map(({i,mi})=>{const ac=ACCESS[V(i,'a')];
+    return`<div class="card" data-i="${i}"><div class="card-top">
+      <p class="cname">${flagSVG(ac.colour,ac.pole,15,false)}${V(i,'n')}</p>
+      <span class="cfee">${V(i,'wd')}<small>${mi.toFixed(0)} mi away</small></span></div>
+      <p class="cmeta"><span>${ac.label}</span><span>${esc(C[i].r)}</span>${bestRankBadge(i)}</p>
+      <p class="cmeta"><button class="btn2" data-add="${i}" style="padding:5px 10px;font-size:11px">+ Add to trip</button></p></div>`}).join('');
+  list.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',e=>{
+    e.stopPropagation();
+    tbAddToWishlist(+b.dataset.add);
+  }));
+  list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
+    const i=+el.dataset.i;showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
+    markers.get(i).setPopupContent(popupHTML(i));markers.get(i).openPopup();highlight(i);drawLink(i)}));
+}
 function render(){
   /* GOLF-31: single hook point — every existing render() call site
      (filter chips, played/want/trip toggles, corrections save, reset,
@@ -3196,6 +3624,17 @@ function render(){
   shown.forEach(i=>{markers.get(i).setIcon(pinFor(i));markers.get(i).setPopupContent(popupHTML(i));layer.addLayer(markers.get(i))});
   document.getElementById('count').textContent=`${shown.length} of ${C.length}`;
   document.getElementById('editcount').textContent=editCount();
+  /* GOLF-69 (item 3): "once I have selected and added the first course to a
+     trip on the explore page, the bottom area underneath should show the
+     list of courses nearest to it" — clarified to mean this list is
+     REPLACED, not supplemented, which is how the old Trip Builder Discover
+     tab worked. Placed after the marker/count work above so the map still
+     shows the full filtered result set underneath either list. Escapable
+     via the "All results" pill: a one-way switch would strand anyone who
+     wanted to carry on browsing. */
+  const nearAnchor=exploreNearAnchor();
+  renderListMode(nearAnchor);
+  if(nearAnchor!=null&&exploreListMode==='near'){renderNearestList(nearAnchor);return;}
   const list=document.getElementById('list');
   if(!shown.length){list.innerHTML=`<p class="empty">Nothing matches. The cheapest heathland tends to be weekdays-only — try dropping that filter.</p>`;return}
   list.innerHTML=shown.map(i=>{const a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')],near=C[i].nearStation;

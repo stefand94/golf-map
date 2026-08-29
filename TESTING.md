@@ -625,6 +625,78 @@ that touches rendering, filters, or persistence:
     plain typed text by design. Stub `window.orsGeocode` in the console
     to exercise the picker UI in that case.
 
+36. **Stakeholder feedback round 3 — Explore search/filters + day-card
+    fixes (GOLF-69).** Ten-item batch; one item (merging the standalone
+    Day tab into Itinerary) was already shipped by GOLF-64 and needed no
+    change.
+    *Explore search finds places:* on the Explore page type "Glasgow"
+    into the main search box. A **"Towns & cities"** strip must appear
+    directly under the box with geocoded results and the same actions as
+    the Trip Builder's unified bar ("Start a trip here", plus "+ Add to
+    trip" once a trip exists). Same 300ms debounce and stale-response
+    guard as that bar — type fast and only the last query's results
+    should land.
+    *Search on top, filters in a dropdown:* the search box must be the
+    **first** control in the panel, with a single collapsed **FILTERS**
+    dropdown under it holding access/green fee/architect/area/show-only.
+    The summary carries a count badge of active filter groups, and the
+    dropdown auto-opens on load when a filter was restored from
+    localStorage (otherwise a saved filter is invisible).
+    *Green fee is a range:* two-thumb slider plus typed Min £ / Max £
+    boxes and a readout. Sliders and boxes must stay in sync in both
+    directions; a thumb at either extreme means *unbounded* (readout
+    reads "any price", or "£N+" at the top). The scale tops out at the
+    95th percentile, not the £1,150 maximum, so ordinary fees aren't
+    squashed into the first 10% of the track. Courses whose fee doesn't
+    parse ("POA") pass while the range is untouched and drop out once a
+    bound is set. Reload — the range must persist.
+    *Nearest-to-trip list:* add a course to the trip from the Explore
+    page. The bottom-left course list must be **replaced** (not
+    supplemented) by a "Nearest to <course>" list, closest first, with
+    the trip's own courses excluded and an "+ Add to trip" button per
+    row. The **All results** pill returns to the normal filtered list.
+    Map markers must still show the full filtered set underneath either
+    list.
+    *Drag to the bottom of a day:* grab a course row in Build →
+    Itinerary. A dashed **"↓ Drop here to put it last on Day N"** zone
+    must appear inside every day (hidden at rest), each day must gain a
+    dashed outline, and the row/zone under the pointer must highlight.
+    Dropping on the zone appends to the end of that day — the position
+    that was previously unreachable, because dropping on a row always
+    inserts *before* it. `body.tb-dragging` must clear on drop *and* on
+    a cancelled drag (dragend).
+    *Row alignment:* every row in a day — golf, hotel, POI, and the
+    wishlist rows — must line up on the **first letter** of its name, in
+    one column, regardless of type or of how wide its trailing controls
+    are. (The old bug: three bare flex children under
+    `justify-content:space-between` centre the middle one.)
+    *Day 1 is the start of the trip:* from a completely empty trip, each
+    of the three entry points — a map popup's "Add to trip", the pane's
+    "+ Wishlist", and picking a city from either search box — must land
+    the first item **directly in Day 1**, with no separate start slot and
+    nothing left in Unscheduled. Second and later course adds still go to
+    the wishlist (GOLF-62 unchanged). Picking a city while in **Build**
+    must **not** bounce you to Plan/Discover.
+    *Day card chrome:* each header reads exactly "Day 1" / "Day 2" — no
+    "— 1 course · 2 stops" suffix. **"+ Add day"** sits directly under
+    Day 1's card; the bottom bar keeps "Clear trip" and stays the
+    drop target for moving a dragged day to last place, and only shows
+    its own add-day button once there are 2+ days.
+    *Chronological mixed day:* a day holding a POI, a round and a hotel
+    must render them as one list in whatever order they're dragged into
+    (e.g. Burns Cottage → Western Gailes → Redburn Hotel), with drive
+    legs interleaved and the **golf row visually prominent** (bold name,
+    accent rule down its left edge).
+    *Hotel/POI map markers:* a hotel stop draws a 🏨 marker and a POI a
+    📍 marker. A stop with real geocoded coordinates sits on them; one
+    without falls back to the day's own city, then the day's last course,
+    then the nearest day either side that has one — jittered a few
+    hundred metres so several locationless stops don't stack, and its
+    tooltip says "(approximate — no address set)".
+    No console errors, no "undefined" in the pane, no horizontal overflow
+    at 375px, and `node scripts/test_data.js` unaffected (no data-file
+    changes).
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
