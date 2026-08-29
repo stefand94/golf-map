@@ -740,6 +740,37 @@ that touches rendering, filters, or persistence:
     at 375px, and `node scripts/test_data.js` unaffected (no data-file
     changes).
 
+37. **Design-system pass + drag-and-drop reliability (GOLF-71).** Open the
+    Trip Builder pane in each of the three modes (Explore, Plan, Build).
+    *Design tokens:* every radius, shadow, spacing, font size and tap
+    target comes from a `--radius-*` / `--shadow-*` / `--sp-*` / `--fs-*`
+    / `--tap` custom property — no hardcoded px should be reintroduced.
+    Buttons all use the single `.tb-btn` primitive and are at least 44px
+    tall.
+    *One search bar:* there must be exactly one search input at the top of
+    the pane. It is sticky, so scrolling deep into a long itinerary keeps
+    it in view. Every other search field (day city, add-stop location,
+    Explore) is the same `tbSearchFieldHTML` component — typing debounces,
+    ArrowUp/ArrowDown move through results and Enter picks one. There is
+    no second "Near a place" box in Discover.
+    *Drag-and-drop (the important one — do these as real drags, not by
+    calling functions):* (a) drag a wishlist course onto a day, grabbing
+    it **by its name**, not the handle — it must move, not start a link
+    drag; (b) reorder two stops within one day; (c) drag a stop from one
+    day onto a row in another day; (d) drag a whole day by its header
+    handle onto an earlier day; (e) drag a day onto the bottom "Add day"
+    bar to move it last. In each case the source row must visibly lift
+    (fades and shrinks slightly), an accent insertion line must appear
+    above the target, and the "Put it last on Day N" drop zone must
+    overlay the card **without shifting the layout**.
+    *Copy:* no card should carry an explanatory sentence longer than a
+    short phrase — the detail belongs in a `title=` tooltip (e.g. the
+    date field reads "Date · optional", the drive field shows a
+    `live`/`auto`/`yours` chip).
+    At 375px the day header must read "Day 1" in full, with the place name
+    truncating instead. No console errors, no "undefined" in the pane, and
+    `node scripts/check_js.js` plus `node scripts/test_data.js` both pass.
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
