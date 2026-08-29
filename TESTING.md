@@ -8,10 +8,39 @@ it as part of shipping the feature, not an afterthought.
 Two layers, because this app has no build step and adding a headless-browser
 test dependency just for DOM assertions isn't worth it at this size:
 
+## Where the JS lives
+
+Since GOLF-70 the app's JavaScript is no longer one inline `<script>` block in
+`london-golf-map-v5_1.html`. It lives in `js/*.js`, loaded as plain
+`<script src>` tags — **not** ES modules, so every top-level declaration stays
+global and the inline `onclick=` handlers in the HTML still resolve, exactly
+the way `data/*.js` already worked. **The load order is significant** and is
+listed in the HTML; several files run code at load time that depends on
+earlier ones. If you add, remove, or reorder a module, update the `ORDER`
+array in `scripts/check_js.js` to match, or Layer 1 will fail.
+
+| File | What's in it |
+| --- | --- |
+| `js/util.js` | Flag marker SVG, station index, National Rail badges, spline, architect tags, the `EDITS` overlay, played/want lists, shared course metrics (`feeNum`/`distMiles`/`rankNum`). |
+| `js/trip-model.js` | The trip data model: `TRIP`, `tripDays` and their items, all day/item CRUD, drag-and-drop reordering, multi-trip snapshot/restore. No rendering. |
+| `js/state.js` | localStorage load/save/clear, the Explore filter `state`, `HOME`, the map binding, and the initial `loadStoredState()`. |
+| `js/handicap.js` | The Course Handicap calculator embedded in a course popup. Loads before `map.js`, which calls it while building popups. |
+| `js/map.js` | The Leaflet map: basemap, rail/station layers, clustered course markers, pin/popup/tooltip HTML, mobile list/map toggle. |
+| `js/trip-geo.js` | Distance and discovery queries, the trip map layer, and the green-fee/accommodation/fuel cost model. |
+| `js/trip-route.js` | Route ordering and drawing: nearest-neighbour ordering, day colours, per-leg estimates, all trip map drawing. |
+| `js/trip-add.js` | Adding things to a trip: pane search results, wishlist/day adds, place anchoring, draggable row HTML. |
+| `js/ors.js` | The drive-time heuristic plus the OpenRouteService proxy layer (legs, geometry, geocoding, POIs) and its caches. |
+| `js/trip-ui.js` | The Trip Builder pane: day legs, itinerary lists, Costs tab, day schedule, wishlist, `renderTripBuilder()` and its wiring. |
+| `js/app-mode.js` | The three modes (Explore/Plan/Build), the URL hash, `pushState`/`popstate`. |
+| `js/explore.js` | The Explore page: filter chips, fee-range control, place + course search, fuzzy matching, nearest-to-trip list, `render()`, legend. |
+| `js/editor.js` | The corrections drawer and per-course editor, JSON export/copy/download, clear-saved-state. |
+| `js/boot.js` | Startup: first `render()`, cold-load mode restore from the hash, initial cart draw. Must load last. |
+
 ## Layer 1 — automated, no browser needed
 
 ```bash
 node scripts/test_data.js
+node scripts/check_js.js
 ```
 
 Loads `data/*.js` for real (via Node's `vm` module, not regex) and checks:
@@ -22,7 +51,21 @@ London-catchment `stn` resolves to a real station in `R`/`ISOLATED`;
 course count matches the last-known total; no duplicate name+coordinate
 entries. Exits non-zero on any failure, with a readable list of what broke.
 
-Run this after any edit to a `data/*.js` file, before committing.
+Run `test_data.js` after any edit to a `data/*.js` file, before committing.
+
+`check_js.js` is the multi-file replacement for the old "pull the inline
+`<script>` block out of the HTML and pipe it through `node --check`" step,
+which no longer applies now that the JS is split across `js/*.js`. It parses
+every module on its own, verifies the HTML loads exactly the known modules in
+the known order, and then parses the concatenation in load order — which is
+what the browser effectively evaluates, so it also catches a top-level
+`const`/`let` accidentally declared twice across two files. Run it after any
+edit to `js/*.js` or to the `<script src>` list, before committing.
+
+What it deliberately does **not** catch, because it never executes anything:
+a module whose *load-time* code calls a function declared in a later module.
+That throws only in a real browser, so Layer 2's console-error check below is
+the backstop for it — run it after moving code between modules.
 
 ## Layer 2 — manual/agent-run, needs a real browser
 
