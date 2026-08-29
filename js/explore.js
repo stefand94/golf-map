@@ -113,7 +113,7 @@ document.getElementById('sort').value=state.sort;
    list with the same two actions (start a trip here / add it to the trip).
    Deliberately the same 300ms debounce and same stale-response guard, so
    the two search boxes behave identically. null = nothing fetched yet. */
-let explorePlaceResults=null,explorePlaceDebounce=null,explorePlaceQ='';
+let explorePlaceResults=null,explorePlaceQ='';
 function renderExplorePlaces(){
   const box=document.getElementById('place-results');
   const list=explorePlaceResults;
@@ -124,8 +124,8 @@ function renderExplorePlaces(){
     list.map(p=>`<div class="explore-place">
       <span class="ep-name">📍 ${esc(p.label)}</span>
       <span class="ep-actions">
-        <button class="btn2" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" data-act="anchor">${started?'Anchor here':'Start a trip here'}</button>
-        ${started?`<button class="btn2 ghost" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" data-act="add">+ Add to trip</button>`:''}
+        <button class="tb-btn is-sm is-primary" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" data-act="anchor">${started?'Anchor here':'Start a trip here'}</button>
+        ${started?`<button class="tb-btn is-sm" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" data-act="add">＋ Add to trip</button>`:''}
       </span>
     </div>`).join('');
 }
@@ -136,17 +136,19 @@ document.getElementById('place-results').addEventListener('click',e=>{
   if(b.dataset.act==='anchor')tbAnchorTripToPlace(lat,lng,label);
   else{tbAddPlaceToTrip(lat,lng,label);setAppMode('build');}
 });
+/* GOLF-71 (workstream B): the fifth hand-rolled copy of the debounce +
+   stale-response guard is gone — this now shares tbGeocodeDebounced()
+   with every other place lookup in the app, so all of them behave
+   identically by construction rather than by four parallel edits. The
+   results still render into Explore's own strip above the course list
+   (not a dropdown), which is why this call site uses the debounce helper
+   directly rather than the full tbAttachSearch() binding. */
 function exploreSearchPlaces(q){
-  clearTimeout(explorePlaceDebounce);
   explorePlaceQ=q;
-  if(!q){explorePlaceResults=null;renderExplorePlaces();return;}
-  explorePlaceDebounce=setTimeout(()=>{
-    orsGeocode(q,list=>{
-      if(explorePlaceQ!==q)return; // stale — a newer keystroke has since fired
-      explorePlaceResults=list||[];
-      renderExplorePlaces();
-    });
-  },300);
+  tbGeocodeDebounced('explore-q',q,list=>{
+    explorePlaceResults=list;
+    renderExplorePlaces();
+  });
 }
 document.getElementById('q').addEventListener('input',e=>{
   state.q=e.target.value.toLowerCase();saveState();render();

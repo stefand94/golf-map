@@ -158,17 +158,22 @@ function tbDiscover(){
   // overall may already be in the cart and get filtered out below.
   return tripByAnchor(anchor,5+TRIP.size).filter(({i})=>!TRIP.has(i)).slice(0,5);
 }
+/* GOLF-71: the empty state used to restate whatever the scope line
+   directly above it had just said ("Add a course to see what's nearby." /
+   "Add a course to seed nearby suggestions." rendered one under the
+   other). The scope line owns that message now; this only speaks for the
+   region scope, which has no scope line of its own. */
 function tbResultsHTML(items){
-  if(!items.length)return`<p class="hint">${tbDiscoveryTab==='region'?'Pick a region above, or none found nearby.':tbDiscoveryTab==='place'?'Search a place above to see courses around it.':'Add a course to seed nearby suggestions.'}</p>`;
+  if(!items.length)return tbDiscoveryTab==='region'?`<p class="hint">No courses in that region yet — pick one above.</p>`:'';
   const anchorPt=tbDiscoveryTab==='anchor'?(tbEffectiveAnchor()!=null?{lat:C[tbEffectiveAnchor()].lat,lng:C[tbEffectiveAnchor()].lng}:null)
     :tbDiscoveryTab==='place'?tbPlaceAnchor:null;
   return items.map(({i,border})=>{
     const dist=anchorPt?` — ${haversineMiles(anchorPt.lat,anchorPt.lng,C[i].lat,C[i].lng).toFixed(1)} mi`:'';
     return`<div class="tb-row">
-      <div><a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${V(i,'n')}</a>
+      <div>⛳ <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         ${border?' <span class="wt" title="Just over the border — nearest to a course in your chosen region, not itself in it">border</span>':''}
-        <div style="color:var(--stone);font-size:11.5px">${dist} · ${C[i].r} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
-      <button class="btn2" style="padding:6px 12px;font-size:11.5px" onclick="tbSelect(${i})">Add</button>
+        <div class="cart-region">${dist?dist.replace(/^ — /,''):''}${dist?' · ':''}${esc(C[i].r)} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
+      <button class="tb-btn is-sm is-primary" onclick="tbSelect(${i})">＋ Wishlist</button>
     </div>`;
   }).join('');
 }

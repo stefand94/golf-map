@@ -186,24 +186,27 @@ function tbAddStopCommit(){
   tbAddStop=null;
   renderTripBuilder();tbDrawMap();
 }
+/* GOLF-71 copy audit: the form used to carry a two-sentence footnote
+   explaining what picking a search result does for drive times. The
+   control makes that self-evident (you either picked a place or you
+   typed a name), so the explanation moved into the input's own title=
+   tooltip and the only visible feedback left is a one-word confirmation
+   once a location IS set. Search field markup is the shared component. */
 function tbAddStopFormHTML(dayId){
   if(!tbAddStop||tbAddStop.dayId!==dayId)return'';
   const isHotel=tbAddStop.type==='hotel';
   return`<div class="tb-addstop">
-    <div class="tb-addstop-title">${isHotel?'Add a hotel / stay':'Add a point of interest'}</div>
-    <span class="tb-place-wrap" style="position:relative;display:block;margin-bottom:6px">
-      <input type="text" class="tb-place-input" id="tb-addstop-name" style="width:100%"
-        placeholder="${isHotel?'Search a hotel or place to stay…':'Search a place or landmark…'}" value="${esc(tbAddStop.name)}">
-      <div id="tb-addstop-results" class="tb-place-results"></div>
-    </span>
+    <div class="tb-addstop-title">${isHotel?'Add a stay':'Add a stop'}</div>
+    ${tbSearchFieldHTML({id:'tb-addstop-name',value:tbAddStop.name,
+      placeholder:isHotel?'Search a hotel…':'Search a place or landmark…',
+      title:'Pick a search result to give this stop real coordinates, so drive times can be calculated to it. A plain typed name works too.'})}
     <div class="tb-addstop-row">
-      <input type="number" id="tb-addstop-price" min="0" step="5" style="width:130px"
-        placeholder="${isHotel?'£ per night (optional)':'£ cost (optional)'}" value="${esc(tbAddStop.price)}">
-      <button class="btn2" onclick="tbAddStopCommit()">Add</button>
-      <button class="btn2 ghost" onclick="tbAddStopCancel()">Cancel</button>
+      <input class="tb-field" type="number" id="tb-addstop-price" min="0" step="5"
+        placeholder="${isHotel?'£ / night — optional':'£ — optional'}" value="${esc(tbAddStop.price)}">
+      <button class="tb-btn is-primary" onclick="tbAddStopCommit()">Add</button>
+      <button class="tb-btn is-quiet" onclick="tbAddStopCancel()">Cancel</button>
     </div>
-    <p class="hint" style="margin:6px 0 0">${tbAddStop.lat!=null?'📍 Location picked — this stop will get real drive times.'
-      :'Pick a search result to give this stop a real location (and drive times). A plain typed name works too — it just won’t add a drive leg.'}</p>
+    ${tbAddStop.lat!=null?`<p class="hint" style="margin:var(--sp-2) 0 0">📍 Location set</p>`:''}
   </div>`;
 }
 function tripDayRemove(dayId){
@@ -281,14 +284,57 @@ function tbDragBegin(){document.body.classList.add('tb-dragging');}
 function tbDragEnd(){
   document.body.classList.remove('tb-dragging');
   document.querySelectorAll('.tb-drop-over').forEach(el=>el.classList.remove('tb-drop-over'));
+  document.querySelectorAll('.tb-drag-src').forEach(el=>el.classList.remove('tb-drag-src'));
   tbDrag=null;tbDayDrag=null;
 }
-/* Per-target hover highlight. Kept as tiny globals rather than inline
-   class juggling in each of the four handlers that need them. */
+/* ── GOLF-71 (workstream D) ────────────────────────────────────────────
+   The stakeholder's "it doesn't seem to pick it up when I drag and drop
+   it… it is a bit clunky". Four real defects were found in the GOLF-39/
+   63/65 native-DnD wiring, all fixed here or in the row markup:
+
+   1. No dataTransfer.setData() in any ondragstart. Chrome tolerates
+      this; Firefox refuses to begin the drag at all, and even in Chrome
+      a drag with an empty data store can be dropped by the OS layer.
+      tbDragStart() below now always seeds a text/plain payload.
+   2. Rows are draggable="true" but every golf row's name is an
+      <a href="#">, and anchors are natively draggable. Grabbing the
+      course NAME — by far the biggest, most obvious handle in the row —
+      started a *link* drag carrying "#", which no drop target here
+      accepts, so the row visibly refused to move. Same for selected
+      text inside the row. Fixed with draggable="false" on the inner
+      anchors plus user-select:none on the row (see <style>).
+   3. dragleave fires when the pointer crosses onto a CHILD of the drop
+      target, so the highlight flickered off and on continuously and the
+      day-level highlight fought the row-level one. tbDropOut() now
+      ignores a leave whose relatedTarget is still inside the element,
+      and row-level dragover stops propagating.
+   4. The end-of-day drop zone went display:none → display:flex at
+      dragstart, which reflowed every card below it the instant a drag
+      began — the target you aimed at moved out from under the cursor.
+      It is position:absolute over the card's own bottom padding now
+      (see <style>), so revealing it shifts nothing.
+
+   On top of the fixes, "lift": the source element gets .tb-drag-src one
+   tick after dragstart (synchronously would bake the effect into the
+   browser's drag-image snapshot instead of the placeholder left behind),
+   and whatever is under the pointer gets --shadow-dragging plus a solid
+   3px accent insertion line. */
+function tbDragStart(ev,el,label){
+  try{ev.dataTransfer.setData('text/plain',label||'trip-item');}catch(e){}
+  try{ev.dataTransfer.effectAllowed='move';}catch(e){}
+  tbDragBegin();
+  if(el)setTimeout(()=>{if(el.isConnected)el.classList.add('tb-drag-src');},0);
+}
+/* Per-target hover highlight. `ev` is optional: when passed to tbDropOut
+   a dragleave onto a descendant is ignored (defect 3 above). */
 function tbDropOver(el){if(el&&el.classList)el.classList.add('tb-drop-over');}
-function tbDropOut(el){if(el&&el.classList)el.classList.remove('tb-drop-over');}
-function tbDragSetItem(dayId,id){tbDrag={kind:'item',dayId,id};tbDragBegin();}
-function tbDragSetCourse(i){tbDrag={kind:'course',i};tbDragBegin();}
+function tbDropOut(el,ev){
+  if(!el||!el.classList)return;
+  if(ev&&ev.relatedTarget&&el.contains(ev.relatedTarget))return;
+  el.classList.remove('tb-drop-over');
+}
+function tbDragSetItem(dayId,id,ev,el){tbDrag={kind:'item',dayId,id};tbDayDrag=null;tbDragStart(ev,el,'item:'+id);}
+function tbDragSetCourse(i,ev,el){tbDrag={kind:'course',i};tbDayDrag=null;tbDragStart(ev,el,'course:'+i);}
 /* GOLF-65: dragging a WHOLE DAY. Deliberately a second, separate global
    rather than a third `kind` on tbDrag, because the two drags have
    different drop grammars — an item drop asks "before which row?", a day
@@ -298,7 +344,7 @@ function tbDragSetCourse(i){tbDrag={kind:'course',i};tbDragBegin();}
    first and falls through to the untouched item logic when it's null.
    Net: zero changes to tbDropOn()'s behaviour. */
 let tbDayDrag=null;
-function tbDayDragSet(dayId){tbDayDrag=dayId;tbDrag=null;tbDragBegin();}
+function tbDayDragSet(dayId,ev,el){tbDayDrag=dayId;tbDrag=null;tbDragStart(ev,el&&el.closest?el.closest('.tb-day'):el,'day:'+dayId);}
 /* A day's stored `driveIn` is a manual override of the leg driven INTO
    that day (GOLF-43) — it describes the gap between it and whatever day
    precedes it. Reordering changes which day that is, so an override that
@@ -570,18 +616,38 @@ function tripStartFresh(){
   if(tripBuilderOn)setAppMode('plan'); // GOLF-64: URL follows the mode
   render();
 }
-function tripSwitcherHTML(){
+/* GOLF-71: the trip switcher was a <select> plus five permanently-visible
+   buttons (New / Duplicate / Rename / Delete / Start fresh) eating a whole
+   row of the pane — the stakeholder's "you can save space by hiding things
+   in drop down menus" applied literally. It is now one control labelled
+   with the trip's own name; switching trips is the top section (the common
+   case, one click), and the rarely-used management actions sit under it.
+
+   "Clear trip" (empty THIS trip, keep it) stays out here in the toolbar
+   next to the dropdown, matching the sketch. "Start fresh" (delete EVERY
+   trip) is deliberately the last item inside the menu, styled destructive
+   and worded so the difference is unmissable — they are different actions
+   and both stay available, per the brief. */
+function tbTripMenuHTML(){
   const list=tripListAll();
-  const opts=list.map(t=>`<option value="${t.id}"${t.id===activeTripId?' selected':''}>${esc(t.name)}</option>`).join('');
-  return`<div class="tb-trips">
-    <select id="tb-trip-select" aria-label="Switch trip" onchange="tripSwitchTo(this.value)">${opts}</select>
-    <button class="btn2 ghost" title="New trip" onclick="tripCreateNew()">+ New</button>
-    <button class="btn2 ghost" title="Duplicate this trip" onclick="tripDuplicate(activeTripId)">Duplicate</button>
-    <button class="btn2 ghost" title="Rename this trip" onclick="tripRename(activeTripId)">Rename</button>
-    ${list.length>1?`<button class="btn2 ghost" title="Delete this trip" onclick="tripDelete(activeTripId)">Delete</button>`:''}
-    <button class="btn2 warn" title="Delete every trip and start with one empty trip" onclick="tripStartFresh()">Start fresh</button>
-  </div>`;
+  const active=list.find(t=>t.id===activeTripId);
+  const rows=list.map(t=>`<button type="button" class="tb-menu-item" onclick="tripSwitchTo('${t.id}')">${t.id===activeTripId?'✓':'&nbsp;&nbsp;'} ${esc(t.name)}</button>`).join('');
+  return`<details class="tb-drop" id="tb-trip-drop">
+    <summary title="Switch or manage trips">${esc(active?active.name:'Trip')}</summary>
+    <div class="tb-drop-body">
+      ${list.length>1?`<div class="tb-menu-label">Your trips</div>${rows}<div class="tb-menu-sep"></div>`:''}
+      <button type="button" class="tb-menu-item" onclick="tripCreateNew()">＋ New trip</button>
+      <button type="button" class="tb-menu-item" onclick="tripRename(activeTripId)">✎ Rename</button>
+      <button type="button" class="tb-menu-item" onclick="tripDuplicate(activeTripId)">⧉ Duplicate</button>
+      ${list.length>1?`<button type="button" class="tb-menu-item is-danger" onclick="tripDelete(activeTripId)">🗑 Delete this trip</button>`:''}
+      <div class="tb-menu-sep"></div>
+      <button type="button" class="tb-menu-item is-danger" onclick="tripStartFresh()" title="Deletes every trip, not just this one, and leaves you with one empty trip">⟲ Start fresh — delete all trips</button>
+    </div>
+  </details>`;
 }
+/* Kept as a thin alias: tripSwitcherHTML() is referenced from older code
+   paths and the plan file's history. */
+function tripSwitcherHTML(){return tbTripMenuHTML();}
 
 /* GOLF-31: Trip Builder pane state — a persistent left-pane mode (see
    .tb-pane/body.trip-mode in <style>), not a modal. tbAnchor seeds the
