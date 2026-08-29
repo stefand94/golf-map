@@ -115,7 +115,12 @@ function feeRangeSet(lo,hi){
 }
 (function wireFeeRange(){
   const e=feeRangeEls();
-  [e.minR,e.maxR].forEach(r=>{r.min=0;r.max=FEE_SLIDER_MAX;r.step=5;});
+  /* GOLF-75: step 1 (was 5). The band shortcuts set odd boundaries (£31,
+     £71, £151) and a step-5 track snapped the thumb to the nearest multiple,
+     so the slider silently disagreed with the readout and the number boxes,
+     which read the exact stored value. Dragging at £1 granularity is strictly
+     more precise; the typed min/max boxes keep their £5 step. */
+  [e.minR,e.maxR].forEach(r=>{r.min=0;r.max=FEE_SLIDER_MAX;r.step=1;});
   [e.minN,e.maxN].forEach(n=>{n.max=FEE_SLIDER_MAX;n.placeholder=n===e.minN?'0':String(FEE_SLIDER_MAX);});
   const fromSliders=()=>feeRangeSet(parseFloat(e.minR.value),parseFloat(e.maxR.value));
   e.minR.addEventListener('input',fromSliders);

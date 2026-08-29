@@ -740,6 +740,57 @@ that touches rendering, filters, or persistence:
     at 375px, and `node scripts/test_data.js` unaffected (no data-file
     changes).
 
+37. **Stakeholder feedback round 4 — Explore search navigates only, item
+    editing, hotel per-person pricing, price-band chips
+    (GOLF-72/73/74/75).**
+    *Explore search is navigation, nothing else:* on the Explore page type
+    "Islay" into the main search box. The **"Towns & cities"** strip must
+    still appear, but each hit is now one clickable row with **no**
+    trip-related buttons — no "Start a trip here", no "+ Add to trip"
+    (GOLF-72 deliberately reversed that part of GOLF-69a). Clicking a hit
+    must fly the map to that place at zoom 11 and change **nothing** about
+    the trip: day count, wishlist, anchor and the current mode must all be
+    exactly as they were. The Plan-mode unified search bar is unchanged
+    and must keep both of its actions.
+    *Editing an itinerary item:* in Build → Itinerary, a hotel or POI row
+    must offer **Edit** next to its ✕. Edit replaces that row in place
+    with an inline form (never a browser `prompt()`) carrying the item's
+    current name, price and pricing basis. Name is the same
+    search-as-you-type geocode picker used when adding — picking a new
+    result must rewrite the item's coordinates (and therefore its drive
+    legs); leaving the name untouched must **preserve** the existing
+    coordinates; typing over the name by hand must clear them. Save keeps
+    the item's position in the day (its `id` is not regenerated). Cancel
+    discards. A **golf** row has no Edit button at all — by design; its
+    only trip-level property is the day dropdown beside it.
+    *Hotel per-person-sharing pricing:* the hotel add/edit form has a
+    **Per room / night** vs **Per person sharing** toggle, with a
+    **Guests** input that appears only for "per person" (default 2). At
+    £90 per person × 2, the itinerary row must read
+    `£90 × 2 (sharing) = £180`, the day total must include **£180**, and
+    the Costs tab must show Stays £180 with the line item annotated
+    `(£90 × 2 sharing)`. Switching the toggle must not lose a half-typed
+    name or price. A "per room" hotel is unaffected and renders as a plain
+    `£180`. POI items have no pricing-basis controls.
+    *Migration must be a no-op for old data:* a trip saved before this
+    round (a hotel with `price` and no `priceType`, including the
+    pre-GOLF-63 `hotel`/`pois` shape) must load as `priceType:'room'`,
+    `guests:2` and cost **exactly what it cost before** — a £90 hotel
+    stays £90, never £180.
+    *Price-band chips:* the Filters dropdown's Green fee section shows
+    four quick chips — **≤ £30 / £31–70 / £71–150 / £151+** — above the
+    existing range slider. Clicking one sets the slider, the Min £/Max £
+    boxes and the readout to that range (one filter, two controls; the old
+    Set-based band filtering must **not** be back). The matching chip
+    highlights only while the range exactly equals it; dragging the slider
+    off it clears the highlight; clicking the active chip returns to "any
+    price". The slider itself must still work in both directions and land
+    on exact values (£151 must read 151, not 150).
+    No console errors, no "undefined" in any rendered UI, no horizontal
+    overflow at 375px in either the Explore filter dropdown or Build's
+    itinerary rows and open edit form, and `node scripts/test_data.js`
+    unaffected (no data-file changes).
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
