@@ -35,8 +35,14 @@
    ════════════════════════════════════════════════════════════════════ */
 
 /* One debounce + stale-response guard, keyed so independent fields don't
-   cancel each other. cb(null) means "cleared / nothing to show"; cb([])
-   means "the geocoder answered with no matches". */
+   cancel each other. Three distinct states, kept apart deliberately (Phase
+   22 fix): cb(null) means "cleared / nothing typed"; cb(undefined) means
+   "the geocode request itself failed" (network error, proxy down, ORS
+   rejected it — orsGeocode() reports this as its own null, which used to
+   get silently collapsed into "[]" here, making an outage look identical
+   to "no matches"); cb([]) means "the geocoder answered and there
+   genuinely are no matches". Callers should treat undefined as a reason to
+   show an explicit "search unavailable" message, not an empty result. */
 const tbGeoTimers={},tbGeoLatest={};
 function tbGeocodeDebounced(key,text,cb,ms){
   clearTimeout(tbGeoTimers[key]);
@@ -45,7 +51,7 @@ function tbGeocodeDebounced(key,text,cb,ms){
   tbGeoTimers[key]=setTimeout(()=>{
     orsGeocode(text,list=>{
       if(tbGeoLatest[key]!==text)return; // a newer keystroke has since fired
-      cb(list||[]);
+      cb(list===null?undefined:list);
     });
   },ms==null?300:ms);
 }
@@ -80,7 +86,12 @@ function tbAttachSearch(id,opts){
   const close=()=>{results.innerHTML='';active=-1;input.setAttribute('aria-expanded','false');};
   const paint=list=>{
     active=-1;
-    if(list==null){close();return;}
+    if(list===null){close();return;} // cleared / nothing typed
+    if(list===undefined){ // the geocode request failed — distinct from a genuine zero-match answer
+      results.innerHTML=`<div class="tb-place-empty">Place search is temporarily unavailable</div>`;
+      input.setAttribute('aria-expanded','true');
+      return;
+    }
     results.innerHTML=list.length
       ?list.map(r=>`<div class="tb-place-row" role="option" data-lat="${r.lat}" data-lng="${r.lng}" data-label="${esc(r.label)}">📍 ${esc(r.label)}</div>`).join('')
       :`<div class="tb-place-empty">No matches</div>`;
@@ -538,7 +549,9 @@ function renderTripBuilder(){
       searchResultsEl.innerHTML=q?tbUnifiedSearchResultsHTML():'';
     },
     render(list){
-      tbUnifiedPlaceResults=list||[];
+      // Keep list's null/undefined/[] distinction intact — tbUnifiedSearchResultsHTML()
+      // needs to tell "geocode failed" (undefined) apart from "no matches" ([]).
+      tbUnifiedPlaceResults=list;
       if(document.getElementById('tb-unified-search'))searchResultsEl.innerHTML=tbUnifiedSearchResultsHTML();
     },
     onPick(){/* unreachable: `render` owns this field's results panel */}

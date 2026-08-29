@@ -145,7 +145,12 @@ function tbUnifiedSearchResultsHTML(){
   const results=tbSearchResults();
   const places=tbUnifiedPlaceResults;
   let html='';
-  if(places&&places.length){
+  if(places===undefined){
+    // Phase 22 fix: distinguishes "the geocode request failed" from "no
+    // matches" — both used to render as an absent Towns & cities section,
+    // making a real outage look identical to a normal empty result.
+    html+=`<div class="tb-section-title">Towns &amp; cities</div><p class="hint" style="margin:0 0 var(--sp-2)">Place search is temporarily unavailable — showing golf courses only.</p>`;
+  }else if(places&&places.length){
     /* GOLF-67: "add to trip" only appears once there's a trip to add to —
        an anchor has been set, or days already exist. Before that the only
        sensible thing a place can do is start the trip, and showing two

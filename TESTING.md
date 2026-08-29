@@ -847,6 +847,23 @@ that touches rendering, filters, or persistence:
     truncating instead. No console errors, no "undefined" in the pane, and
     `node scripts/check_js.js` plus `node scripts/test_data.js` both pass.
 
+40. **Place-search failure vs. no-match distinction (Phase 22 fix).** With
+    the ORS geocoding endpoint unreachable (as it genuinely was when this
+    was written — no stubbing needed to reproduce), typing a place name in
+    Explore's search box must show **"Place search is temporarily
+    unavailable."** in `#place-results`, and typing one in the Plan/Build
+    unified search bar must show the same message under a "Towns & cities"
+    heading, both instead of silently showing nothing (which is
+    indistinguishable from "no such place" and was the actual stakeholder
+    bug report). To check the other side of the distinction, stub
+    `window.orsGeocode=(t,cb)=>cb([])` and search a nonsense string — both
+    surfaces must fall back to their ordinary no-match copy ("No matches" /
+    "No places or bookable courses match…"), with **no** "unavailable"
+    message. Course search itself must be unaffected throughout. No
+    console errors (network-level 502/403s from the failing ORS endpoint
+    are expected and fine — only JS exceptions count). `node
+    scripts/check_js.js` and `node scripts/test_data.js` both pass.
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile

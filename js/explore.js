@@ -185,6 +185,10 @@ const EXPLORE_PLACE_ZOOM=11;
 function renderExplorePlaces(){
   const box=document.getElementById('place-results');
   const list=explorePlaceResults;
+  // Phase 22 fix: undefined means the geocode request itself failed (was
+  // previously indistinguishable from "no matches", which is why an ORS
+  // outage looked exactly like "place search doesn't exist").
+  if(list===undefined){box.hidden=false;box.innerHTML=`<p class="hint" style="margin:0">Place search is temporarily unavailable.</p>`;return;}
   if(!list||!list.length){box.hidden=true;box.innerHTML='';return;}
   box.hidden=false;
   box.innerHTML=`<span class="flabel" style="margin:0">Towns &amp; cities</span>`+
