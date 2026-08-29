@@ -159,7 +159,10 @@
 
   /* The single search bar for the whole pane — a full-width pill, per the
      sketch. One component, one look, four call sites (see tbSearchFieldHTML). */
-  .tb-search-bar-wrap{padding:var(--sp-2) var(--sp-5);position:relative}
+  /* Sticky so the one search bar is always one tap away, however far the
+     itinerary has been scrolled — it is the pane's only entry point. */
+  .tb-place-wrap.tb-search-bar-wrap{padding:var(--sp-2) var(--sp-5);position:sticky;top:0;z-index:20;
+    background:var(--paper-2);box-shadow:0 6px 12px -10px rgba(27,39,51,.5)}
   .tb-search-bar{width:100%;min-height:var(--tap);padding:0 var(--sp-4) 0 42px;border:1px solid var(--line);
     border-radius:var(--radius-pill);background:#fff;font:500 var(--fs-body) var(--font-sans);color:var(--ink);
     box-shadow:var(--shadow-card);transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
@@ -251,8 +254,10 @@
     font:700 var(--fs-title) var(--font-sans);color:var(--ink);
     border-radius:var(--radius-lg) var(--radius-lg) 0 0;user-select:none;-webkit-user-select:none}
   .tb-day-title{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:var(--sp-2);overflow:hidden}
-  .tb-day-title-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .tb-day-place{font:500 var(--fs-caption) var(--font-sans);color:var(--stone);white-space:nowrap;
+  /* "Day 3" must never be the thing that truncates — the place name absorbs
+     the squeeze instead, which matters most at 375px. */
+  .tb-day-title-text{flex:0 0 auto;white-space:nowrap}
+  .tb-day-place{flex:1 1 auto;font:500 var(--fs-caption) var(--font-sans);color:var(--stone);white-space:nowrap;
     overflow:hidden;text-overflow:ellipsis;min-width:0}
   .tb-day-sum{font:800 var(--fs-title) var(--font-sans);color:var(--accent-deep);font-variant-numeric:tabular-nums;white-space:nowrap}
   /* The thin divider under the header, straight from the sketch. */
