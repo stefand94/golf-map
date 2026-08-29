@@ -1,0 +1,218 @@
+/* ============================================================
+   js/trip-geo.js — distance and discovery queries (nearby, by region,
+   near a searched place), the trip map layer, and the green-fee /
+   accommodation / fuel cost model.
+
+   Loaded as a plain <script> (not a module) in the fixed order
+   listed in london-golf-map-v5_1.html — top-level declarations
+   here are global, which is what the inline onclick= handlers in
+   the HTML resolve against.
+   ============================================================ */
+
+/* GOLF-24: standalone Trip Planning mode — supersedes GOLF-14's inline
+   "Same-day pairing" popup blurb, which only ever worked for London
+   courses on a shared rail line (silently did nothing for all 100 Top 100
+   entries — exactly where this is most wanted, e.g. Cornwall, the
+   Liverpool coast). "Bookable" = pay&play/open access, not members-only
+   or application-only, matching GOLF-14's original definition. Distance
+   is straight-line (haversine, miles) — same approximation already used
+   for GOLF-10's nearest-station lookups, not real routing. Browse-only:
+   nothing here is persisted. */
+function haversineMiles(lat1,lng1,lat2,lng2){
+  const R=3958.8,toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1),dLng=toRad(lng2-lng1);
+  const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+/* "Bookable" = a visitor can actually book a round, even if only on
+   certain days ("limited"). Only "application" (invitation-only, no
+   public booking at all) is excluded. Verified this matters: every
+   championship links course near Formby on the Liverpool coast — Royal
+   Birkdale, Royal Liverpool, Hillside, West Lancs... — is tier "limited",
+   so an public/open-only definition returned zero results for exactly
+   the coastal-cluster case this feature exists for. */
+function bookable(i){return['public','open','limited'].includes(V(i,'a'))}
+/* GOLF-27: region mode has no real geometry to hand (REGIONS is a flat
+   label list), so "just over the border" is derived from actual course
+   geography instead of a hand-maintained adjacency table — any bookable
+   course outside the chosen region whose straight-line distance to its
+   single nearest course *inside* the region is within borderMiles is
+   included, flagged {border:true} so the UI can explain why it's there. */
+function tripByRegion(region,borderMiles){
+  const inRegion=C.map((c,i)=>i).filter(i=>C[i].r===region&&bookable(i));
+  const core=inRegion.map(i=>({i,border:false}));
+  if(!borderMiles)return core.sort((a,b)=>V(a.i,'n').localeCompare(V(b.i,'n')));
+  const outRegion=C.map((c,i)=>i).filter(i=>C[i].r!==region&&bookable(i));
+  const border=outRegion.filter(i=>{
+    let min=Infinity;
+    inRegion.forEach(j=>{const d=haversineMiles(C[i].lat,C[i].lng,C[j].lat,C[j].lng);if(d<min)min=d});
+    return min<=borderMiles;
+  }).map(i=>({i,border:true}));
+  return [...core,...border].sort((a,b)=>V(a.i,'n').localeCompare(V(b.i,'n')));
+}
+/* GOLF: a radius cutoff ("within 30 miles") left visitors guessing why
+   the list was empty or overflowing depending on how remote the anchor
+   was — a flat "nearest N" (straight-line) is a simpler, always-populated
+   promise: sort every other bookable course by distance and take the
+   closest `limit`. */
+function tripByAnchor(anchor,limit){
+  return C.map((c,i)=>i).filter(i=>i!==anchor&&bookable(i))
+    .sort((a,b)=>haversineMiles(C[anchor].lat,C[anchor].lng,C[a].lat,C[a].lng)-haversineMiles(C[anchor].lat,C[anchor].lng,C[b].lat,C[b].lng))
+    .slice(0,limit)
+    .map(i=>({i,border:false}));
+}
+/* GOLF-58: same "nearest N" promise as tripByAnchor(), but anchored to a
+   raw searched point instead of an existing course — powers "search a
+   city, see what's around it" when starting a trip from scratch. */
+function nearestCoursesToPoint(lat,lng,limit){
+  return C.map((c,i)=>i).filter(bookable)
+    .sort((a,b)=>haversineMiles(lat,lng,C[a].lat,C[a].lng)-haversineMiles(lat,lng,C[b].lat,C[b].lng))
+    .slice(0,limit)
+    .map(i=>({i,border:false}));
+}
+const tripLayer=L.layerGroup().addTo(map);
+function tripClear(){tripLayer.clearLayers()}
+function tripShow(items,anchor,clear=true,fit=true){
+  if(clear)tripClear();
+  const pts=[];
+  items.forEach(({i,border})=>{
+    L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:border?'#8C8478':'#E6B400',weight:2.5,fillColor:'#fff',fillOpacity:.9,dashArray:border?'2 3':null}).addTo(tripLayer);
+    pts.push([C[i].lat,C[i].lng]);
+  });
+  if(anchor!=null){
+    L.circleMarker([C[anchor].lat,C[anchor].lng],{radius:11,color:'#1B2733',weight:3,fillColor:'#E6B400',fillOpacity:1}).addTo(tripLayer);
+    pts.push([C[anchor].lat,C[anchor].lng]);
+  }
+  if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
+  return pts;
+}
+
+/* GOLF-28: Trip Builder — best-effort numeric extractor over a course's
+   free-text fee field. Many fees are "Members only"/"Ask club"/ranges —
+   this deliberately returns null rather than guessing when nothing
+   numeric is found, so the caller can report an honest coverage count
+   instead of a misleadingly precise total. */
+function extractFee(s){
+  if(!s)return null;
+  const nums=[...String(s).matchAll(/(\d[\d,]*(?:\.\d+)?)/g)].map(m=>parseFloat(m[1].replace(/,/g,'')));
+  if(!nums.length)return null;
+  return nums.length>1?(nums[0]+nums[1])/2:nums[0];
+}
+function tripCostEstimate(indices){
+  let total=0,covered=0;
+  indices.forEach(i=>{const fee=extractFee(V(i,'wd'));if(fee!=null){total+=fee;covered++}});
+  return{total,covered,of:indices.length};
+}
+/* GOLF-48: which fee field (wd/we) a scheduled day should be costed at —
+   Saturday/Sunday if the day has a real calendar date attached, wd
+   otherwise. A day with no date (the default — GOLF-33 deliberately
+   ships day-numbers-only, no calendar anchoring) keeps exactly the old
+   wd-only behavior, so this never regresses anyone who hasn't opted into
+   dating their days. */
+function feeFieldForDate(dateStr){
+  if(!dateStr)return'wd';
+  const d=new Date(dateStr+'T00:00:00');
+  if(isNaN(d.getTime()))return'wd';
+  const dow=d.getDay(); // 0=Sun .. 6=Sat
+  return(dow===0||dow===6)?'we':'wd';
+}
+/* GOLF-48: weekend-aware replacement for tripCostEstimate(tripSeq) in the
+   cost summary below — a course scheduled on a dated day is costed at
+   that day's correct wd/we rate; a course with no day-date (including
+   every Unscheduled course, which has no day context at all) falls back
+   to the plain wd-only behavior tripCostEstimate() already had. */
+function tripCostEstimateByDay(){
+  let total=0,covered=0,of=0;
+  tripDays.forEach(d=>{
+    const field=feeFieldForDate(d.date);
+    tripDayCourses(d).forEach(i=>{
+      of++;
+      const fee=extractFee(V(i,field));
+      if(fee!=null){total+=fee;covered++;}
+    });
+  });
+  tripUnscheduled().forEach(i=>{
+    of++;
+    const fee=extractFee(V(i,'wd'));
+    if(fee!=null){total+=fee;covered++;}
+  });
+  return{total,covered,of};
+}
+/* GOLF-44: typical UK hotel nightly-rate estimate by region — NOT live
+   pricing, a ballpark grounded via web search (London ~£120-180,
+   Scotland ~£90-150, Wales ~£60-100, rest of UK ~£80-120 as of Aug 2026)
+   and tiered across this app's existing REGIONS list. Refreshed the same
+   on-demand way every other one-off dataset in this app is, not live. */
+const ACCOM_RATE_BY_REGION={
+  "N & NW London":110,"W London":110,"SW London":110,"S London & Surrey":110,
+  "SE London & Kent":105,"NE London & Essex":105,"Herts":100,"Bucks & Berks":100,
+  "South Coast & Sussex":95,"East Anglia":90,"South West England":100,
+  "Midlands":85,"North of England":85,
+  "Fife & East Lothian":100,"Angus & Aberdeenshire":90,"Ayrshire & Argyll":90,
+  "Highlands & Islands":90,"Perthshire & Central Scotland":90,
+  "South Wales Coast":75,"North Wales Coast":75,"West Wales":75,"Mid Wales":70,
+  "North Wales":75,"South Wales Borders":75
+};
+const ACCOM_RATE_DEFAULT=95;
+function accomRateFor(region){return ACCOM_RATE_BY_REGION[region]??ACCOM_RATE_DEFAULT;}
+/* GOLF-63: the "no explicit nightly price entered — fall back to a typical
+   regional rate, taken from this day's last round" formula was copy-pasted
+   independently into three separate places (tripDayLegs, tripCostLineItems,
+   tbItinHotelRailHTML) and was about to be pasted a fourth time. It lives
+   here once now, and every hotel price in the app reads through
+   tripItemPrice() below. */
+function tripDayAccomFallback(d){
+  const cs=tripDayCourses(d);
+  return cs.length?accomRateFor(C[cs[cs.length-1]].r):null;
+}
+/* The one place any item's £ figure is derived: a round is priced at this
+   day's correct weekday/weekend fee field, a hotel at its entered price or
+   the regional fallback, a POI at its entered price.
+   GOLF-63 bugfix: tbItinPoiListHTML() used to drop `price` on POI rows
+   entirely (unlike every other reader of the same field), so a priced POI
+   showed as free there while counting in the cost table. Routing all four
+   readers through this helper is what fixes it. */
+function tripItemPrice(d,it){
+  if(!it)return null;
+  if(it.type==='golf')return extractFee(V(it.i,feeFieldForDate(d&&d.date)));
+  if(it.type==='hotel')return it.price??tripDayAccomFallback(d);
+  return it.price??null;
+}
+/* GOLF-44: fuel-cost estimate — same straight-line leg distances as the
+   GOLF-43 drive-time default, x an assumed £/mile (roughly what a
+   40mpg petrol car costs to run in Aug 2026 fuel prices). Both this and
+   the accommodation estimate are separately toggleable in the UI so a
+   visitor who thinks either number looks wrong can drop it from the
+   total without losing the other. */
+const FUEL_COST_PER_MILE=0.18;
+let tbIncludeAccom=true,tbIncludeFuel=true;
+function tripCostSummary(){
+  const fees=tripCostEstimateByDay();
+  const fuelMiles=tripTotalDriveMiles();
+  const fuelCost=fuelMiles*FUEL_COST_PER_MILE;
+  const scheduledDays=tripDays.filter(d=>tripDayCourses(d).length);
+  /* One night's stay per scheduled day except the last — no accommodation
+     needed the night after the final round. */
+  let accomCost=0;
+  scheduledDays.forEach((d,idx)=>{
+    if(idx===scheduledDays.length-1)return;
+    accomCost+=tripDayAccomFallback(d)??ACCOM_RATE_DEFAULT;
+  });
+  const nights=Math.max(0,scheduledDays.length-1);
+  const grand=(fees.covered?fees.total:0)+(tbIncludeAccom?accomCost:0)+(tbIncludeFuel?fuelCost:0);
+  return{fees,accomCost,nights,fuelMiles,fuelCost,grand};
+}
+function tripCostSummaryHTML(){
+  const s=tripCostSummary();
+  return`<div class="cart-cost-lines">
+      <div class="cart-cost-line"><span>Green fees</span><span>${s.fees.covered?`£${s.fees.total.toFixed(0)}`:'—'}</span></div>
+      <div class="cart-cost-cov">${s.fees.covered} of ${s.fees.of} course${s.fees.of===1?'':'s'} have a parseable weekday fee</div>
+      <label class="cart-cost-line"><span><input type="checkbox" ${tbIncludeAccom?'checked':''} onchange="tbIncludeAccom=this.checked;renderTripBuilder();"> Accommodation${s.nights?` (${s.nights} night${s.nights===1?'':'s'}, typical rate)`:''}</span><span>${s.nights?`£${s.accomCost.toFixed(0)}`:'—'}</span></label>
+      <label class="cart-cost-line"><span><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel${s.fuelMiles?` (est. ${s.fuelMiles.toFixed(0)} mi)`:''}</span><span>${s.fuelMiles?`£${s.fuelCost.toFixed(0)}`:'—'}</span></label>
+    </div>
+    <p class="hint" style="margin:6px 0 0">Accommodation and fuel are typical-rate/straight-line estimates, not live prices or a real route — untick either to leave it out of the total below.</p>
+    <div class="cart-total">
+      <div><div class="cart-total-label">Estimated trip total</div><div class="cart-total-coverage">${s.fees.covered} of ${s.fees.of} course fee${s.fees.of===1?'':'s'} counted</div></div>
+      <div class="cart-total-amount">£${s.grand.toFixed(0)}</div>
+    </div>`;
+}
