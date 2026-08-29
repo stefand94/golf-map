@@ -191,6 +191,12 @@
   .tb-addstop{padding:8px 10px;border-bottom:1px solid var(--line);background:var(--paper-2)}
   .tb-addstop-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
   .tb-addstop-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  /* GOLF-74: per-room vs per-person-sharing toggle + guest count. Wraps at
+     narrow widths like every other control in this form. */
+  .tb-pricetype{display:flex;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--stone)}
+  .tb-pricetype label{display:inline-flex;align-items:center;gap:3px;cursor:pointer}
+  .tb-guests{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--stone)}
+  .tb-guests input{padding:4px 6px;border:1px solid var(--line);border-radius:5px;font:400 12px var(--font-sans)}
   .tb-day-hotel,.tb-day-pois{padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .tb-day-pois .wt{display:inline-flex;align-items:center;gap:4px}
   .tb-day-pois .wt a{color:inherit;text-decoration:none;opacity:.7}
@@ -304,10 +310,13 @@
   /* GOLF-69 (item 1): place hits from the geocoder, above the course list. */
   .explore-places{border:1px solid var(--line);border-radius:8px;padding:6px;background:var(--paper-2);display:flex;flex-direction:column;gap:4px}
   .explore-places[hidden],.list-mode[hidden]{display:none} /* [hidden] must beat the display:flex above */
-  .explore-place{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px}
-  .explore-place .ep-name{min-width:0;overflow:hidden;text-overflow:ellipsis}
-  .explore-place .ep-actions{display:flex;gap:4px;flex-shrink:0}
-  .explore-place .ep-actions button{padding:5px 9px;font-size:11px}
+  /* GOLF-72: the whole row is now one navigate-to-this-place button — Explore
+     search does nothing but move the map, so there are no per-row actions. */
+  .explore-place{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;
+    width:100%;text-align:left;padding:5px 6px;border:1px solid transparent;border-radius:6px;background:none;color:inherit;cursor:pointer;font-family:var(--font-sans)}
+  .explore-place:hover{border-color:var(--accent);background:#fff}
+  .explore-place .ep-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .explore-place .ep-hint{flex-shrink:0;font-size:11px;color:var(--stone)}
   /* GOLF-69 (item 3): the list's own mode strip. */
   .list-mode{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 20px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--stone);flex-wrap:wrap}
   .list-mode-pills{display:flex;gap:4px}
@@ -320,6 +329,12 @@
   .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:var(--shadow-sm)}
   .chip[aria-pressed="true"]:hover{transform:none;box-shadow:var(--shadow-sm)}
   .chip svg{display:block;flex:0 0 auto}
+  /* GOLF-75: price-band shortcuts — visually the same pill as .chip, but a
+     separate class so the generic data-k/data-v chip handler ignores them. */
+  .fee-band-chip{display:inline-flex;align-items:center;font:500 11.5px/1 var(--font-sans);padding:6px 10px;border:1px solid var(--line);border-radius:20px;background:#fff;color:var(--ink-soft);cursor:pointer;transition:background .12s,border-color .12s,color .12s}
+  .fee-band-chip:hover{border-color:var(--accent);color:var(--ink)}
+  .fee-band-chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .fee-bands{margin:4px 0 2px}
   .chip:focus-visible,.card:focus-visible,#q:focus-visible,.togg:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   #q{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;font:400 13px var(--font-sans);color:var(--ink);transition:border-color .12s,box-shadow .12s}
   #q:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
@@ -456,6 +471,10 @@
         <div class="fdrop-body">
           <div><span class="flabel">Who can play</span><div class="chips" id="f-access"></div></div>
           <div><span class="flabel">Green fee</span>
+            <!-- GOLF-75: quick price-band shortcuts, populated by
+                 renderFeeBands() — they set the same feeMin/feeMax the
+                 slider below writes, so there is one filter, two controls. -->
+            <div class="chips fee-bands" id="f-fee-bands"></div>
             <div class="fee-range">
               <div class="fee-slider-wrap">
                 <input id="fee-min-r" type="range" aria-label="Minimum green fee">

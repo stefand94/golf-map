@@ -49,17 +49,25 @@ function tripDayLegs(dayIdx){
   tripDayItems(d).forEach(it=>{
     const pos=posOf.get(it.id);
     if(pos!=null){const r=driveRow(pos);if(r)legs.push(r);}
-    legs.push({type:it.type,name:tripItemName(it),price:tripItemPrice(d,it),id:it.id,i:it.type==='golf'?it.i:undefined});
+    const det=tripItemPriceDetail(d,it);
+    legs.push({type:it.type,name:tripItemName(it),price:det.total,detail:det,id:it.id,i:it.type==='golf'?it.i:undefined});
   });
   return legs;
 }
 function tripDayTotal(dayIdx){
   return tripDayLegs(dayIdx).reduce((sum,l)=>sum+(l.type!=='drive'&&l.price!=null?l.price:0),0);
 }
+/* GOLF-74: the £ figure as the visitor should read it. A per-person-sharing
+   stay shows its arithmetic ("£90 × 2 = £180") rather than silently folding
+   the doubling into the trip total — the stakeholder's explicit ask. */
+function tripPriceLabel(det){
+  if(!det||det.total==null)return'—';
+  return det.sharing?`£${det.base.toFixed(0)} × ${det.guests} (sharing) = £${det.total.toFixed(0)}`:`£${det.total.toFixed(0)}`;
+}
 function itinLegRowHTML(l){
   if(l.type==='drive')return`<div class="itin-leg itin-leg-drive">🚗 ${esc(l.label)}${l.mins!=null?` · ${fmtDriveMinutes(l.mins)}`:''}</div>`;
   if(l.type==='golf')return`<div class="itin-leg itin-leg-golf"><span class="itin-leg-main">⛳ <span class="itin-golf-name">${esc(l.name)}</span></span><span class="itin-golf-price">${l.price!=null?`£${l.price.toFixed(0)}`:'—'}</span></div>`;
-  if(l.type==='hotel')return`<div class="itin-leg itin-leg-hotel"><span class="itin-leg-main">🛏 <span class="itin-hotel-name">${esc(l.name)}</span></span><span class="itin-hotel-price">${l.price!=null?`£${l.price.toFixed(0)}`:'—'}</span></div>`;
+  if(l.type==='hotel')return`<div class="itin-leg itin-leg-hotel"><span class="itin-leg-main">🛏 <span class="itin-hotel-name">${esc(l.name)}</span></span><span class="itin-hotel-price">${tripPriceLabel(l.detail)}</span></div>`;
   if(l.type==='poi')return`<div class="itin-leg itin-leg-poi"><span class="itin-leg-main">📷 <span class="itin-poi-name">${esc(l.name)}</span></span>${l.price!=null?`<span class="itin-hotel-price">£${l.price.toFixed(0)}</span>`:`<span class="wt">POI</span>`}</div>`;
   return'';
 }
@@ -85,11 +93,11 @@ function tbItinGolfListHTML(){
 }
 function tbItinHotelRailHTML(){
   const rows=[];
-  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='hotel')rows.push({day:idx+1,name:tripItemName(it),price:tripItemPrice(d,it)});}));
+  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='hotel')rows.push({day:idx+1,name:tripItemName(it),detail:tripItemPriceDetail(d,it)});}));
   if(!rows.length)return`<p class="hint">No stays added yet — add one with a day's <b>+ Add hotel/stay</b> button.</p>`;
   return`<div class="itin-rail">${rows.map(r=>`<div class="itin-rail-row"><div class="itin-rail-dot"></div>
       <div class="itin-card-kicker">DAY ${r.day}</div>
-      <div class="itin-flat-row"><span class="itin-hotel-name-md">${esc(r.name)}</span><span class="itin-hotel-price-md">${r.price!=null?`£${r.price.toFixed(0)}`:'—'}</span></div>
+      <div class="itin-flat-row"><span class="itin-hotel-name-md">${esc(r.name)}</span><span class="itin-hotel-price-md">${tripPriceLabel(r.detail)}</span></div>
     </div>`).join('')}</div>`;
 }
 function tbItinPoiListHTML(){
@@ -119,8 +127,13 @@ function tripCostLineItems(){
   // GOLF-63: itemised in the day's own order, so the breakdown reads down
   // the day the same way the itinerary does.
   const CAT={golf:'Golf',hotel:'Stay',poi:'POI'};
-  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>
-    items.push({label:tripItemName(it),cat:CAT[it.type]||'POI',amount:tripItemPrice(d,it),day:idx+1})));
+  // GOLF-74: a per-person-sharing stay carries its arithmetic into the label
+  // so the line item explains its own (doubled) amount.
+  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{
+    const det=tripItemPriceDetail(d,it);
+    items.push({label:tripItemName(it)+(det.sharing?` (£${det.base.toFixed(0)} × ${det.guests} sharing)`:''),
+      cat:CAT[it.type]||'POI',amount:det.total,day:idx+1});
+  }));
   tripUnscheduled().forEach(i=>items.push({label:V(i,'n'),cat:'Golf',amount:extractFee(V(i,'wd')),day:null}));
   return items;
 }
@@ -187,7 +200,11 @@ function tripDayScheduleHTML(){
     const rowsHTML=tripDayLegs(idx).map(l=>{
       if(l.type==='drive')return tbDriveToggle?itinLegRowHTML(l):'';
       const it=byId.get(l.id);
-      return it?tripDayItemRowHTML(d,it):'';
+      if(!it)return'';
+      /* GOLF-73: an item being edited swaps its row for the inline edit form
+         in place, so the form appears exactly where the thing it edits was. */
+      if(tbAddStop&&tbAddStop.itemId===it.id&&tbAddStop.dayId===d.id)return tbAddStopFormHTML(d.id,it.id);
+      return tripDayItemRowHTML(d,it);
     }).join('');
     return`
     <div class="tb-day tb-day-${kind}"

@@ -172,12 +172,40 @@ function tripDayAccomFallback(d){
    entirely (unlike every other reader of the same field), so a priced POI
    showed as free there while counting in the cost table. Routing all four
    readers through this helper is what fixes it. */
-function tripItemPrice(d,it){
-  if(!it)return null;
-  if(it.type==='golf')return extractFee(V(it.i,feeFieldForDate(d&&d.date)));
-  if(it.type==='hotel')return it.price??tripDayAccomFallback(d);
-  return it.price??null;
+/* GOLF-74: hotels are commonly quoted "per person sharing" — the figure on
+   the booking page is per head, and a room for two costs double it. The item
+   now carries priceType:'room'|'person' (default 'room' = exactly the
+   pre-GOLF-74 meaning: the entered figure IS the room total) plus guests
+   (default 2, only meaningful when priceType is 'person'). Because the
+   default is 'room', no existing saved trip's total moves by a penny.
+   The regional fallback (tripDayAccomFallback) is a ROOM rate by
+   construction, so it is never multiplied — only an explicitly entered
+   per-person price is. */
+const HOTEL_GUESTS_DEFAULT=2;
+function tripHotelGuests(it){
+  const g=it&&it.guests;
+  return(typeof g==='number'&&isFinite(g)&&g>0)?Math.round(g):HOTEL_GUESTS_DEFAULT;
 }
+function tripHotelPerPerson(it){return!!(it&&it.type==='hotel'&&it.priceType==='person'&&it.price!=null);}
+/* {base,guests,sharing,total} for any item — the one place the per-person
+   multiplication happens, so the itinerary row, the cost table and the
+   trip total can never disagree about it. */
+function tripItemPriceDetail(d,it){
+  if(!it)return{base:null,guests:1,sharing:false,total:null};
+  if(it.type==='golf'){const p=extractFee(V(it.i,feeFieldForDate(d&&d.date)));return{base:p,guests:1,sharing:false,total:p};}
+  if(it.type==='hotel'){
+    const entered=it.price??null;
+    if(tripHotelPerPerson(it)){
+      const g=tripHotelGuests(it);
+      return{base:entered,guests:g,sharing:true,total:entered*g};
+    }
+    const p=entered??tripDayAccomFallback(d);
+    return{base:p,guests:1,sharing:false,total:p};
+  }
+  const p=it.price??null;
+  return{base:p,guests:1,sharing:false,total:p};
+}
+function tripItemPrice(d,it){return tripItemPriceDetail(d,it).total;}
 /* GOLF-44: fuel-cost estimate — same straight-line leg distances as the
    GOLF-43 drive-time default, x an assumed £/mile (roughly what a
    40mpg petrol car costs to run in Aug 2026 fuel prices). Both this and

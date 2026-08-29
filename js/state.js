@@ -43,10 +43,20 @@ function loadStoredState(){
         if(it.type==='golf')return validSet.has(it.i)?{id:it.id,type:'golf',i:it.i}:null;
         if(it.type!=='hotel'&&it.type!=='poi')return null;
         if(typeof it.name!=='string'||!it.name.trim())return null;
-        return{id:it.id,type:it.type,name:it.name.trim().slice(0,80),
+        const out={id:it.id,type:it.type,name:it.name.trim().slice(0,80),
           price:typeof it.price==='number'&&isFinite(it.price)?it.price:null,
           lat:typeof it.lat==='number'&&isFinite(it.lat)?it.lat:null,
           lng:typeof it.lng==='number'&&isFinite(it.lng)?it.lng:null};
+        /* GOLF-74: hotel pricing basis. A saved item from before this ticket
+           has neither field, so it migrates to 'room' + 2 guests — 'room'
+           means "the entered price IS the room total", i.e. exactly the old
+           behaviour, so no existing trip's total changes. Same defensive
+           default-on-read pattern as kind/date/placeLat above. */
+        if(out.type==='hotel'){
+          out.priceType=it.priceType==='person'?'person':'room';
+          out.guests=(typeof it.guests==='number'&&isFinite(it.guests)&&it.guests>0)?Math.round(it.guests):2;
+        }
+        return out;
       }).filter(Boolean);
     };
     const tripDays=Array.isArray(t.tripDays)?t.tripDays.filter(d=>d&&typeof d.id!=='undefined'&&(Array.isArray(d.items)||Array.isArray(d.courses)))

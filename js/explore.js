@@ -51,7 +51,50 @@ function feeRangeEls(){return{
   minR:document.getElementById('fee-min-r'),maxR:document.getElementById('fee-max-r'),
   minN:document.getElementById('fee-min'),maxN:document.getElementById('fee-max'),
   out:document.getElementById('fee-readout')};}
+/* GOLF-75: the four fixed price bands are back — as quick-select shortcuts
+   ON TOP of the range slider, not as a second filter system. Ranges are the
+   original BANDS definitions from data/config.js (≤£30 / £31–70 / £71–150 /
+   £151+), and clicking one simply calls feeRangeSet() with that range, so
+   there is exactly one underlying piece of filter state (feeMin/feeMax) and
+   the slider and chips can never disagree. A chip highlights when the
+   current range is exactly its range; dragging the slider off it clears the
+   highlight. state.price stays unused — the old Set-based band filtering is
+   deliberately not resurrected. */
+const FEE_BANDS=[
+  ['low','≤ £30',null,30],
+  ['mid','£31–70',31,70],
+  ['high','£71–150',71,150],
+  ['premium','£151+',151,null]
+];
+/* Compare against the SAME normalisation feeRangeSet() applies (0 -> null at
+   the bottom, the slider ceiling -> null at the top) so "is this band active?"
+   asks the question in the stored vocabulary, not the chip's. */
+function feeBandNorm(lo,hi){
+  const l=lo==null?0:lo,h=hi==null?FEE_SLIDER_MAX:Math.min(hi,FEE_SLIDER_MAX);
+  return[l<=0?null:l,h>=FEE_SLIDER_MAX?null:h];
+}
+function feeBandActive(lo,hi){
+  const[nl,nh]=feeBandNorm(lo,hi);
+  return state.feeMin===nl&&state.feeMax===nh;
+}
+function renderFeeBands(){
+  const box=document.getElementById('f-fee-bands');
+  if(!box)return;
+  box.innerHTML=FEE_BANDS.map(([k,label,lo,hi])=>
+    /* Deliberately NOT class="chip": the generic chip handler at the bottom
+       of this file keys off data-k/data-v into a state Set, which these
+       range shortcuts have nothing to do with. */
+    `<button type="button" class="fee-band-chip" data-band="${k}" aria-pressed="${feeBandActive(lo,hi)}">${label}</button>`).join('');
+}
+function feeBandApply(key){
+  const b=FEE_BANDS.find(x=>x[0]===key);if(!b)return;
+  const[,,lo,hi]=b;
+  // Clicking the already-active band clears back to "any price".
+  if(feeBandActive(lo,hi)){feeRangeSet(0,FEE_SLIDER_MAX);return;}
+  feeRangeSet(lo==null?0:lo,hi==null?FEE_SLIDER_MAX:hi);
+}
 function feeRangeSync(){
+  renderFeeBands();
   const e=feeRangeEls();
   const lo=state.feeMin!=null?state.feeMin:0,hi=state.feeMax!=null?state.feeMax:FEE_SLIDER_MAX;
   e.minR.value=lo;e.maxR.value=hi;
@@ -82,6 +125,13 @@ function feeRangeSet(lo,hi){
     e.maxN.value.trim()===''?FEE_SLIDER_MAX:parseFloat(e.maxN.value));
   e.minN.addEventListener('change',fromNumbers);
   e.maxN.addEventListener('change',fromNumbers);
+  // GOLF-75: delegated, because renderFeeBands() rewrites the chips on every
+  // range change to refresh their pressed state.
+  const bands=document.getElementById('f-fee-bands');
+  if(bands)bands.addEventListener('click',ev=>{
+    const b=ev.target.closest('[data-band]');
+    if(b)feeBandApply(b.dataset.band);
+  });
   feeRangeSync();
 })();
 document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{
@@ -113,28 +163,32 @@ document.getElementById('sort').value=state.sort;
    list with the same two actions (start a trip here / add it to the trip).
    Deliberately the same 300ms debounce and same stale-response guard, so
    the two search boxes behave identically. null = nothing fetched yet. */
+/* GOLF-72: Explore-mode place search is now PURE NAVIGATION. It previously
+   reused the Trip Builder bar's result actions ("Start a trip here" / "+ Add
+   to trip"), which put trip-building affordances on a page whose whole job is
+   browsing — the stakeholder's ask was "search Islay, the map goes to Islay,
+   full stop". Picking a result flies the map there and nothing else; no trip
+   data is read or written from this strip. The Plan-mode unified search bar
+   keeps both actions unchanged — that IS the trip-building surface. */
 let explorePlaceResults=null,explorePlaceDebounce=null,explorePlaceQ='';
+const EXPLORE_PLACE_ZOOM=11;
 function renderExplorePlaces(){
   const box=document.getElementById('place-results');
   const list=explorePlaceResults;
   if(!list||!list.length){box.hidden=true;box.innerHTML='';return;}
-  const started=tbTripStarted();
   box.hidden=false;
   box.innerHTML=`<span class="flabel" style="margin:0">Towns &amp; cities</span>`+
-    list.map(p=>`<div class="explore-place">
-      <span class="ep-name">📍 ${esc(p.label)}</span>
-      <span class="ep-actions">
-        <button class="btn2" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" data-act="anchor">${started?'Anchor here':'Start a trip here'}</button>
-        ${started?`<button class="btn2 ghost" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" data-act="add">+ Add to trip</button>`:''}
-      </span>
-    </div>`).join('');
+    list.map(p=>`<button class="explore-place ep-go" type="button" data-lat="${p.lat}" data-lng="${p.lng}" title="Show this on the map">
+      <span class="ep-name">📍 ${esc(p.label)}</span><span class="ep-hint">Show on map →</span>
+    </button>`).join('');
 }
 document.getElementById('place-results').addEventListener('click',e=>{
-  const b=e.target.closest('button[data-act]');
+  const b=e.target.closest('.ep-go');
   if(!b)return;
-  const lat=parseFloat(b.dataset.lat),lng=parseFloat(b.dataset.lng),label=b.dataset.label;
-  if(b.dataset.act==='anchor')tbAnchorTripToPlace(lat,lng,label);
-  else{tbAddPlaceToTrip(lat,lng,label);setAppMode('build');}
+  const lat=parseFloat(b.dataset.lat),lng=parseFloat(b.dataset.lng);
+  if(!isFinite(lat)||!isFinite(lng))return;
+  // Same fly-to pattern the course cards use below.
+  showMobileMap();map.flyTo([lat,lng],EXPLORE_PLACE_ZOOM,{duration:.6});
 });
 function exploreSearchPlaces(q){
   clearTimeout(explorePlaceDebounce);

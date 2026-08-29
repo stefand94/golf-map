@@ -234,7 +234,11 @@ function tripDayCourseRowHTML(i,dayId){
    drag/drop wiring is identical across all three types — that's the whole
    point of collapsing the old three fields into one list. */
 function tripDayItemRowHTML(d,it){
-  const price=tripItemPrice(d,it);
+  const det=tripItemPriceDetail(d,it);
+  const price=det.total;
+  // GOLF-74: hotel/POI rows show the effective total, and a per-person stay
+  // shows how it got there ("£90 × 2 (sharing) = £180").
+  const priceLabel=price!=null?` · ${tripPriceLabel(det)}`:'';
   // GOLF-69 (item 10): one icon vocabulary shared by the list rows and the
   // map markers — hotel emoji for stays, location pin for POIs.
   const icon=it.type==='golf'?'⛳':it.type==='hotel'?'🏨':'📍';
@@ -243,7 +247,7 @@ function tripDayItemRowHTML(d,it){
     ?`<a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${it.i})">${esc(tripItemName(it))}</a>
        <div class="cart-region">${esc(C[it.i]?C[it.i].r:'')}${price!=null?` · £${price.toFixed(0)}`:''}</div>`
     :`<span class="tb-item-name">${esc(tripItemName(it))}</span>
-       <div class="cart-region">${it.type==='hotel'?'Stay':'Point of interest'}${price!=null?` · £${price.toFixed(0)}`:''}${noGeo?' · <span title="No location picked, so no drive time to this stop">no location</span>':''}</div>`;
+       <div class="cart-region">${it.type==='hotel'?'Stay':'Point of interest'}${priceLabel}${noGeo?' · <span title="No location picked, so no drive time to this stop">no location</span>':''}</div>`;
   return`<div class="tb-day-course tb-item-${it.type}" draggable="true"
       ondragstart="tbDragSetItem(${d.id},'${it.id}');event.dataTransfer.effectAllowed='move';"
       ondragend="tbDragEnd();"
@@ -255,6 +259,13 @@ function tripDayItemRowHTML(d,it){
     <div class="tb-item-main">${main}</div>
     <div class="tb-item-actions">
       ${it.type==='golf'?tripDaySelectHTML(it.i,d.id):''}
+      ${/* GOLF-73: Edit sits alongside Remove for hotel/POI rows only. A golf
+           row has nothing editable here — name, fee and coordinates all come
+           from the course dataset (edited in the corrections editor), and the
+           one trip-level fact it carries, its day, is the dropdown to the
+           left — so no Edit button is rendered for it at all. */
+        it.type==='golf'?''
+        :`<button class="btn2 ghost" title="Edit this stop" onclick="tbEditStop(${d.id},'${it.id}')">Edit</button>`}
       <button class="btn2 ghost cart-remove" title="Remove from this day"
         onclick="${it.type==='golf'?`toggleTrip(${it.i});`:`tripDayRemoveItem(${d.id},'${it.id}');`}renderTripBuilder();tbDrawMap();">✕</button>
     </div>
