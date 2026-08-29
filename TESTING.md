@@ -544,6 +544,159 @@ that touches rendering, filters, or persistence:
     restructure) — see the plan file's Phase 15 section for why those were
     deferred rather than rushed.
 
+34. **Item-level day timeline + Explore/Plan/Build modes (GOLF-63/64).**
+    Note: this supersedes step 33's "Day tab"/"Discover tab" wording — the
+    old 5-tab pane (Itinerary/Day/Costs/Add/Discover) is retired.
+    *Modes:* from the map, hit **"Plan a trip"** — you should land in
+    **Plan** mode at URL `#plan` (trip switcher + search + Nearby/By
+    region/Near a place + a Wishlist section), never straight in day
+    scheduling. A course popup's **"+ Add to trip"** should do the same,
+    with that course in the wishlist. With at least one wishlist course,
+    **"Start scheduling days →"** switches to **Build** mode at `#trip`
+    (Itinerary + Costs tabs, plus a **"← Back to wishlist"** link back to
+    Plan with the trip intact). Browser Back should walk Build → Plan →
+    Explore and Forward should walk back up, with `#trip`/`#plan`/empty
+    hashes matching the mode at every hop; a cold load on `#plan` or
+    `#trip` should open that mode directly (old GOLF-41 `#trip` bookmarks
+    still work).
+    *Items:* in Build → Itinerary, on one day add a hotel, two rounds, a
+    point of interest and a second, different hotel. Hotel/POI now open an
+    inline **search-as-you-type** picker (not the old `prompt()` boxes) —
+    picking a real result gives that stop coordinates; a plain typed name
+    still works and just shows "no location". Every consecutive pair of
+    located stops should show a 🚗 drive row *between* them, not just at
+    day boundaries. Drag ⠿ any row — hotel, POI or round — into any
+    position, including into another day: the drive rows, day total and
+    Costs breakdown should all re-derive from the new order. Dragging a
+    round to the Wishlist unschedules it; dragging a hotel/POI there is a
+    no-op (it snaps back rather than being deleted). A priced POI should
+    show its £ figure on the POI filter list (it used to be dropped).
+    *Migration:* a trip saved before this round (day shape
+    `courses`/`hotel`/`pois`) should load looking identical, flattened
+    once into golf → POI → hotel order.
+    No "undefined" in any mode/tab, no horizontal overflow at 375px;
+    `node scripts/test_data.js` unaffected (no data-file changes — pure
+    app-state/UI). Expect proxy 502s in the console for absurdly long legs
+    (e.g. a London course and an Aberdeen hotel on one day) — that is ORS
+    refusing the route, and the app falls back to its straight-line
+    estimate by design.
+
+35. **Day drag-reorder, city-picker on day creation, add-a-city-to-trip
+    (GOLF-65/66/67).**
+    *Day drag:* in Build → Itinerary, build a 3-day trip (two rounds on
+    Day 1, one on Day 2, Day 3 set to "Free day" with a place). Each day
+    header now carries its own ⠿ handle and is draggable as a whole.
+    Drag the free day's header onto Day 2 — it should land *before* Day 2
+    (matching the item-drag convention), the Day 1/2/3 labels should
+    renumber by position, and each day's kind, place, date and full item
+    list should travel with it. Drive rows, day totals and the Costs
+    breakdown should all re-derive from the new order. Drop a day onto
+    the "+ Add day" bar to move it to the very last position (the only
+    way to get there, since every other day drop lands before its
+    target). A hand-typed "Drive to today's first stop" override is
+    cleared on exactly the days whose *predecessor* changed, and only
+    those — an override elsewhere in the list survives the reorder, and
+    dates are never touched. Item drag (a round/hotel/POI within or
+    between days, and out to the Wishlist) must still work unchanged.
+    Reload — the new day order should persist.
+    *City picker on add:* hit **"+ Add day"** — the new day's place box
+    should be created *and focused*, ready to type, with placeholder
+    "Search a city (e.g. Edinburgh)" and the same GOLF-56 debounced
+    search-as-you-type picker wired. A day with no city is still valid
+    (rest/travel days) — the picker is an offer, not a gate.
+    *Add a city to the trip:* in Plan mode with **no** trip started, a
+    place result offers only "📍 Start a trip here". Once a start city is
+    anchored (or any day exists), the same result grows a second
+    **"+ Add to trip"** action and the first relabels to "📍 Anchor
+    here". Clicking "+ Add to trip" must add that place as a new
+    `kind:'free'` day with real placeLat/placeLng and **must not**
+    re-anchor the trip or change mode — anchor stays where it was, you
+    stay in Plan, the search box stays open (so several cities can be
+    added in a row), and an "Added <city> as Day N" note appears.
+    "📍 Anchor here" must still anchor and clear the search (GOLF-61
+    behaviour unchanged).
+    No "undefined" across all 9 mode/tab/filter views, no horizontal
+    overflow at 375px, and "Start fresh" must clear the new transients
+    (`tbPlaceAddedNote`, `tbFocusDayPlace`, `tbDayDrag`) as well as the
+    trip. `node scripts/test_data.js` unaffected (no data-file changes).
+    Note: if the ORS proxy is returning 502/504 (upstream
+    OpenRouteService outage — it was during this round's verification),
+    the geocode dropdowns return nothing and the pickers degrade to
+    plain typed text by design. Stub `window.orsGeocode` in the console
+    to exercise the picker UI in that case.
+
+36. **Stakeholder feedback round 3 — Explore search/filters + day-card
+    fixes (GOLF-69).** Ten-item batch; one item (merging the standalone
+    Day tab into Itinerary) was already shipped by GOLF-64 and needed no
+    change.
+    *Explore search finds places:* on the Explore page type "Glasgow"
+    into the main search box. A **"Towns & cities"** strip must appear
+    directly under the box with geocoded results and the same actions as
+    the Trip Builder's unified bar ("Start a trip here", plus "+ Add to
+    trip" once a trip exists). Same 300ms debounce and stale-response
+    guard as that bar — type fast and only the last query's results
+    should land.
+    *Search on top, filters in a dropdown:* the search box must be the
+    **first** control in the panel, with a single collapsed **FILTERS**
+    dropdown under it holding access/green fee/architect/area/show-only.
+    The summary carries a count badge of active filter groups, and the
+    dropdown auto-opens on load when a filter was restored from
+    localStorage (otherwise a saved filter is invisible).
+    *Green fee is a range:* two-thumb slider plus typed Min £ / Max £
+    boxes and a readout. Sliders and boxes must stay in sync in both
+    directions; a thumb at either extreme means *unbounded* (readout
+    reads "any price", or "£N+" at the top). The scale tops out at the
+    95th percentile, not the £1,150 maximum, so ordinary fees aren't
+    squashed into the first 10% of the track. Courses whose fee doesn't
+    parse ("POA") pass while the range is untouched and drop out once a
+    bound is set. Reload — the range must persist.
+    *Nearest-to-trip list:* add a course to the trip from the Explore
+    page. The bottom-left course list must be **replaced** (not
+    supplemented) by a "Nearest to <course>" list, closest first, with
+    the trip's own courses excluded and an "+ Add to trip" button per
+    row. The **All results** pill returns to the normal filtered list.
+    Map markers must still show the full filtered set underneath either
+    list.
+    *Drag to the bottom of a day:* grab a course row in Build →
+    Itinerary. A dashed **"↓ Drop here to put it last on Day N"** zone
+    must appear inside every day (hidden at rest), each day must gain a
+    dashed outline, and the row/zone under the pointer must highlight.
+    Dropping on the zone appends to the end of that day — the position
+    that was previously unreachable, because dropping on a row always
+    inserts *before* it. `body.tb-dragging` must clear on drop *and* on
+    a cancelled drag (dragend).
+    *Row alignment:* every row in a day — golf, hotel, POI, and the
+    wishlist rows — must line up on the **first letter** of its name, in
+    one column, regardless of type or of how wide its trailing controls
+    are. (The old bug: three bare flex children under
+    `justify-content:space-between` centre the middle one.)
+    *Day 1 is the start of the trip:* from a completely empty trip, each
+    of the three entry points — a map popup's "Add to trip", the pane's
+    "+ Wishlist", and picking a city from either search box — must land
+    the first item **directly in Day 1**, with no separate start slot and
+    nothing left in Unscheduled. Second and later course adds still go to
+    the wishlist (GOLF-62 unchanged). Picking a city while in **Build**
+    must **not** bounce you to Plan/Discover.
+    *Day card chrome:* each header reads exactly "Day 1" / "Day 2" — no
+    "— 1 course · 2 stops" suffix. **"+ Add day"** sits directly under
+    Day 1's card; the bottom bar keeps "Clear trip" and stays the
+    drop target for moving a dragged day to last place, and only shows
+    its own add-day button once there are 2+ days.
+    *Chronological mixed day:* a day holding a POI, a round and a hotel
+    must render them as one list in whatever order they're dragged into
+    (e.g. Burns Cottage → Western Gailes → Redburn Hotel), with drive
+    legs interleaved and the **golf row visually prominent** (bold name,
+    accent rule down its left edge).
+    *Hotel/POI map markers:* a hotel stop draws a 🏨 marker and a POI a
+    📍 marker. A stop with real geocoded coordinates sits on them; one
+    without falls back to the day's own city, then the day's last course,
+    then the nearest day either side that has one — jittered a few
+    hundred metres so several locationless stops don't stack, and its
+    tooltip says "(approximate — no address set)".
+    No console errors, no "undefined" in the pane, no horizontal overflow
+    at 375px, and `node scripts/test_data.js` unaffected (no data-file
+    changes).
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
