@@ -753,7 +753,10 @@ that touches rendering, filters, or persistence:
     exactly as they were. The Plan-mode unified search bar is unchanged
     and must keep both of its actions.
     *Editing an itinerary item:* in Build → Itinerary, a hotel or POI row
-    must offer **Edit** next to its ✕. Edit replaces that row in place
+    must offer **✎ Edit** in its **⋯ row menu** (since the GOLF-71 merge
+    every per-row action lives in that one overflow menu — Edit is no
+    longer a separate inline button beside a ✕, and the ✕ itself is now
+    "🗑 Remove" inside the same menu). Edit replaces that row in place
     with an inline form (never a browser `prompt()`) carrying the item's
     current name, price and pricing basis. Name is the same
     search-as-you-type geocode picker used when adding — picking a new
@@ -761,13 +764,19 @@ that touches rendering, filters, or persistence:
     legs); leaving the name untouched must **preserve** the existing
     coordinates; typing over the name by hand must clear them. Save keeps
     the item's position in the day (its `id` is not regenerated). Cancel
-    discards. A **golf** row has no Edit button at all — by design; its
-    only trip-level property is the day dropdown beside it.
+    discards. A **golf** row has no Edit entry at all — by design; its
+    only trip-level property is the day, which appears as the "Move to"
+    section at the top of that same ⋯ menu (post-GOLF-71 this replaced the
+    inline day dropdown).
     *Hotel per-person-sharing pricing:* the hotel add/edit form has a
     **Per room / night** vs **Per person sharing** toggle, with a
     **Guests** input that appears only for "per person" (default 2). At
     £90 per person × 2, the itinerary row must read
-    `£90 × 2 (sharing) = £180`, the day total must include **£180**, and
+    `£90 × 2 (sharing) = £180` — post-GOLF-71 that worked label sits on
+    the row's small grey meta line under the hotel name, because GOLF-71's
+    right-hand price column is a single nowrap figure and shows the £180
+    total (with the arithmetic in its `title=` tooltip on Build-mode rows).
+    The day total must include **£180**, and
     the Costs tab must show Stays £180 with the line item annotated
     `(£90 × 2 sharing)`. Switching the toggle must not lose a half-typed
     name or price. A "per room" hotel is unaffected and renders as a plain
@@ -795,14 +804,48 @@ that touches rendering, filters, or persistence:
     bug).** From a fully empty trip (`tripStartFresh()`, or a fresh
     default trip on first visit), open Build mode / navigate directly to
     `#trip`. The empty-state message must be followed by a working
-    **"+ Add day"** button (previously there was no button anywhere on
-    this screen — a dead end). Clicking it must create Day 1 with its
-    place-search field focused. Separately: add a course to the wishlist
-    but create no day, then open Build — the bottom bar must also show a
-    working "+ Add day" button (previously only appeared once 2+ days
-    already existed). Once exactly one day exists, only Day 1's own
-    "+ Add day" button should show — the bottom bar's should stay hidden
-    to avoid a duplicate.
+    **"＋ Add a day"** button (previously there was no button anywhere on
+    this screen — a dead end), alongside a **"Browse courses"** button
+    back to Plan. Clicking "＋ Add a day" must create Day 1 with its
+    Options panel already open on the city picker. Separately: add a
+    course to the wishlist but create no day, then open Build — the
+    bottom end-zone bar must also show a working "＋ Add a day" button
+    (previously it only appeared once 2+ days already existed).
+    *Post-GOLF-71 note:* the redesign removed the old per-day "+ Add day"
+    button that used to sit under Day 1, so "＋ Add a day" now appears in
+    exactly one place at a time (the empty state, or the bottom end-zone
+    bar) and the old "hide the duplicate when exactly one day exists"
+    rule no longer applies — there is no duplicate to hide.
+39. **Design-system pass + drag-and-drop reliability (GOLF-71).** Open the
+    Trip Builder pane in each of the three modes (Explore, Plan, Build).
+    *Design tokens:* every radius, shadow, spacing, font size and tap
+    target comes from a `--radius-*` / `--shadow-*` / `--sp-*` / `--fs-*`
+    / `--tap` custom property — no hardcoded px should be reintroduced.
+    Buttons all use the single `.tb-btn` primitive and are at least 44px
+    tall.
+    *One search bar:* there must be exactly one search input at the top of
+    the pane. It is sticky, so scrolling deep into a long itinerary keeps
+    it in view. Every other search field (day city, add-stop location,
+    Explore) is the same `tbSearchFieldHTML` component — typing debounces,
+    ArrowUp/ArrowDown move through results and Enter picks one. There is
+    no second "Near a place" box in Discover.
+    *Drag-and-drop (the important one — do these as real drags, not by
+    calling functions):* (a) drag a wishlist course onto a day, grabbing
+    it **by its name**, not the handle — it must move, not start a link
+    drag; (b) reorder two stops within one day; (c) drag a stop from one
+    day onto a row in another day; (d) drag a whole day by its header
+    handle onto an earlier day; (e) drag a day onto the bottom "Add day"
+    bar to move it last. In each case the source row must visibly lift
+    (fades and shrinks slightly), an accent insertion line must appear
+    above the target, and the "Put it last on Day N" drop zone must
+    overlay the card **without shifting the layout**.
+    *Copy:* no card should carry an explanatory sentence longer than a
+    short phrase — the detail belongs in a `title=` tooltip (e.g. the
+    date field reads "Date · optional", the drive field shows a
+    `live`/`auto`/`yours` chip).
+    At 375px the day header must read "Day 1" in full, with the place name
+    truncating instead. No console errors, no "undefined" in the pane, and
+    `node scripts/check_js.js` plus `node scripts/test_data.js` both pass.
 
 ## What's explicitly not covered
 

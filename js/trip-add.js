@@ -152,15 +152,15 @@ function tbUnifiedSearchResultsHTML(){
        near-identical buttons on an empty trip would just be a choice with
        no meaning. */
     const started=tbPlaceAnchor!=null||tripDays.length>0;
-    html+=`<p class="hint" style="margin:0 0 4px;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.06em">Places</p>`+
+    html+=`<div class="tb-section-title">Towns &amp; cities</div>`+
       places.map(p=>`<div class="tb-row">
-        <div>${esc(p.label)}</div>
-        <div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
-          <button class="btn2 tb-unified-place-add" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" style="padding:6px 12px;font-size:11.5px">📍 ${started?'Anchor here':'Start a trip here'}</button>
-          ${started?`<button class="btn2 ghost tb-unified-place-trip" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" style="padding:6px 12px;font-size:11.5px">+ Add to trip</button>`:''}
+        <div>📍 ${esc(p.label)}</div>
+        <div style="display:flex;gap:var(--sp-2);flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+          <button class="tb-btn is-sm is-primary tb-unified-place-add" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}">${started?'Anchor here':'Start a trip here'}</button>
+          ${started?`<button class="tb-btn is-sm tb-unified-place-trip" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}">＋ Add to trip</button>`:''}
         </div>
       </div>`).join('');
-    if(tbPlaceAddedNote)html+=`<p class="hint" style="margin:2px 0 0">Added <b>${esc(tbPlaceAddedNote.label)}</b> as Day ${tbPlaceAddedNote.day} — see it in <a href="#" class="linkbtn" onclick="event.preventDefault();enterBuildMode()">Build</a>.</p>`;
+    if(tbPlaceAddedNote)html+=`<p class="hint" style="margin:var(--sp-2) 0 0">Added <b>${esc(tbPlaceAddedNote.label)}</b> as Day ${tbPlaceAddedNote.day} — <a href="#" class="linkbtn" onclick="event.preventDefault();enterBuildMode()">open it</a>.</p>`;
   }
   if(!results.length){
     if(html)return html;
@@ -171,13 +171,13 @@ function tbUnifiedSearchResultsHTML(){
   // second, explicit "+ Add to Day N" button next to it — direct-to-day
   // stays available as a deliberate power path, just not the default.
   const day=(appMode==='build'&&tbBuildTab==='itin'&&tbDayShown!=null)?tripDays.find(d=>d.id===tbDayShown):null;
-  html+=`<p class="hint" style="margin:8px 0 4px;font-weight:700;text-transform:uppercase;font-size:10px;letter-spacing:.06em">Golf courses</p>`+
+  html+=`<div class="tb-section-title" style="margin-top:var(--sp-3)">Golf courses</div>`+
     results.map(i=>`<div class="tb-row">
-      <div><a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
-        <div style="color:var(--stone);font-size:11.5px">${C[i].r} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
-      <div style="display:flex;gap:4px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
-        <button class="btn2" style="padding:6px 10px;font-size:11.5px" onclick="tbAddToWishlist(${i})">+ Wishlist</button>
-        ${day?`<button class="btn2 ghost" style="padding:6px 10px;font-size:11.5px" onclick="tbAddToDay(${i},${day.id})">+ Day ${tripDays.indexOf(day)+1}</button>`:''}
+      <div>⛳ <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
+        <div class="cart-region">${esc(C[i].r)} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
+      <div style="display:flex;gap:var(--sp-2);flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+        <button class="tb-btn is-sm is-primary" onclick="tbAddToWishlist(${i})">＋ Wishlist</button>
+        ${day?`<button class="tb-btn is-sm" onclick="tbAddToDay(${i},${day.id})">＋ Day ${tripDays.indexOf(day)+1}</button>`:''}
       </div>
     </div>`).join('');
   return html;
@@ -199,33 +199,60 @@ function tbAssignCourseDay(i,val){
   if(dayId!=null)tbDayShown=dayId;
   renderTripBuilder();tbDrawMap();
 }
-function tripDaySelectHTML(i,currentDayId){
-  const opts=[`<option value=""${currentDayId==null?' selected':''}>Unscheduled</option>`]
-    .concat(tripDays.map((d,idx)=>`<option value="${d.id}"${d.id===currentDayId?' selected':''}>Day ${idx+1}</option>`))
-    .concat([`<option value="new">+ New day</option>`]);
-  return`<select onchange="tbAssignCourseDay(${i},this.value);">${opts.join('')}</select>`;
+/* GOLF-71: tripDaySelectHTML() (the per-row "move to day" <select>) is
+   retired — tbDayMenuItemsHTML() renders the same choices as 44px rows
+   inside each stop's "⋯" menu instead. */
+/* GOLF-71 (workstream D, defect 2): every draggable row's inner <a> now
+   carries draggable="false". An anchor is natively draggable, so grabbing
+   the course NAME — the largest and most obvious thing in the row — used
+   to start a *link* drag carrying "#" instead of the row drag. No drop
+   target here accepts that, so the row simply refused to move: the
+   stakeholder's "it doesn't seem to pick it up when I drag and drop it".
+   The row itself also sets user-select:none (see <style>) so a slow press
+   can't start a text-selection drag instead.
+
+   GOLF-71 (workstream C): the per-row "move to day" <select> and bare ✕
+   moved into one 36px "⋯" menu. The sketch shows a stop as name + price;
+   a 11px select and a 4px-padded ✕ were precisely the "small, finicky
+   buttons" called out in the brief. Dragging is now the primary way to
+   move a stop, and the menu is the accessible/precise fallback. */
+function tbRowMenuHTML(inner){
+  return`<details class="tb-rowmenu"><summary title="More" aria-label="More actions">⋯</summary>
+    <div class="tb-drop-body is-right">${inner}</div></details>`;
+}
+function tbRowDragAttrs(startExpr,dropExpr){
+  return`draggable="true"
+      ondragstart="${startExpr}"
+      ondragend="tbDragEnd();"
+      ondragover="event.preventDefault();event.stopPropagation();event.dataTransfer.dropEffect='move';tbDropOver(this);"
+      ondragleave="tbDropOut(this,event);"
+      ondrop="event.preventDefault();event.stopPropagation();tbDropOut(this);${dropExpr}"`;
 }
 /* A wishlist (unscheduled) course row — no item of its own yet, so it
-   drags by course index. Unchanged behaviour from pre-GOLF-63. */
+   drags by course index. */
 function tripDayCourseRowHTML(i,dayId){
   const fee=extractFee(V(i,'wd'));
-  return`<div class="tb-day-course tb-item-golf" draggable="true"
-      ondragstart="tbDragSetCourse(${i});event.dataTransfer.effectAllowed='move';"
-      ondragend="tbDragEnd();"
-      ondragover="event.preventDefault();event.dataTransfer.dropEffect='move';tbDropOver(this);"
-      ondragleave="tbDropOut(this);"
-      ondrop="event.preventDefault();event.stopPropagation();tbDropOut(this);tbDropOn(${dayId==null?'null':dayId},${i});">
+  const menu=tbRowMenuHTML(
+    `<div class="tb-menu-label">Move to</div>${tbDayMenuItemsHTML(i,dayId)}
+     <div class="tb-menu-sep"></div>
+     <button type="button" class="tb-menu-item is-danger" onclick="toggleTrip(${i});renderTripBuilder();tbDrawMap();">🗑 Remove from trip</button>`);
+  return`<div class="tb-day-course tb-item-golf" ${tbRowDragAttrs(`tbDragSetCourse(${i},event,this);`,`tbDropOn(${dayId==null?'null':dayId},${i});`)}>
     <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
     <span class="tb-item-icon">⛳</span>
     <div class="tb-item-main">
-      <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
-      <div class="cart-region">${esc(C[i].r)}${fee!=null?` · £${fee.toFixed(0)}`:''}</div>
+      <a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
+      <div class="cart-region">${esc(C[i].r)}</div>
     </div>
-    <div class="tb-item-actions">
-      ${tripDaySelectHTML(i,dayId)}
-      <button class="btn2 ghost cart-remove" title="Remove from trip" onclick="toggleTrip(${i});renderTripBuilder();tbDrawMap();">✕</button>
-    </div>
+    <span class="tb-item-price">${fee!=null?`£${fee.toFixed(0)}`:'—'}</span>
+    <div class="tb-item-actions">${menu}</div>
   </div>`;
+}
+/* The day list for a row's "⋯ → Move to" menu — the same choices the old
+   inline <select> offered, as 44px menu rows. */
+function tbDayMenuItemsHTML(i,currentDayId){
+  return[`<button type="button" class="tb-menu-item" onclick="tbAssignCourseDay(${i},'')">${currentDayId==null?'✓':'&nbsp;&nbsp;'} Wishlist</button>`]
+    .concat(tripDays.map((d,idx)=>`<button type="button" class="tb-menu-item" onclick="tbAssignCourseDay(${i},'${d.id}')">${d.id===currentDayId?'✓':'&nbsp;&nbsp;'} Day ${idx+1}</button>`))
+    .concat([`<button type="button" class="tb-menu-item" onclick="tbAssignCourseDay(${i},'new')">＋ New day</button>`]).join('');
 }
 /* GOLF-63: one scheduled stop of any type, draggable into any position in
    any day. Golf rows keep their existing "move to day" dropdown and
@@ -243,31 +270,38 @@ function tripDayItemRowHTML(d,it){
   // map markers — hotel emoji for stays, location pin for POIs.
   const icon=it.type==='golf'?'⛳':it.type==='hotel'?'🏨':'📍';
   const noGeo=it.type!=='golf'&&tripItemPoint(it)==null;
+  /* GOLF-71 copy audit: the price used to be repeated in the grey meta
+     line AND (on golf) implied by the fee — it now appears once, in the
+     right-hand price column the sketch calls for. The meta line is the
+     region for golf, and the stop kind for everything else. */
   const main=it.type==='golf'
-    ?`<a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${it.i})">${esc(tripItemName(it))}</a>
-       <div class="cart-region">${esc(C[it.i]?C[it.i].r:'')}${price!=null?` · £${price.toFixed(0)}`:''}</div>`
+    ?`<a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${it.i})">${esc(tripItemName(it))}</a>
+       <div class="cart-region">${esc(C[it.i]?C[it.i].r:'')}</div>`
     :`<span class="tb-item-name">${esc(tripItemName(it))}</span>
-       <div class="cart-region">${it.type==='hotel'?'Stay':'Point of interest'}${priceLabel}${noGeo?' · <span title="No location picked, so no drive time to this stop">no location</span>':''}</div>`;
-  return`<div class="tb-day-course tb-item-${it.type}" draggable="true"
-      ondragstart="tbDragSetItem(${d.id},'${it.id}');event.dataTransfer.effectAllowed='move';"
-      ondragend="tbDragEnd();"
-      ondragover="event.preventDefault();event.dataTransfer.dropEffect='move';tbDropOver(this);"
-      ondragleave="tbDropOut(this);"
-      ondrop="event.preventDefault();event.stopPropagation();tbDropOut(this);tbDropInDay(${d.id},'${it.id}');">
+       <div class="cart-region">${it.type==='hotel'?'Stay':'Stop'}${noGeo?' · <span title="No location picked, so no drive time can be calculated to this stop">no location</span>':''}</div>`;
+  /* Merge (GOLF-71 + GOLF-73): GOLF-73 shipped Edit as a second inline button
+     beside ✕. GOLF-71 collapsed every per-row action into one overflow menu
+     (and moved "move to day" out of a <select> into it), so Edit lives there
+     now rather than as a third control competing for the row's width. Same
+     entry point (tbEditStop), same rule: hotel/POI only. A golf row has
+     nothing editable here — name, fee and coordinates all come from the
+     course dataset (edited in the corrections editor), and its one trip-level
+     fact, the day it sits on, is the "Move to" section of this same menu. */
+  const menu=tbRowMenuHTML(
+    (it.type==='golf'?`<div class="tb-menu-label">Move to</div>${tbDayMenuItemsHTML(it.i,d.id)}<div class="tb-menu-sep"></div>`
+      :`<button type="button" class="tb-menu-item" onclick="tbEditStop(${d.id},'${it.id}')">✎ Edit</button><div class="tb-menu-sep"></div>`)+
+    `<button type="button" class="tb-menu-item is-danger" onclick="${it.type==='golf'?`toggleTrip(${it.i});`:`tripDayRemoveItem(${d.id},'${it.id}');`}renderTripBuilder();tbDrawMap();">🗑 Remove</button>`);
+  return`<div class="tb-day-course tb-item-${it.type}" ${tbRowDragAttrs(`tbDragSetItem(${d.id},'${it.id}',event,this);`,`tbDropInDay(${d.id},'${it.id}');`)}>
     <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
     <span class="tb-item-icon">${icon}</span>
     <div class="tb-item-main">${main}</div>
-    <div class="tb-item-actions">
-      ${it.type==='golf'?tripDaySelectHTML(it.i,d.id):''}
-      ${/* GOLF-73: Edit sits alongside Remove for hotel/POI rows only. A golf
-           row has nothing editable here — name, fee and coordinates all come
-           from the course dataset (edited in the corrections editor), and the
-           one trip-level fact it carries, its day, is the dropdown to the
-           left — so no Edit button is rendered for it at all. */
-        it.type==='golf'?''
-        :`<button class="btn2 ghost" title="Edit this stop" onclick="tbEditStop(${d.id},'${it.id}')">Edit</button>`}
-      <button class="btn2 ghost cart-remove" title="Remove from this day"
-        onclick="${it.type==='golf'?`toggleTrip(${it.i});`:`tripDayRemoveItem(${d.id},'${it.id}');`}renderTripBuilder();tbDrawMap();">✕</button>
-    </div>
+    ${/* Merge (GOLF-71 + GOLF-74): the effective total goes in GOLF-71's
+         narrow price column, and a per-person-sharing stay explains its
+         arithmetic in the column's tooltip rather than overflowing the
+         column with "£90 × 2 (sharing) = £180". The full worked label still
+         renders in the Itinerary tab and the Costs breakdown, which have the
+         width for it. */''}
+    <span class="tb-item-price"${det.sharing?` title="${esc(priceLabel.replace(/^ · /,''))}"`:''}>${price!=null?`£${price.toFixed(0)}`:'—'}</span>
+    <div class="tb-item-actions">${menu}</div>
   </div>`;
 }

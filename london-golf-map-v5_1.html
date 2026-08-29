@@ -36,10 +36,42 @@
        fills used for pills/tags); radius tokens are new, this is the
        first part of the app that wants rounded cards/pills consistently. */
     --accent-deep:#122f76;
-    --radius-sm:6px;--radius-md:10px;--radius-lg:16px;
+    /* ── GOLF-71 design system ────────────────────────────────────────
+       One radius scale, one elevation scale, one spacing scale, one type
+       scale, one control-height scale. Everything in the Trip Builder
+       pane (and the shared button/chip/card primitives it borrows from
+       Explore) is expressed in these tokens — no more per-component
+       6px/7px/8px/9px radii and one-off box-shadows accumulated across
+       GOLF-31…69. Apple HIG informs three concrete choices: (1) a 44px
+       minimum tap target, exposed as --tap and applied to every button,
+       chip, tab and drag handle in the pane; (2) layered elevation —
+       cards are a lighter surface than the panel behind them AND carry a
+       shadow, so they read as objects rather than boxes; (3) restrained
+       motion — .14s/.18s ease-out, and everything inside the existing
+       prefers-reduced-motion kill switch. */
+    /* Radius: xs for inline chips/tags, sm for inputs and small controls,
+       md for buttons and inner blocks, lg for cards, xl for the sheet,
+       pill for search bars / tab buttons / filter pills. */
+    --radius-xs:6px;--radius-sm:8px;--radius-md:12px;--radius-lg:16px;--radius-xl:22px;--radius-pill:9999px;
+    /* Elevation. sm/md/lg are kept (used widely outside the pane);
+       card/raised/dragging are the new named steps the redesign uses:
+       card = at rest, raised = hover/active, dragging = lifted. */
     --shadow-sm:0 1px 2px rgba(27,39,51,.06),0 1px 1px rgba(27,39,51,.08);
     --shadow-md:0 4px 14px rgba(27,39,51,.10),0 2px 4px rgba(27,39,51,.08);
     --shadow-lg:0 14px 40px rgba(27,39,51,.18),0 4px 10px rgba(27,39,51,.10);
+    --shadow-card:0 1px 2px rgba(27,39,51,.05),0 6px 16px -6px rgba(27,39,51,.14);
+    --shadow-raised:0 2px 4px rgba(27,39,51,.06),0 14px 28px -10px rgba(27,39,51,.22);
+    --shadow-dragging:0 24px 48px -12px rgba(27,39,51,.38),0 8px 16px -6px rgba(27,39,51,.22);
+    --shadow-focus:0 0 0 3px var(--accent-soft);
+    /* Spacing — a 4px grid. */
+    --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:20px;--sp-6:24px;--sp-8:32px;
+    /* Type scale. */
+    --fs-micro:10px;--fs-caption:11.5px;--fs-small:12.5px;--fs-body:13.5px;
+    --fs-title:15px;--fs-lg:17px;--fs-xl:20px;--fs-hero:38px;
+    /* Control sizing. --tap is the HIG minimum; --tap-sm is for controls
+       that sit inside a ≥44px row and so are already comfortably hit. */
+    --tap:44px;--tap-sm:36px;
+    --ease:cubic-bezier(.2,.7,.3,1);--dur:.16s;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;height:100%}
@@ -77,9 +109,335 @@
   @media (min-width:901px){
     body.trip-mode .app{grid-template-columns:minmax(480px,680px) 1fr}
   }
-  .tb-section{padding:11px 20px;border-bottom:1px solid var(--line)}
-  .tb-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
+  /* ══════════════════════════════════════════════════════════════════
+     GOLF-71 — Trip Builder pane, rebuilt on the design tokens above.
+     Everything below uses --radius-*, --shadow-*, --sp-*, --fs-*, --tap.
+     Structure follows the stakeholder's sketch, top to bottom:
+       navbar → pill search bar → [Trip ▾][Filters ▾][Clear trip] →
+       pill tabs → day cards → grand-total card.
+     ══════════════════════════════════════════════════════════════════ */
+
+  /* ── Shared pane primitives ─────────────────────────────────────── */
+  /* .tb-btn is the one button primitive for the pane: a ≥44px pill with
+     three variants (default = quiet surface, .is-primary = accent fill,
+     .is-danger = destructive outline). It replaces the .btn2/.linkbtn
+     mix that had accumulated inside the pane, where a "button" could be
+     anything from a 14px underlined word to a gradient slab. */
+  .tb-btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);
+    min-height:var(--tap);padding:0 var(--sp-4);border-radius:var(--radius-pill);
+    border:1px solid var(--line);background:#fff;color:var(--ink);
+    font:var(--fw-semi,600) var(--fs-small)/1 var(--font-sans);cursor:pointer;white-space:nowrap;
+    box-shadow:var(--shadow-sm);transition:box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease),background var(--dur) var(--ease),border-color var(--dur) var(--ease),color var(--dur) var(--ease)}
+  .tb-btn:hover{border-color:var(--accent);color:var(--accent);box-shadow:var(--shadow-md);transform:translateY(-1px)}
+  .tb-btn:active{transform:translateY(0);box-shadow:var(--shadow-sm)}
+  .tb-btn.is-primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:var(--shadow-md)}
+  .tb-btn.is-primary:hover{background:var(--accent-dark);border-color:var(--accent-dark);color:#fff;box-shadow:var(--shadow-raised)}
+  .tb-btn.is-danger{color:#9A3412;border-color:#E5C7B5;background:#fff;box-shadow:none}
+  .tb-btn.is-danger:hover{background:#FBEEE7;color:#7C2D12;border-color:#D9A88E;box-shadow:none}
+  .tb-btn.is-quiet{box-shadow:none;background:transparent}
+  /* Compact variant: still 36px tall, only used inside a row that is
+     itself already a comfortable target (e.g. a card header's ⋯ menu). */
+  .tb-btn.is-sm{min-height:var(--tap-sm);padding:0 var(--sp-3);font-size:var(--fs-caption)}
+  .tb-btn.is-icon{padding:0;width:var(--tap);flex:0 0 var(--tap);font-size:var(--fs-title)}
+  .tb-btn.is-icon.is-sm{width:var(--tap-sm);flex:0 0 var(--tap-sm)}
+  .tb-btn:disabled{opacity:.4;cursor:default;box-shadow:none;transform:none}
+  .tb-field{width:100%;min-height:var(--tap-sm);padding:var(--sp-2) var(--sp-3);border:1px solid var(--line);
+    border-radius:var(--radius-sm);background:#fff;font:400 var(--fs-small) var(--font-sans);color:var(--ink);
+    transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+  .tb-field:focus{outline:none;border-color:var(--accent);box-shadow:var(--shadow-focus)}
+  .tb-section{padding:var(--sp-3) var(--sp-5);border-bottom:1px solid var(--line)}
+  .tb-row{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-2);padding:var(--sp-2) 0;border-bottom:1px solid var(--line)}
   .tb-row:last-child{border-bottom:none}
+  .tb-section-title{font:700 var(--fs-caption) var(--font-sans);text-transform:uppercase;letter-spacing:.08em;color:var(--stone);margin:0 0 var(--sp-2)}
+
+  /* ── Pane chrome (sketch rows 1–4) ──────────────────────────────── */
+  .tb-navbar{padding:var(--sp-3) var(--sp-5) var(--sp-1);display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3)}
+  .tb-wordmark{font-family:var(--font-display);font-weight:700;font-size:var(--fs-title);color:var(--ink)}
+  .tb-navbar-right{display:flex;align-items:center;gap:var(--sp-2)}
+  .tb-pill{font:700 var(--fs-caption) var(--font-sans);background:var(--accent-soft);color:var(--accent-deep);
+    padding:var(--sp-1) var(--sp-3);border-radius:var(--radius-pill);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+  /* The single search bar for the whole pane — a full-width pill, per the
+     sketch. One component, one look, four call sites (see tbSearchFieldHTML). */
+  /* Sticky so the one search bar is always one tap away, however far the
+     itinerary has been scrolled — it is the pane's only entry point. */
+  .tb-place-wrap.tb-search-bar-wrap{padding:var(--sp-2) var(--sp-5);position:sticky;top:0;z-index:20;
+    background:var(--paper-2);box-shadow:0 6px 12px -10px rgba(27,39,51,.5)}
+  .tb-search-bar{width:100%;min-height:var(--tap);padding:0 var(--sp-4) 0 42px;border:1px solid var(--line);
+    border-radius:var(--radius-pill);background:#fff;font:500 var(--fs-body) var(--font-sans);color:var(--ink);
+    box-shadow:var(--shadow-card);transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+  .tb-search-bar::placeholder{color:var(--stone);font-weight:400}
+  .tb-search-bar:focus{outline:none;border-color:var(--accent);box-shadow:var(--shadow-focus),var(--shadow-card)}
+  .tb-search-bar-wrap::before{content:'';position:absolute;left:var(--sp-8);top:50%;transform:translateY(-50%);
+    width:12px;height:12px;border:2px solid var(--stone);border-radius:50%;box-sizing:border-box;pointer-events:none}
+  .tb-search-bar-wrap::after{content:'';position:absolute;left:41px;top:50%;transform:translateY(3px) rotate(45deg);
+    width:2px;height:7px;background:var(--stone);border-radius:1px;pointer-events:none}
+
+  /* Row 2 of the sketch: two (here three) equal rounded controls. */
+  .tb-toolbar{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-1) var(--sp-5) var(--sp-2)}
+  .tb-toolbar>*{flex:1 1 0;min-width:0}
+  .tb-drop{position:relative;flex:1 1 0;min-width:0}
+  .tb-drop>summary{list-style:none;display:flex;align-items:center;justify-content:center;gap:var(--sp-2);
+    min-height:var(--tap);padding:0 var(--sp-3);border:1px solid var(--line);border-radius:var(--radius-pill);
+    background:#fff;box-shadow:var(--shadow-sm);cursor:pointer;
+    font:600 var(--fs-small)/1 var(--font-sans);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+  .tb-drop>summary::-webkit-details-marker{display:none}
+  .tb-drop>summary::after{content:'';flex:0 0 auto;width:6px;height:6px;border-right:2px solid var(--stone);
+    border-bottom:2px solid var(--stone);transform:translateY(-2px) rotate(45deg);transition:transform var(--dur) var(--ease)}
+  .tb-drop[open]>summary{border-color:var(--accent);color:var(--accent);box-shadow:var(--shadow-focus)}
+  .tb-drop[open]>summary::after{transform:translateY(1px) rotate(-135deg)}
+  .tb-drop-body{position:absolute;z-index:40;top:calc(100% + var(--sp-2));left:0;min-width:100%;width:max-content;max-width:min(320px,80vw);
+    background:#fff;border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);
+    padding:var(--sp-2);display:flex;flex-direction:column;gap:var(--sp-1)}
+  .tb-drop-body.is-right{left:auto;right:0}
+  /* Menu items inside a dropdown: full-width, 44px, left-aligned. */
+  .tb-menu-item{display:flex;align-items:center;gap:var(--sp-2);width:100%;min-height:var(--tap);
+    padding:0 var(--sp-3);border:none;border-radius:var(--radius-sm);background:none;cursor:pointer;
+    font:600 var(--fs-small) var(--font-sans);color:var(--ink);text-align:left;transition:background var(--dur) var(--ease)}
+  .tb-menu-item:hover{background:var(--accent-soft);color:var(--accent-deep)}
+  .tb-menu-item.is-danger{color:#9A3412}
+  .tb-menu-item.is-danger:hover{background:#FBEEE7}
+  .tb-menu-sep{height:1px;background:var(--line);margin:var(--sp-1) 0}
+  /* A stop row's own "⋯" menu (move to another day / remove). Replaces the
+     bare <select> + tiny ✕ that used to sit in every row — the sketch shows
+     a row as name + price, and a 12px select is exactly the "small, finicky
+     button" the stakeholder called out. */
+  .tb-rowmenu{position:relative;flex:0 0 auto}
+  .tb-rowmenu>summary{list-style:none;display:inline-flex;align-items:center;justify-content:center;
+    width:var(--tap-sm);min-height:var(--tap-sm);border-radius:var(--radius-pill);cursor:pointer;
+    color:var(--stone);font-size:var(--fs-title);line-height:1;transition:background var(--dur) var(--ease),color var(--dur) var(--ease)}
+  .tb-rowmenu>summary::-webkit-details-marker{display:none}
+  .tb-rowmenu>summary:hover{background:var(--paper);color:var(--ink)}
+  .tb-rowmenu[open]>summary{background:var(--accent-soft);color:var(--accent-deep)}
+  .tb-menu-label{font:700 var(--fs-micro) var(--font-sans);letter-spacing:.08em;text-transform:uppercase;
+    color:var(--stone);padding:var(--sp-2) var(--sp-3) var(--sp-1)}
+
+  /* Row 3 of the sketch: pill tabs. One row, three destinations, shown in
+     both Plan and Build — Discover is Plan mode, Itinerary/Costs are Build. */
+  .tb-tabs{display:flex;gap:var(--sp-1);margin:0 var(--sp-5) var(--sp-3);padding:var(--sp-1);
+    background:var(--paper);border-radius:var(--radius-pill)}
+  .tb-tab-btn{flex:1 1 0;min-height:var(--tap-sm);padding:0 var(--sp-2);border:none;border-radius:var(--radius-pill);
+    background:transparent;color:var(--stone);cursor:pointer;
+    font:700 var(--fs-small)/1 var(--font-sans);
+    transition:background var(--dur) var(--ease),color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+  .tb-tab-btn:hover{color:var(--ink)}
+  .tb-tab-btn[aria-pressed="true"]{background:#fff;color:var(--accent-deep);box-shadow:var(--shadow-sm)}
+  .tb-tab-content{padding:0 var(--sp-5) var(--sp-8);flex:1}
+
+  /* Segmented control (Discover's Near a place / Nearby / By region, and
+     the itinerary type filter) — same visual language as the tab row, one
+     step smaller. */
+  .tb-seg{display:inline-flex;gap:var(--sp-1);padding:3px;background:var(--paper);border-radius:var(--radius-pill);flex-wrap:wrap}
+  .tb-seg button{min-height:var(--tap-sm);padding:0 var(--sp-3);border:none;border-radius:var(--radius-pill);
+    background:transparent;color:var(--stone);cursor:pointer;font:600 var(--fs-small)/1 var(--font-sans);
+    transition:background var(--dur) var(--ease),color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+  .tb-seg button:hover{color:var(--ink)}
+  .tb-seg button[aria-pressed="true"]{background:#fff;color:var(--accent-deep);box-shadow:var(--shadow-sm)}
+
+  /* ── Day cards (the heart of the sketch) ────────────────────────── */
+  /* A card is a distinctly lighter surface than the panel, plus a real
+     shadow — the stakeholder's "make sure the cards are distinct from the
+     background". The panel is --paper-2 (#F5F7F9); cards are pure #fff. */
+  .tb-day{position:relative;background:#fff;border:1px solid transparent;border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-card);margin-bottom:var(--sp-3);overflow:visible;
+    transition:box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease),border-color var(--dur) var(--ease)}
+  .tb-day-wish{background:var(--paper-2);border:1px dashed var(--line);box-shadow:none}
+  /* Day kind reads as a coloured dot in the header now, not a slab of
+     left border — the border competed with the golf rows' own accent rule. */
+  .tb-day-dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px;background:var(--accent)}
+  .tb-day-start .tb-day-dot,.tb-day-end .tb-day-dot{background:var(--stone)}
+  .tb-day-free .tb-day-dot{background:#B25A9E}
+
+  /* Header: ⠿ handle + bold title (+ place) on the left, £ total right. */
+  .tb-day-head{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-2);
+    font:700 var(--fs-title) var(--font-sans);color:var(--ink);
+    border-radius:var(--radius-lg) var(--radius-lg) 0 0;user-select:none;-webkit-user-select:none}
+  .tb-day-title{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:var(--sp-2);overflow:hidden}
+  /* "Day 3" must never be the thing that truncates — the place name absorbs
+     the squeeze instead, which matters most at 375px. */
+  .tb-day-title-text{flex:0 0 auto;white-space:nowrap}
+  .tb-day-place{flex:1 1 auto;font:500 var(--fs-caption) var(--font-sans);color:var(--stone);white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .tb-day-sum{font:800 var(--fs-title) var(--font-sans);color:var(--accent-deep);font-variant-numeric:tabular-nums;white-space:nowrap}
+  /* The thin divider under the header, straight from the sketch. */
+  .tb-day-rule{height:1px;background:var(--line);margin:0 var(--sp-3)}
+
+  /* Drag handle — was a bare 14px glyph with no padding (~10×14px of
+     grabbable area). Now a full-height 32×44 target. */
+  .tb-drag-handle{display:inline-flex;align-items:center;justify-content:center;flex:0 0 28px;
+    width:28px;min-height:var(--tap);color:var(--stone);opacity:.45;font-size:var(--fs-lg);line-height:1;
+    cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none;border-radius:var(--radius-sm);
+    transition:opacity var(--dur) var(--ease),background var(--dur) var(--ease)}
+  .tb-day-course:hover .tb-drag-handle,.tb-day-head:hover .tb-drag-handle{opacity:1;background:var(--paper)}
+  .tb-drag-handle:active{cursor:grabbing}
+
+  /* A stop row. Golf reads heaviest; hotel/POI are the connective tissue. */
+  .tb-day-course{position:relative;display:flex;align-items:center;gap:var(--sp-2);
+    padding:var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-2);cursor:grab;
+    user-select:none;-webkit-user-select:none;border-radius:var(--radius-md);margin:2px var(--sp-2);
+    background:#fff;transition:background var(--dur) var(--ease),box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease)}
+  .tb-day-course:hover{background:var(--paper-2)}
+  .tb-day-course:active{cursor:grabbing}
+  .tb-item-icon{flex:0 0 22px;width:22px;text-align:center;font-size:var(--fs-title);line-height:1;user-select:none}
+  .tb-item-main{flex:1 1 auto;min-width:0;text-align:left}
+  .tb-item-actions{display:flex;align-items:center;gap:var(--sp-1);flex-shrink:0}
+  .tb-item-price{font:800 var(--fs-body) var(--font-sans);color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .tb-item-golf{box-shadow:inset 3px 0 0 var(--accent)}
+  .tb-item-golf .tb-item-main>a,.tb-item-golf .tb-item-main>.tb-item-name{font:700 var(--fs-body) var(--font-sans);color:var(--ink);text-decoration:none}
+  .tb-item-golf .tb-item-main>a:hover{color:var(--accent);text-decoration:underline}
+  .tb-item-golf .tb-item-price{font-size:var(--fs-title);color:var(--accent-deep)}
+  .tb-item-hotel .tb-item-name,.tb-item-poi .tb-item-name{font:500 var(--fs-small) var(--font-sans);color:var(--ink-soft)}
+  .tb-item-hotel .tb-item-price,.tb-item-poi .tb-item-price{font-weight:600;font-size:var(--fs-small);color:var(--ink-soft)}
+  .cart-region{color:var(--stone);font-size:var(--fs-caption)}
+  .tb-item-hotel .cart-region,.tb-item-poi .cart-region{font-size:var(--fs-micro)}
+
+  /* Drive caption — small, indented, sitting directly above the stop it
+     leads into, exactly as sketched. Not a chip, not its own row of
+     furniture; it is a label on the stop below it. */
+  .tb-drive-cap{display:flex;align-items:center;gap:var(--sp-1);
+    padding:var(--sp-1) var(--sp-3) 0 44px;font:600 var(--fs-micro) var(--font-sans);
+    letter-spacing:.02em;color:var(--stone);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tb-drive-cap .tb-drive-real{color:#1a7a3e}
+
+  /* Day footer: the two add actions, sized as real targets. */
+  .tb-day-add{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3) var(--sp-3);flex-wrap:wrap}
+  .tb-day-add .tb-btn{flex:1 1 auto}
+
+  /* Collapsed day settings (kind / city / date) — hidden in a dropdown so
+     the card shows the itinerary, not a form. */
+  .tb-day-settings{margin:0 var(--sp-3) var(--sp-2)}
+  .tb-day-settings>summary{list-style:none;display:inline-flex;align-items:center;gap:var(--sp-1);
+    min-height:var(--tap-sm);padding:0 var(--sp-2);border-radius:var(--radius-pill);cursor:pointer;
+    font:600 var(--fs-caption) var(--font-sans);color:var(--stone)}
+  .tb-day-settings>summary::-webkit-details-marker{display:none}
+  /* Chevron rather than a ⚙ glyph: at this size a text-font gear renders
+     as an illegible hairline (it read as a stray "e" in review). */
+  .tb-day-settings>summary::after{content:'';width:5px;height:5px;border-right:2px solid currentColor;
+    border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform var(--dur) var(--ease)}
+  .tb-day-settings[open]>summary::after{transform:translateY(1px) rotate(-135deg)}
+  .tb-day-settings>summary:hover{color:var(--accent);background:var(--accent-soft)}
+  .tb-day-settings[open]>summary{color:var(--accent-deep)}
+  .tb-day-settings-body{display:flex;flex-wrap:wrap;gap:var(--sp-2);padding:var(--sp-2) 0 var(--sp-1)}
+  .tb-day-settings-body select,.tb-day-settings-body input{min-height:var(--tap-sm);border:1px solid var(--line);
+    border-radius:var(--radius-sm);padding:0 var(--sp-2);background:#fff;font:500 var(--fs-small) var(--font-sans);color:var(--ink)}
+  .tb-day-settings-body select:focus,.tb-day-settings-body input:focus{outline:none;border-color:var(--accent);box-shadow:var(--shadow-focus)}
+  .tb-day-drive{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;
+    padding:var(--sp-1) 0 0;font-size:var(--fs-caption);color:var(--stone);width:100%}
+  .tb-day-drive input{width:80px}
+  .tb-auto-chip{display:inline-block;font:700 var(--fs-micro) var(--font-sans);letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent-deep);background:var(--accent-soft);border-radius:var(--radius-xs);padding:2px 6px}
+  .tb-auto-chip-real{color:#1a7a3e;background:#DCEFDC}
+  .tb-day-town{padding:0 var(--sp-3) var(--sp-2) 44px;font-size:var(--fs-caption);color:var(--stone)}
+  .tb-day-town b{color:var(--ink-soft)}
+  .tb-poi-list{padding:0 var(--sp-3) var(--sp-2) 44px;display:flex;flex-direction:column;gap:3px}
+  .tb-poi-row{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-2);font-size:var(--fs-caption);color:var(--ink-soft)}
+
+  /* The grand-total card at the very bottom of the sketch. */
+  .tb-total-card{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
+    background:linear-gradient(135deg,var(--accent),var(--accent-dark));border-radius:var(--radius-lg);
+    padding:var(--sp-4) var(--sp-5);box-shadow:var(--shadow-raised);margin:var(--sp-4) 0 var(--sp-3)}
+  .tb-total-label{font:700 var(--fs-caption) var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:#fff;opacity:.8}
+  .tb-total-amount{font:800 var(--fs-xl) var(--font-sans);color:#fff;font-variant-numeric:tabular-nums}
+
+  /* ── Drag & drop feedback (GOLF-71 workstream D) ────────────────── */
+  /* The lifted source. Applied one tick AFTER dragstart so the browser has
+     already snapshotted the drag image — applying it synchronously would
+     bake the lift into the ghost instead of leaving it on the placeholder. */
+  .tb-drag-src{opacity:.4;transform:scale(.98)}
+  .tb-day.tb-drag-src{opacity:.45}
+  /* The row/card actually under the pointer lifts toward the cursor. */
+  body.tb-dragging .tb-day-course.tb-drop-over,body.tb-dragging .tb-day.tb-drop-over{box-shadow:var(--shadow-dragging)}
+  /* Insertion indicator: a real 3px accent line in a real gap, not a wash. */
+  .tb-day-course.tb-drop-over::before,.tb-day.tb-drop-over::before{content:'';position:absolute;
+    left:var(--sp-2);right:var(--sp-2);top:-3px;height:3px;border-radius:2px;background:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-soft)}
+  .tb-day-course.tb-drop-over{background:var(--accent-soft);transform:translateY(1px)}
+  .tb-day.tb-drop-over{border-color:var(--accent)}
+  body.tb-dragging .tb-day{border-color:var(--line)}
+  body.tb-dragging .tb-day-course{transition:none}
+  /* End-of-day drop zone. Positioned ABSOLUTELY over the card's own bottom
+     padding so revealing it mid-drag causes ZERO layout shift — the old
+     display:none→flex swap moved every card below it the moment a drag
+     began, which is a large part of why dragging felt like it "didn't pick
+     things up": the target you aimed at had already moved. */
+  .tb-dropzone{display:none}
+  body.tb-dragging .tb-dropzone{display:flex;align-items:center;justify-content:center;
+    position:absolute;left:var(--sp-2);right:var(--sp-2);bottom:var(--sp-2);height:40px;z-index:5;
+    border:2px dashed var(--line);border-radius:var(--radius-md);background:rgba(255,255,255,.94);
+    font:600 var(--fs-caption) var(--font-sans);color:var(--stone)}
+  body.tb-dragging .tb-dropzone.tb-drop-over{border-color:var(--accent);border-style:solid;
+    background:var(--accent-soft);color:var(--accent-deep);box-shadow:var(--shadow-md)}
+  /* Same trick for the "move a day to last place" zone at the very end. */
+  .tb-day-endzone{position:relative;border-radius:var(--radius-lg);transition:background var(--dur) var(--ease)}
+  .tb-day-endzone.tb-drop-over{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--accent)}
+
+  /* ── Shared search-results dropdown (one component, four call sites) ── */
+  .tb-place-wrap{position:relative;display:block}
+  .tb-place-results{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:60;max-height:240px;overflow-y:auto;
+    background:#fff;border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:var(--sp-1)}
+  .tb-place-results:empty{display:none}
+  .tb-place-row{display:flex;align-items:center;min-height:var(--tap-sm);padding:0 var(--sp-3);
+    border-radius:var(--radius-sm);font-size:var(--fs-small);color:var(--ink);cursor:pointer}
+  .tb-place-row:hover,.tb-place-row.is-active{background:var(--accent-soft);color:var(--accent-deep)}
+  .tb-place-empty{display:flex;align-items:center;min-height:var(--tap-sm);padding:0 var(--sp-3);font-size:var(--fs-small);color:var(--stone)}
+
+  /* Inline "add a stop" form. */
+  .tb-addstop{margin:0 var(--sp-3) var(--sp-3);padding:var(--sp-3);background:var(--paper-2);
+    border:1px solid var(--line);border-radius:var(--radius-md)}
+  .tb-addstop-title{font:700 var(--fs-caption) var(--font-sans);letter-spacing:.04em;text-transform:uppercase;
+    color:var(--stone);margin-bottom:var(--sp-2)}
+  .tb-addstop-row{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-2)}
+  .tb-addstop-row input{flex:1 1 120px;min-width:0}
+  /* GOLF-74 (ported into the GOLF-71 token system at merge time): per-room vs
+     per-person-sharing toggle + guest count. Was written with hardcoded px
+     against the old Trip Builder block that GOLF-71 replaced wholesale; the
+     rules below are the same layout re-expressed in the spacing, font-size
+     and radius tokens.
+     The two flex:0 resets matter: .tb-addstop-row input above would otherwise
+     stretch the radio buttons and the guests box to 120px each. */
+  .tb-pricetype{display:flex;gap:var(--sp-3);flex-wrap:wrap;align-items:center;
+    font:500 var(--fs-caption) var(--font-sans);color:var(--stone)}
+  .tb-pricetype label{display:inline-flex;align-items:center;gap:var(--sp-1);cursor:pointer;min-height:var(--tap-sm)}
+  .tb-addstop-row .tb-pricetype input[type="radio"]{flex:0 0 auto;width:auto;min-width:0;margin:0}
+  .tb-guests{display:inline-flex;align-items:center;gap:var(--sp-1);
+    font:500 var(--fs-caption) var(--font-sans);color:var(--stone);white-space:nowrap}
+  .tb-addstop-row .tb-guests input{flex:0 0 64px;width:64px;min-height:var(--tap-sm);
+    padding:var(--sp-1) var(--sp-2);border:1px solid var(--line);border-radius:var(--radius-sm);
+    font:400 var(--fs-small) var(--font-sans);color:var(--ink)}
+
+  /* ── Itinerary filtered lists + Costs tab ───────────────────────── */
+  .itin-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-card);margin-bottom:var(--sp-3);padding:var(--sp-3) var(--sp-4)}
+  .itin-card-head{font:800 var(--fs-caption) var(--font-sans);letter-spacing:.06em;color:var(--accent-dark);margin-bottom:var(--sp-1)}
+  .itin-card-kicker{font:700 var(--fs-micro) var(--font-sans);letter-spacing:.06em;text-transform:uppercase;color:var(--stone);margin-bottom:2px}
+  .itin-flat-row{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp-2)}
+  .itin-golf-name-lg{font:800 var(--fs-title) var(--font-sans)}
+  .itin-golf-price-lg{font:800 var(--fs-lg) var(--font-sans);color:var(--accent-deep);font-variant-numeric:tabular-nums}
+  .itin-hotel-name-md{font:600 var(--fs-body) var(--font-sans)}
+  .itin-hotel-price-md{font:700 var(--fs-body) var(--font-sans);font-variant-numeric:tabular-nums}
+  .itin-rail{position:relative;padding-left:var(--sp-4)}
+  .itin-rail::before{content:'';position:absolute;left:3px;top:6px;bottom:6px;width:2px;background:var(--accent-soft)}
+  .itin-rail-row{position:relative;margin-bottom:var(--sp-4)}
+  .itin-rail-dot{position:absolute;left:-16px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+
+  .cost-banner{background:linear-gradient(135deg,var(--accent),var(--accent-dark));border-radius:var(--radius-lg);
+    padding:var(--sp-5);margin-bottom:var(--sp-4);box-shadow:var(--shadow-raised)}
+  .cost-banner-label{font:700 var(--fs-caption) var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:#fff;opacity:.8}
+  .cost-banner-amount{font:800 var(--fs-hero) var(--font-display);color:#fff;font-variant-numeric:tabular-nums;line-height:1.15}
+  .cost-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:var(--sp-2) var(--sp-4);margin-bottom:var(--sp-3)}
+  .cost-summary-table,.cost-line-table{width:100%;border-collapse:collapse}
+  .cost-summary-table td,.cost-line-table td{padding:var(--sp-3) 0;border-bottom:1px solid var(--line);font-size:var(--fs-small)}
+  .cost-summary-table tr:last-child td,.cost-line-table tr:last-child td{border-bottom:none}
+  .cost-summary-table td:first-child,.cost-line-table td:first-child{color:var(--ink)}
+  .cost-summary-table td:last-child,.cost-line-table td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .cost-fuel-toggle{display:flex;align-items:center;gap:var(--sp-2);min-height:var(--tap);cursor:pointer}
+  .cost-fuel-toggle input{width:20px;height:20px;accent-color:var(--accent);cursor:pointer}
+  .cost-line-items-label{font:700 var(--fs-caption) var(--font-sans);letter-spacing:.08em;text-transform:uppercase;
+    color:var(--stone);margin:var(--sp-4) 0 var(--sp-2)}
+  .cost-cov{margin:var(--sp-2) 0 0}
+  /* Map marker for a day's hotel/POI stops (rendered by tbEmojiIcon). */
+  .tb-emoji-marker{background:none;border:none;text-align:center;line-height:1}
+  .tb-emoji-marker span{font-size:19px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
 
   /* GOLF-31 refactor: cart list was hand-styled with inline `style=` per
      element — pulled into named classes so the checkout look is defined
@@ -106,166 +464,6 @@
   .cart-cost-line span:first-child{display:flex;align-items:center;gap:6px;color:var(--ink)}
   .cart-cost-line span:last-child{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink)}
   .cart-cost-cov{font-size:10.5px;color:var(--stone);margin:-2px 0 2px 22px}
-  /* GOLF-33: day-schedule blocks in the Trip Builder pane */
-  .tb-day{border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:10px}
-  /* GOLF-51: a subtle left border distinguishes non-golf days (arrival/
-     free/departure) from a normal golf day at a glance in the list, same
-     idea as the map's per-day colour coding. */
-  .tb-day-start,.tb-day-end{border-left:4px solid var(--stone)}
-  .tb-day-free{border-left:4px solid #B25A9E}
-  .tb-day-date select{margin-right:6px}
-  .tb-day-date input[type="text"]{margin:0 6px}
-  .tb-place-results{position:absolute;top:100%;left:6px;z-index:20;min-width:200px;max-height:180px;overflow-y:auto;background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
-  .tb-place-row{padding:6px 10px;font-size:12px;cursor:pointer}
-  .tb-place-row:hover{background:var(--paper-2)}
-  .tb-place-empty{padding:6px 10px;font-size:12px;color:var(--stone)}
-  .tb-day-head{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--paper);font-weight:700;font-size:12.5px;cursor:grab}
-  .tb-day-head:active{cursor:grabbing}
-  /* GOLF-65: the whole-day handle sits in the header, visually the same
-     glyph as an item's so the gesture reads as "the same drag, one level up". */
-  .tb-day-handle{margin-right:4px;vertical-align:-1px}
-  /* GOLF-65: the "+ Add day" bar doubles as the drop zone for moving a day
-     to the very end (every other day drop lands *before* its target). */
-  .tb-day-endzone{border-radius:8px}
-  .tb-day-drive{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--line);background:var(--paper-2);font-size:11.5px;color:var(--stone)}
-  .tb-day-drive input{width:60px}
-  .tb-auto-chip{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--accent-dark);background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:1px 5px}
-  .tb-auto-chip-real{color:#1a7a3e;border-color:#1a7a3e}
-  .tb-day-date{padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--stone)}
-  .tb-day-date input{margin:0 4px}
-  .tb-day-town{padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--stone)}
-  .tb-day-town b{color:var(--ink)}
-  .tb-poi-list{padding:2px 10px 8px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:3px}
-  .tb-poi-row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11.5px;color:var(--ink)}
-  .tb-poi-row .wt{font-size:9.5px}
-  .tb-trips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-  .tb-trips select{flex:1 1 140px;min-width:0}
-  .tb-trips .btn2{padding:6px 10px;font-size:11.5px;flex:0 0 auto}
-  /* GOLF-69: rows used to be three bare flex children under
-     justify-content:space-between, which centres the MIDDLE one — so every
-     row's name started at a different x depending on how wide its trailing
-     controls happened to be (a golf row carries a day <select>, a hotel row
-     doesn't). Now the name block is the flex:1 growing child and the icon
-     sits in a fixed-width cell, so every row's first letter lines up in one
-     column regardless of type or controls. */
-  .tb-day-course{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);cursor:grab}
-  .tb-day-course:last-child{border-bottom:none}
-  .tb-day-course:active{cursor:grabbing}
-  .tb-day-course select{font-size:11px;max-width:120px}
-  .tb-item-icon{flex:0 0 20px;width:20px;text-align:center;font-size:13px;line-height:1;user-select:none}
-  .tb-item-main{flex:1 1 auto;min-width:0;text-align:left}
-  .tb-item-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
-  .tb-drag-handle{color:var(--stone);font-size:14px;flex-shrink:0;line-height:1;user-select:none}
-  /* GOLF-69 (item 9): golf keeps visual prominence inside the mixed
-     chronological list — heavier name, accent rule down the left edge —
-     while hotels/POIs read as the connective tissue between rounds. */
-  .tb-item-golf{box-shadow:inset 3px 0 0 var(--accent)}
-  .tb-item-golf .tb-item-main>a,.tb-item-golf .tb-item-main>.tb-item-name{font-weight:700;font-size:13.5px}
-  .tb-item-hotel .tb-item-name,.tb-item-poi .tb-item-name{font-weight:500;font-size:12.5px;color:var(--ink)}
-  /* GOLF-69 (item 5): an explicit "append to the end of this day" target.
-     Dropping on a row always inserts BEFORE it, so without this the last
-     position was only reachable by hitting the few pixels of dead space
-     under the final row. Hidden until a drag is actually in progress so it
-     costs nothing at rest. */
-  /* GOLF-69 (item 10): emoji marker for a day's own hotel/POI stops. */
-  .tb-emoji-marker{background:none;border:none;text-align:center;line-height:1}
-  .tb-emoji-marker span{font-size:19px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
-  .tb-dropzone{display:none}
-  body.tb-dragging .tb-dropzone{display:flex;align-items:center;justify-content:center;gap:6px;margin:6px 10px 8px;padding:9px 10px;border:1.5px dashed var(--line);border-radius:7px;font-size:11.5px;color:var(--stone);background:var(--paper-2)}
-  body.tb-dragging .tb-dropzone.tb-drop-over{border-color:var(--accent);border-style:solid;background:var(--accent-soft);color:var(--accent-deep);font-weight:700}
-  /* Highlight whatever the pointer is currently over, so "where will this
-     land?" is answerable mid-drag instead of after it. */
-  body.tb-dragging .tb-day{outline:1px dashed var(--line);outline-offset:2px}
-  .tb-day-course.tb-drop-over{box-shadow:inset 0 3px 0 var(--accent);background:var(--accent-soft)}
-  .tb-day.tb-drop-over{outline:2px solid var(--accent);outline-offset:2px}
-  /* GOLF-64: Plan mode has no sub-tabs, so plain section headings carry the
-     structure instead; Build keeps the tab row plus a back-link to Plan. */
-  .tb-section-title{font:700 11px var(--font-sans);text-transform:uppercase;letter-spacing:.08em;color:var(--stone);margin:0 0 8px}
-  .tb-backlink{padding:6px 20px 0}
-  .tb-day-total{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;font-weight:700}
-  /* GOLF-63: hotel/POI stops are ordinary rows in the day's item list now,
-     tinted just enough to scan a mixed day at a glance. */
-  .tb-item-hotel{background:rgba(122,107,201,.06)}
-  .tb-item-poi{background:rgba(178,90,158,.05)}
-  .tb-day-add{padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-  .tb-addstop{padding:8px 10px;border-bottom:1px solid var(--line);background:var(--paper-2)}
-  .tb-addstop-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
-  .tb-addstop-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  /* GOLF-74: per-room vs per-person-sharing toggle + guest count. Wraps at
-     narrow widths like every other control in this form. */
-  .tb-pricetype{display:flex;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--stone)}
-  .tb-pricetype label{display:inline-flex;align-items:center;gap:3px;cursor:pointer}
-  .tb-guests{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--stone)}
-  .tb-guests input{padding:4px 6px;border:1px solid var(--line);border-radius:5px;font:400 12px var(--font-sans)}
-  .tb-day-hotel,.tb-day-pois{padding:6px 10px;border-bottom:1px solid var(--line);font-size:11.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  .tb-day-pois .wt{display:inline-flex;align-items:center;gap:4px}
-  .tb-day-pois .wt a{color:inherit;text-decoration:none;opacity:.7}
-  .tb-day-pois .wt a:hover{opacity:1}
-
-  /* GOLF-57: Trip Builder sidebar redesign — nav bar / unified search /
-     tab row / itinerary filter row, the shared chrome sitting above
-     whichever of the five tabs (Itinerary/Day/Costs/Add/Discover) is
-     active. Named tb-* (not itin-*) since these sit above tab content,
-     not inside any one tab. */
-  .tb-navbar{padding:12px 20px 4px;display:flex;align-items:center;justify-content:space-between;gap:10px}
-  .tb-wordmark{font-family:var(--font-display);font-weight:700;font-size:15px;color:var(--ink)}
-  .tb-navbar-right{display:flex;align-items:center;gap:10px}
-  .tb-pill{font:700 11px var(--font-mono);background:var(--accent-soft);color:var(--accent-deep);padding:4px 10px;border-radius:999px;font-variant-numeric:tabular-nums;white-space:nowrap}
-  .tb-search-bar-wrap{padding:8px 20px;position:relative}
-  .tb-search-bar{width:100%;padding:9px 11px 9px 30px;border:1px solid var(--line);border-radius:var(--radius-md);background:#fff;font:400 13px var(--font-sans);color:var(--ink)}
-  .tb-search-bar:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-  .tb-search-bar-wrap::before{content:'';position:absolute;left:31px;top:50%;transform:translateY(-50%);width:13px;height:13px;
-    border:2px solid var(--stone);border-radius:50%;box-sizing:border-box;pointer-events:none}
-  .tb-search-bar-wrap::after{content:'';position:absolute;left:41px;top:50%;transform:translateY(4px) rotate(45deg);width:2px;height:7px;background:var(--stone);pointer-events:none}
-  .tb-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:6px 20px;border-bottom:1px solid var(--line)}
-  .tb-tab-btn{font:800 10.5px/1 var(--font-sans);letter-spacing:.04em;text-transform:uppercase;padding:8px 4px;border-radius:var(--radius-sm);border:1px solid transparent;background:transparent;color:var(--stone);cursor:pointer;transition:background .12s,color .12s}
-  .tb-tab-btn:hover{color:var(--ink)}
-  .tb-tab-btn[aria-pressed="true"]{background:var(--accent);color:#fff}
-  .tb-filter-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
-  .tb-filter-pills{display:flex;gap:5px;flex-wrap:wrap}
-  .tb-pill-btn{font:600 10.5px var(--font-sans);padding:6px 10px;border-radius:var(--radius-sm);border:1px solid var(--line);background:#fff;color:var(--ink-soft);cursor:pointer;transition:background .12s,color .12s,border-color .12s}
-  .tb-pill-btn:hover{border-color:var(--accent);color:var(--ink)}
-  .tb-pill-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
-  .tb-drive-toggle{margin-left:auto}
-  .tb-tab-content{padding:12px 20px 24px;flex:1}
-
-  /* Itinerary tab: day cards, hero golf rows, flat filtered lists, hotel rail */
-  .itin-card{background:#fff;border-radius:var(--radius-md);box-shadow:var(--shadow-sm);margin-bottom:12px;padding:12px 14px}
-  .itin-card-head{font:800 10.5px var(--font-mono);letter-spacing:.06em;color:var(--accent-dark);margin-bottom:6px}
-  .itin-card-kicker{font:700 10px var(--font-mono);letter-spacing:.05em;text-transform:uppercase;color:var(--stone);margin-bottom:2px}
-  .itin-leg{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:5px 0}
-  .itin-leg-main{display:flex;align-items:baseline;gap:6px;min-width:0}
-  .itin-leg-drive{font-size:10.5px;color:var(--stone);padding-left:6px}
-  .itin-leg-golf{border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
-  .itin-golf-name{font:800 14px var(--font-sans);color:var(--ink)}
-  .itin-golf-price{font:800 16px var(--font-mono);color:var(--accent-deep);white-space:nowrap;font-variant-numeric:tabular-nums}
-  .itin-hotel-name{font:700 11.5px var(--font-sans);color:var(--ink)}
-  .itin-hotel-price{font:700 11.5px var(--font-mono);color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
-  .itin-poi-name{font:700 11.5px var(--font-sans);color:var(--ink)}
-  .itin-day-total{display:flex;justify-content:space-between;border-top:1px dashed var(--line);margin-top:7px;padding-top:7px}
-  .itin-day-total span:first-child{font:800 10px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--stone)}
-  .itin-day-total span:last-child{font:800 15px var(--font-mono);color:var(--ink);font-variant-numeric:tabular-nums}
-  .itin-flat{padding:10px 14px}
-  .itin-flat-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-  .itin-golf-name-lg{font:800 15px var(--font-sans)}
-  .itin-golf-price-lg{font:800 17px var(--font-mono);color:var(--accent-deep);font-variant-numeric:tabular-nums}
-  .itin-hotel-name-md{font:700 13px var(--font-sans)}
-  .itin-hotel-price-md{font:700 13px var(--font-mono);font-variant-numeric:tabular-nums}
-  .itin-rail{position:relative;padding-left:16px}
-  .itin-rail::before{content:'';position:absolute;left:3px;top:6px;bottom:6px;width:2px;background:var(--accent-soft)}
-  .itin-rail-row{position:relative;margin-bottom:14px}
-  .itin-rail-dot{position:absolute;left:-16px;top:4px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
-
-  /* Costs tab: receipt-style summary */
-  .cost-banner{background:linear-gradient(135deg,var(--accent),var(--accent-dark));border-radius:var(--radius-md);padding:16px 18px;margin-bottom:14px;box-shadow:var(--shadow-md)}
-  .cost-banner-label{font:800 11px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:#fff;opacity:.85}
-  .cost-banner-amount{font:800 40px var(--font-display);color:#fff;font-variant-numeric:tabular-nums;line-height:1.15}
-  .cost-summary-table,.cost-line-table{width:100%;border-collapse:collapse;margin-bottom:8px}
-  .cost-summary-table td,.cost-line-table td{padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px}
-  .cost-summary-table td:first-child,.cost-line-table td:first-child{color:var(--ink)}
-  .cost-summary-table td:last-child,.cost-line-table td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
-  .cost-line-items-label{font:800 10px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--stone);margin:14px 0 4px}
-  .cost-cov{margin:2px 0 0}
 
   /* GOLF-31: the old eyebrow/h1/standfirst mast ate ~140px of the panel's
      vertical space on every screen, including Trip Builder — traded for a
@@ -342,7 +540,10 @@
   .toggles{display:flex;gap:5px;flex-wrap:wrap}
   .togg{font:500 11px var(--font-sans);padding:5px 10px;border:1px solid var(--line);border-radius:14px;background:#fff;cursor:pointer;color:var(--ink-soft);transition:background .12s,border-color .12s,color .12s}
   .togg[aria-pressed="true"]{background:var(--ink);color:var(--paper-2);border-color:var(--ink)}
-  .linkbtn{background:none;border:none;padding:0;font:inherit;color:var(--accent);cursor:pointer;text-decoration:underline}
+  /* Inline text links, not buttons — but padded to a comfortable touch area
+     (the negative margin keeps them sitting on the text baseline). */
+  .linkbtn{background:none;border:none;padding:var(--sp-2) 2px;margin:calc(var(--sp-2) * -1) 0;
+    font:inherit;color:var(--accent);cursor:pointer;text-decoration:underline}
   #sort{font:500 11px var(--font-sans);padding:5px 7px;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink-soft)}
 
   .list{overflow-y:auto;flex:1;padding:10px 12px 24px;display:flex;flex-direction:column;gap:7px}

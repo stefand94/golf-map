@@ -174,8 +174,13 @@ document.getElementById('sort').value=state.sort;
    browsing — the stakeholder's ask was "search Islay, the map goes to Islay,
    full stop". Picking a result flies the map there and nothing else; no trip
    data is read or written from this strip. The Plan-mode unified search bar
-   keeps both actions unchanged — that IS the trip-building surface. */
-let explorePlaceResults=null,explorePlaceDebounce=null,explorePlaceQ='';
+   keeps both actions unchanged — that IS the trip-building surface.
+   Merge note (GOLF-71 + GOLF-72): GOLF-71 replaced this strip's hand-rolled
+   debounce with the shared tbGeocodeDebounced() below, so the local
+   explorePlaceDebounce handle is gone; the navigate-only *rendering* and
+   click handling below are GOLF-72's and are deliberately kept — GOLF-71
+   predates GOLF-72 and still drew the two trip-action buttons here. */
+let explorePlaceResults=null,explorePlaceQ='';
 const EXPLORE_PLACE_ZOOM=11;
 function renderExplorePlaces(){
   const box=document.getElementById('place-results');
@@ -195,17 +200,19 @@ document.getElementById('place-results').addEventListener('click',e=>{
   // Same fly-to pattern the course cards use below.
   showMobileMap();map.flyTo([lat,lng],EXPLORE_PLACE_ZOOM,{duration:.6});
 });
+/* GOLF-71 (workstream B): the fifth hand-rolled copy of the debounce +
+   stale-response guard is gone — this now shares tbGeocodeDebounced()
+   with every other place lookup in the app, so all of them behave
+   identically by construction rather than by four parallel edits. The
+   results still render into Explore's own strip above the course list
+   (not a dropdown), which is why this call site uses the debounce helper
+   directly rather than the full tbAttachSearch() binding. */
 function exploreSearchPlaces(q){
-  clearTimeout(explorePlaceDebounce);
   explorePlaceQ=q;
-  if(!q){explorePlaceResults=null;renderExplorePlaces();return;}
-  explorePlaceDebounce=setTimeout(()=>{
-    orsGeocode(q,list=>{
-      if(explorePlaceQ!==q)return; // stale — a newer keystroke has since fired
-      explorePlaceResults=list||[];
-      renderExplorePlaces();
-    });
-  },300);
+  tbGeocodeDebounced('explore-q',q,list=>{
+    explorePlaceResults=list;
+    renderExplorePlaces();
+  });
 }
 document.getElementById('q').addEventListener('input',e=>{
   state.q=e.target.value.toLowerCase();saveState();render();

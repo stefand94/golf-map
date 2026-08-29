@@ -170,19 +170,27 @@ function fmtDriveMinutes(mins){
   const h=Math.floor(m/60),rem=m%60;
   return rem===0?`${h}h`:`${h}h ${rem}m`;
 }
+/* GOLF-71 copy audit. This row used to end in one of four full sentences
+   explaining where the number came from and what typing over it does
+   ("real driving time via OpenRouteService — type a number to override",
+   "estimated from straight-line distance — type a real number if you know
+   it", …). The live/auto chip already says which of the two it is, and an
+   editable number field already says it can be edited — so the sentences
+   became the chip's own title tooltip and the visible copy is now just
+   "Drive in" + the field + the chip. */
 function tripDayDriveHTML(d,idx){
   if(idx<=0)return'';
   const eff=tripDayEffectiveDriveIn(idx);
-  const note=eff.auto
+  const chip=eff.auto
     ?(eff.minutes!=null
         ?(eff.real
-            ?`<span class="tb-auto-chip tb-auto-chip-real">live</span> <span style="opacity:.75">real driving time via OpenRouteService — type a number to override</span>`
-            :`<span class="tb-auto-chip">auto</span> <span style="opacity:.75">estimated from straight-line distance — type a real number if you know it</span>`)
-        :`<span style="opacity:.75">(no estimate yet — add a course to both days)</span>`)
-    :`<span style="opacity:.75">(your estimate — real directions coming later)</span>`;
-  const shown=d.driveIn??eff.minutes;
-  const friendly=shown!=null?` <b>(${fmtDriveMinutes(shown)})</b>`:'';
-  return`<div class="tb-day-drive">Drive to today's first stop: <input type="number" min="0" step="5" value="${d.driveIn??''}" placeholder="${eff.auto&&eff.minutes!=null?eff.minutes:'—'}" onchange="tripDaySetDriveIn(${d.id},this.value===''?null:parseFloat(this.value));renderTripBuilder();"> min${friendly} ${note}</div>`;
+            ?`<span class="tb-auto-chip tb-auto-chip-real" title="Real driving time from OpenRouteService. Type a number to override it.">live</span>`
+            :`<span class="tb-auto-chip" title="Estimated from straight-line distance. Type a number to override it.">auto</span>`)
+        :`<span class="tb-auto-chip" title="No estimate yet — add a stop to both this day and the one before it.">—</span>`)
+    :`<span class="tb-auto-chip" title="Your own figure, overriding the estimate. Clear the field to go back to the estimate.">yours</span>`;
+  return`<label class="tb-day-drive" title="Driving time into this day's first stop">Drive in
+    <input type="number" min="0" step="5" value="${d.driveIn??''}" placeholder="${eff.auto&&eff.minutes!=null?eff.minutes:'—'}"
+      onchange="tripDaySetDriveIn(${d.id},this.value===''?null:parseFloat(this.value));renderTripBuilder();"> min ${chip}</label>`;
 }
 /* GOLF-34a: a plain suggested overnight place per day — no new data
    source/API, just reuses whichever nearest-station name (stn/nearStation,
