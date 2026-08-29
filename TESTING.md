@@ -791,6 +791,19 @@ that touches rendering, filters, or persistence:
     itinerary rows and open edit form, and `node scripts/test_data.js`
     unaffected (no data-file changes).
 
+38. **Empty-trip Build mode dead end (GOLF-76, stakeholder-reported live
+    bug).** From a fully empty trip (`tripStartFresh()`, or a fresh
+    default trip on first visit), open Build mode / navigate directly to
+    `#trip`. The empty-state message must be followed by a working
+    **"+ Add day"** button (previously there was no button anywhere on
+    this screen — a dead end). Clicking it must create Day 1 with its
+    place-search field focused. Separately: add a course to the wishlist
+    but create no day, then open Build — the bottom bar must also show a
+    working "+ Add day" button (previously only appeared once 2+ days
+    already existed). Once exactly one day exists, only Day 1's own
+    "+ Add day" button should show — the bottom bar's should stay hidden
+    to avoid a duplicate.
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile

@@ -176,7 +176,14 @@ function tbCostsTabHTML(){
    (GOLF-63). tbBuildTab is all that's left: two tabs, inside Build only. */
 let tbBuildTab='itin',tbItinFilter='all',tbDriveToggle=true,tbDayShown=null;
 function tripDayScheduleHTML(){
-  if(!tripSeq.length&&!tripDays.length)return`<p class="hint">Nothing scheduled yet. Add a day below, or go <a href="#" class="linkbtn" onclick="event.preventDefault();setAppMode('plan')">← back to the wishlist</a> to gather some courses first.</p>`;
+  /* Bug fix (2026-08-29): this early-return used to say "Add a day below"
+     with no button anywhere below it — tripDays.length===0 meant the day
+     loop that owns the only "+ Add day" button (idx===0 branch, further
+     down) never ran, so a visitor landing here with an empty trip (e.g.
+     direct navigation to #trip, or straight after Start Fresh) had no way
+     to add a day, a hotel, or anything else. Give the empty state its own
+     button instead of a broken promise of one below it. */
+  if(!tripSeq.length&&!tripDays.length)return`<p class="hint">Nothing scheduled yet. Add a day to get started, or go <a href="#" class="linkbtn" onclick="event.preventDefault();setAppMode('plan')">← back to the wishlist</a> to gather some courses first.</p><div class="bar" style="margin:10px 0"><button class="btn2" onclick="tbAddDayWithPlace();">+ Add day</button><span></span></div>`;
   const unscheduled=tripUnscheduled();
   /* GOLF-33 follow-up: each day/unscheduled block is itself a drop target
      for "append to the end of this list" — a drop that doesn't land on a
@@ -252,7 +259,7 @@ function tripDayScheduleHTML(){
          every day drop lands *before* its target, so the final slot is only
          reachable past the last card. -->
     <div class="bar tb-day-endzone" style="margin-top:2px" ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this);" ondrop="event.preventDefault();tbDropOut(this);tbDropDayAtEnd();">
-      ${tripDays.length>1?`<button class="btn2" onclick="tbAddDayWithPlace();">+ Add day at the end</button>`:'<span></span>'}
+      ${tripDays.length!==1?`<button class="btn2" onclick="tbAddDayWithPlace();">+ Add day${tripDays.length?' at the end':''}</button>`:'<span></span>'}
       <button class="btn2 ghost" onclick="tripClearAll();">Clear trip</button>
     </div>
     <p class="hint" style="margin-top:10px">See the <a href="#" class="linkbtn" onclick="event.preventDefault();tbBuildTab='cost';renderTripBuilder();">Costs tab</a> for a full trip total and line-item breakdown.</p>`;
