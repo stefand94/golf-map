@@ -62,13 +62,16 @@ const ORS_DIRECTIONS_URL = 'https://api.openrouteservice.org/v2/directions/drivi
 const ORS_POIS_URL = 'https://api.openrouteservice.org/pois';
 const ORS_GEOCODE_URL = 'https://api.openrouteservice.org/geocode/autocomplete';
 // GOLF-79: Overpass, not ORS — a free, no-key OpenStreetMap query service.
-// overpass-api.de (the most widely used public instance) tested unreliable
-// specifically from inside a Cloudflare Worker at implementation time
-// (521/502 on repeated tries, while the identical request succeeded every
-// time from a plain machine) — overpass.osm.ch tested reliably instead and
-// is used here. Kept as a single constant so another mirror can be swapped
-// in if this one ever degrades too.
-const OVERPASS_URL = 'https://overpass.osm.ch/api/interpreter';
+// overpass-api.de is the most widely used public instance. It 521/502'd
+// intermittently from inside the Worker right after this file's first
+// deploy (while succeeding every time from a plain machine — an edge/origin
+// hiccup, not a hard block: it was back to 200 minutes later), so it was
+// briefly swapped to overpass.osm.ch — but that mirror came back with an
+// empty result for a real, confirmed-present distillery and a malformed
+// status timestamp, i.e. stale/broken data, which is worse than an
+// intermittent outage. Reverted to overpass-api.de. Kept as a single
+// constant so another mirror can be swapped in if this one degrades again.
+const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 // A leg between two golf courses rarely needs more than a couple hundred
 // points to look like a real road at map zoom levels — cap it so the
 // response (and what ends up cached in localStorage) stays small.
