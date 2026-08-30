@@ -1,0 +1,14 @@
+{
+  "name": "The Britain Golf Explorer",
+  "short_name": "Golf Explorer",
+  "description": "Explore, plan, and build golf trips across Britain, Ireland, and South Africa.",
+  "start_url": "./london-golf-map-v5_1.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EDF1F4",
+  "theme_color": "#2E5C8A",
+  "icons": [
+    { "src": "images/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "images/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

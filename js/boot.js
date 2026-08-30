@@ -18,3 +18,15 @@ render();
 if(appModeFromHash()!=='explore')setAppMode(appModeFromHash(),{pushHash:false});
 else syncMastTripButton();
 if(TRIP.size)tripDrawCart(false);
+
+/* GOLF-80/PWA basics: register the service worker after boot, not before —
+   registration is fire-and-forget and shouldn't delay first render. Guarded
+   on browser support (Safari <11.1, some older WebViews) rather than
+   assumed; a registration failure (e.g. file:// preview, no HTTPS) is
+   silently ignored — the app works identically either way, it just won't
+   be installable/offline-capable in that context. */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}

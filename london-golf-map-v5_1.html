@@ -2,6 +2,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Britain Golf Explorer</title>
 
+<!-- GOLF-80/PWA basics: installable app shell. Progressive enhancement only
+     — browsers that don't understand manifest/service-worker just ignore
+     these and the site works exactly as before. See sw.js for the offline
+     strategy and docs/pwa.md for the full write-up. -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2E5C8A">
+<link rel="icon" href="images/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="images/icon.svg">
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
