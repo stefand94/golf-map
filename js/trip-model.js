@@ -272,6 +272,8 @@ function tbAddStopFormHTML(dayId,itemId){
   const editing=!!tbAddStop.itemId;
   const person=isHotel&&tbAddStop.priceType==='person';
   const priceNum=parseFloat(tbAddStop.price);
+  const dayObj=tripDays.find(d=>d.id===dayId);
+  const cur=tripDayCurrency(dayObj);
   return`<div class="tb-addstop">
     <div class="tb-addstop-title">${editing?(isHotel?'Edit this stay':'Edit this stop'):(isHotel?'Add a stay':'Add a stop')}</div>
     ${tbSearchFieldHTML({id:'tb-addstop-name',value:tbAddStop.name,
@@ -279,7 +281,7 @@ function tbAddStopFormHTML(dayId,itemId){
       title:'Pick a search result to give this stop real coordinates, so drive times can be calculated to it. A plain typed name works too.'})}
     <div class="tb-addstop-row">
       <input class="tb-field" type="number" id="tb-addstop-price" min="0" step="5"
-        placeholder="${isHotel?'£ / night — optional':'£ — optional'}" value="${esc(tbAddStop.price)}">
+        placeholder="${isHotel?`${cur} / night — optional`:`${cur} — optional`}" value="${esc(tbAddStop.price)}">
       ${/* GOLF-74 through GOLF-71's design system: same two-radio pricing
            basis and same conditional Guests field as before, re-expressed
            with the .tb-field input primitive and token-based .tb-pricetype /
@@ -290,7 +292,7 @@ function tbAddStopFormHTML(dayId,itemId){
       </span>
       ${person?`<label class="tb-guests">Guests <input class="tb-field" type="number" id="tb-addstop-guests" min="1" max="12" step="1" value="${tbAddStop.guests}"></label>`:''}`:''}
     </div>
-    ${person&&Number.isFinite(priceNum)?`<p class="hint" style="margin:var(--sp-2) 0 0">£${priceNum.toFixed(0)} × ${tbAddStop.guests} (sharing) = <b>£${(priceNum*tbAddStop.guests).toFixed(0)}</b> per night.</p>`:''}
+    ${person&&Number.isFinite(priceNum)?`<p class="hint" style="margin:var(--sp-2) 0 0">${cur}${priceNum.toFixed(0)} × ${tbAddStop.guests} (sharing) = <b>${cur}${(priceNum*tbAddStop.guests).toFixed(0)}</b> per night.</p>`:''}
     <div class="tb-addstop-row" style="margin-top:var(--sp-2)">
       <button class="tb-btn is-primary" onclick="tbAddStopCommit()">${editing?'Save':'Add'}</button>
       <button class="tb-btn is-quiet" onclick="tbAddStopCancel()">Cancel</button>

@@ -16,4 +16,5 @@ render();
    restores that mode directly (and a bookmarked GOLF-41 #trip link still
    works, landing in Build exactly as it used to). */
 if(appModeFromHash()!=='explore')setAppMode(appModeFromHash(),{pushHash:false});
+else syncMastTripButton();
 if(TRIP.size)tripDrawCart(false);

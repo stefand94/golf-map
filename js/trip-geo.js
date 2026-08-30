@@ -103,6 +103,41 @@ function tripCostEstimate(indices){
   indices.forEach(i=>{const fee=extractFee(V(i,'wd'));if(fee!=null){total+=fee;covered++}});
   return{total,covered,of:indices.length};
 }
+/* Currency correctness: a trip can mix nations (a UK/NI course priced in £,
+   a Republic of Ireland course in €, a South African course in R), so a
+   single flat total is potentially meaningless. tripDayCurrency() picks the
+   currency of the majority of a day's golf items (falling back to the trip's
+   overall primary currency for a day with no golf yet — e.g. a hotel-only
+   day); tripPrimaryCurrency() is the single most common currency across
+   every course in the trip, used as the default for the nav pill and for
+   costs (fuel) that have no inherent currency of their own. */
+function tripPrimaryCurrency(){
+  const counts={};
+  tripSeq.forEach(i=>{const c=courseCurrency(i);counts[c]=(counts[c]||0)+1;});
+  let best='£',bestN=0;
+  Object.keys(counts).forEach(c=>{if(counts[c]>bestN){best=c;bestN=counts[c];}});
+  return best;
+}
+function tripDayCurrency(d){
+  const cs=d?tripDayCourses(d):[];
+  if(!cs.length)return tripPrimaryCurrency();
+  const counts={};
+  cs.forEach(i=>{const c=courseCurrency(i);counts[c]=(counts[c]||0)+1;});
+  let best='£',bestN=0;
+  Object.keys(counts).forEach(c=>{if(counts[c]>bestN){best=c;bestN=counts[c];}});
+  return best;
+}
+/* A running total bucketed by currency — {[£|€|R]:amount} — plus a few
+   small helpers to add to it and to render it as "£320 · €150". */
+function moneyBucketAdd(buckets,cur,amt){
+  if(amt==null)return;
+  buckets[cur]=(buckets[cur]||0)+amt;
+}
+function moneyBucketFmt(buckets){
+  const keys=Object.keys(buckets).filter(c=>buckets[c]);
+  if(!keys.length)return'—';
+  return keys.map(c=>`${c}${buckets[c].toFixed(0)}`).join(' · ');
+}
 /* GOLF-48: which fee field (wd/we) a scheduled day should be costed at —
    Saturday/Sunday if the day has a real calendar date attached, wd
    otherwise. A day with no date (the default — GOLF-33 deliberately
@@ -122,21 +157,22 @@ function feeFieldForDate(dateStr){
    every Unscheduled course, which has no day context at all) falls back
    to the plain wd-only behavior tripCostEstimate() already had. */
 function tripCostEstimateByDay(){
-  let total=0,covered=0,of=0;
+  const buckets={};let covered=0,of=0;
   tripDays.forEach(d=>{
     const field=feeFieldForDate(d.date);
     tripDayCourses(d).forEach(i=>{
       of++;
       const fee=extractFee(V(i,field));
-      if(fee!=null){total+=fee;covered++;}
+      if(fee!=null){moneyBucketAdd(buckets,courseCurrency(i),fee);covered++;}
     });
   });
   tripUnscheduled().forEach(i=>{
     of++;
     const fee=extractFee(V(i,'wd'));
-    if(fee!=null){total+=fee;covered++;}
+    if(fee!=null){moneyBucketAdd(buckets,courseCurrency(i),fee);covered++;}
   });
-  return{total,covered,of};
+  const total=buckets[tripPrimaryCurrency()]||0;
+  return{total,buckets,covered,of};
 }
 /* GOLF-44: typical UK hotel nightly-rate estimate by region — NOT live
    pricing, a ballpark grounded via web search (London ~£120-180,
@@ -191,19 +227,23 @@ function tripHotelPerPerson(it){return!!(it&&it.type==='hotel'&&it.priceType==='
    multiplication happens, so the itinerary row, the cost table and the
    trip total can never disagree about it. */
 function tripItemPriceDetail(d,it){
-  if(!it)return{base:null,guests:1,sharing:false,total:null};
-  if(it.type==='golf'){const p=extractFee(V(it.i,feeFieldForDate(d&&d.date)));return{base:p,guests:1,sharing:false,total:p};}
+  if(!it)return{base:null,guests:1,sharing:false,total:null,cur:'£'};
+  if(it.type==='golf'){
+    const p=extractFee(V(it.i,feeFieldForDate(d&&d.date)));
+    return{base:p,guests:1,sharing:false,total:p,cur:courseCurrency(it.i)};
+  }
+  const cur=tripDayCurrency(d);
   if(it.type==='hotel'){
     const entered=it.price??null;
     if(tripHotelPerPerson(it)){
       const g=tripHotelGuests(it);
-      return{base:entered,guests:g,sharing:true,total:entered*g};
+      return{base:entered,guests:g,sharing:true,total:entered*g,cur};
     }
     const p=entered??tripDayAccomFallback(d);
-    return{base:p,guests:1,sharing:false,total:p};
+    return{base:p,guests:1,sharing:false,total:p,cur};
   }
   const p=it.price??null;
-  return{base:p,guests:1,sharing:false,total:p};
+  return{base:p,guests:1,sharing:false,total:p,cur};
 }
 function tripItemPrice(d,it){return tripItemPriceDetail(d,it).total;}
 /* GOLF-44: fuel-cost estimate — same straight-line leg distances as the
@@ -218,29 +258,40 @@ function tripCostSummary(){
   const fees=tripCostEstimateByDay();
   const fuelMiles=tripTotalDriveMiles();
   const fuelCost=fuelMiles*FUEL_COST_PER_MILE;
+  const primaryCur=tripPrimaryCurrency();
   const scheduledDays=tripDays.filter(d=>tripDayCourses(d).length);
   /* One night's stay per scheduled day except the last — no accommodation
-     needed the night after the final round. */
-  let accomCost=0;
+     needed the night after the final round. Bucketed by each day's own
+     currency, since a multi-nation trip's nightly rates aren't all the
+     same money. */
+  const accomBuckets={};
   scheduledDays.forEach((d,idx)=>{
     if(idx===scheduledDays.length-1)return;
-    accomCost+=tripDayAccomFallback(d)??ACCOM_RATE_DEFAULT;
+    const rate=tripDayAccomFallback(d)??ACCOM_RATE_DEFAULT;
+    moneyBucketAdd(accomBuckets,tripDayCurrency(d),rate);
   });
+  const accomCost=accomBuckets[primaryCur]||0;
   const nights=Math.max(0,scheduledDays.length-1);
-  const grand=(fees.covered?fees.total:0)+(tbIncludeAccom?accomCost:0)+(tbIncludeFuel?fuelCost:0);
-  return{fees,accomCost,nights,fuelMiles,fuelCost,grand};
+  const grandBuckets={};
+  if(fees.covered)Object.keys(fees.buckets).forEach(c=>moneyBucketAdd(grandBuckets,c,fees.buckets[c]));
+  if(tbIncludeAccom)Object.keys(accomBuckets).forEach(c=>moneyBucketAdd(grandBuckets,c,accomBuckets[c]));
+  if(tbIncludeFuel)moneyBucketAdd(grandBuckets,primaryCur,fuelCost);
+  const grand=grandBuckets[primaryCur]||0;
+  return{fees,accomCost,accomBuckets,nights,fuelMiles,fuelCost,grand,grandBuckets,primaryCur};
 }
 function tripCostSummaryHTML(){
   const s=tripCostSummary();
+  const cur=s.primaryCur;
+  const mixed=Object.keys(s.fees.buckets).length>1;
   return`<div class="cart-cost-lines">
-      <div class="cart-cost-line"><span>Green fees</span><span>${s.fees.covered?`£${s.fees.total.toFixed(0)}`:'—'}</span></div>
-      <div class="cart-cost-cov">${s.fees.covered} of ${s.fees.of} course${s.fees.of===1?'':'s'} have a parseable weekday fee</div>
-      <label class="cart-cost-line"><span><input type="checkbox" ${tbIncludeAccom?'checked':''} onchange="tbIncludeAccom=this.checked;renderTripBuilder();"> Accommodation${s.nights?` (${s.nights} night${s.nights===1?'':'s'}, typical rate)`:''}</span><span>${s.nights?`£${s.accomCost.toFixed(0)}`:'—'}</span></label>
-      <label class="cart-cost-line"><span><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel${s.fuelMiles?` (est. ${s.fuelMiles.toFixed(0)} mi)`:''}</span><span>${s.fuelMiles?`£${s.fuelCost.toFixed(0)}`:'—'}</span></label>
+      <div class="cart-cost-line"><span>Green fees</span><span>${s.fees.covered?moneyBucketFmt(s.fees.buckets):'—'}</span></div>
+      <div class="cart-cost-cov">${s.fees.covered} of ${s.fees.of} course${s.fees.of===1?'':'s'} have a parseable weekday fee${mixed?' · multiple currencies':''}</div>
+      <label class="cart-cost-line"><span><input type="checkbox" ${tbIncludeAccom?'checked':''} onchange="tbIncludeAccom=this.checked;renderTripBuilder();"> Accommodation${s.nights?` (${s.nights} night${s.nights===1?'':'s'}, typical rate)`:''}</span><span>${s.nights?moneyBucketFmt(s.accomBuckets):'—'}</span></label>
+      <label class="cart-cost-line"><span><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel${s.fuelMiles?` (est. ${s.fuelMiles.toFixed(0)} mi)`:''}</span><span>${s.fuelMiles?`${cur}${s.fuelCost.toFixed(0)}`:'—'}</span></label>
     </div>
-    <p class="hint" style="margin:6px 0 0">Accommodation and fuel are typical-rate/straight-line estimates, not live prices or a real route — untick either to leave it out of the total below.</p>
+    <p class="hint" style="margin:6px 0 0">Accommodation and fuel are typical-rate/straight-line estimates, not live prices or a real route — untick either to leave it out of the total below.${mixed?' Green fees are shown in each course’s own currency; no conversion is applied yet — see the note below.':''}</p>
     <div class="cart-total">
       <div><div class="cart-total-label">Estimated trip total</div><div class="cart-total-coverage">${s.fees.covered} of ${s.fees.of} course fee${s.fees.of===1?'':'s'} counted</div></div>
-      <div class="cart-total-amount">£${s.grand.toFixed(0)}</div>
+      <div class="cart-total-amount">${moneyBucketFmt(s.grandBuckets)}</div>
     </div>`;
 }

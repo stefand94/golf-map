@@ -98,6 +98,22 @@ function archTags(s){
 const EDITS={};
 function V(i,f){return(EDITS[i]&&EDITS[i][f]!==undefined)?EDITS[i][f]:C[i][f]}
 function isEdited(i){return !!EDITS[i]&&Object.keys(EDITS[i]).length>0}
+/* Currency correctness: every course's wd/we fee text already carries its
+   own correct national symbol at data-entry time (£ for GB/NI, € for the
+   Republic of Ireland, R for South Africa) — so rather than maintaining a
+   second region→currency map that can drift from the data, the symbol is
+   read straight back out of that text. Falls back to £ (by far the most
+   common case) when neither fee field has a recognisable symbol. */
+function feeCurrencySym(s){
+  if(!s)return null;
+  if(/€/.test(s))return'€';
+  if(/£/.test(s))return'£';
+  if(/(^|\s)R\s?\d/.test(s))return'R';
+  return null;
+}
+function courseCurrency(i){
+  return feeCurrencySym(V(i,'wd'))||feeCurrencySym(V(i,'we'))||'£';
+}
 function editCount(){return Object.keys(EDITS).filter(isEdited).length}
 
 /* GOLF-15: two distinct personal lists, not one generic "favourites" set.

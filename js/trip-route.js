@@ -38,8 +38,8 @@ function tripOrder(indices){
 function tripWishlistSummaryHTML(unscheduled){
   if(unscheduled.length<1)return'';
   const order=tripOrder(unscheduled);
-  let fee=0,covered=0;
-  order.forEach(i=>{const f=extractFee(V(i,'wd'));if(f!=null){fee+=f;covered++;}});
+  const feeBuckets={};let covered=0;
+  order.forEach(i=>{const f=extractFee(V(i,'wd'));if(f!=null){moneyBucketAdd(feeBuckets,courseCurrency(i),f);covered++;}});
   let miles=0,mins=0;
   for(let k=1;k<order.length;k++){
     const a=order[k-1],b=order[k];
@@ -48,7 +48,7 @@ function tripWishlistSummaryHTML(unscheduled){
   }
   const orderLabel=order.map(i=>V(i,'n')).join(' → ');
   return`<p class="hint" style="margin:4px 10px 8px">Suggested order (nearest-neighbour): <b>${esc(orderLabel)}</b><br>
-    ${covered?`£${fee.toFixed(0)} in green fees (${covered} of ${order.length} priced)`:'no parseable green fees yet'}${order.length>1?` · ~${miles.toFixed(0)} mi / ${fmtDriveMinutes(Math.round(mins/5)*5)} driving between them straight-line`:''}</p>`;
+    ${covered?`${moneyBucketFmt(feeBuckets)} in green fees (${covered} of ${order.length} priced)`:'no parseable green fees yet'}${order.length>1?` · ~${miles.toFixed(0)} mi / ${fmtDriveMinutes(Math.round(mins/5)*5)} driving between them straight-line`:''}</p>`;
 }
 /* GOLF-33: small fixed palette so each day's stops read as visually
    distinct on the map — cycles if there are more days than colors rather

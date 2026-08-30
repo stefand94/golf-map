@@ -52,6 +52,25 @@ function setAppMode(mode,opts){
     const h=appModeHash(mode);
     if((location.hash||'')!==h)history.pushState({appMode:mode},'',h||location.pathname+location.search);
   }
+  syncMastTripButton();
+}
+/* The masthead's top-right pill always read "Plan a trip", even while
+   already inside Plan/Build — a dead-end back to a screen you're already
+   on. While a trip mode is active it becomes "← Back to Explore" instead,
+   wired to exitTripBuilder(); Explore mode gets the original button back,
+   badge and all. */
+function syncMastTripButton(){
+  const btn=document.getElementById('open-trip');
+  if(!btn)return;
+  const badge=document.getElementById('trip-badge');
+  const badgeHTML=badge?badge.outerHTML:'<span id="trip-badge"></span>';
+  if(appMode==='explore'){
+    btn.innerHTML=`Plan a trip${badgeHTML}`;
+    btn.onclick=()=>enterTripBuilder();
+  }else{
+    btn.innerHTML='← Back to Explore';
+    btn.onclick=()=>exitTripBuilder();
+  }
 }
 /* GOLF-64: the header's "Plan a trip" and a popup's "Add to trip" both land
    in PLAN mode now, never straight in Build — you gather candidates into the

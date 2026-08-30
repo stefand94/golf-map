@@ -107,7 +107,10 @@ function revertEdit(i){delete EDITS[i];saveState();closeDrawer();render()}
 function corrections(){return Object.keys(EDITS).filter(isEdited).map(i=>{
   const changed={};Object.entries(EDITS[i]).forEach(([k,v])=>{if(k!=='_why')changed[k]={from:C[i][k],to:v}});
   return{course:C[i].n,why:EDITS[i]._why||null,changed}})}
-document.getElementById('open-trip').addEventListener('click',()=>enterTripBuilder());
+/* GOLF-?? masthead back-button: #open-trip's click handler is now owned by
+   syncMastTripButton() (js/app-mode.js), assigned as .onclick so it can
+   swap between enterTripBuilder()/exitTripBuilder() per mode — no
+   addEventListener here, that would stack a second, stale handler. */
 document.getElementById('open-export').addEventListener('click',()=>{
   const list=corrections();
   const tripOrdered=tripSeq;

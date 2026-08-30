@@ -180,14 +180,20 @@ function tbDriveCapHTML(l){
   if(l.mins==null&&!l.label)return'';
   return`<div class="tb-drive-cap" title="${esc(l.label)}">🚗 Drive ${l.mins!=null?esc(fmtDriveMinutes(l.mins)):'—'}${l.real?` <span class="tb-drive-real">· live</span>`:''}</div>`;
 }
-const tbMoney=v=>v!=null?`£${v.toFixed(0)}`:'—';
+/* Currency correctness: every £ figure in the pane now takes an optional
+   currency symbol (defaulting to £, the common case), sourced from
+   courseCurrency()/tripItemPriceDetail()'s new `cur` field rather than
+   hardcoded — GBP for GB/NI courses, EUR for Republic of Ireland, ZAR
+   (shown as R) for South Africa. */
+const tbMoney=(v,cur='£')=>v!=null?`${cur}${v.toFixed(0)}`:'—';
 /* GOLF-74: the £ figure as the visitor should read it. A per-person-sharing
    stay shows its arithmetic ("£90 × 2 (sharing) = £180") rather than silently
    folding the doubling into the trip total — the stakeholder's explicit ask.
    Everything else is plain tbMoney(), so this is a strict superset. */
 function tripPriceLabel(det){
   if(!det||det.total==null)return'—';
-  return det.sharing?`£${det.base.toFixed(0)} × ${det.guests} (sharing) = £${det.total.toFixed(0)}`:tbMoney(det.total);
+  const cur=det.cur||'£';
+  return det.sharing?`${cur}${det.base.toFixed(0)} × ${det.guests} (sharing) = ${cur}${det.total.toFixed(0)}`:tbMoney(det.total,cur);
 }
 function itinLegRowHTML(l){
   if(l.type==='drive')return tbDriveCapHTML(l);
@@ -200,11 +206,12 @@ function itinLegRowHTML(l){
      new style. Build-mode rows, which have no meta line to spare, keep the
      tooltip. */
   const sharing=!!(l.detail&&l.detail.sharing);
+  const cur=(l.detail&&l.detail.cur)||'£';
   return`<div class="tb-day-course tb-item-${l.type}" style="cursor:default">
     <span class="tb-item-icon">${icon}</span>
     <div class="tb-item-main"><span class="tb-item-name">${esc(l.name)}</span>
-      ${sharing?`<div class="cart-region">£${l.detail.base.toFixed(0)} × ${l.detail.guests} (sharing) = £${l.detail.total.toFixed(0)}</div>`:''}</div>
-    <span class="tb-item-price">${tbMoney(l.price)}</span>
+      ${sharing?`<div class="cart-region">${cur}${l.detail.base.toFixed(0)} × ${l.detail.guests} (sharing) = ${cur}${l.detail.total.toFixed(0)}</div>`:''}</div>
+    <span class="tb-item-price">${tbMoney(l.price,cur)}</span>
   </div>`;
 }
 function tbItinAllHTML(){
@@ -217,7 +224,7 @@ function tbItinAllHTML(){
         <span class="tb-day-title"><span class="tb-day-dot"></span>
           <span class="tb-day-title-text">Day ${idx+1}</span>
           <span class="tb-day-place">${[dow,d.place?esc(d.place):''].filter(Boolean).join(' · ')}</span></span>
-        <span class="tb-day-sum">${tbMoney(tripDayTotal(idx)||null)}</span>
+        <span class="tb-day-sum">${tbMoney(tripDayTotal(idx)||null,tripDayCurrency(tripDays[idx]))}</span>
       </div>
       <div class="tb-day-rule"></div>
       ${legs.length?legs.map(itinLegRowHTML).join(''):`<p class="hint" style="margin:var(--sp-3)">${d.kind!=='golf'?TRIP_DAY_KINDS[d.kind]:'No stops yet.'}</p>`}
@@ -226,10 +233,10 @@ function tbItinAllHTML(){
 }
 function tbItinGolfListHTML(){
   const rows=[];
-  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='golf')rows.push({day:idx+1,name:tripItemName(it),price:tripItemPrice(d,it)});}));
+  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='golf')rows.push({day:idx+1,name:tripItemName(it),price:tripItemPrice(d,it),cur:courseCurrency(it.i)});}));
   if(!rows.length)return`<p class="hint">No golf rounds scheduled yet.</p>`;
   return rows.map(r=>`<div class="itin-card"><div class="itin-card-kicker">Day ${r.day}</div>
-    <div class="itin-flat-row"><span class="itin-golf-name-lg">⛳ ${esc(r.name)}</span><span class="itin-golf-price-lg">${tbMoney(r.price)}</span></div></div>`).join('');
+    <div class="itin-flat-row"><span class="itin-golf-name-lg">⛳ ${esc(r.name)}</span><span class="itin-golf-price-lg">${tbMoney(r.price,r.cur)}</span></div></div>`).join('');
 }
 function tbItinHotelRailHTML(){
   const rows=[];
@@ -242,10 +249,10 @@ function tbItinHotelRailHTML(){
 }
 function tbItinPoiListHTML(){
   const rows=[];
-  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='poi')rows.push({day:idx+1,name:tripItemName(it),price:tripItemPrice(d,it)});}));
+  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='poi')rows.push({day:idx+1,name:tripItemName(it),price:tripItemPrice(d,it),cur:tripDayCurrency(d)});}));
   if(!rows.length)return`<p class="hint">No stops added yet.</p>`;
   return rows.map(r=>`<div class="itin-card"><div class="itin-card-kicker">Day ${r.day}</div>
-    <div class="itin-flat-row"><span class="itin-hotel-name-md">📍 ${esc(r.name)}</span><span class="itin-golf-price-lg">${tbMoney(r.price)}</span></div></div>`).join('');
+    <div class="itin-flat-row"><span class="itin-hotel-name-md">📍 ${esc(r.name)}</span><span class="itin-golf-price-lg">${tbMoney(r.price,r.cur)}</span></div></div>`).join('');
 }
 function tbItineraryHTML(){
   if(!tripSeq.length&&!tripDays.some(d=>d.place||tripDayItems(d).length))
@@ -269,10 +276,10 @@ function tripCostLineItems(){
   // so the line item explains its own (doubled) amount.
   tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{
     const det=tripItemPriceDetail(d,it);
-    items.push({label:tripItemName(it)+(det.sharing?` (£${det.base.toFixed(0)} × ${det.guests} sharing)`:''),
-      cat:CAT[it.type]||'Stop',amount:det.total,day:idx+1});
+    items.push({label:tripItemName(it)+(det.sharing?` (${det.cur}${det.base.toFixed(0)} × ${det.guests} sharing)`:''),
+      cat:CAT[it.type]||'Stop',amount:det.total,day:idx+1,cur:det.cur});
   }));
-  tripUnscheduled().forEach(i=>items.push({label:V(i,'n'),cat:'Golf',amount:extractFee(V(i,'wd')),day:null}));
+  tripUnscheduled().forEach(i=>items.push({label:V(i,'n'),cat:'Golf',amount:extractFee(V(i,'wd')),day:null,cur:courseCurrency(i)}));
   return items;
 }
 function tripCostBreakdown(){
@@ -295,16 +302,19 @@ function tbTripTotal(){return tripCostBreakdown().grand;}
    real vs assumed. */
 function tbCostsTabHTML(){
   const b=tripCostBreakdown();
-  return`<div class="cost-banner"><div class="cost-banner-label">Trip total</div><div class="cost-banner-amount">£${b.grand.toFixed(0)}</div></div>
+  const cur=tripPrimaryCurrency();
+  const mixed=b.items.some(x=>x.cur&&x.cur!==cur);
+  return`<div class="cost-banner"><div class="cost-banner-label">Trip total</div><div class="cost-banner-amount">${cur}${b.grand.toFixed(0)}</div></div>
     <div class="cost-card"><table class="cost-summary-table">
-      <tr><td>⛳ Golf</td><td>£${b.golfTotal.toFixed(0)}</td></tr>
-      <tr><td>🏨 Stays</td><td>£${b.stayTotal.toFixed(0)}</td></tr>
-      <tr><td>📍 Stops</td><td>£${b.poiTotal.toFixed(0)}</td></tr>
-      <tr><td><label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel (est.)</label></td><td>£${b.fuelCost.toFixed(0)}</td></tr>
+      <tr><td>⛳ Golf</td><td>${cur}${b.golfTotal.toFixed(0)}</td></tr>
+      <tr><td>🏨 Stays</td><td>${cur}${b.stayTotal.toFixed(0)}</td></tr>
+      <tr><td>📍 Stops</td><td>${cur}${b.poiTotal.toFixed(0)}</td></tr>
+      <tr><td><label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel (est.)</label></td><td>${cur}${b.fuelCost.toFixed(0)}</td></tr>
     </table></div>
-    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.</p>
+    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?` Totals are shown in ${cur} but some line items below are priced in a different currency — no conversion is applied yet.`:''}</p>
     <div class="cost-line-items-label">Line items</div>
-    <div class="cost-card"><table class="cost-line-table">${b.items.length?b.items.map(x=>`<tr><td>${esc(x.label)} <span class="wt">${x.cat}</span></td><td>${tbMoney(x.amount)}</td></tr>`).join(''):`<tr><td colspan="2" class="hint">No costs yet.</td></tr>`}</table></div>`;
+    <div class="cost-card"><table class="cost-line-table">${b.items.length?b.items.map(x=>`<tr><td>${esc(x.label)} <span class="wt">${x.cat}</span></td><td>${tbMoney(x.amount,x.cur||cur)}</td></tr>`).join(''):`<tr><td colspan="2" class="hint">No costs yet.</td></tr>`}</table></div>
+    <p class="hint" style="margin-top:var(--sp-2)">🔜 Currency conversion (showing every cost in one currency) is planned for a future update — for now, amounts display in each course's own local currency.</p>`;
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -351,7 +361,7 @@ function tbDayCardHTML(d,idx){
         <span class="tb-day-title"><span class="tb-day-dot"></span>
           <span class="tb-day-title-text">Day ${idx+1}</span>
           ${sub?`<span class="tb-day-place">${sub}</span>`:''}</span>
-        <span class="tb-day-sum">${tbMoney(tripDayTotal(idx)||null)}</span>
+        <span class="tb-day-sum">${tbMoney(tripDayTotal(idx)||null,tripDayCurrency(tripDays[idx]))}</span>
       </div>
       <div class="tb-day-rule"></div>
       <details class="tb-day-settings"${openSettings?' open':''}>
@@ -407,9 +417,14 @@ function tripDayScheduleHTML(){
       ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
       ondrop="event.preventDefault();tbDropOut(this);tbDropDayAtEnd();">
       <button class="tb-btn is-primary" onclick="tbAddDayWithPlace();">＋ Add a day</button>
-      ${tripDays.length>1?`<button class="tb-btn" onclick="tripAutoOrder()" title="Reorder your courses by nearest-neighbour to cut driving">Auto-order</button>`:''}
+      ${tripDays.length>1?`<details class="tb-drop">
+        <summary class="tb-btn" title="Automatically reorder your trip">Auto schedule ▾</summary>
+        <div class="tb-drop-body">
+          <button type="button" class="tb-menu-item" onclick="tripAutoOrder();renderTripBuilder();tbDrawMap();" title="Reorder your courses by nearest-neighbour to cut driving">Order by nearest-neighbour</button>
+        </div>
+      </details>`:''}
     </div>
-    <div class="tb-total-card"><span class="tb-total-label">Trip total</span><span class="tb-total-amount">£${total.toFixed(0)}</span></div>`;
+    <div class="tb-total-card"><span class="tb-total-label">Trip total</span><span class="tb-total-amount">${tripPrimaryCurrency()}${total.toFixed(0)}</span></div>`;
 }
 
 /* Plan mode's wishlist. */
@@ -428,11 +443,11 @@ function tbWishlistHTML(){
     </div>`;}).join('');
   return`<div class="tb-day">
       <div class="tb-day-head"><span class="tb-day-title"><span class="tb-day-title-text">Wishlist</span>
-        <span class="tb-day-place">${unscheduled.length} course${unscheduled.length===1?'':'s'}</span></span></div>
+        <span class="tb-day-place">${unscheduled.length} course${unscheduled.length===1?'':'s'}</span></span>
+        <button class="tb-btn is-primary is-sm" onclick="enterBuildMode()" title="Start scheduling these courses into days">Schedule →</button></div>
       <div class="tb-day-rule"></div>
       ${rows}
       ${tripWishlistSummaryHTML(unscheduled)}
-      <div class="tb-day-add"><button class="tb-btn is-primary" onclick="enterBuildMode()">Schedule these into days →</button></div>
     </div>`;
 }
 function tbPlanHTML(){return tbDiscoverTabHTML()+`<div class="tb-section-title" style="margin-top:var(--sp-6)">Your wishlist</div>${tbWishlistHTML()}`;}
@@ -485,12 +500,12 @@ function renderTripBuilder(){
   const total=tbTripTotal();
   const isBuild=appMode==='build';
   const activeTab=isBuild?tbBuildTab:'discover';
-  const TABS=[['itin','Itinerary'],['cost','Costs'],['discover','Discover']];
+  const TABS=[['discover','Discover'],['itin','Itinerary'],['cost','Costs']];
   const showItinFilters=isBuild&&tbBuildTab==='itin';
   pane.innerHTML=`
     <div class="tb-navbar">
       <span class="tb-wordmark">${isBuild?'Build your trip':'Plan a trip'}</span>
-      <span class="tb-navbar-right"><span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}£${total.toFixed(0)}</span>
+      <span class="tb-navbar-right"><span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${tripPrimaryCurrency()}${total.toFixed(0)}</span>
         <button class="tb-btn is-sm is-quiet" id="tb-exit">← Explore</button></span>
     </div>
     ${tbSearchFieldHTML({id:'tb-unified-search',variant:'bar',value:tbSearchQ,

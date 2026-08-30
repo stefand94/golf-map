@@ -383,7 +383,12 @@ function render(){
      (filter chips, played/want/trip toggles, corrections save, reset,
      wipeStoredState) keeps the Trip Builder pane and the mast's cart-count
      badge in sync for free. */
-  document.getElementById('trip-badge').textContent=TRIP.size?String(TRIP.size):'';
+  /* GOLF-?? masthead back-button: while a trip mode is active the button
+     reads "← Back to Explore" and carries no #trip-badge span at all (see
+     syncMastTripButton() in js/app-mode.js) — guard the lookup instead of
+     assuming the badge always exists, or this throws and aborts render(). */
+  const tripBadgeEl=document.getElementById('trip-badge');
+  if(tripBadgeEl)tripBadgeEl.textContent=TRIP.size?String(TRIP.size):'';
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
   layer.clearLayers();
   /* Map-clutter fix: with all 326 course markers still clustering
