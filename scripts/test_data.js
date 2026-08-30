@@ -48,7 +48,7 @@ if (!Array.isArray(C) || !Array.isArray(C_TOP100) || !Array.isArray(C_SCOTLAND) 
   console.error('FAIL: C, C_TOP100, C_SCOTLAND, or C_WALES is not an array — data files did not populate expected globals');
   process.exit(1);
 }
-const EXPECTED_TOTAL = 382; // GOLF-78: 363 + 19 curated South African courses
+const EXPECTED_TOTAL = 392; // 2026-08-30 multi-course audit: 382 + 6 Ireland siblings (Rosapenna x2, Ballyliffin, K Club, Fota Island Belvelly, Druids Heath) + 4 South Africa siblings (Fancourt Montagu+Outeniqua, Mount Edgecombe Lakes, Lost City)
 if (C.length !== EXPECTED_TOTAL) {
   fail(`C.length is ${C.length}, expected ${EXPECTED_TOTAL} — update EXPECTED_TOTAL in this script if a course was deliberately added/removed`);
 }
