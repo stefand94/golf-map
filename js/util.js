@@ -135,4 +135,17 @@ function distOut(i){const dy=C[i].lat-HOME[0],dx=(C[i].lng-HOME[1])*Math.cos(HOM
    at ~69 mi/degree latitude is accurate enough for a labelled "as the
    crow flies" stat, not for anything requiring real precision. */
 function distMiles(i){return Math.round(distOut(i)*69)}
-function rankNum(i){const t=C[i].t100;if(!t)return 9999;if(typeof t.gl==='number')return t.gl;if(t.gbi)return t.gbi/20;return 500}
+// GOLF-81: was only checking gl/gbi — every England-Top100/Scotland/Wales/
+// Ireland/South-Africa course (t100.eng/sco/wal/ire/za) fell through to
+// the flat 500 default, so "Sort: by ranking" never actually ordered a
+// single-nation list by its own ranking, only separated ranked from
+// unranked. Mirrors bestRankBadge()'s own field-priority list.
+function rankNum(i){const t=C[i].t100;if(!t)return 9999;
+  if(typeof t.gl==='number')return t.gl;
+  if(t.gbi)return t.gbi/20;
+  if(typeof t.eng==='number')return t.eng;
+  if(typeof t.sco==='number')return t.sco;
+  if(typeof t.wal==='number')return t.wal;
+  if(typeof t.ire==='number')return t.ire;
+  if(typeof t.za==='number')return t.za;
+  return 500}

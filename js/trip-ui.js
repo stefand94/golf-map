@@ -326,11 +326,17 @@ let tbBuildTab='itin',tbItinFilter='all',tbDriveToggle=true,tbDayShown=null;
    a right-aligned running total in the header, a thin divider, then the
    stops — each preceded by its own small "Drive X min" caption.
 
-   Everything that is a *setting* rather than a *stop* (day kind, city,
-   date, manual drive override, remove-day) is folded into one collapsed
-   "Options" dropdown, per "you can save space by hiding things in drop
-   down menus". It opens automatically for a just-created day so GOLF-66's
-   "+ Add day lands you in the city picker" flow still works in one click. */
+   Everything that used to be a *setting* rather than a *stop* (day kind,
+   city, date, manual drive override) lived behind a collapsed "Options"
+   dropdown — dropped entirely per stakeholder feedback ("it's confusing").
+   Remove-day survives as a single icon in the ⋯ overflow menu next to the
+   day title (reusing the same tbRowMenuHTML() pattern every item row
+   already uses), since a day that could never be deleted once created
+   would be a real dead end, not just decluttering. Day kind/city/date/
+   drive-in override have no UI entry point any more — their functions
+   (TRIP_DAY_KINDS, tripDaySetKind/SetDate, the manual drive-in field) are
+   left intact in the data model and read normally wherever they're already
+   set, in case this needs revisiting. */
 function tbDayCardHTML(d,idx){
   const kind=TRIP_DAY_KINDS[d.kind]?d.kind:'golf';
   const items=tripDayItems(d);
@@ -349,7 +355,8 @@ function tbDayCardHTML(d,idx){
   }).join('');
   const dow=d.date?new Date(d.date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short'}):'';
   const sub=[dow,d.place?esc(d.place):'',kind!=='golf'?TRIP_DAY_KINDS[kind]:''].filter(Boolean).join(' · ');
-  const openSettings=tbFocusDayPlace===d.id;
+  const menu=tbRowMenuHTML(
+    `<button type="button" class="tb-menu-item is-danger" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">🗑 Remove day ${idx+1}</button>`);
   return`
     <div class="tb-day tb-day-${kind}"
       ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
@@ -362,20 +369,9 @@ function tbDayCardHTML(d,idx){
           <span class="tb-day-title-text">Day ${idx+1}</span>
           ${sub?`<span class="tb-day-place">${sub}</span>`:''}</span>
         <span class="tb-day-sum">${tbMoney(tripDayTotal(idx)||null,tripDayCurrency(tripDays[idx]))}</span>
+        ${menu}
       </div>
       <div class="tb-day-rule"></div>
-      <details class="tb-day-settings"${openSettings?' open':''}>
-        <summary>Options</summary>
-        <div class="tb-day-settings-body">
-          <select aria-label="Day type" onchange="tripDaySetKind(${d.id},this.value);renderTripBuilder();">${Object.entries(TRIP_DAY_KINDS).map(([k,label])=>`<option value="${k}"${k===kind?' selected':''}>${label}</option>`).join('')}</select>
-          ${tbSearchFieldHTML({id:`tb-place-${d.id}`,value:d.place||'',placeholder:'City',ariaLabel:`City for day ${idx+1}`,wrapStyle:'flex:1 1 150px;min-width:0'})}
-          <label style="display:inline-flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-caption);color:var(--stone)"
-            title="Optional. Setting a date costs this day at the correct weekday or weekend green fee.">Date · optional
-            <input type="date" value="${d.date??''}" onchange="tripDaySetDate(${d.id},this.value===''?null:this.value);renderTripBuilder();"></label>
-          ${tripDayDriveHTML(d,idx)}
-          <button class="tb-btn is-sm is-danger" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">Remove day ${idx+1}</button>
-        </div>
-      </details>
       ${items.length?rowsHTML:`<p class="hint" style="margin:0 var(--sp-3) var(--sp-3) 44px">Drag a course here, or add a stop below.</p>`}
       <div class="tb-dropzone"
         ondragover="event.preventDefault();event.stopPropagation();event.dataTransfer.dropEffect='move';tbDropOver(this);"
@@ -597,20 +593,11 @@ function renderTripBuilder(){
       }
     });
   }
-  /* ── Call site 3: each day card's city field. ── */
-  if(isBuild&&tbBuildTab==='itin'&&tbItinFilter==='all'){
-    tripDays.forEach(d=>{
-      const s=tbAttachSearch(`tb-place-${d.id}`,{
-        onPick(r){tripDaySetPlaceGeo(d.id,r.label,r.lat,r.lng);renderTripBuilder();tbDrawMap();}
-      });
-      if(!s)return;
-      // Typing over a geocoded city and leaving commits the plain text.
-      s.input.addEventListener('change',()=>{tripDaySetPlace(d.id,s.input.value);});
-      /* GOLF-66: a just-created day hands focus straight to its city box.
-         One-shot, so an ordinary re-render doesn't yank focus back. */
-      if(tbFocusDayPlace===d.id){tbFocusDayPlace=null;s.input.focus();}
-    });
-  }
+  /* Call site 3 (each day card's own city field) was retired along with
+     the rest of the day card's "Options" dropdown — see tbDayCardHTML()'s
+     comment. tbFocusDayPlace is left in the transient-state reset lists
+     untouched (harmless — it just never gets set to anything meaningful
+     any more) rather than threading its removal through every reset site. */
   if(appMode==='plan'){
     ['place','anchor','region'].forEach(k=>{
       const b=document.getElementById('tb-tab-'+k);

@@ -16,6 +16,33 @@ buildChips('f-access',Object.entries(ACCESS).map(([k,v])=>[k,v.label,v.colour,v.
 buildChips('f-arch',ARCHS,'arch',false);
 buildChips('f-region',REGIONS.map(r=>[r,r]),'region',false);
 buildChips('f-flag',[['ranked','Top 100 ranked'],['top100','England Top 100 only'],['topScot','Scotland only'],['topWales','Wales only'],['topIreland','Ireland only'],['topSouthAfrica','South Africa only'],['weekend','Open at weekends'],['walk','Walk from station'],['winter','Good in winter'],['sweep','Sweep finds'],['edited','My corrections'],['played','Played'],['want','Want to play']],'flag',false);
+/* GOLF-81: which of the three nations a course belongs to, derived from
+   the existing topIreland/topSouthAfrica flags rather than a new field —
+   every course without either flag is Great Britain (England/Scotland/
+   Wales, which already share one map and one set of regions). */
+function courseNation(i){const c=C[i];return c.topIreland?'ie':c.topSouthAfrica?'za':'gb'}
+const NATIONS=[['gb','Great Britain'],['ie','Ireland'],['za','South Africa']];
+function renderNationPills(){
+  document.getElementById('nation-pills').innerHTML=NATIONS.map(([k,l])=>
+    `<button class="nation-pill" aria-pressed="${state.nation===k}" data-nation="${k}">${l}</button>`).join('');
+}
+renderNationPills();
+document.getElementById('nation-pills').addEventListener('click',e=>{
+  const b=e.target.closest('[data-nation]');if(!b)return;
+  const k=b.dataset.nation;
+  state.nation=state.nation===k?null:k;
+  /* "populate and order by ranking" — set once on pick so the list opens
+     ranked; the Sort dropdown still works normally after that, this just
+     picks a sensible first view instead of forcing rank permanently. */
+  if(state.nation)state.sort='rank';
+  renderNationPills();
+  document.getElementById('sort').value=state.sort;
+  saveState();render();
+  if(state.nation){
+    const pts=C.map((c,i)=>i).filter(i=>courseNation(i)===state.nation).map(i=>[C[i].lat,C[i].lng]);
+    if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[28,28]});
+  }
+});
 function updateFilterBadges(){
   [['arch','b-arch'],['region','b-region'],['flag','b-flag']].forEach(([k,id])=>{
     const b=document.getElementById(id),n=state[k].size;
@@ -249,6 +276,9 @@ function toggle(id,lyr){const b=document.getElementById(id);
    distMiles() while building the marker popups at load time, which is before
    this file has been evaluated. See the note at the top of js/util.js. */
 function passes(i){const c=C[i];
+  // GOLF-81: nothing passes — map and list both stay empty — until a
+  // country pill has been picked.
+  if(!state.nation||courseNation(i)!==state.nation)return false;
   if(state.access.size&&!state.access.has(V(i,'a')))return false;
   /* GOLF-69 (item 2): the four fixed BANDS chips became a real min/max
      range. A course whose weekday fee doesn't parse to a number (feeNum
@@ -420,7 +450,11 @@ function render(){
   renderListMode(nearAnchor);
   if(nearAnchor!=null&&exploreListMode==='near'){renderNearestList(nearAnchor);return;}
   const list=document.getElementById('list');
-  if(!shown.length){list.innerHTML=`<p class="empty">Nothing matches. The cheapest heathland tends to be weekdays-only — try dropping that filter.</p>`;return}
+  if(!shown.length){
+    list.innerHTML=state.nation
+      ?`<p class="empty">Nothing matches. The cheapest heathland tends to be weekdays-only — try dropping that filter.</p>`
+      :`<p class="empty">Pick a country above to see its courses, ranked.</p>`;
+    return}
   list.innerHTML=shown.map(i=>{const a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')],near=C[i].nearStation;
     return `<button class="card" data-i="${i}"><div class="card-top">
       <p class="cname">${flagSVG(a.colour,a.pole,15,false)}${V(i,'n')}${isEdited(i)?' <span class="edited">EDITED</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want</span>':''}</p>

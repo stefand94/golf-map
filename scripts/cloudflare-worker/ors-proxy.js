@@ -367,10 +367,14 @@ out center 40;
 // GOLF-56: place search for start/free/end day locations. ORS's geocoder
 // takes its key as a query param (not the Authorization header the
 // directions/POI endpoints use — a real, confirmed difference between
-// those two parts of the ORS API, not an oversight). Boundary is fixed to
-// Great Britain/Northern Ireland since that's the app's whole map — a
-// bare "Newquay" shouldn't have to compete with a same-named place
-// abroad.
+// those two parts of the ORS API, not an oversight). Boundary was fixed to
+// GBR only, which silently broke South Africa (and Ireland) city search
+// once GOLF-77/78 added those nations' courses — a bare "Newquay" still
+// shouldn't have to compete with a same-named place abroad, but the
+// boundary now needs to cover every nation this app has course data for,
+// not just the original one. Update this list whenever a new nation's
+// course data ships.
+const GEOCODE_COUNTRIES = 'GBR,IRL,ZAF';
 async function handleGeocode(body, env) {
   const text = typeof body.text === 'string' ? body.text.trim() : '';
   if (!text) {
@@ -380,7 +384,7 @@ async function handleGeocode(body, env) {
   const url = new URL(ORS_GEOCODE_URL);
   url.searchParams.set('api_key', env.ORS_API_KEY);
   url.searchParams.set('text', text.slice(0, 200));
-  url.searchParams.set('boundary.country', 'GBR');
+  url.searchParams.set('boundary.country', GEOCODE_COUNTRIES);
   url.searchParams.set('size', '6');
 
   let orsRes;
