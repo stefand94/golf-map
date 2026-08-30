@@ -520,6 +520,16 @@
   .list-mode-pills{display:flex;gap:4px}
   .list-mode-pills button{font:600 11px var(--font-sans);padding:4px 9px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--stone);cursor:pointer}
   .list-mode-pills button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+  /* GOLF-81: the three country pills gating Explore's course list. Same
+     pill shape/weight as .chip but a distinct class — .chip's handler is
+     the generic data-k/data-v Set-toggle wiring and would misfire on
+     these (single-select, not a Set). */
+  .nation-pills{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-bottom:var(--sp-1)}
+  .nation-pill{min-height:var(--tap-sm);padding:0 var(--sp-4);border:1px solid var(--line);border-radius:var(--radius-pill);
+    background:#fff;color:var(--ink-soft);font:600 var(--fs-small) var(--font-sans);cursor:pointer;
+    transition:background .12s,border-color .12s,color .12s,box-shadow .12s}
+  .nation-pill:hover{border-color:var(--accent);color:var(--ink)}
+  .nation-pill[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:var(--shadow-sm)}
   .fgroup .chips{margin-top:2px}
   .chips{display:flex;flex-wrap:wrap;gap:5px}
   .chip{display:inline-flex;align-items:center;gap:5px;font:500 11.5px/1 var(--font-sans);padding:6px 10px;border:1px solid var(--line);border-radius:20px;background:#fff;color:var(--ink-soft);cursor:pointer;transition:background .12s,border-color .12s,color .12s,box-shadow .12s,transform .12s}
@@ -665,6 +675,11 @@
          — it finds towns and cities via the same geocoder, not just
          courses, and place hits render above the course list in #place-results. -->
     <div class="filters">
+      <!-- GOLF-81: which nation to browse. The course list stays empty
+           until one is picked (see render() in js/explore.js) — with GB/
+           Ireland/South Africa all sharing one map, showing everything by
+           default made an unfiltered "382 of 382" list nobody could use. -->
+      <div class="nation-pills" id="nation-pills" role="group" aria-label="Choose a country"></div>
       <input id="q" type="search" placeholder="Search a club, town or city…" autocomplete="off" aria-label="Search courses and places">
       <div id="place-results" class="explore-places" hidden></div>
       <details class="fgroup fdrop" id="g-filters">

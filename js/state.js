@@ -117,6 +117,10 @@ function loadStoredState(){
   }
   if(saved.q)state.q=saved.q;
   if(saved.sort)state.sort=saved.sort;
+  // GOLF-81: which nation's courses the Explore list is gated to — 'gb'
+  // (Great Britain: England/Scotland/Wales)/'ie'/'za', or null before any
+  // pill has been picked.
+  if(saved.nation==='gb'||saved.nation==='ie'||saved.nation==='za')state.nation=saved.nation;
   if(saved.mapCenter&&saved.mapZoom)restoredView={center:saved.mapCenter,zoom:saved.mapZoom};
 }
 function saveState(){
@@ -127,7 +131,7 @@ function saveState(){
       edits:EDITS,
       played:[...PLAYED],want:[...WANT],trips,activeTripId,
       filters:{access:[...state.access],price:[...state.price],region:[...state.region],flag:[...state.flag],arch:[...state.arch],feeMin:state.feeMin,feeMax:state.feeMax},
-      q:state.q,sort:state.sort,
+      q:state.q,sort:state.sort,nation:state.nation,
       mapCenter:c?[c.lat,c.lng]:undefined,mapZoom:map?map.getZoom():undefined
     }));
   }catch(e){/* storage unavailable or full — persistence is best-effort */}
@@ -143,6 +147,10 @@ const HOME=[51.5467873,-0.1798875];
    feeMin/feeMax — null on either side meaning "no bound on this end". The
    key itself is kept in the shape so a localStorage payload written by an
    older build still loads without special-casing; nothing reads it. */
-const state={access:new Set(),price:new Set(),region:new Set(),flag:new Set(),arch:new Set(),q:"",sort:"name",feeMin:null,feeMax:null};
+// GOLF-81: nation:null means "no country picked yet" — the Explore list
+// stays empty until one of the three pills is clicked (see render() in
+// js/explore.js); once set, the list is gated to that nation and sorted
+// by ranking.
+const state={access:new Set(),price:new Set(),region:new Set(),flag:new Set(),arch:new Set(),q:"",sort:"name",feeMin:null,feeMax:null,nation:null};
 let map; // assigned below; loadStoredState reads state before map exists
 loadStoredState();
