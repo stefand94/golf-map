@@ -302,6 +302,7 @@ function tripDayRemove(dayId){
   tripDays=tripDays.filter(d=>d.id!==dayId);
   if(tbAddStop&&tbAddStop.dayId===dayId)tbAddStop=null;
   tbPoiOn.delete(dayId);
+  tbHeritageOn.delete(dayId);
   saveState();
 }
 function tripDaySetDriveIn(dayId,mins){
@@ -539,7 +540,7 @@ function tbDropOn(dayId,beforeRef){
 function tripClearAll(){
   if(!TRIP.size)return;
   if(!confirm(`Clear all ${TRIP.size} course${TRIP.size===1?'':'s'} from your trip? This can't be undone.`))return;
-  TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;tripDays=[];tripDayNextId=1;tbPoiOn.clear();
+  TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;tripDays=[];tripDayNextId=1;tbPoiOn.clear();tbHeritageOn.clear();
   tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null; // GOLF-65/66/67 transient state
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(false);}

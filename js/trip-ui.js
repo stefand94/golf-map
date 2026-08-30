@@ -371,8 +371,9 @@ function tbDayCardHTML(d,idx){
         ondragover="event.preventDefault();event.stopPropagation();event.dataTransfer.dropEffect='move';tbDropOver(this);"
         ondragleave="tbDropOut(this,event);"
         ondrop="event.preventDefault();event.stopPropagation();tbDropOut(this);tbDropInDay(${d.id},null);">↓ Put it last on Day ${idx+1}</div>
-      ${tripDaySuggestedTown(d)?`<div class="tb-day-town">Staying near <b>${esc(tripDaySuggestedTown(d))}</b>${nCourses&&ORS_PROXY_URL?` · <a href="#" class="linkbtn" onclick="event.preventDefault();tbTogglePois(${d.id})">${tbPoiOn.has(d.id)?'hide':'show'} what's nearby</a>`:''}</div>`:''}
+      ${tripDaySuggestedTown(d)?`<div class="tb-day-town">Staying near <b>${esc(tripDaySuggestedTown(d))}</b>${nCourses&&ORS_PROXY_URL?` · <a href="#" class="linkbtn" onclick="event.preventDefault();tbTogglePois(${d.id})">${tbPoiOn.has(d.id)?'hide':'show'} what's nearby</a> · <a href="#" class="linkbtn" onclick="event.preventDefault();tbToggleHeritage(${d.id})">${tbHeritageOn.has(d.id)?'hide':'show'} castles &amp; distilleries</a>`:''}</div>`:''}
       ${tbPoiListHTML(d)}
+      ${tbHeritageListHTML(d)}
       ${tbAddStopFormHTML(d.id)}
       <div class="tb-day-add">
         <button class="tb-btn is-sm" onclick="tbPromptHotel(${d.id})">🏨 Add stay</button>

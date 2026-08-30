@@ -27,6 +27,13 @@
  *      POST {mode:'geocode', text:'Newquay'}
  *      -> {results:[{label, lat, lng}, ...]}
  *
+ *   4. Heritage points of interest — castles, distilleries, historic
+ *      sites (GOLF-79 — a thematic sibling of mode:'pois' above, sourced
+ *      from OpenStreetMap's Overpass API instead of ORS since Overpass
+ *      already indexes exactly these tags for free, no key needed):
+ *      POST {mode:'heritage-pois', point:[lng,lat], radius?:metres}
+ *      -> {pois:[{name, category, lat, lng}, ...]}
+ *
  * No database, no state, no logging of requests beyond Cloudflare's own
  * standard request logs — a pure pass-through either way.
  *
@@ -54,6 +61,10 @@
 const ORS_DIRECTIONS_URL = 'https://api.openrouteservice.org/v2/directions/driving-car/geojson';
 const ORS_POIS_URL = 'https://api.openrouteservice.org/pois';
 const ORS_GEOCODE_URL = 'https://api.openrouteservice.org/geocode/autocomplete';
+// GOLF-79: Overpass, not ORS — a free, no-key OpenStreetMap query service.
+// overpass-api.de is the most widely used public instance; kept as a single
+// constant so a documented mirror can be swapped in if it's ever rate-limited.
+const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 // A leg between two golf courses rarely needs more than a couple hundred
 // points to look like a real road at map zoom levels — cap it so the
 // response (and what ends up cached in localStorage) stays small.
@@ -84,6 +95,14 @@ export default {
     }
     if (body && body.mode === 'geocode') {
       return handleGeocode(body, env);
+    }
+    if (body && body.mode === 'heritage-pois') {
+      // Overpass needs no ORS_API_KEY at all — but the guard above already
+      // 500'd if it's missing, so this mode is only reachable on a Worker
+      // that's otherwise correctly configured. Fine: it costs nothing to
+      // require the same setup as every other mode, and avoids a second,
+      // differently-gated code path.
+      return handleHeritagePois(body);
     }
     return handleRoute(body, env);
   },
@@ -215,6 +234,105 @@ async function handlePois(body, env) {
         category: (catEntry && catEntry.category_name) || null,
         lat: Array.isArray(coords) ? coords[1] : null,
         lng: Array.isArray(coords) ? coords[0] : null,
+      };
+    })
+    .filter((p) => typeof p.lat === 'number' && typeof p.lng === 'number');
+
+  return json({ pois });
+}
+
+// GOLF-79: castles, distilleries, and a small curated set of other
+// historic/tourism points near a given spot — a thematic sibling of
+// handlePois() above (fuel/food/lodging), sourced from Overpass instead of
+// ORS since Overpass already tags exactly these things for free.
+async function handleHeritagePois(body) {
+  const { point } = body || {};
+  if (!isCoord(point)) {
+    return json({ error: 'point must be a [lng, lat] number pair' }, 400);
+  }
+  // Same clamp policy as handlePois(): 200m to 5km, defaulting to 3km — a
+  // castle or distillery is worth a slightly wider net than "food near
+  // tonight's stop" since these are detour-worthy, not walk-to.
+  const rawRadius = typeof body.radius === 'number' ? body.radius : 3000;
+  const radius = Math.min(5000, Math.max(200, rawRadius));
+  const [lng, lat] = point;
+
+  // Deliberately curated, not "every historic/tourism tag OSM knows" — the
+  // ask was specifically castles and distilleries, plus a few more things
+  // worth a detour. Overpass QL: each clause finds node/way/relation
+  // matching that tag within `radius` metres of the point; `out center`
+  // collapses a way/relation to a single representative point.
+  const query = `
+[out:json][timeout:20];
+(
+  nwr(around:${radius},${lat},${lng})[historic=castle];
+  nwr(around:${radius},${lat},${lng})[craft=distillery];
+  nwr(around:${radius},${lat},${lng})[tourism=viewpoint];
+  nwr(around:${radius},${lat},${lng})[historic=monument];
+  nwr(around:${radius},${lat},${lng})[historic=ruins];
+  nwr(around:${radius},${lat},${lng})[tourism=museum];
+);
+out center 40;
+`.trim();
+
+  let opRes;
+  try {
+    opRes = await fetch(OVERPASS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'data=' + encodeURIComponent(query),
+    });
+  } catch (e) {
+    return json({ error: 'could not reach Overpass' }, 502);
+  }
+
+  if (!opRes.ok) {
+    // Overpass's public instance rate-limits under load (429) — the
+    // client-side cache (GOLF-79 app code) is what keeps this on-demand
+    // rather than hammered, but a transient failure here just surfaces as
+    // "nothing found" to the visitor, same as any other POI fetch failure.
+    return json({ error: 'Overpass request failed', status: opRes.status }, 502);
+  }
+
+  let data;
+  try {
+    data = await opRes.json();
+  } catch (e) {
+    return json({ error: 'Overpass returned invalid JSON' }, 502);
+  }
+
+  const CATEGORY_LABELS = {
+    'historic=castle': 'Castle',
+    'craft=distillery': 'Distillery',
+    'tourism=viewpoint': 'Viewpoint',
+    'historic=monument': 'Monument',
+    'historic=ruins': 'Ruins',
+    'tourism=museum': 'Museum',
+  };
+  function categoryFor(tags) {
+    if (!tags) return null;
+    if (tags.historic === 'castle') return CATEGORY_LABELS['historic=castle'];
+    if (tags.craft === 'distillery') return CATEGORY_LABELS['craft=distillery'];
+    if (tags.tourism === 'viewpoint') return CATEGORY_LABELS['tourism=viewpoint'];
+    if (tags.historic === 'monument') return CATEGORY_LABELS['historic=monument'];
+    if (tags.historic === 'ruins') return CATEGORY_LABELS['historic=ruins'];
+    if (tags.tourism === 'museum') return CATEGORY_LABELS['tourism=museum'];
+    return null;
+  }
+
+  const elements = Array.isArray(data && data.elements) ? data.elements : [];
+  const pois = elements
+    .map((el) => {
+      const tags = el.tags || {};
+      // A node has lat/lon directly; a way/relation only has them via
+      // `out center`'s synthesized `center` field.
+      const elLat = typeof el.lat === 'number' ? el.lat : el.center && el.center.lat;
+      const elLng = typeof el.lon === 'number' ? el.lon : el.center && el.center.lon;
+      return {
+        name: tags.name || categoryFor(tags) || 'Unnamed',
+        category: categoryFor(tags),
+        lat: typeof elLat === 'number' ? elLat : null,
+        lng: typeof elLng === 'number' ? elLng : null,
       };
     })
     .filter((p) => typeof p.lat === 'number' && typeof p.lng === 'number');

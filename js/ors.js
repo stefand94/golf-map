@@ -274,3 +274,61 @@ function tbPoiListHTML(day){
   if(!pois.length)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Nothing found nearby.</p></div>`;
   return`<div class="tb-poi-list">${pois.map(p=>`<div class="tb-poi-row"><span>${p.name}</span>${p.category?`<span class="wt">${p.category}</span>`:''}</div>`).join('')}</div>`;
 }
+
+/* GOLF-79: castles, distilleries, and a small curated set of other
+   historic/tourism points near an overnight stop — a thematic sibling of
+   GOLF-46's food/fuel/lodging POIs immediately above, same toggle/cache/
+   silent-fail contract, routed through the same Worker but to a
+   mode:'heritage-pois' branch backed by OpenStreetMap's Overpass API
+   instead of ORS. Deliberately its own cache key/toggle set/point lookup
+   rather than reusing GOLF-46's — the two answer different questions
+   ("what's practical nearby" vs "what's worth a detour") and a visitor
+   may want either independently of the other. */
+const HERITAGE_CACHE_KEY='golfmap:heritagecache:v1';
+function heritageCacheLoad(){try{return JSON.parse(localStorage.getItem(HERITAGE_CACHE_KEY)||'{}');}catch(e){return{};}}
+function heritageCacheSave(c){try{localStorage.setItem(HERITAGE_CACHE_KEY,JSON.stringify(c));}catch(e){}}
+let heritagePending=new Set();
+/* dayIds currently toggled "on" — pure UI state, not persisted, same
+   convention as tbPoiOn. */
+let tbHeritageOn=new Set();
+/* Returns a cached heritage-POI array for this day's overnight point, or
+   null if not yet known — mirrors tbPoisFor()'s exact contract (cache
+   lookup -> null on miss + async fetch + cache + re-render, silent on
+   failure) so a course/stop with genuinely nothing nearby just renders an
+   empty list, never an error. */
+function tbHeritageFor(day){
+  if(!ORS_PROXY_URL)return null;
+  const pt=tbPoiPoint(day);
+  if(!pt)return null;
+  const key=poiKey(pt.lat,pt.lng);
+  const cache=heritageCacheLoad();
+  if(cache[key])return cache[key].pois;
+  if(heritagePending.has(key))return null;
+  heritagePending.add(key);
+  fetch(ORS_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({mode:'heritage-pois',point:[pt.lng,pt.lat],radius:3000})})
+    .then(r=>r.ok?r.json():Promise.reject(new Error('proxy error '+r.status)))
+    .then(data=>{
+      if(data&&Array.isArray(data.pois)){
+        const c=heritageCacheLoad();
+        c[key]={pois:data.pois,ts:Date.now()};
+        heritageCacheSave(c);
+        if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
+      }
+    })
+    .catch(()=>{ /* silent — on-demand only, no retry loop; toggle just stays empty */ })
+    .finally(()=>{heritagePending.delete(key);});
+  return null;
+}
+function tbToggleHeritage(dayId){
+  if(tbHeritageOn.has(dayId))tbHeritageOn.delete(dayId);else tbHeritageOn.add(dayId);
+  renderTripBuilder();tbDrawMap();
+}
+function tbHeritageListHTML(day){
+  if(!tbHeritageOn.has(day.id))return'';
+  if(!ORS_PROXY_URL)return'';
+  const pois=tbHeritageFor(day);
+  if(pois==null)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Looking for castles, distilleries and other nearby sights…</p></div>`;
+  if(!pois.length)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Nothing found nearby.</p></div>`;
+  return`<div class="tb-poi-list">${pois.map(p=>`<div class="tb-poi-row"><span>${p.name}</span>${p.category?`<span class="wt">${p.category}</span>`:''}</div>`).join('')}</div>`;
+}

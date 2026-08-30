@@ -306,6 +306,20 @@ function tbDrawPois(){
    is jittered a few hundred metres and says so in its tooltip, so two
    locationless stops on the same day don't stack into one invisible pin
    and nobody mistakes an approximate pin for a real address. */
+/* GOLF-79: small muted markers for whichever days currently have "Show
+   castles & distilleries" toggled on — same cache-only, no-fetch-here,
+   excluded-from-fitBounds contract as tbDrawPois() above. */
+function tbDrawHeritage(){
+  tripDays.forEach(d=>{
+    if(!tbHeritageOn.has(d.id))return;
+    const pois=tbHeritageFor(d);
+    if(!pois)return;
+    pois.forEach(p=>{
+      L.circleMarker([p.lat,p.lng],{radius:5,color:'#8A5A2B',weight:1.5,fillColor:'#fff',fillOpacity:.9})
+        .bindTooltip(p.category?`${p.name} — ${p.category}`:p.name,{direction:'top'}).addTo(tripLayer);
+    });
+  });
+}
 function tbDayFallbackPoint(idx){
   const d=tripDays[idx];
   if(!d)return null;
@@ -363,6 +377,7 @@ function tbDrawMap(){
     if(tbDiscoveryTab==='place'&&tbPlaceAnchor)pts2=[...pts2,[tbPlaceAnchor.lat,tbPlaceAnchor.lng]];
   }
   tbDrawPois();
+  tbDrawHeritage();
   tbDrawTripItems();
   const pts=[...pts1,...pts2];
   if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
