@@ -96,6 +96,29 @@ Gotchas hit this round:
   `WebSearch` (Wikipedia's "Old Head of Kinsale" article, cross-checked
   against oldhead.com) and hand-added to the output JSON.
 
+### `fetch_south_africa_golf_clubs.py`
+GOLF-78: not a `GetClubsByName` clone like the four scripts above — HNA's
+(`handicaps.co.za`) `FindClubs` endpoint is location/radius-based, not
+name-text-based (confirmed live: a `{SearchText:'Fancourt'}` POST returns
+unfiltered alphabetical results, no name filtering at all). Uses a two-step
+lookup instead: `GetClubHierarchies {}` (one call, returns all ~449 SA
+clubs nationally with just name/region/id, no coordinates) fetched once per
+run, matched client-side via `difflib` against the requested names, then
+`FindClubs {clubId,pageNumber:1,pageSize:10}` per matched club for the full
+record (coordinates come back directly — no separate "View Details" page
+fetch needed, better than expected).
+
+```bash
+python3 scripts/fetch_south_africa_golf_clubs.py --names-file scripts/output/southafrica_names.json --out scripts/output/south_africa_golf_clubs.json
+```
+
+Output JSON shape matches every other nation's script, so
+`merge_club_details.py`/`merge_club_images.py` need no changes. No
+fee/architect/note fields exist in HNA's response at all (`Website`,
+`LogoImage`, `TeeBookingUrl`, `MembershipUrl`, `FacilityDescription` were
+null for every course fetched this round) — that content is hand-curated,
+same as Scotland/Wales/Ireland.
+
 ### `extract_courses.py`
 Pulls `{n, lat, lng}` out of a `data/courses-*.js` file into plain JSON, for
 feeding into `compute_nearest_stations.py`. Regex-based against the existing
@@ -279,5 +302,6 @@ station position) before merging anything in by hand — then run
 | `fetch_scottish_golf_clubs.py` | 2026-08-26 | Sourced the 41 Scotland entries in `data/courses-scotland.js` (GOLF-25) |
 | `fetch_wales_golf_clubs.py` | 2026-08-26 | Sourced the 22 Wales entries in `data/courses-wales.js` (GOLF-26) |
 | `fetch_ireland_golf_clubs.py` | 2026-08-30 | Sourced the 37 Ireland entries in `data/courses-ireland.js` (GOLF-77) |
+| `fetch_south_africa_golf_clubs.py` | 2026-08-30 | Sourced the 19 South Africa entries in `data/courses-southafrica.js` (GOLF-78) |
 | `compute_nearest_stations.py` + `merge_nearest_stations.py` | 2026-08-26 | Populated `nearStation` on all 41 Scotland + 22 Wales entries |
 | `fetch_course_stats.py` + `merge_course_stats.py` | 2026-08-25 | Populated `courseStats` on 66 of 221 entries (GOLF-12/13) — London 18-hole + England Top 30 scope, first of two monthly batches (free-tier quota) |

@@ -878,6 +878,19 @@ that touches rendering, filters, or persistence:
     than "undefined". `node scripts/test_data.js` reports "OK — 363
     courses (114 Top 100)".
 
+42. **South Africa course data (GOLF-78).** Click the "South Africa only"
+    flag chip and confirm the count reads "19 of 382" (additive on top of
+    the existing 363). Click "Fit to results" and confirm the map recentres
+    over South Africa, not London/Ireland. Open a popup (e.g. Fancourt or
+    Leopard Creek) and confirm fees render in `R` (ZAR); confirm the popup
+    shows a `ZA #N` ranking badge, a region drawn from the new South
+    Africa-specific `REGIONS` entries (Western Cape & Garden Route,
+    KwaZulu-Natal, Gauteng, Eastern Cape, Mpumalanga & Kruger, North West),
+    and — since no South African course carries `nearStation` or `stn` on
+    this map — the graceful "Outside the rail catchment" copy rather than
+    "undefined". `node scripts/test_data.js` reports "OK — 382 courses
+    (114 Top 100)".
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile

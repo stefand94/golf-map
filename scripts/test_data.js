@@ -20,7 +20,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const files = ['data/config.js', 'data/stations.js', 'data/courses-london.js', 'data/courses-top100.js', 'data/courses-scotland.js', 'data/courses-wales.js', 'data/courses-ireland.js'];
+const files = ['data/config.js', 'data/stations.js', 'data/courses-london.js', 'data/courses-top100.js', 'data/courses-scotland.js', 'data/courses-wales.js', 'data/courses-ireland.js', 'data/courses-southafrica.js'];
 
 const sandbox = {};
 vm.createContext(sandbox);
@@ -48,7 +48,7 @@ if (!Array.isArray(C) || !Array.isArray(C_TOP100) || !Array.isArray(C_SCOTLAND) 
   console.error('FAIL: C, C_TOP100, C_SCOTLAND, or C_WALES is not an array — data files did not populate expected globals');
   process.exit(1);
 }
-const EXPECTED_TOTAL = 363; // GOLF-77: 326 + 37 curated Irish courses
+const EXPECTED_TOTAL = 382; // GOLF-78: 363 + 19 curated South African courses
 if (C.length !== EXPECTED_TOTAL) {
   fail(`C.length is ${C.length}, expected ${EXPECTED_TOTAL} — update EXPECTED_TOTAL in this script if a course was deliberately added/removed`);
 }
@@ -74,7 +74,7 @@ C.forEach((c, i) => {
   if (c.band !== 'na' && !BANDS[c.band]) fail(`${label}: band "${c.band}" not in BANDS and not "na"`);
 
   // London-catchment-only: every C entry (non-Top100, non-Scotland, non-Wales, non-Ireland) should have stn/walk/book per SCHEMA.md
-  if (!c.top100 && !c.topScot && !c.topWales && !c.topIreland) {
+  if (!c.top100 && !c.topScot && !c.topWales && !c.topIreland && !c.topSouthAfrica) {
     if (c.stn === undefined) fail(`${label}: London-catchment entry missing "stn"`);
     else if (!stationNames.has(c.stn)) fail(`${label}: stn "${c.stn}" does not match any known station in R/ISOLATED`);
     if (c.walk === undefined) fail(`${label}: London-catchment entry missing "walk"`);

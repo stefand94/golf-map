@@ -164,6 +164,7 @@ function bestRankBadge(i){const t=C[i].t100;if(!t)return'';
   if(typeof t.sco==='number')all.push(`SCO #${t.sco}`);
   if(typeof t.wal==='number')all.push(`WAL #${t.wal}`);
   if(typeof t.ire==='number')all.push(`IRE #${t.ire}`);
+  if(typeof t.za==='number')all.push(`ZA #${t.za}`);
   if(t.gbi)all.push(`GB&amp;I #${t.gbi}`);
   if(typeof t.gl==='number')all.push(`GL #${t.gl}`);
   if(!all.length)return'';
@@ -172,7 +173,7 @@ function bestRankBadge(i){const t=C[i].t100;if(!t)return'';
 }
 function rankChips(i){const t=C[i].t100;if(!t)return'';const p=[];
   if(typeof t.gl==='number')p.push(`Greater London #${t.gl}`);if(t.gbi)p.push(`Britain &amp; Ireland #${t.gbi}`);
-  if(t.eng)p.push(`England #${t.eng}`);if(t.sco)p.push(`Scotland #${t.sco}`);if(t.wal)p.push(`Wales #${t.wal}`);if(t.ire)p.push(`Ireland #${t.ire}`);
+  if(t.eng)p.push(`England #${t.eng}`);if(t.sco)p.push(`Scotland #${t.sco}`);if(t.wal)p.push(`Wales #${t.wal}`);if(t.ire)p.push(`Ireland #${t.ire}`);if(t.za)p.push(`South Africa #${t.za}`);
   if(t.lse)p.push(`London &amp; SE #${t.lse}`);if(t.sur)p.push(`Surrey #${t.sur}`);
   if(typeof t.gl==='string')p.push(t.gl);if(t.kent)p.push(t.kent);
   return `<p class="ranks">${p.map(x=>`<span>${x}</span>`).join('')}</p>`}
@@ -188,7 +189,7 @@ function popupHTML(i){
     <p class="sub">${c.r} · ${a.label}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
     <div class="fees"><div class="fee-box"><b>Weekday</b><span>${V(i,'wd')}</span></div>
     <div class="fee-box"><b>Weekend</b><span>${V(i,'we')}</span></div></div>
-    <dl><dt>Course</dt><dd>${V(i,'spec')}</dd><dt>Design</dt><dd>${V(i,'arch')}</dd><dt>By rail</dt><dd>${travel}</dd>${club&&club.phone?`<dt>Phone</dt><dd>${club.phone}</dd>`:''}${(c.top100||c.topScot||c.topWales||c.topIreland)?`<dt>From home</dt><dd>${distMiles(i)} mi, as the crow flies</dd>`:''}</dl>
+    <dl><dt>Course</dt><dd>${V(i,'spec')}</dd><dt>Design</dt><dd>${V(i,'arch')}</dd><dt>By rail</dt><dd>${travel}</dd>${club&&club.phone?`<dt>Phone</dt><dd>${club.phone}</dd>`:''}${(c.top100||c.topScot||c.topWales||c.topIreland||c.topSouthAfrica)?`<dt>From home</dt><dd>${distMiles(i)} mi, as the crow flies</dd>`:''}</dl>
     <p class="note">${V(i,'note')}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${club.blurb}</span>`:''}</p>
     ${calcHTML(i)}
     <div class="actions">

@@ -15,7 +15,7 @@ function buildChips(id,items,key,withIcon){
 buildChips('f-access',Object.entries(ACCESS).map(([k,v])=>[k,v.label,v.colour,v.pole]),'access',true);
 buildChips('f-arch',ARCHS,'arch',false);
 buildChips('f-region',REGIONS.map(r=>[r,r]),'region',false);
-buildChips('f-flag',[['ranked','Top 100 ranked'],['top100','England Top 100 only'],['topScot','Scotland only'],['topWales','Wales only'],['topIreland','Ireland only'],['weekend','Open at weekends'],['walk','Walk from station'],['winter','Good in winter'],['sweep','Sweep finds'],['edited','My corrections'],['played','Played'],['want','Want to play']],'flag',false);
+buildChips('f-flag',[['ranked','Top 100 ranked'],['top100','England Top 100 only'],['topScot','Scotland only'],['topWales','Wales only'],['topIreland','Ireland only'],['topSouthAfrica','South Africa only'],['weekend','Open at weekends'],['walk','Walk from station'],['winter','Good in winter'],['sweep','Sweep finds'],['edited','My corrections'],['played','Played'],['want','Want to play']],'flag',false);
 function updateFilterBadges(){
   [['arch','b-arch'],['region','b-region'],['flag','b-flag']].forEach(([k,id])=>{
     const b=document.getElementById(id),n=state[k].size;
@@ -144,7 +144,7 @@ document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{
   ch.setAttribute('aria-pressed',String(!on));on?state[k].delete(v):state[k].add(v);updateFilterBadges();saveState();render();
   /* GOLF-22: turning on "England Top 100 only" is exactly the case that got
      lost off-screen — jump the map to wherever those results actually are. */
-  if(k==='flag'&&(v==='top100'||v==='topScot'||v==='topWales'||v==='topIreland')&&!on)fitToResults();}));
+  if(k==='flag'&&(v==='top100'||v==='topScot'||v==='topWales'||v==='topIreland'||v==='topSouthAfrica')&&!on)fitToResults();}));
 /* reflect any filters restored from localStorage onto the actual chip elements */
 document.querySelectorAll('.chip').forEach(ch=>{
   if(state[ch.dataset.k].has(ch.dataset.v))ch.setAttribute('aria-pressed','true');
@@ -274,6 +274,7 @@ function passes(i){const c=C[i];
   if(state.flag.has('topScot')&&!c.topScot)return false;
   if(state.flag.has('topWales')&&!c.topWales)return false;
   if(state.flag.has('topIreland')&&!c.topIreland)return false;
+  if(state.flag.has('topSouthAfrica')&&!c.topSouthAfrica)return false;
   if(state.flag.has('edited')&&!isEdited(i))return false;
   if(state.flag.has('played')&&!PLAYED.has(i))return false;
   if(state.flag.has('want')&&!WANT.has(i))return false;
@@ -421,7 +422,7 @@ function render(){
       <span class="cfee">${V(i,'wd')}<small>wknd ${V(i,'we')}</small></span></div>
       <p class="cmeta"><span>${a.label}</span>
       ${stn?`<span>${stn.n} · ${LINES[stn.l].n}</span>`:near?`<span>${near.n} · ${near.mi} mi straight-line</span>`:`<span style="color:var(--stone)">no close station</span>`}
-      ${(C[i].top100||C[i].topScot||C[i].topWales||C[i].topIreland)?`<span style="color:var(--stone)">${distMiles(i)} mi from home</span>`:''}
+      ${(C[i].top100||C[i].topScot||C[i].topWales||C[i].topIreland||C[i].topSouthAfrica)?`<span style="color:var(--stone)">${distMiles(i)} mi from home</span>`:''}
       ${bestRankBadge(i)}${C[i].sweep?'<span class="wt">sweep</span>':''}${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
   list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
     const i=+el.dataset.i;showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
@@ -448,6 +449,6 @@ legend.onAdd=()=>{const d=L.DomUtil.create('div','legend');
     '<b>Rail — colour + dash</b>'+
     Object.values(LINES).map(l=>`<div class="lr"><svg width="24" height="5"><line x1="0" y1="2.5" x2="24" y2="2.5" stroke="${l.c}" stroke-width="2" ${l.d?`stroke-dasharray="${l.d}"`:''}/></svg><span>${l.n}</span></div>`).join('')+
     '<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Zone 1 omitted. Station positions are from TfL and National Rail open data; curves still run point-to-point through stations, not along the real track. "Sweep find" tags mark courses added from geographic search rather than the original topic search — verify details before relying on them. England Top 100 pins (national, black-flag clubs included) are from a published 2026 price list cross-checked against England Golf’s club directory for name and coordinates — most sit outside the London rail network drawn on this map, so instead they show the nearest station <i>nationally</i> as a straight-line (as-the-crow-flies) distance, not a walking route or real travel time. Scotland and Wales pins are a curated set of notable courses (not a full national directory), sourced the same way from Scottish Golf and Wales Golf’s club directories; fee/access/architect details for these are indicative and unverified (marked "est") pending direct confirmation from each club.</div>'+
-    `<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Data last refreshed — stations: ${DATA_REFRESHED.stations}, England Top 100: ${DATA_REFRESHED.top100}, Scotland &amp; Wales: ${DATA_REFRESHED.scotlandWales}, nearest-station lookups: ${DATA_REFRESHED.nearStation}. All fetched once and stored statically; the page makes no live API calls.</div>`;
+    `<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Data last refreshed — stations: ${DATA_REFRESHED.stations}, England Top 100: ${DATA_REFRESHED.top100}, Scotland &amp; Wales: ${DATA_REFRESHED.scotlandWales}, nearest-station lookups: ${DATA_REFRESHED.nearStation}, Ireland: ${DATA_REFRESHED.ireland}, South Africa: ${DATA_REFRESHED.southAfrica}. All fetched once and stored statically; the page makes no live API calls.</div>`;
   L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d};
 legend.addTo(map);
