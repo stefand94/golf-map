@@ -70,6 +70,32 @@ needed) plus two new ones hit this round:
   in the source directories themselves, not a script bug. Same
   postcodes.io fallback applied.
 
+### `fetch_ireland_golf_clubs.py`
+GOLF-77: same script again, pointed at `golfireland.ie` — confirmed live
+via Browser-tool network inspection (382 clubs found) to run the identical
+"DotGolf" platform/API shape as England/Scotland/Wales.
+
+```bash
+python3 scripts/fetch_ireland_golf_clubs.py --names-file scripts/output/ireland_names.json --out scripts/output/ireland_golf_clubs.json
+```
+
+Gotchas hit this round:
+- Several search terms needed shortening (e.g. "Royal Co Down" not "Royal
+  County Down Golf Club") to get a hit at all — same as every prior nation.
+- `best_candidate()`'s difflib closest-match scoring picked the **wrong**
+  club for "Royal Co Down" — "Royal Co Down Ladies GC" (ClubId 30205,
+  `Latitude:0.0,Longitude:0.0`) scored closer to the search string than the
+  real club (ClubId 30204). Caught by spot-checking all resolved
+  coordinates for `0.0,0.0`/implausible values — always do this pass rather
+  than trusting the script's picks blindly, same lesson as the Newport/
+  Gailes zero-coordinate bug above. Fixed by fetching `GetClubDetails`
+  directly for the correct `clubId`.
+- Old Head Golf Links is genuinely absent from Golf Ireland's own directory
+  (same situation as Swinley Forest/Castle Stuart) — no postcodes.io
+  equivalent exists for Ireland, so its coordinates were sourced via
+  `WebSearch` (Wikipedia's "Old Head of Kinsale" article, cross-checked
+  against oldhead.com) and hand-added to the output JSON.
+
 ### `extract_courses.py`
 Pulls `{n, lat, lng}` out of a `data/courses-*.js` file into plain JSON, for
 feeding into `compute_nearest_stations.py`. Regex-based against the existing
@@ -252,5 +278,6 @@ station position) before merging anything in by hand — then run
 | `fetch_rail_geometry.py` + `merge_rail_geometry.py` | 2026-08-25 | Wrote `data/rail-geometry.js` — real OSM track geometry for all 8 TfL-network line families, replacing the spline approximation for those |
 | `fetch_scottish_golf_clubs.py` | 2026-08-26 | Sourced the 41 Scotland entries in `data/courses-scotland.js` (GOLF-25) |
 | `fetch_wales_golf_clubs.py` | 2026-08-26 | Sourced the 22 Wales entries in `data/courses-wales.js` (GOLF-26) |
+| `fetch_ireland_golf_clubs.py` | 2026-08-30 | Sourced the 37 Ireland entries in `data/courses-ireland.js` (GOLF-77) |
 | `compute_nearest_stations.py` + `merge_nearest_stations.py` | 2026-08-26 | Populated `nearStation` on all 41 Scotland + 22 Wales entries |
 | `fetch_course_stats.py` + `merge_course_stats.py` | 2026-08-25 | Populated `courseStats` on 66 of 221 entries (GOLF-12/13) — London 18-hole + England Top 30 scope, first of two monthly batches (free-tier quota) |

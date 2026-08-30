@@ -21,6 +21,7 @@ in `london-golf-map-v5_1.html` to know what's expected.
 | `C_TOP100` | array of course objects | The remaining 114 England Top 100 (and just-outside-the-100) national national courses not already in `C` (6 — The Grove, Royal Wimbledon, both Walton Heath courses, The Addington, Knole Park — are genuinely London-catchment and live in `C` instead — Coombe Hill is also a London-catchment C_TOP100-flagged entry, with `top100:1`/`t100.eng` merged in, rather than being listed twice). Appended onto `C` via `C.push(...C_TOP100)` at the end of the file — from the app's perspective there is one course array. |
 | `C_SCOTLAND` | array of course objects | GOLF-25: 51 curated notable Scottish courses (`data/courses-scotland.js`). Appended onto `C` via `C.push(...C_SCOTLAND)`, same convention as `C_TOP100`. |
 | `C_WALES` | array of course objects | GOLF-26: 38 curated notable Welsh courses (`data/courses-wales.js`). Appended onto `C` via `C.push(...C_WALES)`, same convention as `C_TOP100`. |
+| `C_IRELAND` | array of course objects | GOLF-77: 37 curated notable Irish courses, Republic of Ireland + Northern Ireland (`data/courses-ireland.js`). Appended onto `C` via `C.push(...C_IRELAND)`, same convention as `C_TOP100`. Republic entries price in `€`, Northern Ireland entries in `£` — a genuine currency split within one nation's data. |
 | `RAIL_GEOM` (`data/rail-geometry.js`) | `{family: [[[lat,lng],...], ...]}` | Real track geometry for the 8 TfL-network line families (`met`/`jub`/`nor`/`pic`/`cen`/`dis`/`eli`/`ovg`), traced from OpenStreetMap via `scripts/fetch_rail_geometry.py`. Each family maps to a list of polylines (one per matched OSM way, not stitched into one line). When a family has an entry here, the app draws these instead of the `spline()` approximation through `R`'s station points; National Rail groupings (`tl`/`gn`/`chil`/`sn`/`se`/`swr`/`wcml`) have no entry and always fall back to the spline, since they're our own station groupings by corridor, not one physical route. |
 
 ## Course object fields
@@ -35,13 +36,13 @@ Every field below appears on **all** courses unless marked otherwise.
 | `a` | string | Access tier key — must be one of the `ACCESS` keys. |
 | `band` | string | Price band key — one of `BANDS`, or `"na"`. |
 | `wd`, `we` | string | Weekday / weekend green fee, as free text (not always a single number — ranges, "Members only", "Ask club" etc. are common and intentional). |
-| `conf` | string | Data confidence: `"club"` (from the club's own site), `"press"` (published guide/trade press), or `"est"` (indicative/unverified). Drives an on-card confidence badge. GOLF-25/26: all `C_SCOTLAND`/`C_WALES` fee/access/architect/note fields are marked `"est"` — only coordinates/phone/website came from a live-verified source (the DotGolf API) this round. |
+| `conf` | string | Data confidence: `"club"` (from the club's own site), `"press"` (published guide/trade press), or `"est"` (indicative/unverified). Drives an on-card confidence badge. GOLF-25/26/77: all `C_SCOTLAND`/`C_WALES`/`C_IRELAND` fee/access/architect/note fields are marked `"est"` — only coordinates/phone/website came from a live-verified source (the DotGolf API) this round. |
 | `arch` | string | Free-text architect credit. Matched against `ARCHS` for filter tagging; not itself constrained to a fixed vocabulary. |
 | `spec` | string | Free-text course spec, e.g. `"18 · par 70 · 6,216 yds"`. Format is not fully consistent across entries — some omit yardage or par (see GOLF-12, which will formalise par/slope/course-rating as structured fields rather than parsing this string). |
 | `note` | string | Free-text description shown in the popup/card. |
 | `site` | string | Club website URL, or `""` if unknown. |
 
-### London-catchment-only fields (present on `C` entries, absent on `C_TOP100`/`C_SCOTLAND`/`C_WALES`)
+### London-catchment-only fields (present on `C` entries, absent on `C_TOP100`/`C_SCOTLAND`/`C_WALES`/`C_IRELAND`)
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -59,10 +60,11 @@ rather than a walkable London-network station.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `t100` | object | National-ranking object. Keys vary by which ranking list a course appears on: `gl` (Greater London list — historically a string label, not a number), `gbi` (Great Britain & Ireland ranking, number or label), `eng` (England Top 100 ranking, always a number 1–100 for `C_TOP100` entries), `sco` (GOLF-25: Scotland ranking, number, present on most but not all `C_SCOTLAND` entries — a handful of curated-but-unranked courses omit it), `wal` (GOLF-26: Wales ranking, number, same partial-coverage convention as `sco`). A course can have more than one key if it appears on multiple lists. |
+| `t100` | object | National-ranking object. Keys vary by which ranking list a course appears on: `gl` (Greater London list — historically a string label, not a number), `gbi` (Great Britain & Ireland ranking, number or label), `eng` (England Top 100 ranking, always a number 1–100 for `C_TOP100` entries), `sco` (GOLF-25: Scotland ranking, number, present on most but not all `C_SCOTLAND` entries — a handful of curated-but-unranked courses omit it), `wal` (GOLF-26: Wales ranking, number, same partial-coverage convention as `sco`), `ire` (GOLF-77: Ireland ranking, number 1–37, present on every `C_IRELAND` entry — sourced from the 2026 Irish Golfer Top 100, cross-checked against Top100GolfCourses.com). A course can have more than one key if it appears on multiple lists. |
 | `top100:1` | boolean flag | Marks an entry as one of the England Top 100 (or just-outside) courses. Present (and always `1`) on every `C_TOP100` entry, plus the 6 merged London-catchment courses noted above that live in `C` instead. |
 | `topScot:1` | boolean flag | GOLF-25: marks an entry as one of the 51 curated Scotland courses. Only ever present (and always `1`) on `C_SCOTLAND` entries. |
 | `topWales:1` | boolean flag | GOLF-26: marks an entry as one of the 38 curated Wales courses. Only ever present (and always `1`) on `C_WALES` entries. |
+| `topIreland:1` | boolean flag | GOLF-77: marks an entry as one of the 37 curated Ireland courses. Only ever present (and always `1`) on `C_IRELAND` entries. |
 | `sweep:1` | boolean flag | Marks a lower-confidence entry found via a broad geographic search rather than direct verification. London-catchment (`C`) only. |
 | `winter:1` | boolean flag | Marks a course specifically noted as playing well/draining well in winter. |
 | `nearStation` | `{n, lat, lng, mi}` | GOLF-10: nearest station **nationally** by straight-line (haversine) distance, computed via `scripts/compute_nearest_stations.py` + `scripts/merge_nearest_stations.py`. Deliberately a separate field from `stn`/`walk` — those imply a walkable London-network station; this is "as the crow flies" and may be many miles, including across water on the coast. Currently only populated on `C_TOP100` entries lacking `stn`. |

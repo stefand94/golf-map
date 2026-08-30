@@ -864,6 +864,20 @@ that touches rendering, filters, or persistence:
     are expected and fine — only JS exceptions count). `node
     scripts/check_js.js` and `node scripts/test_data.js` both pass.
 
+41. **Ireland course data (GOLF-77).** Click the "Ireland only" flag chip
+    and confirm the count reads "37 of 363" (not 326 — Ireland's 37
+    courses are additive on top of the existing London/Top100/Scotland/
+    Wales set). Click "Fit to results" and confirm the map recentres over
+    the island of Ireland, not London. Open a Northern Ireland popup (e.g.
+    Royal Portrush) and confirm fees render in `£`; open a Republic of
+    Ireland popup (e.g. Old Head) and confirm fees render in `€` — the
+    currency split is genuine, not a bug. Confirm the popup shows an
+    `IRE #N` ranking badge, a region drawn from the new Ireland-specific
+    `REGIONS` entries, and — since no Irish course carries `nearStation`
+    on this map — the graceful "Outside the rail catchment" copy rather
+    than "undefined". `node scripts/test_data.js` reports "OK — 363
+    courses (114 Top 100)".
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile
