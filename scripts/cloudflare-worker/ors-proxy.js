@@ -62,16 +62,24 @@ const ORS_DIRECTIONS_URL = 'https://api.openrouteservice.org/v2/directions/drivi
 const ORS_POIS_URL = 'https://api.openrouteservice.org/pois';
 const ORS_GEOCODE_URL = 'https://api.openrouteservice.org/geocode/autocomplete';
 // GOLF-79: Overpass, not ORS — a free, no-key OpenStreetMap query service.
-// overpass-api.de is the most widely used public instance. It 521/502'd
-// intermittently from inside the Worker right after this file's first
-// deploy (while succeeding every time from a plain machine — an edge/origin
-// hiccup, not a hard block: it was back to 200 minutes later), so it was
-// briefly swapped to overpass.osm.ch — but that mirror came back with an
-// empty result for a real, confirmed-present distillery and a malformed
-// status timestamp, i.e. stale/broken data, which is worse than an
-// intermittent outage. Reverted to overpass-api.de. Kept as a single
-// constant so another mirror can be swapped in if this one degrades again.
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+// overpass-api.de is the most widely used public instance, but every call
+// to it from *inside this Worker* consistently 521'd across two separate
+// redeploys (dozens of tries), while the identical request succeeded every
+// single time run directly from a plain machine — this looks like
+// overpass-api.de blocking/rejecting Cloudflare's shared Worker egress IP
+// ranges specifically, not a transient outage. overpass.osm.ch was tried
+// as a straight swap but returned an empty result for a real,
+// confirmed-present distillery and a malformed status timestamp — stale/
+// broken data, worse than unreachable. maps.mail.ru's Overpass mirror
+// tested with fresh, correct data matching overpass-api.de's own result
+// for the same query. Rather than gamble on one single mirror being
+// reachable from Workers, handleHeritagePois() below tries this ordered
+// list and falls through to the next entry on any failure — one redeploy
+// away from resilience instead of another round of guess-and-redeploy.
+const OVERPASS_URLS = [
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  'https://overpass-api.de/api/interpreter',
+];
 // A leg between two golf courses rarely needs more than a couple hundred
 // points to look like a real road at map zoom levels — cap it so the
 // response (and what ends up cached in localStorage) stays small.
@@ -282,31 +290,40 @@ async function handleHeritagePois(body) {
 out center 40;
 `.trim();
 
-  let opRes;
-  try {
-    opRes = await fetch(OVERPASS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'data=' + encodeURIComponent(query),
-    });
-  } catch (e) {
-    return json({ error: 'could not reach Overpass' }, 502);
+  // Try each mirror in order, falling through to the next on any failure
+  // (network error, non-OK status, or invalid JSON) — only the last
+  // mirror's failure is actually reported back to the client.
+  let data, lastError;
+  for (let i = 0; i < OVERPASS_URLS.length; i++) {
+    let opRes;
+    try {
+      opRes = await fetch(OVERPASS_URLS[i], {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(query),
+      });
+    } catch (e) {
+      lastError = { error: 'could not reach Overpass', status: 502 };
+      continue;
+    }
+    if (!opRes.ok) {
+      // Overpass rate-limits under load (429) — the client-side cache
+      // (GOLF-79 app code) is what keeps this on-demand rather than
+      // hammered, but a transient failure here just surfaces as "nothing
+      // found" to the visitor if every mirror is down, same as any other
+      // POI fetch failure.
+      lastError = { error: 'Overpass request failed', status: opRes.status };
+      continue;
+    }
+    try {
+      data = await opRes.json();
+      lastError = null;
+      break;
+    } catch (e) {
+      lastError = { error: 'Overpass returned invalid JSON', status: 502 };
+    }
   }
-
-  if (!opRes.ok) {
-    // Overpass's public instance rate-limits under load (429) — the
-    // client-side cache (GOLF-79 app code) is what keeps this on-demand
-    // rather than hammered, but a transient failure here just surfaces as
-    // "nothing found" to the visitor, same as any other POI fetch failure.
-    return json({ error: 'Overpass request failed', status: opRes.status }, 502);
-  }
-
-  let data;
-  try {
-    data = await opRes.json();
-  } catch (e) {
-    return json({ error: 'Overpass returned invalid JSON' }, 502);
-  }
+  if (lastError) return json(lastError, 502);
 
   const CATEGORY_LABELS = {
     'historic=castle': 'Castle',
