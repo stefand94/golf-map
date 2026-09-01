@@ -218,8 +218,28 @@ function courseTooltipHTML(i){
   }
   return`<div class="course-tt-name">${V(i,'n')}</div><div class="course-tt-meta">${V(i,'wd')}${ranks.length?' · '+ranks[0]:''}</div>`;
 }
+/* GOLF: a handful of clubs (Sunningdale Old/New, Saunton East/West,
+   Woburn's three courses, etc.) share one clubhouse and so share the exact
+   same lat/lng — 17 such groups confirmed in the live data. Below
+   disableClusteringAtZoom the cluster layer stops grouping/spiderfying
+   entirely, so exactly-coincident markers used to stack into one invisible,
+   unclickable pin with no way to reach the ones underneath. Fix: nudge every
+   course after the first in a coincident group outward by a few metres in a
+   small ring, deterministically (same index always gets the same offset) so
+   this never shuffles between reloads — invisible at normal zoom, but far
+   enough apart to each get their own flag and click target once zoomed in
+   close enough to matter. */
+const coincidenceSeen={};
+function jitteredLatLng(c){
+  const key=c.lat.toFixed(5)+','+c.lng.toFixed(5);
+  const n=coincidenceSeen[key]=(coincidenceSeen[key]||0)+1;
+  if(n===1)return[c.lat,c.lng];
+  const idx=n-1,angle=idx*137.5*Math.PI/180,dr=0.00006*(1+Math.floor((idx-1)/8)); // ~6-7m per ring step
+  return[c.lat+Math.sin(angle)*dr,c.lng+Math.cos(angle)*dr/Math.cos(c.lat*Math.PI/180)];
+}
 C.forEach((c,i)=>{
-  const m=L.marker([c.lat,c.lng],{icon:pinFor(i),title:c.n});
+  const[lat,lng]=jitteredLatLng(c);
+  const m=L.marker([lat,lng],{icon:pinFor(i),title:c.n});
   m.on('click',()=>{m.setPopupContent(popupHTML(i));highlight(i);drawLink(i)});
   m.bindPopup(popupHTML(i),{maxWidth:340});
   m.bindTooltip(courseTooltipHTML(i),{direction:'top',offset:[0,-28],className:'course-tt'});

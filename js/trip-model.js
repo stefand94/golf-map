@@ -199,7 +199,7 @@ function tripDaySetCourse(i,dayId){
    Typing a plain name and hitting Add still works exactly as before —
    that item just contributes no leg, same as an un-geocoded day place.
    tbAddStop is transient page state (one open form at a time, like
-   tbPoiOn), deliberately not persisted. */
+   tbHeritageOn), deliberately not persisted. */
 /* GOLF-73: the same transient state and the same form now serve BOTH adding
    and editing — an `itemId` on it is the only difference (null = add). Reusing
    one shape means the geocode search-as-you-type wiring, the coordinate
@@ -303,7 +303,6 @@ function tbAddStopFormHTML(dayId,itemId){
 function tripDayRemove(dayId){
   tripDays=tripDays.filter(d=>d.id!==dayId);
   if(tbAddStop&&tbAddStop.dayId===dayId)tbAddStop=null;
-  tbPoiOn.delete(dayId);
   tbHeritageOn.delete(dayId);
   saveState();
 }
@@ -542,7 +541,7 @@ function tbDropOn(dayId,beforeRef){
 function tripClearAll(){
   if(!TRIP.size)return;
   if(!confirm(`Clear all ${TRIP.size} course${TRIP.size===1?'':'s'} from your trip? This can't be undone.`))return;
-  TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;tripDays=[];tripDayNextId=1;tbPoiOn.clear();tbHeritageOn.clear();
+  TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;tripDays=[];tripDayNextId=1;tbHeritageOn.clear();
   tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null; // GOLF-65/66/67 transient state
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(false);}
