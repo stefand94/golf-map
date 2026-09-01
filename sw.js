@@ -16,7 +16,7 @@
    step below writes a fresh cache under the new name and activate
    deletes every other golfmap-shell-* cache, so a version bump is
    also how stale entries get evicted. */
-const CACHE_NAME = 'golfmap-shell-v1';
+const CACHE_NAME = 'golfmap-shell-v2';
 
 const PRECACHE_URLS = [
   './london-golf-map-v5_1.html',
@@ -36,6 +36,7 @@ const PRECACHE_URLS = [
   './js/handicap.js',
   './js/explore.js',
   './js/editor.js',
+  './js/touch-dnd.js',
   './js/boot.js',
   './data/config.js',
   './data/stations.js',

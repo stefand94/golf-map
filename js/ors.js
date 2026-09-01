@@ -206,96 +206,34 @@ function tripDaySuggestedTown(day){
   if(s&&s.n)return s.n;
   return C[i].r||null;
 }
-/* GOLF-46: "Show POIs" per overnight stop — food/fuel/accommodation near
-   where a day ends, via the same Cloudflare Worker proxy as GOLF-45's
-   drive times, hitting ORS's POI endpoint instead of its directions one
-   (routed server-side by a `mode:'pois'` field the Worker checks first).
-   Same "inert until ORS_PROXY_URL is set" and "cache, don't re-fetch a
-   view that hasn't changed" pattern as GOLF-45, so this never regresses
-   anything when the proxy isn't configured. */
-/* ORS caps category_ids at 5 values per request (confirmed against the
-   live API — a 6th silently 400s), so this is deliberately narrowed to
-   the 5 most useful "near tonight's stop" categories rather than every
-   food/fuel/stay id ORS knows about: fuel, restaurant, fast food, hotel,
-   guest house. Café/bar/hostel are dropped to fit the cap. */
-const POI_CATEGORIES=[596,570,566,108,106];
-const POI_CACHE_KEY='golfmap:poicache:v1';
-function poiCacheLoad(){try{return JSON.parse(localStorage.getItem(POI_CACHE_KEY)||'{}');}catch(e){return{};}}
-function poiCacheSave(c){try{localStorage.setItem(POI_CACHE_KEY,JSON.stringify(c));}catch(e){}}
+/* GOLF-79 (renamed "Show POI's" — supersedes the old GOLF-46 practical
+   food/fuel/lodging POI toggle, removed): castles, distilleries, and a
+   small curated set of other historic/tourism points near an overnight
+   stop, via the same Cloudflare Worker proxy as GOLF-45's drive times,
+   routed server-side to a mode:'heritage-pois' branch backed by
+   OpenStreetMap's Overpass API. Same "inert until ORS_PROXY_URL is set"
+   and "cache, don't re-fetch a view that hasn't changed" pattern as
+   GOLF-45, so this never regresses anything when the proxy isn't
+   configured. */
+const HERITAGE_CACHE_KEY='golfmap:heritagecache:v1';
+function heritageCacheLoad(){try{return JSON.parse(localStorage.getItem(HERITAGE_CACHE_KEY)||'{}');}catch(e){return{};}}
+function heritageCacheSave(c){try{localStorage.setItem(HERITAGE_CACHE_KEY,JSON.stringify(c));}catch(e){}}
 function poiKey(lat,lng){return lat.toFixed(4)+','+lng.toFixed(4);}
-let poiPending=new Set();
+let heritagePending=new Set();
 /* dayIds currently toggled "on" — pure UI state, not persisted, same as
    GOLF-44's cost-line checkboxes (resets to hidden on reload). */
-let tbPoiOn=new Set();
+let tbHeritageOn=new Set();
 function tbPoiPoint(day){
   const cs=tripDayCourses(day);
   if(!cs.length)return null;
   const i=cs[cs.length-1];
   return{lat:C[i].lat,lng:C[i].lng};
 }
-/* Returns a cached POI array for this day's overnight point, or null if
-   not yet known (not configured, no point yet, still loading, or the
-   call failed) — mirrors tripDayRealEstimate()'s contract exactly. A
-   cache miss fires the async fetch + cache + re-render itself. */
-function tbPoisFor(day){
-  if(!ORS_PROXY_URL)return null;
-  const pt=tbPoiPoint(day);
-  if(!pt)return null;
-  const key=poiKey(pt.lat,pt.lng);
-  const cache=poiCacheLoad();
-  if(cache[key])return cache[key].pois;
-  if(poiPending.has(key))return null;
-  poiPending.add(key);
-  const categories=POI_CATEGORIES;
-  fetch(ORS_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({mode:'pois',point:[pt.lng,pt.lat],radius:1500,categories})})
-    .then(r=>r.ok?r.json():Promise.reject(new Error('proxy error '+r.status)))
-    .then(data=>{
-      if(data&&Array.isArray(data.pois)){
-        const c=poiCacheLoad();
-        c[key]={pois:data.pois,ts:Date.now()};
-        poiCacheSave(c);
-        if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
-      }
-    })
-    .catch(()=>{ /* silent — toggle just stays empty, nothing to show the user */ })
-    .finally(()=>{poiPending.delete(key);});
-  return null;
-}
-function tbTogglePois(dayId){
-  if(tbPoiOn.has(dayId))tbPoiOn.delete(dayId);else tbPoiOn.add(dayId);
-  renderTripBuilder();tbDrawMap();
-}
-function tbPoiListHTML(day){
-  if(!tbPoiOn.has(day.id))return'';
-  if(!ORS_PROXY_URL)return'';
-  const pois=tbPoisFor(day);
-  if(pois==null)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Loading nearby food, fuel and places to stay…</p></div>`;
-  if(!pois.length)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Nothing found nearby.</p></div>`;
-  return`<div class="tb-poi-list">${pois.map(p=>`<div class="tb-poi-row"><span>${p.name}</span>${p.category?`<span class="wt">${p.category}</span>`:''}</div>`).join('')}</div>`;
-}
-
-/* GOLF-79: castles, distilleries, and a small curated set of other
-   historic/tourism points near an overnight stop — a thematic sibling of
-   GOLF-46's food/fuel/lodging POIs immediately above, same toggle/cache/
-   silent-fail contract, routed through the same Worker but to a
-   mode:'heritage-pois' branch backed by OpenStreetMap's Overpass API
-   instead of ORS. Deliberately its own cache key/toggle set/point lookup
-   rather than reusing GOLF-46's — the two answer different questions
-   ("what's practical nearby" vs "what's worth a detour") and a visitor
-   may want either independently of the other. */
-const HERITAGE_CACHE_KEY='golfmap:heritagecache:v1';
-function heritageCacheLoad(){try{return JSON.parse(localStorage.getItem(HERITAGE_CACHE_KEY)||'{}');}catch(e){return{};}}
-function heritageCacheSave(c){try{localStorage.setItem(HERITAGE_CACHE_KEY,JSON.stringify(c));}catch(e){}}
-let heritagePending=new Set();
-/* dayIds currently toggled "on" — pure UI state, not persisted, same
-   convention as tbPoiOn. */
-let tbHeritageOn=new Set();
 /* Returns a cached heritage-POI array for this day's overnight point, or
-   null if not yet known — mirrors tbPoisFor()'s exact contract (cache
-   lookup -> null on miss + async fetch + cache + re-render, silent on
-   failure) so a course/stop with genuinely nothing nearby just renders an
-   empty list, never an error. */
+   null if not yet known — mirrors tripDayRealEstimate()'s contract
+   exactly (cache lookup -> null on miss + async fetch + cache +
+   re-render, silent on failure) so a course/stop with genuinely nothing
+   nearby just renders an empty list, never an error. */
 function tbHeritageFor(day){
   if(!ORS_PROXY_URL)return null;
   const pt=tbPoiPoint(day);
@@ -328,7 +266,7 @@ function tbHeritageListHTML(day){
   if(!tbHeritageOn.has(day.id))return'';
   if(!ORS_PROXY_URL)return'';
   const pois=tbHeritageFor(day);
-  if(pois==null)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Looking for castles, distilleries and other nearby sights…</p></div>`;
+  if(pois==null)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Looking for things to do…</p></div>`;
   if(!pois.length)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Nothing found nearby.</p></div>`;
   return`<div class="tb-poi-list">${pois.map(p=>`<div class="tb-poi-row"><span>${p.name}</span>${p.category?`<span class="wt">${p.category}</span>`:''}</div>`).join('')}</div>`;
 }

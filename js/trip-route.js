@@ -276,29 +276,13 @@ function tripDrawCart(fit){
 /* Draws the confirmed cart route AND the not-yet-added discovery
    candidates on the map at once — tripShow()/tripShowOrdered()'s clear/fit
    params exist specifically so these two draws don't wipe each other out. */
-/* GOLF-46: small muted dots for whichever days currently have "Show POIs"
-   toggled on — drawn from cache only (never triggers a fetch itself; the
-   pane's own render already called tbPoisFor() for that). Deliberately
-   NOT included in the fitBounds points below — a nearby petrol station
-   souldn't zoom the map away from the actual trip route. */
-function tbDrawPois(){
-  tripDays.forEach(d=>{
-    if(!tbPoiOn.has(d.id))return;
-    const pois=tbPoisFor(d);
-    if(!pois)return;
-    pois.forEach(p=>{
-      L.circleMarker([p.lat,p.lng],{radius:5,color:'#7A6BC9',weight:1.5,fillColor:'#fff',fillOpacity:.9})
-        .bindTooltip(p.name,{direction:'top'}).addTo(tripLayer);
-    });
-  });
-}
 /* GOLF-69 (item 10): the day's own hotel/POI stops on the map — "hotels can
    be marked with little hotel emojis and POIs with location pins. Since we
    don't have hotel information, you can drop the pin somewhere in the
    nearest city."
-   Note this is a different thing from tbDrawPois() above, which draws
-   *suggested* nearby POIs fetched from the ORS proxy; these are the stops
-   the visitor actually put on a day.
+   Note this is a different thing from tbDrawHeritage() below, which draws
+   *suggested* nearby heritage POIs fetched from the ORS proxy; these are
+   the stops the visitor actually put on a day.
    Location, in priority order: the stop's own geocoded point (set when it
    was picked from the search picker) → the day's own city/place point
    (GOLF-56's placeLat/placeLng) → the day's last golf course → the nearest
@@ -306,9 +290,11 @@ function tbDrawPois(){
    is jittered a few hundred metres and says so in its tooltip, so two
    locationless stops on the same day don't stack into one invisible pin
    and nobody mistakes an approximate pin for a real address. */
-/* GOLF-79: small muted markers for whichever days currently have "Show
-   castles & distilleries" toggled on — same cache-only, no-fetch-here,
-   excluded-from-fitBounds contract as tbDrawPois() above. */
+/* GOLF-79 ("Show POI's"): small muted markers for whichever days currently
+   have it toggled on — drawn from cache only (never triggers a fetch
+   itself; the pane's own render already called tbHeritageFor() for that).
+   Deliberately NOT included in the fitBounds points below — a nearby
+   sight shouldn't zoom the map away from the actual trip route. */
 function tbDrawHeritage(){
   tripDays.forEach(d=>{
     if(!tbHeritageOn.has(d.id))return;
@@ -376,7 +362,6 @@ function tbDrawMap(){
     pts2=tripShow(tbDiscover(),anchor,false,false);
     if(tbDiscoveryTab==='place'&&tbPlaceAnchor)pts2=[...pts2,[tbPlaceAnchor.lat,tbPlaceAnchor.lng]];
   }
-  tbDrawPois();
   tbDrawHeritage();
   tbDrawTripItems();
   const pts=[...pts1,...pts2];
