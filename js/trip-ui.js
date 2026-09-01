@@ -568,16 +568,11 @@ function renderTripBuilder(){
     onPick(){/* unreachable: `render` owns this field's results panel */}
   });
   searchResultsEl.addEventListener('click',e=>{
+    // GOLF-82: one place action now, not two — tbAnchorTripToPlace() is gone.
     const trip=e.target.closest('.tb-unified-place-trip');
-    if(trip){
-      e.preventDefault();
-      tbAddPlaceToTrip(parseFloat(trip.dataset.lat),parseFloat(trip.dataset.lng),trip.dataset.label);
-      return;
-    }
-    const row=e.target.closest('.tb-unified-place-add');
-    if(!row)return;
+    if(!trip)return;
     e.preventDefault();
-    tbAnchorTripToPlace(parseFloat(row.dataset.lat),parseFloat(row.dataset.lng),row.dataset.label);
+    tbAddPlaceToTrip(parseFloat(trip.dataset.lat),parseFloat(trip.dataset.lng),trip.dataset.label);
   });
 
   /* ── Call site 2: the open "add a stop" form's location field. ── */

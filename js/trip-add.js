@@ -38,21 +38,22 @@ function tbSearchResults(){
    to a specific day (tbAddToDay below) stays available as an explicit
    secondary action while a day is focused — not removed, just no longer
    the default. */
-/* GOLF-69 (item 8): GOLF-62's wishlist-first default stands for every add
-   after the first. The one exception the stakeholder asked for is the very
-   first thing added to an empty trip — that starts the trip, so it goes
-   straight onto Day 1 rather than sitting in an unscheduled pool the
-   visitor then has to assign ("that will remove the ambiguity around which
-   day to assign a course to"). Second and subsequent courses land in the
-   wishlist exactly as before. */
+/* GOLF-82: GOLF-69 (item 8)'s "the first course/place added starts the
+   trip and lands straight on Day 1" exception is reverted, on the
+   stakeholder's own explicit instruction after using the live site as a
+   real user ("my prior recommendations no longer hold ... the latest
+   suggestion ... is the best way to implement this going forward"). A
+   course added by ANY path — this wishlist button, a map popup's "Add to
+   trip" (toggleTrip, trip-model.js), or Discover's tbSelect() — always
+   lands in the wishlist (tripUnscheduled()) now, never auto-creates or
+   auto-assigns Day 1, whether the trip is empty or not. The only way a
+   trip still gets a Day 1 for free is by picking a PLACE as a starting
+   point (see tbAddPlaceToTrip below) — a non-golf location is the one
+   thing that's allowed to seed a day, exactly as confirmed with the
+   stakeholder. Adding straight to a specific day (tbAddToDay below) stays
+   available as an explicit power path while a day is focused. */
 function tbAddToWishlist(i){
-  const fresh=!tripDays.length&&!tripSeq.length;
   if(!TRIP.has(i)){TRIP.add(i);tripSeq.push(i);tripLastAdded=i;tbAnchor=i;}
-  if(fresh){
-    tripDayAdd();
-    tripDaySetCourse(i,tripDays[0].id);
-    tbDayShown=tripDays[0].id;
-  }
   saveState();render();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(true);}
 }
@@ -78,56 +79,25 @@ let tbUnifiedPlaceResults=null;
    "Near a place" tab to this point and clears the search, same behavior
    as the existing Discover-tab place box, just reachable from the one
    main search bar now instead of a second, buried box. */
-/* GOLF-69 (items 7 + 8): picking a place still moves the discovery lens,
-   but two things changed on the stakeholder's instruction.
-   (a) It no longer yanks a visitor who is mid-Build back to Plan/Discover
-       ("when I search and then select a city to start a trip there, it
-       automatically switches me to the discover tab. It shouldn't do
-       that") — the mode switch is now only for the not-yet-in-Build case.
-   (b) Starting a trip at a place puts that place straight into DAY 1
-       ("when you start a trip it should automatically get added to day 1
-       — that will remove the ambiguity around which day to assign a course
-       to"). There is no separate "start slot" any more: Day 1 IS the start
-       of the trip, and the city lands as its first card. When days already
-       exist we leave them alone — this is only about how a trip begins. */
-function tbTripStarted(){return tripDays.length>0||tripSeq.length>0;}
-function tbAnchorTripToPlace(lat,lng,label){
-  const fresh=tripDays.length===0;
-  tbPlaceAnchor={label,lat,lng};
-  tbDiscoveryTab='place';
-  tbSearchQ='';tbUnifiedPlaceResults=null;
-  if(fresh){
-    tripDayAdd();
-    const d=tripDays[0];
-    tripDaySetPlaceGeo(d.id,label,lat,lng);
-    tbDayShown=d.id;
-  }
-  saveState();
-  if(appMode!=='build')setAppMode('plan'); // GOLF-64 intent kept, minus the Build-mode hijack
-  else{renderTripBuilder();tbDrawMap();}
-}
-/* GOLF-67: the second action on a place result — add this city to the trip
-   as a stop, WITHOUT re-anchoring. Anchoring (above) is a discovery lens:
-   it moves "show me what's nearby" to a new point and touches no trip
-   data. This adds actual trip data and leaves the lens alone, which is
-   precisely the stakeholder's ask ("start in Edinburgh, then search St
-   Andrews and add St Andrews itself, not just courses near it").
-   Landing spot: appended as a new day, not into the wishlist. The
-   wishlist is a pool of *courses* by construction — tripUnscheduled()
-   derives from tripSeq (course indices) and tbDropOn() refuses to put a
-   non-golf item there — so a city has no representation in it. A day,
-   by contrast, already has exactly the right shape for "a place we'll
-   be": place/placeLat/placeLng, geocoded, routable (GOLF-56).
-   kind:'free' because an added city carries no round yet; the visitor
-   can switch it to Golf/Start/End from the day's own dropdown, and drag
-   it anywhere in the sequence with GOLF-65's day drag. */
+/* GOLF-82: the "Anchor here" (lens-only) and "+ Add to trip" (day-only)
+   buttons are merged into this one action, on the stakeholder's explicit
+   instruction after real-world use ("get rid of the anchor here option").
+   A place result now does exactly one thing: it becomes a starting point
+   for the trip. Two things it must always do, confirmed with the
+   stakeholder / carried over from the two functions this replaces:
+   (a) it still becomes Day 1 when picked on a trip that hasn't started
+       yet (kind stays the tripDayAdd() default 'golf', so a round can go
+       straight on it) — the ONE way a course/place-less trip still gets
+       an automatic Day 1, now that GOLF-82 removed that behavior from
+       plain course adds (see tbAddToWishlist above); a later place is
+       appended as its own 'free' day instead, alongside whatever's
+       already there.
+   (b) it ALWAYS moves tbPlaceAnchor (+tbDiscoveryTab='place') to this
+       point, even on an already-started trip — this is still the only
+       code path that ever sets tbPlaceAnchor to a real value, and Discover's
+       "Near a place" sub-tab has no other way to get seeded, so dropping
+       this side effect would silently strand it. */
 let tbPlaceAddedNote=null;
-/* GOLF-69: unchanged for an in-progress trip (a city added later is a later
-   day, appended). The only new case is the empty trip, where tripDayAdd()
-   creates Day 1 and this lands there — same "the trip starts in Day 1"
-   rule as tbAnchorTripToPlace() above. kind stays 'golf' (the default) for
-   that first day so a round can be added to it; a later added city is
-   still 'free', since it carries no round yet. */
 function tbAddPlaceToTrip(lat,lng,label){
   const fresh=tripDays.length===0;
   tripDayAdd();
@@ -135,9 +105,14 @@ function tbAddPlaceToTrip(lat,lng,label){
   if(!fresh)d.kind='free';
   tripDaySetPlaceGeo(d.id,label,lat,lng);
   tbDayShown=d.id;
+  tbPlaceAnchor={label,lat,lng};
+  tbDiscoveryTab='place';
+  tbSearchQ='';tbUnifiedPlaceResults=null;
   tbPlaceAddedNote={label,day:tripDays.length};
   saveState();
-  renderTripBuilder();tbDrawMap();
+  // GOLF-69a: don't yank a visitor who's mid-Build back to Plan/Discover.
+  if(appMode!=='build')setAppMode('plan');
+  else{renderTripBuilder();tbDrawMap();}
 }
 function tbUnifiedSearchResultsHTML(){
   const q=tbSearchQ.trim();
@@ -151,18 +126,15 @@ function tbUnifiedSearchResultsHTML(){
     // making a real outage look identical to a normal empty result.
     html+=`<div class="tb-section-title">Towns &amp; cities</div><p class="hint" style="margin:0 0 var(--sp-2)">Place search is temporarily unavailable — showing golf courses only.</p>`;
   }else if(places&&places.length){
-    /* GOLF-67: "add to trip" only appears once there's a trip to add to —
-       an anchor has been set, or days already exist. Before that the only
-       sensible thing a place can do is start the trip, and showing two
-       near-identical buttons on an empty trip would just be a choice with
-       no meaning. */
+    /* GOLF-82: one button per place, not two — "Start a trip here" before
+       a trip exists, "+ Add to trip" once one does (tbAddPlaceToTrip
+       handles both cases itself, see its comment above). */
     const started=tbPlaceAnchor!=null||tripDays.length>0;
     html+=`<div class="tb-section-title">Towns &amp; cities</div>`+
       places.map(p=>`<div class="tb-row">
         <div>📍 ${esc(p.label)}</div>
         <div style="display:flex;gap:var(--sp-2);flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
-          <button class="tb-btn is-sm is-primary tb-unified-place-add" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}">${started?'Anchor here':'Start a trip here'}</button>
-          ${started?`<button class="tb-btn is-sm tb-unified-place-trip" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}">＋ Add to trip</button>`:''}
+          <button class="tb-btn is-sm is-primary tb-unified-place-trip" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}">${started?'＋ Add to trip':'Start a trip here'}</button>
         </div>
       </div>`).join('');
     if(tbPlaceAddedNote)html+=`<p class="hint" style="margin:var(--sp-2) 0 0">Added <b>${esc(tbPlaceAddedNote.label)}</b> as Day ${tbPlaceAddedNote.day} — <a href="#" class="linkbtn" onclick="event.preventDefault();enterBuildMode()">open it</a>.</p>`;

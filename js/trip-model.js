@@ -563,14 +563,13 @@ function toggleTrip(i){
     tripDayRemoveCourse(i); // GOLF-33: no orphaned day references once a course leaves the cart
   }
   else{
-    /* GOLF-69 (item 8): same "the first thing added starts the trip, and
-       the trip starts in Day 1" rule as tbAddToWishlist() — this is the
-       other way a first course gets added (straight from a map popup on
-       the Explore page), and it would be incoherent for the two paths to
-       disagree about whether a trip has a Day 1 yet. */
-    const fresh=!tripDays.length&&!tripSeq.length;
+    /* GOLF-82: reverts GOLF-69 (item 8)'s "first course starts the trip on
+       Day 1" rule, on the stakeholder's explicit instruction after real
+       use. A course added from a map popup always lands in the wishlist
+       now, matching tbAddToWishlist() (trip-add.js) exactly — the only
+       thing allowed to auto-create Day 1 is picking a PLACE as a starting
+       point (tbAddPlaceToTrip, trip-add.js). */
     TRIP.add(i);tripSeq.push(i);tripLastAdded=i;tbAnchor=i;
-    if(fresh){tripDayAdd();tripDaySetCourse(i,tripDays[0].id);tbDayShown=tripDays[0].id;}
   }
   saveState();render();
   /* GOLF-31: clicking "Add to trip" straight from a popup (not via the
