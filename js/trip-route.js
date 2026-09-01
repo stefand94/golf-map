@@ -76,8 +76,16 @@ function tripShowOrdered(order,clear=true,fit=true){
       L.circleMarker([stop.lat,stop.lng],{radius:8,color:fill,weight:3,fillColor:'#fff',fillOpacity:1})
         .bindTooltip(label,{permanent:true,direction:'center',className:'trip-num'}).addTo(tripLayer);
     }else{
+      /* Bug fix (2026-09-01): a numbered cart/route stop used to be a plain
+         circleMarker with only a permanent number label — clicking it did
+         nothing, same "doesn't expand" complaint as tripShow()'s discovery
+         dots above. Bind the real course popup/tooltip and the same
+         highlight/drawLink click behaviour as the main flag markers. */
       L.circleMarker([stop.lat,stop.lng],{radius:9,color:'#1B2733',weight:2.5,fillColor:fill,fillOpacity:1})
-        .bindTooltip(label,{permanent:true,direction:'center',className:'trip-num'}).addTo(tripLayer);
+        .bindTooltip(label,{permanent:true,direction:'center',className:'trip-num'})
+        .bindPopup(popupHTML(stop.i),{maxWidth:340})
+        .on('click',()=>{highlight(stop.i);drawLink(stop.i)})
+        .addTo(tripLayer);
     }
     pts.push([stop.lat,stop.lng]);
     /* GOLF-35: nearest-station markers make sense in the normal popup view,

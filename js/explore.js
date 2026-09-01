@@ -428,8 +428,16 @@ function render(){
      list entirely — the full marker layer is redundant screen noise
      while it's open, so skip populating it and let tripLayer (the
      cart/discovery markers) be the only thing on the map. Filters/list
-     stay untouched underneath, ready the moment Trip Builder exits. */
-  if(tripBuilderOn)return;
+     stay untouched underneath, ready the moment Trip Builder exits.
+     Bug fix (2026-09-01): that decluttering used to apply unconditionally,
+     so the instant a trip's last course was removed (nothing left in
+     TRIP/tripDays, and no anchor for Discover to suggest around) the map
+     went completely blank — no cart route, no discovery dots, and no
+     course layer either. Only skip the full layer when tbDrawMap() above
+     actually put something on tripLayer to declutter for; an empty trip
+     falls through and shows the normal filtered course layer instead of
+     nothing. */
+  if(tripBuilderOn&&tripLayer.getLayers().length)return;
   let shown=C.map((c,i)=>i).filter(passes);
   const S_={region:(a,b)=>REGIONS.indexOf(C[a].r)-REGIONS.indexOf(C[b].r)||feeNum(a)-feeNum(b),
     fee:(a,b)=>feeNum(a)-feeNum(b),rank:(a,b)=>rankNum(a)-rankNum(b),

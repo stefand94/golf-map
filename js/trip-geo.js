@@ -72,15 +72,30 @@ function nearestCoursesToPoint(lat,lng,limit){
 }
 const tripLayer=L.layerGroup().addTo(map);
 function tripClear(){tripLayer.clearLayers()}
+/* Bug fix (2026-09-01): these discovery-candidate/anchor dots used to be
+   plain L.circleMarker()s with no popup or click handler at all — visually
+   a "white circle with a yellow border" (exactly what the stakeholder
+   reported) that never expanded into anything when clicked. Give every
+   course dot the same click→popup behaviour as the main flag markers
+   (bindPopup(popupHTML(i)) + highlight/drawLink on click) so a dot drawn
+   here is just as inspectable as one drawn on the normal Explore map. */
 function tripShow(items,anchor,clear=true,fit=true){
   if(clear)tripClear();
   const pts=[];
   items.forEach(({i,border})=>{
-    L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:border?'#8C8478':'#E6B400',weight:2.5,fillColor:'#fff',fillOpacity:.9,dashArray:border?'2 3':null}).addTo(tripLayer);
+    L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:border?'#8C8478':'#E6B400',weight:2.5,fillColor:'#fff',fillOpacity:.9,dashArray:border?'2 3':null})
+      .bindPopup(popupHTML(i),{maxWidth:340})
+      .bindTooltip(courseTooltipHTML(i),{direction:'top',offset:[0,-10],className:'course-tt'})
+      .on('click',()=>{highlight(i);drawLink(i)})
+      .addTo(tripLayer);
     pts.push([C[i].lat,C[i].lng]);
   });
   if(anchor!=null){
-    L.circleMarker([C[anchor].lat,C[anchor].lng],{radius:11,color:'#1B2733',weight:3,fillColor:'#E6B400',fillOpacity:1}).addTo(tripLayer);
+    L.circleMarker([C[anchor].lat,C[anchor].lng],{radius:11,color:'#1B2733',weight:3,fillColor:'#E6B400',fillOpacity:1})
+      .bindPopup(popupHTML(anchor),{maxWidth:340})
+      .bindTooltip(courseTooltipHTML(anchor),{direction:'top',offset:[0,-12],className:'course-tt'})
+      .on('click',()=>{highlight(anchor);drawLink(anchor)})
+      .addTo(tripLayer);
     pts.push([C[anchor].lat,C[anchor].lng]);
   }
   if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
