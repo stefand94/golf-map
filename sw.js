@@ -15,8 +15,12 @@
    Bump CACHE_NAME whenever the precache list changes — the install
    step below writes a fresh cache under the new name and activate
    deletes every other golfmap-shell-* cache, so a version bump is
-   also how stale entries get evicted. */
-const CACHE_NAME = 'golfmap-shell-v2';
+   also how stale entries get evicted. Also bump it any time the fetch
+   handler's caching logic changes (see v3's fix below) — clients that
+   already cached a bad response under the old name need a fresh cache
+   to fall back to, since cache-first means the old entry would
+   otherwise be served forever regardless of code changes. */
+const CACHE_NAME = 'golfmap-shell-v3';
 
 const PRECACHE_URLS = [
   './london-golf-map-v5_1.html',
@@ -79,14 +83,6 @@ self.addEventListener('fetch', (event) => {
     caches.match(req).then((cached) => {
       if (cached) return cached;
       return fetch(req).then((res) => {
-        // Opportunistically cache anything same-origin and OK that
-        // wasn't in the precache list (e.g. a data file added later
-        // without a service-worker update) so it's available offline
-        // on the next visit too.
-        if (res && res.ok) {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-        }
         // Chrome refuses to let a service worker satisfy a *navigation*
         // request with a Response whose `redirected` flag is true — it
         // throws "Response served by service worker has redirections".
@@ -94,17 +90,36 @@ self.addEventListener('fetch', (event) => {
         // (e.g. /london-golf-map-v5_1) via an internal redirect to the
         // real .html file, so a plain `fetch(req)` here picks up that
         // flag on first load. Rebuild a clean Response with the same
-        // body/status/headers but no redirect history before returning
-        // it for a navigation — everything else (scripts, data, images)
-        // is unaffected by this restriction and returns res as-is.
-        if (req.mode === 'navigate' && res.redirected) {
-          return res.blob().then((body) => new Response(body, {
-            status: res.status,
-            statusText: res.statusText,
-            headers: res.headers,
-          }));
-        }
-        return res;
+        // body/status/headers but no redirect history — everything else
+        // (scripts, data, images) is unaffected by this restriction and
+        // uses res as-is.
+        //
+        // v3 fix: this rebuild MUST happen before the opportunistic
+        // cache-write below, not after. v2 cached `res` itself (the
+        // still-redirected response) here, then returned the cleaned
+        // version only for that one response — every later visit hit
+        // caches.match(req) above and got the *cached, still-redirected*
+        // copy back directly, permanently bypassing this fix. Cache
+        // whatever we're about to return, never the raw fetch result.
+        const finalRes = (req.mode === 'navigate' && res.redirected)
+          ? res.blob().then((body) => new Response(body, {
+              status: res.status,
+              statusText: res.statusText,
+              headers: res.headers,
+            }))
+          : Promise.resolve(res);
+
+        return finalRes.then((out) => {
+          // Opportunistically cache anything same-origin and OK that
+          // wasn't in the precache list (e.g. a data file added later
+          // without a service-worker update) so it's available offline
+          // on the next visit too.
+          if (out && out.ok) {
+            const copy = out.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+          }
+          return out;
+        });
       }).catch(() => cached);
     })
   );
