@@ -87,6 +87,23 @@ self.addEventListener('fetch', (event) => {
           const copy = res.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
         }
+        // Chrome refuses to let a service worker satisfy a *navigation*
+        // request with a Response whose `redirected` flag is true — it
+        // throws "Response served by service worker has redirections".
+        // Cloudflare Pages serves this app's clean/extensionless URL
+        // (e.g. /london-golf-map-v5_1) via an internal redirect to the
+        // real .html file, so a plain `fetch(req)` here picks up that
+        // flag on first load. Rebuild a clean Response with the same
+        // body/status/headers but no redirect history before returning
+        // it for a navigation — everything else (scripts, data, images)
+        // is unaffected by this restriction and returns res as-is.
+        if (req.mode === 'navigate' && res.redirected) {
+          return res.blob().then((body) => new Response(body, {
+            status: res.status,
+            statusText: res.statusText,
+            headers: res.headers,
+          }));
+        }
         return res;
       }).catch(() => cached);
     })

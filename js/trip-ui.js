@@ -432,7 +432,7 @@ function tbWishlistHTML(){
       <span class="tb-item-icon">⛳</span>
       <div class="tb-item-main"><a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         <div class="cart-region">${esc(C[i].r)}</div></div>
-      <span class="tb-item-price">${tbMoney(fee)}</span>
+      <span class="tb-item-price">${tbMoney(fee,courseCurrency(i))}</span>
       <div class="tb-item-actions"><button class="tb-btn is-icon is-sm is-quiet" title="Remove from wishlist"
         onclick="toggleTrip(${i});renderTripBuilder();tbDrawMap();">✕</button></div>
     </div>`;}).join('');
