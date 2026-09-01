@@ -200,11 +200,14 @@ function tripDayDriveHTML(d,idx){
    returns null (rendered as nothing) if neither is available. */
 function tripDaySuggestedTown(day){
   const cs=tripDayCourses(day);
-  if(!cs.length)return null;
-  const i=cs[cs.length-1];
-  const stnObj=STN[V(i,'stn')],near=C[i].nearStation,s=stnObj||near;
-  if(s&&s.n)return s.n;
-  return C[i].r||null;
+  if(cs.length){
+    const i=cs[cs.length-1];
+    const stnObj=STN[V(i,'stn')],near=C[i].nearStation,s=stnObj||near;
+    if(s&&s.n)return s.n;
+    return C[i].r||null;
+  }
+  if(day.place&&String(day.place).trim())return String(day.place).trim();
+  return null;
 }
 /* GOLF-79 (renamed "Show POI's" — supersedes the old GOLF-46 practical
    food/fuel/lodging POI toggle, removed): castles, distilleries, and a
@@ -225,9 +228,12 @@ let heritagePending=new Set();
 let tbHeritageOn=new Set();
 function tbPoiPoint(day){
   const cs=tripDayCourses(day);
-  if(!cs.length)return null;
-  const i=cs[cs.length-1];
-  return{lat:C[i].lat,lng:C[i].lng};
+  if(cs.length){
+    const i=cs[cs.length-1];
+    return{lat:C[i].lat,lng:C[i].lng};
+  }
+  if(Number.isFinite(day.placeLat)&&Number.isFinite(day.placeLng))return{lat:day.placeLat,lng:day.placeLng};
+  return null;
 }
 /* Returns a cached heritage-POI array for this day's overnight point, or
    null if not yet known — mirrors tripDayRealEstimate()'s contract
@@ -262,11 +268,18 @@ function tbToggleHeritage(dayId){
   if(tbHeritageOn.has(dayId))tbHeritageOn.delete(dayId);else tbHeritageOn.add(dayId);
   renderTripBuilder();tbDrawMap();
 }
+function tbAddHeritagePoi(dayId,idx){
+  const d=tripDays.find(d=>d.id===dayId);if(!d)return;
+  const pois=tbHeritageFor(d);
+  const p=pois&&pois[idx];if(!p)return;
+  tripDayAddStop(dayId,'poi',p.name,null,p.lat,p.lng);
+  renderTripBuilder();tbDrawMap();
+}
 function tbHeritageListHTML(day){
   if(!tbHeritageOn.has(day.id))return'';
   if(!ORS_PROXY_URL)return'';
   const pois=tbHeritageFor(day);
   if(pois==null)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Looking for things to do…</p></div>`;
   if(!pois.length)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Nothing found nearby.</p></div>`;
-  return`<div class="tb-poi-list">${pois.map(p=>`<div class="tb-poi-row"><span>${p.name}</span>${p.category?`<span class="wt">${p.category}</span>`:''}</div>`).join('')}</div>`;
+  return`<div class="tb-poi-list">${pois.map((p,idx)=>`<div class="tb-poi-row"><span>${esc(p.name)}</span>${p.category?`<span class="wt">${esc(p.category)}</span>`:''}<button class="tb-btn is-sm is-icon" onclick="tbAddHeritagePoi(${day.id},${idx})" title="Add to trip">＋</button></div>`).join('')}</div>`;
 }
