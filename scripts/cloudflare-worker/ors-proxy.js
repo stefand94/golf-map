@@ -285,13 +285,27 @@ async function handleHeritagePois(body) {
   // single representative point. Explicitly unnamed results are dropped
   // below in the response-shaping step, not here, since Overpass QL can't
   // easily express "has no name tag" as a query-time filter alongside this.
+  // 2026-09-02, second addition: wine farms (and, for the same reason,
+  // small distilleries/breweries) are almost never Wikipedia/Wikidata
+  // linked in OSM even when they're real, well-tagged businesses —
+  // verified live around Stellenbosch: 14 real wineries (Kleine Zalze,
+  // Lanzerac, Glenelly Estate, Morgenhof, etc.), zero of them carrying a
+  // wikipedia/wikidata tag, so the notability gate above silently dropped
+  // all of them. Rather than requiring notability for these specific,
+  // narrow, unambiguous tags, they're queried unconditionally — a place
+  // tagged craft=winery/distillery/brewery or shop=wine IS the thing we
+  // want, no further notability check needed to trust it.
   const query = `
 [out:json][timeout:20];
 (
   nwr(around:${radius},${lat},${lng})["wikipedia"];
   nwr(around:${radius},${lat},${lng})["wikidata"];
+  nwr(around:${radius},${lat},${lng})["craft"="winery"];
+  nwr(around:${radius},${lat},${lng})["craft"="distillery"];
+  nwr(around:${radius},${lat},${lng})["craft"="brewery"];
+  nwr(around:${radius},${lat},${lng})["shop"="wine"];
 );
-out center 60;
+out center 80;
 `.trim();
 
   // Try each mirror in order, falling through to the next on any failure
@@ -353,6 +367,9 @@ out center 60;
     'tourism=artwork': 'Artwork',
     'leisure=nature_reserve': 'Nature reserve',
     'natural=peak': 'Peak',
+    'craft=winery': 'Winery',
+    'craft=brewery': 'Brewery',
+    'shop=wine': 'Wine shop',
   };
   function categoryFor(tags) {
     if (!tags) return 'Heritage site';
@@ -394,6 +411,7 @@ out center 60;
     if (tags.leisure === 'nature_reserve') return true;
     if (tags.man_made === 'lighthouse') return true;
     if (tags.amenity === 'place_of_worship') return true;
+    if (tags.shop === 'wine') return true;
     return false;
   }
 

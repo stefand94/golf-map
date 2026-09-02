@@ -229,8 +229,13 @@ function tripDaySuggestedTown(day){
    near Johannesburg, from SA's dense "sagns" OSM import) — the Worker now
    also requires a visitable-place tag family (tourism/historic/distillery-
    etc.), so old cached results no longer match what the same point would
-   return today. */
-const HERITAGE_CACHE_KEY='golfmap:heritagecache:v3';
+   return today. Bumped v3->v4 the same day: wine farms (and small
+   distilleries/breweries) turned out to almost never carry a wikipedia/
+   wikidata tag even when real and well-tagged — verified live around
+   Stellenbosch (14 real wineries, zero wiki-linked) — so craft=winery/
+   distillery/brewery and shop=wine are now queried unconditionally
+   alongside the notability query, not gated behind it. */
+const HERITAGE_CACHE_KEY='golfmap:heritagecache:v4';
 function heritageCacheLoad(){try{return JSON.parse(localStorage.getItem(HERITAGE_CACHE_KEY)||'{}');}catch(e){return{};}}
 function heritageCacheSave(c){try{localStorage.setItem(HERITAGE_CACHE_KEY,JSON.stringify(c));}catch(e){}}
 function poiKey(lat,lng){return lat.toFixed(4)+','+lng.toFixed(4);}
