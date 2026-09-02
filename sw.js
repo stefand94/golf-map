@@ -16,14 +16,39 @@
    step below writes a fresh cache under the new name and activate
    deletes every other golfmap-shell-* cache, so a version bump is
    also how stale entries get evicted. Also bump it any time the fetch
-   handler's caching logic changes (see v3's fix below) — clients that
-   already cached a bad response under the old name need a fresh cache
-   to fall back to, since cache-first means the old entry would
-   otherwise be served forever regardless of code changes. */
-const CACHE_NAME = 'golfmap-shell-v3';
+   handler's caching logic changes (see v3/v4's fixes below) — clients
+   that already cached a bad response under the old name need a fresh
+   cache to fall back to, since cache-first means the old entry would
+   otherwise be served forever regardless of code changes.
+
+   v4 fix (redirect bug, take two — confirmed live via curl + a real
+   browser's cache, not assumed): Cloudflare Pages redirects
+   /london-golf-map-v5_1.html (308) to the extensionless
+   /london-golf-map-v5_1 — the OPPOSITE direction an earlier version of
+   this comment claimed. PRECACHE_URLS used to list the .html path, so
+   `install`'s cache.addAll() fetched it, silently followed that
+   redirect, and stored the REDIRECTED Response under the .html cache
+   key — cache.addAll() is a separate browser-internal mechanism that
+   never runs through the `fetch` handler below, so v3's redirect-
+   cleanup logic never touched it. Every navigation to the .html URL
+   (which is exactly what index.html's meta-refresh sends every root
+   visitor to, and what manifest.json's start_url used to send an
+   installed PWA to) then hit `caches.match(req)` at the very top of
+   the fetch handler and got that poisoned entry back directly —
+   `net::ERR_FAILED`, reproduced live. Two fixes, both applied: (1)
+   PRECACHE_URLS below now lists the canonical redirect-free
+   extensionless URL, and (2) `install` no longer uses cache.addAll —
+   it fetches each precache URL itself and rebuilds a clean Response
+   whenever one comes back redirected, exactly like the fetch handler
+   already did, so this whole bug class can't recur even if a future
+   entry accidentally points at a URL that redirects. index.html and
+   manifest.json were also pointed at the extensionless URL directly,
+   so the redirect is avoided on the primary path entirely rather than
+   merely cleaned up after the fact. */
+const CACHE_NAME = 'golfmap-shell-v4';
 
 const PRECACHE_URLS = [
-  './london-golf-map-v5_1.html',
+  './london-golf-map-v5_1',
   './manifest.json',
   './images/icon.svg',
   './images/icon-maskable.svg',
@@ -56,7 +81,28 @@ const PRECACHE_URLS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then((cache) => Promise.all(PRECACHE_URLS.map((url) =>
+        fetch(url).then((res) => {
+          // Match cache.addAll()'s fail-fast behavior: a broken precache
+          // URL should fail install loudly (the browser retries later),
+          // not silently ship a shell missing one of its own files.
+          if (!res.ok) throw new Error(`Precache fetch failed for ${url}: ${res.status}`);
+          // See the v4 note up top: never let a redirected Response reach
+          // the cache under a precache key, regardless of which URL or
+          // why it redirected — caches.match() doesn't care what request
+          // mode *created* the entry, only what's stored under that key,
+          // so a redirected entry here is a landmine for any later
+          // navigation that happens to match it.
+          const clean = res.redirected
+            ? res.blob().then((body) => new Response(body, {
+                status: res.status,
+                statusText: res.statusText,
+                headers: res.headers,
+              }))
+            : Promise.resolve(res);
+          return clean.then((out) => cache.put(url, out));
+        })
+      )))
       .then(() => self.skipWaiting())
   );
 });
