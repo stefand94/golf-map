@@ -363,20 +363,43 @@ out center 60;
     return 'Heritage site';
   }
 
-  // Sanity-checked live against a real Overpass query (Speyside, near
-  // Craigellachie): wikipedia/wikidata presence alone also pulls in named
-  // rivers, roads, and railway lines — real Wikipedia articles, but not
-  // things a golfer would detour to see. Exclude those specific
-  // infrastructure tag families rather than tightening back to a fixed
-  // whitelist — this keeps the "notability" filter but drops the one
-  // noise class it demonstrably let through.
-  function isInfrastructureNoise(tags) {
-    return !!(tags.waterway || tags.highway || tags.railway);
+  // 2026-09-02, tightened after two live sanity checks: wikipedia/wikidata
+  // presence alone is a *notability* signal, not a *"this is a visitable
+  // place"* signal — a live query near Craigellachie also returned named
+  // rivers, roads and rail lines, and a live query in central Johannesburg
+  // returned dozens of tagged suburbs, railway stations, schools,
+  // government offices and courthouses (South Africa's OSM data has a
+  // dense "sagns" import that wikidata-tags administrative places and
+  // civic buildings, not just tourist attractions — confirmed by
+  // inspecting real API output, not assumed). Notability alone can't tell
+  // "Aberlour Distillery" from "Constitutional Court of South Africa" —
+  // both are real, wiki-linked, named places. The fix is to combine the
+  // wiki-notability query above (for recall — it catches anything
+  // deemed notable, not just our 6 old guessed tags) with a second,
+  // category-based filter here (for precision): keep a result only if it
+  // ALSO carries a tag family that actually describes a visitable
+  // place — tourism/historic/craft(distillery-family)/certain natural
+  // features/nature reserves/lighthouses/places of worship — which
+  // structurally excludes railway stations, roads, rivers, suburbs,
+  // squares, schools, universities, offices, government buildings and
+  // courthouses regardless of how well-linked their Wikipedia article is.
+  const TOURISM_EXCLUDE = new Set(['hotel', 'guest_house', 'hostel', 'motel', 'camp_site', 'caravan_site', 'information']);
+  const CRAFT_INCLUDE = new Set(['distillery', 'brewery', 'winery']);
+  const NATURAL_INCLUDE = new Set(['peak', 'waterfall', 'cave_entrance', 'cliff', 'arch']);
+  function isVisitablePlace(tags) {
+    if (tags.tourism && !TOURISM_EXCLUDE.has(tags.tourism)) return true;
+    if (tags.historic) return true;
+    if (tags.craft && CRAFT_INCLUDE.has(tags.craft)) return true;
+    if (tags.natural && NATURAL_INCLUDE.has(tags.natural)) return true;
+    if (tags.leisure === 'nature_reserve') return true;
+    if (tags.man_made === 'lighthouse') return true;
+    if (tags.amenity === 'place_of_worship') return true;
+    return false;
   }
 
   const elements = Array.isArray(data && data.elements) ? data.elements : [];
   const pois = elements
-    .filter((el) => !isInfrastructureNoise(el.tags || {}))
+    .filter((el) => isVisitablePlace(el.tags || {}))
     .map((el) => {
       const tags = el.tags || {};
       // A node has lat/lon directly; a way/relation only has them via

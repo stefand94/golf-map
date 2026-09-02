@@ -223,8 +223,14 @@ function tripDaySuggestedTown(day){
    differ from what an old cached entry holds, and there's no reliable way
    to tell "old-shape cached miss" from "genuinely nothing nearby" once the
    query itself has changed (same reasoning as ORS_CACHE_KEY's v1->v2 bump
-   for GOLF-50). */
-const HERITAGE_CACHE_KEY='golfmap:heritagecache:v2';
+   for GOLF-50). Bumped again v2->v3 the same day: wiki-notability alone
+   proved too loose live (named rivers/roads/rail lines near Craigellachie;
+   suburbs, railway stations, schools, government offices and courthouses
+   near Johannesburg, from SA's dense "sagns" OSM import) — the Worker now
+   also requires a visitable-place tag family (tourism/historic/distillery-
+   etc.), so old cached results no longer match what the same point would
+   return today. */
+const HERITAGE_CACHE_KEY='golfmap:heritagecache:v3';
 function heritageCacheLoad(){try{return JSON.parse(localStorage.getItem(HERITAGE_CACHE_KEY)||'{}');}catch(e){return{};}}
 function heritageCacheSave(c){try{localStorage.setItem(HERITAGE_CACHE_KEY,JSON.stringify(c));}catch(e){}}
 function poiKey(lat,lng){return lat.toFixed(4)+','+lng.toFixed(4);}
