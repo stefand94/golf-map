@@ -272,22 +272,26 @@ async function handleHeritagePois(body) {
   const radius = Math.min(5000, Math.max(200, rawRadius));
   const [lng, lat] = point;
 
-  // Deliberately curated, not "every historic/tourism tag OSM knows" — the
-  // ask was specifically castles and distilleries, plus a few more things
-  // worth a detour. Overpass QL: each clause finds node/way/relation
-  // matching that tag within `radius` metres of the point; `out center`
-  // collapses a way/relation to a single representative point.
+  // 2026-09-02 redesign: dropped the fixed 6-tag category whitelist in
+  // favour of a notability-driven query — anything OSM contributors
+  // thought worth linking to Wikipedia/Wikidata, rather than only the
+  // handful of tags we happened to enumerate. `nwr(around:...)["wikipedia"]`
+  // and `["wikidata"]` match on tag *presence* regardless of value (no `=`),
+  // so this pulls in castles/distilleries/monuments/museums exactly as
+  // before plus everything else with a real Wikipedia/Wikidata link
+  // (historic houses, notable bridges, nature reserves, etc.) — the same
+  // "worth a detour" bar, just sourced from notability instead of a
+  // hand-picked tag list. `out center` collapses a way/relation to a
+  // single representative point. Explicitly unnamed results are dropped
+  // below in the response-shaping step, not here, since Overpass QL can't
+  // easily express "has no name tag" as a query-time filter alongside this.
   const query = `
 [out:json][timeout:20];
 (
-  nwr(around:${radius},${lat},${lng})[historic=castle];
-  nwr(around:${radius},${lat},${lng})[craft=distillery];
-  nwr(around:${radius},${lat},${lng})[tourism=viewpoint];
-  nwr(around:${radius},${lat},${lng})[historic=monument];
-  nwr(around:${radius},${lat},${lng})[historic=ruins];
-  nwr(around:${radius},${lat},${lng})[tourism=museum];
+  nwr(around:${radius},${lat},${lng})["wikipedia"];
+  nwr(around:${radius},${lat},${lng})["wikidata"];
 );
-out center 40;
+out center 60;
 `.trim();
 
   // Try each mirror in order, falling through to the next on any failure
@@ -325,6 +329,14 @@ out center 40;
   }
   if (lastError) return json(lastError, 502);
 
+  // Best-effort friendly label, still derived from whatever historic/
+  // tourism/craft/etc. tags a result happens to carry — the tag list is no
+  // longer the *filter* (wikipedia/wikidata presence is), but a result that
+  // does carry one of these common tags still gets a nicer label than the
+  // raw OSM value. Falls through to a generic "Heritage site" rather than
+  // null for the (very common) case of a wiki-linked place with no tag in
+  // this list — e.g. a historic house tagged `historic=yes`, a nature
+  // reserve, a notable bridge.
   const CATEGORY_LABELS = {
     'historic=castle': 'Castle',
     'craft=distillery': 'Distillery',
@@ -332,20 +344,39 @@ out center 40;
     'historic=monument': 'Monument',
     'historic=ruins': 'Ruins',
     'tourism=museum': 'Museum',
+    'historic=memorial': 'Memorial',
+    'historic=archaeological_site': 'Archaeological site',
+    'historic=manor': 'Manor house',
+    'historic=church': 'Historic church',
+    'amenity=place_of_worship': 'Place of worship',
+    'tourism=attraction': 'Attraction',
+    'tourism=artwork': 'Artwork',
+    'leisure=nature_reserve': 'Nature reserve',
+    'natural=peak': 'Peak',
   };
   function categoryFor(tags) {
-    if (!tags) return null;
-    if (tags.historic === 'castle') return CATEGORY_LABELS['historic=castle'];
-    if (tags.craft === 'distillery') return CATEGORY_LABELS['craft=distillery'];
-    if (tags.tourism === 'viewpoint') return CATEGORY_LABELS['tourism=viewpoint'];
-    if (tags.historic === 'monument') return CATEGORY_LABELS['historic=monument'];
-    if (tags.historic === 'ruins') return CATEGORY_LABELS['historic=ruins'];
-    if (tags.tourism === 'museum') return CATEGORY_LABELS['tourism=museum'];
-    return null;
+    if (!tags) return 'Heritage site';
+    for (const key in CATEGORY_LABELS) {
+      const [k, v] = key.split('=');
+      if (tags[k] === v) return CATEGORY_LABELS[key];
+    }
+    return 'Heritage site';
+  }
+
+  // Sanity-checked live against a real Overpass query (Speyside, near
+  // Craigellachie): wikipedia/wikidata presence alone also pulls in named
+  // rivers, roads, and railway lines — real Wikipedia articles, but not
+  // things a golfer would detour to see. Exclude those specific
+  // infrastructure tag families rather than tightening back to a fixed
+  // whitelist — this keeps the "notability" filter but drops the one
+  // noise class it demonstrably let through.
+  function isInfrastructureNoise(tags) {
+    return !!(tags.waterway || tags.highway || tags.railway);
   }
 
   const elements = Array.isArray(data && data.elements) ? data.elements : [];
   const pois = elements
+    .filter((el) => !isInfrastructureNoise(el.tags || {}))
     .map((el) => {
       const tags = el.tags || {};
       // A node has lat/lon directly; a way/relation only has them via
@@ -353,13 +384,17 @@ out center 40;
       const elLat = typeof el.lat === 'number' ? el.lat : el.center && el.center.lat;
       const elLng = typeof el.lon === 'number' ? el.lon : el.center && el.center.lon;
       return {
-        name: tags.name || categoryFor(tags) || 'Unnamed',
+        name: tags.name || null,
         category: categoryFor(tags),
+        wikipedia: tags.wikipedia || null,
         lat: typeof elLat === 'number' ? elLat : null,
         lng: typeof elLng === 'number' ? elLng : null,
       };
     })
-    .filter((p) => typeof p.lat === 'number' && typeof p.lng === 'number');
+    // 2026-09-02: drop unnamed results — a bare "Heritage site" pin with no
+    // name is noise, not a detour-worthy suggestion (stakeholder request).
+    .filter((p) => p.name && typeof p.lat === 'number' && typeof p.lng === 'number')
+    .slice(0, 40);
 
   return json({ pois });
 }

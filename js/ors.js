@@ -210,15 +210,21 @@ function tripDaySuggestedTown(day){
   return null;
 }
 /* GOLF-79 (renamed "Show POI's" — supersedes the old GOLF-46 practical
-   food/fuel/lodging POI toggle, removed): castles, distilleries, and a
-   small curated set of other historic/tourism points near an overnight
-   stop, via the same Cloudflare Worker proxy as GOLF-45's drive times,
-   routed server-side to a mode:'heritage-pois' branch backed by
-   OpenStreetMap's Overpass API. Same "inert until ORS_PROXY_URL is set"
-   and "cache, don't re-fetch a view that hasn't changed" pattern as
-   GOLF-45, so this never regresses anything when the proxy isn't
-   configured. */
-const HERITAGE_CACHE_KEY='golfmap:heritagecache:v1';
+   food/fuel/lodging POI toggle, removed): wiki-notable (Wikipedia/Wikidata
+   tagged) historic/tourism points near an overnight stop, via the same
+   Cloudflare Worker proxy as GOLF-45's drive times, routed server-side to
+   a mode:'heritage-pois' branch backed by OpenStreetMap's Overpass API.
+   Same "inert until ORS_PROXY_URL is set" and "cache, don't re-fetch a
+   view that hasn't changed" pattern as GOLF-45, so this never regresses
+   anything when the proxy isn't configured.
+   2026-09-02: query moved from a fixed 6-tag category whitelist to a
+   wikipedia/wikidata tag-presence query (dropping unnamed results) — the
+   cache key is bumped v1->v2 since the response for a given point can now
+   differ from what an old cached entry holds, and there's no reliable way
+   to tell "old-shape cached miss" from "genuinely nothing nearby" once the
+   query itself has changed (same reasoning as ORS_CACHE_KEY's v1->v2 bump
+   for GOLF-50). */
+const HERITAGE_CACHE_KEY='golfmap:heritagecache:v2';
 function heritageCacheLoad(){try{return JSON.parse(localStorage.getItem(HERITAGE_CACHE_KEY)||'{}');}catch(e){return{};}}
 function heritageCacheSave(c){try{localStorage.setItem(HERITAGE_CACHE_KEY,JSON.stringify(c));}catch(e){}}
 function poiKey(lat,lng){return lat.toFixed(4)+','+lng.toFixed(4);}
