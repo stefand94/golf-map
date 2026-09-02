@@ -1,4 +1,4 @@
-# The Britain Golf Explorer
+# Golf Tripper
 
 Greater London's visitor-friendly courses, England's Top 100, and curated
 notable courses across Scotland and Wales, in one place — a way to explore

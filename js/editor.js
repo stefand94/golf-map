@@ -135,7 +135,7 @@ document.getElementById('open-export').addEventListener('click',()=>{
       days:(tt.tripDays||[]).length?tt.tripDays.map((d,idx)=>({day:idx+1,kind:d.kind,place:d.place||undefined,placeLat:d.placeLat??undefined,placeLng:d.placeLng??undefined,date:d.date||undefined,driveInMinutes:d.driveIn,courses:tripDayCourses(d).map(i=>C[i].n),
         stops:tripDayItems(d).map(it=>({type:it.type,name:tripItemName(it),price:it.price??undefined}))})):undefined};
   }):undefined;
-  const json=JSON.stringify({source:"The Britain Golf Explorer",exported:new Date().toISOString().slice(0,10),corrections:list,trip,days,allTrips},null,2);
+  const json=JSON.stringify({source:"Golf Tripper",exported:new Date().toISOString().slice(0,10),corrections:list,trip,days,allTrips},null,2);
   sheet.innerHTML=`<h2>Your corrections</h2>
     <p class="lede">${list.length?`${list.length} ${list.length===1?'entry':'entries'} changed.`:`Nothing corrected yet. Open any course and hit <b>Correct this</b>.`} ${trip.length?`Your trip (${trip.length} course${trip.length===1?'':'s'}) is included below too.`:''} Your corrections, trip, filters and map position are saved to this browser automatically — export below only if you want a portable copy to paste back into our chat.</p>
     ${list.length||trip.length?`<div class="fld"><label for="ex">Export</label><textarea id="ex" style="min-height:220px">${esc(json)}</textarea></div>
