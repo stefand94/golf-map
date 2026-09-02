@@ -289,6 +289,33 @@ the current `data/*.js` (e.g. Sunningdale's coordinates, Clapham Junction's
 station position) before merging anything in by hand — then run
 `node scripts/test_data.js` to catch anything the spot-check missed.
 
+## Keeping the service worker's cache fresh on every push (GOLF-84)
+
+`sw.js` precaches the app shell cache-first — good for offline/fast repeat
+visits, but it means a browser only ever notices new content by diffing
+`sw.js`'s own bytes. Several rounds of "the live site is serving stale/
+broken JS" bugs (see plan Phase 20/25/26) all trace back to `CACHE_NAME`
+being a hand-typed constant that nobody remembered to bump.
+
+`scripts/update_sw_cache_version.py` fixes this by deriving `CACHE_NAME`
+from a hash of the actual precached files' content — it's a no-op when
+nothing precached changed, and rewrites `sw.js` with a fresh version
+string when something did, which is exactly what forces a returning
+visitor's browser to install a new service worker and drop stale caches.
+
+It runs automatically on `git push` via `.githooks/pre-push` — but git
+doesn't wire up hooks from a fresh clone by itself, so run this **once**
+per clone/machine:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+After that, every `git push` auto-bumps and auto-commits `sw.js` if (and
+only if) any precached file actually changed since the last push — no
+separate step needed. Safe to also run by hand any time:
+`python3 scripts/update_sw_cache_version.py`.
+
 ## Last run
 
 | Script | Last run | Notes |

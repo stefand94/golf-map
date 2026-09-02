@@ -1,0 +1,25 @@
+#!/bin/sh
+# GOLF-84: force a fresh service-worker install on every push that changes
+# any precached file, so a returning visitor's browser never gets stuck
+# serving stale cache-first content (see scripts/update_sw_cache_version.py
+# for the full why). Runs automatically on `git push` once this repo has
+#   git config core.hooksPath .githooks
+# set (one-time, per clone — see scripts/README.md).
+#
+# Behaviour: recomputes sw.js's CACHE_NAME from the current content of
+# every precached file. If nothing changed, it's a silent no-op. If
+# something did, it rewrites sw.js and — since a version bump with no
+# corresponding commit would ship an uncommitted change — auto-commits
+# just that one file with a clear message, then continues the push so the
+# fix goes out in the same push rather than needing a second one.
+
+set -e
+cd "$(git rev-parse --show-toplevel)"
+
+python3 scripts/update_sw_cache_version.py
+
+if ! git diff --quiet -- sw.js; then
+  git add sw.js
+  git commit -m "sw.js: auto-bump CACHE_NAME (precached content changed)" -q
+  echo "pre-push: sw.js CACHE_NAME bumped and committed automatically."
+fi
