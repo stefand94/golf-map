@@ -48,12 +48,12 @@ if (!Array.isArray(C) || !Array.isArray(C_TOP100) || !Array.isArray(C_SCOTLAND) 
   console.error('FAIL: C, C_TOP100, C_SCOTLAND, or C_WALES is not an array — data files did not populate expected globals');
   process.exit(1);
 }
-const EXPECTED_TOTAL = 508; // 2026-09-02: 392 + 40 Ireland Top 100 broadening + 76 South Africa Top 100 broadening (see plan Phase — Ireland/SA deeper pull)
+const EXPECTED_TOTAL = 557; // 2026-09-03: 508 + 49 Scotland Top 100 broadening (GOLF-85, see plan Phase 30)
 if (C.length !== EXPECTED_TOTAL) {
   fail(`C.length is ${C.length}, expected ${EXPECTED_TOTAL} — update EXPECTED_TOTAL in this script if a course was deliberately added/removed`);
 }
 if (C_TOP100.length !== 114) fail(`C_TOP100.length is ${C_TOP100.length}, expected 114`);
-if (C_SCOTLAND.length !== 51) fail(`C_SCOTLAND.length is ${C_SCOTLAND.length}, expected 51`);
+if (C_SCOTLAND.length !== 100) fail(`C_SCOTLAND.length is ${C_SCOTLAND.length}, expected 100`);
 if (C_WALES.length !== 38) fail(`C_WALES.length is ${C_WALES.length}, expected 38`);
 
 // ---- known station names, for stn/nearStation validation ----

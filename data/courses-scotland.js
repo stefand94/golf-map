@@ -1,15 +1,29 @@
 /* ============================================================
-   data/courses-scotland.js — GOLF-25: 41 curated notable Scottish
-   golf courses. Sourced via scripts/fetch_scottish_golf_clubs.py
-   against Scottish Golf's public club-finder API (same "DotGolf"
-   platform and API shape as England Golf's, confirmed live) for
-   coordinates/phone/website, cross-checked against a published
-   Scotland course ranking (todays-golfer.com, itself sourcing
-   Top100GolfCourses.com data) for the course list and t100.sco
-   rank numbers. Fee/access-tier data (wd/we/a/band) is NOT from
-   a verified live source this round — marked conf:"est" throughout,
-   same convention as any other indicative/unverified entry — treat
-   as a starting point, not a quoted price.
+   data/courses-scotland.js — GOLF-25/GOLF-85: 100 curated notable
+   Scottish golf courses (51 original GOLF-25 courses + 49 added by
+   GOLF-85's Top 100 broadening, 2026-09-02, mirroring the Phase 27
+   Ireland/South Africa broadening pattern). Sourced via
+   scripts/fetch_scottish_golf_clubs.py against Scottish Golf's public
+   club-finder API (same "DotGolf" platform and API shape as England
+   Golf's, confirmed live) for coordinates/phone/website, cross-checked
+   against a published Scotland course ranking (todays-golfer.com,
+   itself sourcing Top100GolfCourses.com data) for the course list and
+   t100.sco rank numbers. Fee/access-tier data (wd/we/a/band) is NOT
+   from a verified live source this round — marked conf:"est"
+   throughout, same convention as any other indicative/unverified
+   entry — treat as a starting point, not a quoted price.
+
+   The 49 GOLF-85 entries (appended at the end of C_SCOTLAND, no
+   t100.sco rank stamped — existing rank numbering is already
+   non-sequential/non-unique, see Phase 30 in the project plan) use
+   generic placeholder fee/arch/note fields (band:"mid", flat wd/we
+   estimate, arch:"Unknown", spec:"18", note:"") since they weren't
+   individually hand-researched this round — same documented precedent
+   as Phase 27's Ireland/SA batch. Every fuzzy name→club match behind
+   these 49 was manually verified against its query text; one wrong
+   match was caught and corrected (the-dukes had matched "Fairmont St
+   Andrews" instead of the real Duke's Course operator, St Andrews
+   Links Trust).
 
    No stn/walk/book (outside any rail-catchment concept — same as
    C_TOP100); no nearStation yet (added by compute_nearest_stations.py
@@ -73,6 +87,55 @@ const C_SCOTLAND=[
 {n:"Shiskine",lat:55.5037,lng:-5.3383,clubInfo:{phone:"01770860548"},r:"Ayrshire & Argyll",a:"public",band:"na",wd:"Ask club",we:"Ask club",conf:"est",arch:"—",spec:"12 · par 42 · 2,996 yds",note:"Scotland's celebrated 12-hole oddity on Arran's west coast — blind shots over rocky outcrops on a course often called the best short course in the world, reachable only by ferry.",topScot:1,t100:{sco:39},site:"https://www.shiskinegolf.com"},
 {n:"Crail (Balcomie Links)",lat:56.2794,lng:-2.5953,clubInfo:{phone:"01333450686"},nearStation:{n:"Leuchars",lat:56.3748,lng:-2.8939,mi:13.2},r:"Fife & East Lothian",a:"public",band:"high",wd:"£60",we:"£135",conf:"est",arch:"Old Tom Morris",spec:"18 · par 69 · links",note:"Old Tom Morris's clifftop links on Fife's East Neuk, running out along Fife Ness with the North Sea crashing below — one of the most scenic and welcoming links in the country.",topScot:1,t100:{sco:50},site:"https://www.crailgolfingsociety.co.uk"},
 {n:"Kilmarnock (Barassie)",lat:55.5614,lng:-4.6536,clubInfo:{phone:"01292313920"},nearStation:{n:"Barassie",lat:55.5616,lng:-4.6515,mi:0.1},r:"Ayrshire & Argyll",a:"limited",band:"high",wd:"£95",we:"Ask club",conf:"est",arch:"Theodore Moon",spec:"27 (three 9-hole loops)",note:"A links so close to the railway that the platform sits at the clubhouse door — a hidden Ayrshire gem often rated ahead of better-known neighbours by those who've played it. Handicap certificate required; weekends more restricted.",topScot:1,site:"https://www.kbgc.co.uk"},
-{n:"Lundin",lat:56.2110,lng:-2.9536,clubInfo:{phone:"01333320202"},nearStation:{n:"Leven",lat:56.1925,lng:-3.0023,mi:2.3},r:"Fife & East Lothian",a:"public",band:"na",wd:"Ask club",we:"Ask club",conf:"est",arch:"Tom Morris, redesigned by James Braid",spec:"18 · links",note:"A James Braid reworking of an 1868 Tom Morris links on the Fife coast, long used as Open final-qualifying ground — understated company for its more famous St Andrews-area neighbours.",topScot:1,t100:{sco:49},site:"https://www.lundingolfclub.co.uk"},];
+{n:"Lundin",lat:56.2110,lng:-2.9536,clubInfo:{phone:"01333320202"},nearStation:{n:"Leven",lat:56.1925,lng:-3.0023,mi:2.3},r:"Fife & East Lothian",a:"public",band:"na",wd:"Ask club",we:"Ask club",conf:"est",arch:"Tom Morris, redesigned by James Braid",spec:"18 · links",note:"A James Braid reworking of an 1868 Tom Morris links on the Fife coast, long used as Open final-qualifying ground — understated company for its more famous St Andrews-area neighbours.",topScot:1,t100:{sco:49},site:"https://www.lundingolfclub.co.uk"},{n:"Askernish",lat:57.18713,lng:-7.396316,clubInfo:{phone:"01878700628"},r:"Highlands & Islands",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.askernishgolfclub.com/"},
+{n:"Bruntsfield Links",lat:55.968132,lng:-3.322533,clubInfo:{phone:"01313361479"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.bruntsfieldlinks.co.uk"},
+{n:"Downfield",lat:56.4891968,lng:-3.027159,clubInfo:{phone:"01382825595"},r:"Angus & Aberdeenshire",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.downfieldgolf.com/"},
+{n:"Duff House Royal",lat:57.6609726,lng:-2.521268,clubInfo:{phone:"01261812062"},r:"Angus & Aberdeenshire",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.duffhouseroyal.com"},
+{n:"Dunaverty",lat:55.3127,lng:-5.6448,clubInfo:{phone:"01586830677"},r:"Ayrshire & Argyll",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.dunavertygolfclub.com/"},
+{n:"Durness",lat:58.5679932,lng:-4.747875,clubInfo:{phone:"01971511364"},r:"Highlands & Islands",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.durnessgolfclub.org/"},
+{n:"East Renfrewshire",lat:55.7562332,lng:-4.355906,clubInfo:{phone:"01355500256"},r:"Ayrshire & Argyll",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.eastrengolfclub.co.uk/"},
+{n:"Edzell",lat:56.8057,lng:-2.6545,clubInfo:{phone:"01356647283"},r:"Angus & Aberdeenshire",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.edzellgolfclub.com/"},
+{n:"Elgin",lat:57.6297,lng:-3.313181,clubInfo:{phone:"01343542338"},r:"Highlands & Islands",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.elgingolfclub.com/"},
+{n:"Forfar",lat:56.6469421,lng:-2.843514,clubInfo:{phone:"01307432120"},r:"Angus & Aberdeenshire",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.forfargolfclub.co.uk"},
+{n:"Glenbervie",lat:56.03485,lng:-3.852856,clubInfo:{phone:"01324562605"},r:"Perthshire & Central Scotland",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.glenberviegolfclub.com"},
+{n:"Golspie",lat:57.9703979,lng:-3.986953,clubInfo:{phone:"01408633266"},r:"Highlands & Islands",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.golspiegolfclub.co.uk/"},
+{n:"Grantown-on-Spey",lat:57.33258,lng:-3.59935,clubInfo:{phone:"01479872079"},r:"Highlands & Islands",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.grantownonspeygc.co.uk"},
+{n:"Irvine (Bogside)",lat:55.6263847,lng:-4.686052,clubInfo:{phone:"01294275979"},r:"Ayrshire & Argyll",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.theirvinegolfclub.co.uk"},
+{n:"Kilmacolm",lat:55.8893,lng:-4.6076,clubInfo:{phone:"01505872139"},r:"Ayrshire & Argyll",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.kilmacolmgolfclub.com"},
+{n:"Kilspindie",lat:56.0126,lng:-2.8726,clubInfo:{phone:"01875870358"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.kilspindiegolfclub.co.uk/"},
+{n:"Ladybank",lat:56.2821732,lng:-3.124282,clubInfo:{phone:"01337830814"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://ladybankgolf.co.uk/"},
+{n:"Longniddry",lat:55.9774246,lng:-2.900896,clubInfo:{phone:"01875852141"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.longniddrygolfclub.co.uk/"},
+{n:"Nairn Dunbar",lat:57.5862,lng:-3.8591,clubInfo:{phone:"01667452741"},r:"Highlands & Islands",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.nairndunbar.com"},
+{n:"Peterhead",lat:57.51806,lng:-1.803394,clubInfo:{phone:"01779472149"},r:"Angus & Aberdeenshire",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.peterheadgolfclub.co.uk/"},
+{n:"Pitlochry",lat:56.70971,lng:-3.736457,clubInfo:{phone:"01796472314"},r:"Perthshire & Central Scotland",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.pitlochrygolf.co.uk/"},
+{n:"Portpatrick (Dunskey)",lat:54.84586,lng:-5.116341,clubInfo:{phone:"01776810273"},r:"Ayrshire & Argyll",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.portpatrickgolfclub.com/"},
+{n:"Powfoot",lat:54.9782753,lng:-3.343656,clubInfo:{phone:"01461204100"},r:"Ayrshire & Argyll",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.powfootgolfclub.com"},
+{n:"Prestwick St Nicholas",lat:55.493187,lng:-4.620481,clubInfo:{phone:"01292477608"},r:"Ayrshire & Argyll",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.prestwickstnicholas.com/"},
+{n:"Scotscraig",lat:56.4423752,lng:-2.873621,clubInfo:{phone:"01382552515"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.scotscraiggolfingclub.com"},
+{n:"Spey Valley",lat:57.1882057,lng:-3.833783,clubInfo:{phone:"01479812920"},r:"Highlands & Islands",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.macdonaldhotels.co.uk/aviemore/see-and-do/activities/golfing"},
+{n:"Stranraer",lat:54.9247437,lng:-5.070083,clubInfo:{phone:"01776870245"},r:"Ayrshire & Argyll",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.stranraergolfclub.net/"},
+{n:"Tain",lat:57.8033562,lng:-4.047002,clubInfo:{phone:"01862892314"},r:"Highlands & Islands",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.tain-golfclub.co.uk/"},
+{n:"West Kilbride",lat:55.6882133,lng:-4.867621,clubInfo:{phone:"01294823911"},r:"Ayrshire & Argyll",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.westkilbridegolfclub.com/"},
+{n:"Archerfield (Dirleton)",lat:56.0447845,lng:-2.803468,clubInfo:{phone:"01620897050"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.archerfieldgolfclub.com/"},
+{n:"Blairgowrie (Lansdowne)",lat:56.57372,lng:-3.336413,clubInfo:{phone:"01250872622"},r:"Perthshire & Central Scotland",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.theblairgowriegolfclub.co.uk/"},
+{n:"Carnoustie (Burnside)",lat:56.4988327,lng:-2.713585,clubInfo:{phone:"01241802270"},r:"Angus & Aberdeenshire",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.carnoustiegolflinks.com/"},
+{n:"Fairmont St Andrews (Kittocks)",lat:56.31878,lng:-2.742589,clubInfo:{phone:"01334837023"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.fairmont.com/st-andrews-scotland"},
+{n:"Fairmont St Andrews (Torrance)",lat:56.31878,lng:-2.742589,clubInfo:{phone:"01334837023"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.fairmont.com/st-andrews-scotland"},
+{n:"Gleneagles (PGA Centenary)",lat:56.2830734,lng:-3.75422,clubInfo:{phone:"01764290030"},r:"Perthshire & Central Scotland",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.gleneagles.com"},
+{n:"Gullane (No.3)",lat:56.0339,lng:-2.8364,clubInfo:{phone:"01620842255"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.gullanegolfclub.com"},
+{n:"Leven Links",lat:56.1976471,lng:-2.989842,clubInfo:{phone:"01333424229"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.levengolfingsociety.co.uk/"},
+{n:"Moray (New)",lat:57.7205658,lng:-3.296795,clubInfo:{phone:"01343812018"},r:"Highlands & Islands",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.moraygolf.co.uk"},
+{n:"Musselburgh (Monktonhall)",lat:55.9311829,lng:-3.059641,clubInfo:{phone:"01316652005"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.themusselburghgolfclub.com/"},
+{n:"Newmachar (Hawkshill)",lat:57.239418,lng:-2.190245,clubInfo:{phone:"01651863002"},r:"Angus & Aberdeenshire",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.newmachargolfclub.co.uk"},
+{n:"Royal Troon (Portland)",lat:55.5326347,lng:-4.650651,clubInfo:{phone:"01292311555"},r:"Ayrshire & Argyll",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.royaltroon.co.uk"},
+{n:"St Andrews Links (Eden)",lat:56.3447952,lng:-2.8,clubInfo:{phone:"01334466666"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.standrews.com"},
+{n:"St Andrews Links (Jubilee)",lat:56.3447952,lng:-2.8,clubInfo:{phone:"01334466666"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.standrews.com"},
+{n:"The Glen (North Berwick)",lat:56.0572662,lng:-2.705085,clubInfo:{phone:"01620892726"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.glengolfclub.co.uk"},
+{n:"The Roxburghe",lat:55.55847,lng:-2.47011137,clubInfo:{phone:"01573450333"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://roxburghe-golf.com/en/home"},
+{n:"Trump International (New)",lat:57.27741,lng:-2.02107,clubInfo:{phone:"01358743300"},r:"Angus & Aberdeenshire",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.trumpgolfscotland.com/"},
+{n:"Monifieth Links",lat:56.482235,lng:-2.81209,clubInfo:{phone:"01382532678"},r:"Angus & Aberdeenshire",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://monifiethgolf.co.uk/"},
+{n:"The Duke's Course (St Andrews)",lat:56.3447952,lng:-2.8,clubInfo:{phone:"01334466666"},r:"Fife & East Lothian",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"http://www.standrews.com"},
+{n:"Trump Turnberry (King Robert the Bruce)",lat:55.314106,lng:-4.828921,clubInfo:{phone:"01655331550"},r:"Ayrshire & Argyll",a:"public",band:"mid",wd:"£45",we:"£55",conf:"est",arch:"Unknown",spec:"18",note:"",topScot:1,site:"https://www.turnberrygolfclub.net/"},
+];
 
 C.push(...C_SCOTLAND);
