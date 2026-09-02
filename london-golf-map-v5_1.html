@@ -340,7 +340,20 @@
   .tb-day-town{padding:0 var(--sp-3) var(--sp-2) 44px;font-size:var(--fs-caption);color:var(--stone)}
   .tb-day-town b{color:var(--ink-soft)}
   .tb-poi-list{padding:0 var(--sp-3) var(--sp-2) 44px;display:flex;flex-direction:column;gap:3px}
-  .tb-poi-row{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-2);font-size:var(--fs-caption);color:var(--ink-soft)}
+  /* GOLF-83 fix: this used to be 3 bare flex children under
+     justify-content:space-between — the same misalignment class GOLF-69e
+     fixed for itinerary rows. With a variable-width name on one side and a
+     fixed-width ＋ button on the other, space-between never actually
+     centers the middle .wt tag; it just lands wherever the leftover space
+     happens to split. Grid with explicit column assignments (rather than
+     relying on source-order auto-placement, since the .wt tag is only
+     present when a POI has a category) fixes this: the tag's own column is
+     genuinely centered regardless of the name's length or whether the tag
+     is present at all. */
+  .tb-poi-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:var(--sp-2);font-size:var(--fs-caption);color:var(--ink-soft)}
+  .tb-poi-row>span:first-child{grid-column:1;justify-self:start;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tb-poi-row>.wt{grid-column:2;justify-self:center}
+  .tb-poi-row>button{grid-column:3;justify-self:end}
 
   /* The grand-total card at the very bottom of the sketch. */
   .tb-total-card{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
