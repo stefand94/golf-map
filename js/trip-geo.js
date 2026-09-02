@@ -173,18 +173,19 @@ function feeFieldForDate(dateStr){
    to the plain wd-only behavior tripCostEstimate() already had. */
 function tripCostEstimateByDay(){
   const buckets={};let covered=0,of=0;
+  const gs=groupSizeFor(); // GOLF-87: each traveller pays their own green fee
   tripDays.forEach(d=>{
     const field=feeFieldForDate(d.date);
     tripDayCourses(d).forEach(i=>{
       of++;
       const fee=extractFee(V(i,field));
-      if(fee!=null){moneyBucketAdd(buckets,courseCurrency(i),fee);covered++;}
+      if(fee!=null){moneyBucketAdd(buckets,courseCurrency(i),fee*gs);covered++;}
     });
   });
   tripUnscheduled().forEach(i=>{
     of++;
     const fee=extractFee(V(i,'wd'));
-    if(fee!=null){moneyBucketAdd(buckets,courseCurrency(i),fee);covered++;}
+    if(fee!=null){moneyBucketAdd(buckets,courseCurrency(i),fee*gs);covered++;}
   });
   const total=buckets[tripPrimaryCurrency()]||0;
   return{total,buckets,covered,of};
@@ -241,11 +242,27 @@ function tripHotelPerPerson(it){return!!(it&&it.type==='hotel'&&it.priceType==='
 /* {base,guests,sharing,total} for any item — the one place the per-person
    multiplication happens, so the itinerary row, the cost table and the
    trip total can never disagree about it. */
+// GOLF-87: a trip's group size — each traveller plays their own round and
+// pays their own green fee/POI cost, so those totals scale by it. Hotel
+// stays out of this deliberately (see comment above tripHotelGuests) —
+// re-multiplying it here would double-count a room already marked
+// "per person sharing". groupSizeFor() degrades to 1 (today's pre-GOLF-87
+// behaviour) if the live global is somehow missing/invalid.
+function groupSizeFor(){return(typeof groupSize==='number'&&groupSize>0)?groupSize:1;}
 function tripItemPriceDetail(d,it){
   if(!it)return{base:null,guests:1,sharing:false,total:null,cur:'£'};
+  const gs=groupSizeFor();
   if(it.type==='golf'){
+    // GOLF-87: `sharing` here deliberately stays false regardless of group
+    // size — it's a GOLF-74 hotel-only display flag consumed by
+    // tripCostLineItems() to build a "(£X × N sharing)" label off `base`,
+    // and a golf/POI item's `base` is a single round's fee, not a
+    // per-person entered figure — setting sharing:true here made that
+    // label logic misfire (and throw on an unpriced course, base===null).
+    // The "× groupSize" tag these items get instead is computed
+    // independently in tripCostLineItems() from gs itself.
     const p=extractFee(V(it.i,feeFieldForDate(d&&d.date)));
-    return{base:p,guests:1,sharing:false,total:p,cur:courseCurrency(it.i)};
+    return{base:p,guests:gs,sharing:false,total:p==null?null:p*gs,cur:courseCurrency(it.i)};
   }
   const cur=tripDayCurrency(d);
   if(it.type==='hotel'){
@@ -257,8 +274,10 @@ function tripItemPriceDetail(d,it){
     const p=entered??tripDayAccomFallback(d);
     return{base:p,guests:1,sharing:false,total:p,cur};
   }
+  // GOLF-87: same reasoning as the golf branch above — sharing stays false
+  // for a POI, the × groupSize tag is computed separately in the consumer.
   const p=it.price??null;
-  return{base:p,guests:1,sharing:false,total:p,cur};
+  return{base:p,guests:gs,sharing:false,total:p==null?null:p*gs,cur};
 }
 function tripItemPrice(d,it){return tripItemPriceDetail(d,it).total;}
 /* GOLF-44: fuel-cost estimate — same straight-line leg distances as the
@@ -292,21 +311,29 @@ function tripCostSummary(){
   if(tbIncludeAccom)Object.keys(accomBuckets).forEach(c=>moneyBucketAdd(grandBuckets,c,accomBuckets[c]));
   if(tbIncludeFuel)moneyBucketAdd(grandBuckets,primaryCur,fuelCost);
   const grand=grandBuckets[primaryCur]||0;
-  return{fees,accomCost,accomBuckets,nights,fuelMiles,fuelCost,grand,grandBuckets,primaryCur};
+  // GOLF-87: fuel is a shared trip cost (one car, regardless of group size)
+  // — the total above stays as-is; only the per-person split divides it.
+  // Green fees are already a whole-group total (each traveller's own fee,
+  // summed in tripCostEstimateByDay()) and accommodation is untouched by
+  // groupSize (GOLF-74's own per-item sharing model), so per-person here is
+  // simply the grand total shared across the party.
+  const gs=groupSizeFor();
+  const perPerson=gs>1?grand/gs:null;
+  return{fees,accomCost,accomBuckets,nights,fuelMiles,fuelCost,grand,grandBuckets,primaryCur,groupSize:gs,perPerson};
 }
 function tripCostSummaryHTML(){
   const s=tripCostSummary();
   const cur=s.primaryCur;
   const mixed=Object.keys(s.fees.buckets).length>1;
   return`<div class="cart-cost-lines">
-      <div class="cart-cost-line"><span>Green fees</span><span>${s.fees.covered?moneyBucketFmt(s.fees.buckets):'—'}</span></div>
+      <div class="cart-cost-line"><span>Green fees${s.groupSize>1?` <span class="wt">× ${s.groupSize}</span>`:''}</span><span>${s.fees.covered?moneyBucketFmt(s.fees.buckets):'—'}</span></div>
       <div class="cart-cost-cov">${s.fees.covered} of ${s.fees.of} course${s.fees.of===1?'':'s'} have a parseable weekday fee${mixed?' · multiple currencies':''}</div>
-      <label class="cart-cost-line"><span><input type="checkbox" ${tbIncludeAccom?'checked':''} onchange="tbIncludeAccom=this.checked;renderTripBuilder();"> Accommodation${s.nights?` (${s.nights} night${s.nights===1?'':'s'}, typical rate)`:''}</span><span>${s.nights?moneyBucketFmt(s.accomBuckets):'—'}</span></label>
-      <label class="cart-cost-line"><span><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel${s.fuelMiles?` (est. ${s.fuelMiles.toFixed(0)} mi)`:''}</span><span>${s.fuelMiles?`${cur}${s.fuelCost.toFixed(0)}`:'—'}</span></label>
+      <label class="cart-cost-line"><span><input type="checkbox" ${tbIncludeAccom?'checked':''} onchange="tbIncludeAccom=this.checked;renderTripBuilder();"> Accommodation${s.nights?` (${s.nights} night${s.nights===1?'':'s'}, typical rate)`:''} <span class="wt">as entered</span></span><span>${s.nights?moneyBucketFmt(s.accomBuckets):'—'}</span></label>
+      <label class="cart-cost-line"><span><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel${s.fuelMiles?` (est. ${s.fuelMiles.toFixed(0)} mi)`:''} <span class="wt">shared</span></span><span>${s.fuelMiles?`${cur}${s.fuelCost.toFixed(0)}`:'—'}</span></label>
     </div>
     <p class="hint" style="margin:6px 0 0">Accommodation and fuel are typical-rate/straight-line estimates, not live prices or a real route — untick either to leave it out of the total below.${mixed?' Green fees are shown in each course’s own currency; no conversion is applied yet — see the note below.':''}</p>
     <div class="cart-total">
-      <div><div class="cart-total-label">Estimated trip total</div><div class="cart-total-coverage">${s.fees.covered} of ${s.fees.of} course fee${s.fees.of===1?'':'s'} counted</div></div>
-      <div class="cart-total-amount">${moneyBucketFmt(s.grandBuckets)}</div>
+      <div><div class="cart-total-label">Estimated trip total</div><div class="cart-total-coverage">${s.fees.covered} of ${s.fees.of} course fee${s.fees.of===1?'':'s'} counted${s.groupSize>1?` · ${s.groupSize} travellers`:''}</div></div>
+      <div class="cart-total-amount">${moneyBucketFmt(s.grandBuckets)}${s.perPerson!=null?`<div class="cart-total-pp">${cur}${s.perPerson.toFixed(0)} per person</div>`:''}</div>
     </div>`;
 }

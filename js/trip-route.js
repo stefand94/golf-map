@@ -38,8 +38,12 @@ function tripOrder(indices){
 function tripWishlistSummaryHTML(unscheduled){
   if(unscheduled.length<1)return'';
   const order=tripOrder(unscheduled);
+  // GOLF-87: each traveller pays their own green fee, so the wishlist's
+  // rough total scales by the trip's group size — same rule as every
+  // other fee figure in the app (tripItemPriceDetail/groupSizeFor).
+  const gs=groupSizeFor();
   const feeBuckets={};let covered=0;
-  order.forEach(i=>{const f=extractFee(V(i,'wd'));if(f!=null){moneyBucketAdd(feeBuckets,courseCurrency(i),f);covered++;}});
+  order.forEach(i=>{const f=extractFee(V(i,'wd'));if(f!=null){moneyBucketAdd(feeBuckets,courseCurrency(i),f*gs);covered++;}});
   let miles=0,mins=0;
   for(let k=1;k<order.length;k++){
     const a=order[k-1],b=order[k];
@@ -48,7 +52,7 @@ function tripWishlistSummaryHTML(unscheduled){
   }
   const orderLabel=order.map(i=>V(i,'n')).join(' → ');
   return`<p class="hint" style="margin:4px 10px 8px">Suggested order (nearest-neighbour): <b>${esc(orderLabel)}</b><br>
-    ${covered?`${moneyBucketFmt(feeBuckets)} in green fees (${covered} of ${order.length} priced)`:'no parseable green fees yet'}${order.length>1?` · ~${miles.toFixed(0)} mi / ${fmtDriveMinutes(Math.round(mins/5)*5)} driving between them straight-line`:''}</p>`;
+    ${covered?`${moneyBucketFmt(feeBuckets)} in green fees (${covered} of ${order.length} priced)${gs>1?` for ${gs} travellers`:''}`:'no parseable green fees yet'}${order.length>1?` · ~${miles.toFixed(0)} mi / ${fmtDriveMinutes(Math.round(mins/5)*5)} driving between them straight-line`:''}</p>`;
 }
 /* GOLF-33: small fixed palette so each day's stops read as visually
    distinct on the map — cycles if there are more days than colors rather

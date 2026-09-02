@@ -274,12 +274,21 @@ function tripCostLineItems(){
   const CAT={golf:'Golf',hotel:'Stay',poi:'Stop'};
   // GOLF-74: a per-person-sharing stay carries its arithmetic into the label
   // so the line item explains its own (doubled) amount.
+  // GOLF-87: golf/POI totals scale by the trip's group size — each
+  // traveller plays their own round/pays their own POI cost — so tag those
+  // rows "× groupSize"; a stay keeps its own GOLF-74 sharing tag (or "as
+  // entered" when it's a plain room rate).
+  const gs=groupSizeFor();
   tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{
     const det=tripItemPriceDetail(d,it);
+    const tag=it.type==='hotel'?(det.sharing?'sharing':'as entered'):(gs>1?`× ${gs}`:null);
     items.push({label:tripItemName(it)+(det.sharing?` (${det.cur}${det.base.toFixed(0)} × ${det.guests} sharing)`:''),
-      cat:CAT[it.type]||'Stop',amount:det.total,day:idx+1,cur:det.cur});
+      cat:CAT[it.type]||'Stop',amount:det.total,day:idx+1,cur:det.cur,tag});
   }));
-  tripUnscheduled().forEach(i=>items.push({label:V(i,'n'),cat:'Golf',amount:extractFee(V(i,'wd')),day:null,cur:courseCurrency(i)}));
+  tripUnscheduled().forEach(i=>{
+    const fee=extractFee(V(i,'wd'));
+    items.push({label:V(i,'n'),cat:'Golf',amount:fee==null?null:fee*gs,day:null,cur:courseCurrency(i),tag:gs>1?`× ${gs}`:null});
+  });
   return items;
 }
 function tripCostBreakdown(){
@@ -290,7 +299,13 @@ function tripCostBreakdown(){
   const fuelCost=fuelMiles*FUEL_COST_PER_MILE;
   const golfTotal=sum(golf),stayTotal=sum(stay),poiTotal=sum(poi);
   const grand=golfTotal+stayTotal+poiTotal+(tbIncludeFuel?fuelCost:0);
-  return{items,golfTotal,golfCov:golf.filter(x=>x.amount!=null).length,golfOf:golf.length,stayTotal,poiTotal,fuelMiles,fuelCost,grand};
+  // GOLF-87: an even per-person split of the whole trip total — golf/POI
+  // are already priced per-traveller above, stays keep their own GOLF-74
+  // sharing math untouched, and fuel is one shared trip cost only divided
+  // here, at the very last step.
+  const gs=groupSizeFor();
+  const perPerson=gs>1?grand/gs:null;
+  return{items,golfTotal,golfCov:golf.filter(x=>x.amount!=null).length,golfOf:golf.length,stayTotal,poiTotal,fuelMiles,fuelCost,grand,groupSize:gs,perPerson};
 }
 function tbTripTotal(){return tripCostBreakdown().grand;}
 /* GOLF-71 copy audit. Before, this tab carried a three-sentence paragraph
@@ -304,7 +319,7 @@ function tbCostsTabHTML(){
   const b=tripCostBreakdown();
   const cur=tripPrimaryCurrency();
   const mixed=b.items.some(x=>x.cur&&x.cur!==cur);
-  return`<div class="cost-banner"><div class="cost-banner-label">Trip total</div><div class="cost-banner-amount">${cur}${b.grand.toFixed(0)}</div></div>
+  return`<div class="cost-banner"><div class="cost-banner-label">Trip total${b.groupSize>1?` · ${b.groupSize} travellers`:''}</div><div class="cost-banner-amount">${cur}${b.grand.toFixed(0)}${b.perPerson!=null?`<span class="cost-banner-pp"> · ${cur}${b.perPerson.toFixed(0)} per person</span>`:''}</div></div>
     <div class="cost-card"><table class="cost-summary-table">
       <tr><td>⛳ Golf</td><td>${cur}${b.golfTotal.toFixed(0)}</td></tr>
       <tr><td>🏨 Stays</td><td>${cur}${b.stayTotal.toFixed(0)}</td></tr>
@@ -313,7 +328,7 @@ function tbCostsTabHTML(){
     </table></div>
     <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?` Totals are shown in ${cur} but some line items below are priced in a different currency — no conversion is applied yet.`:''}</p>
     <div class="cost-line-items-label">Line items</div>
-    <div class="cost-card"><table class="cost-line-table">${b.items.length?b.items.map(x=>`<tr><td>${esc(x.label)} <span class="wt">${x.cat}</span></td><td>${tbMoney(x.amount,x.cur||cur)}</td></tr>`).join(''):`<tr><td colspan="2" class="hint">No costs yet.</td></tr>`}</table></div>
+    <div class="cost-card"><table class="cost-line-table">${b.items.length?b.items.map(x=>`<tr><td>${esc(x.label)} <span class="wt">${x.cat}</span>${x.tag?` <span class="wt">${esc(x.tag)}</span>`:''}</td><td>${tbMoney(x.amount,x.cur||cur)}</td></tr>`).join(''):`<tr><td colspan="2" class="hint">No costs yet.</td></tr>`}</table></div>
     <p class="hint" style="margin-top:var(--sp-2)">🔜 Currency conversion (showing every cost in one currency) is planned for a future update — for now, amounts display in each course's own local currency.</p>`;
 }
 
@@ -508,6 +523,12 @@ function renderTripBuilder(){
     <div class="tb-section" id="tb-search-results" style="border-bottom:none;padding-top:0${tbSearchQ.trim()?'':';display:none'}">${tbSearchQ.trim()?tbUnifiedSearchResultsHTML():''}</div>
     <div class="tb-toolbar">
       ${tbTripMenuHTML()}
+      <span class="tb-groupsize" title="How many people is this trip for? Green fees and stop costs scale by this; hotels keep their own per-item sharing setting.">
+        <span class="tb-groupsize-label">👥</span>
+        <button type="button" class="tb-btn is-icon is-sm is-quiet" id="tb-groupsize-dec" aria-label="Decrease group size">−</button>
+        <span class="tb-groupsize-n">${groupSize}</span>
+        <button type="button" class="tb-btn is-icon is-sm is-quiet" id="tb-groupsize-inc" aria-label="Increase group size">+</button>
+      </span>
       ${showItinFilters?`<details class="tb-drop" id="tb-filter-drop">
         <summary title="Filter what this itinerary shows">Filters${tbItinFilter!=='all'||!tbDriveToggle?' ·':''}</summary>
         <div class="tb-drop-body">
@@ -531,6 +552,8 @@ function renderTripBuilder(){
 
   document.getElementById('tb-exit').addEventListener('click',()=>exitTripBuilder());
   document.getElementById('tb-clear-trip').addEventListener('click',()=>tripClearAll());
+  document.getElementById('tb-groupsize-dec').addEventListener('click',()=>tripSetGroupSize(groupSize-1));
+  document.getElementById('tb-groupsize-inc').addEventListener('click',()=>tripSetGroupSize(groupSize+1));
   /* Tabs span both modes: Discover means Plan, the other two mean Build. */
   pane.querySelectorAll('.tb-tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
     const k=btn.dataset.tab;

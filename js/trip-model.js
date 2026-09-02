@@ -146,7 +146,11 @@ function tripDayAddStop(dayId,type,name,price,lat,lng,priceType,guests){
      read as 'room' by tripItemPriceDetail(), same result. */
   if(it.type==='hotel'){
     it.priceType=priceType==='person'?'person':'room';
-    it.guests=(typeof guests==='number'&&isFinite(guests)&&guests>0)?Math.round(guests):HOTEL_GUESTS_DEFAULT;
+    // GOLF-87: a new hotel item's guests default to the trip's own group
+    // size (falling back to HOTEL_GUESTS_DEFAULT if that's somehow unset),
+    // so "flows through" happens naturally at entry time — still freely
+    // editable per-hotel afterward (a group of 4 might book 2 twin rooms).
+    it.guests=(typeof guests==='number'&&isFinite(guests)&&guests>0)?Math.round(guests):(typeof groupSize==='number'&&groupSize>0?groupSize:HOTEL_GUESTS_DEFAULT);
   }
   d.items.push(it);
   saveState();
@@ -599,13 +603,26 @@ function tbMove(i,dir){
    (called from saveState(), so every existing mutation path — toggleTrip,
    tripDayAdd, tbDropOn, etc. — keeps every trip's stored snapshot
    fresh for free); tripRestoreActive() does the reverse when switching. */
-let trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1}};
+let trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1,groupSize:2}};
 let activeTripId='default';
+let groupSize=2;
+// GOLF-87: how many travellers this trip is for — a trip-level fact,
+// persisted/restored through the exact same snapshot path as every other
+// trip field. Green fees/POI costs scale by this; hotels keep their own
+// independent per-item priceType/guests sharing model from GOLF-74 and are
+// deliberately NOT re-multiplied here (see tripItemPriceDetail()).
+function tripSetGroupSize(n){
+  const v=Math.max(1,Math.round(Number(n)||1));
+  groupSize=v;
+  saveState();
+  if(tripBuilderOn){renderTripBuilder();}
+}
 function tripSnapshotActive(){
   if(!trips[activeTripId])trips[activeTripId]={name:'My trip',created:Date.now()};
   const t=trips[activeTripId];
   t.trip=[...TRIP];t.tripSeq=[...tripSeq];t.tripDays=JSON.parse(JSON.stringify(tripDays));
   t.tripLastAdded=tripLastAdded;t.tbAnchor=tbAnchor;t.tripDayNextId=tripDayNextId;
+  t.groupSize=groupSize;
   t.modified=Date.now();
 }
 function tripRestoreActive(){
@@ -618,6 +635,7 @@ function tripRestoreActive(){
   tripLastAdded=t?(t.tripLastAdded??null):null;
   tbAnchor=t?(t.tbAnchor??null):null;
   tripDayNextId=t&&t.tripDayNextId?t.tripDayNextId:(Math.max(0,...tripDays.map(d=>d.id))+1);
+  groupSize=t&&typeof t.groupSize==='number'&&t.groupSize>0?Math.round(t.groupSize):2;
 }
 /* Fresh course count per trip needs the active trip's own snapshot to be
    current, hence the snapshot call here too — cheap and idempotent. */
@@ -643,7 +661,7 @@ function tripCreateNew(){
   if(name==null)return;
   tripSnapshotActive();
   const id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  trips[id]={name:name.trim()||'Untitled trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1};
+  trips[id]={name:name.trim()||'Untitled trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1,groupSize:2};
   activeTripId=id;tripRestoreActive();
   // GOLF-58: a brand-new trip has nothing to anchor "nearby" from yet —
   // land straight on the "search a place" starting point instead of an
@@ -699,7 +717,7 @@ function tripDelete(id){
    from inside the Trip Builder pane itself. */
 function tripStartFresh(){
   if(!confirm('Start fresh? This deletes every saved trip on this device and creates one new, empty trip. This cannot be undone.'))return;
-  trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1}};
+  trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1,groupSize:2}};
   activeTripId='default';tripRestoreActive();
   tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbAnchor=null;tbDayShown=null;tbRegion='';tbBorder=8;tbDiscoveryTab='place';
   saveState();
