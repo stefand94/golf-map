@@ -1,6 +1,16 @@
 /* ============================================================
-   data/courses-ireland.js — GOLF-77: 37 curated notable Irish
-   golf courses (Republic of Ireland + Northern Ireland). Sourced
+   data/courses-ireland.js — GOLF-77: originally 37 curated notable
+   Irish golf courses (Republic of Ireland + Northern Ireland), grown
+   to 43 by the 2026-08-30 multi-course estate audit, then broadened
+   to 83 (2026-09-02) by diffing the existing list against the full
+   2026 Irish Golfer Top 100 ranking and adding every course missing
+   from it (~40 new entries). The new batch's fee/access/architect/note
+   fields are deliberately generic placeholders (band:"mid", a flat
+   wd/we estimate per currency, arch:"Unknown", spec:"18", note:"") —
+   unlike the original 37/43, which had hand-researched fee/arch/note
+   text (still marked conf:"est"), these were added purely to get
+   coordinates/region/currency right at Top 100 scale; revisit with
+   real per-course research before trusting the fee figures. Sourced
    via scripts/fetch_ireland_golf_clubs.py against Golf Ireland's
    public club-finder API (golfireland.ie — same "DotGolf" white-label
    platform and API shape as England Golf/Scottish Golf/Wales Golf's,
@@ -98,7 +108,47 @@ const C_IRELAND=[
 {n:"Carlow",lat:52.8524551,lng:-6.893686,clubInfo:{phone:"0599131695"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€55",we:"€55",conf:"est",arch:"Cecil Barcroft, revised by Harry Colt",spec:"18 · heathland",note:"An inland heathland course, considered one of Ireland's best non-links.",topIreland:1,t100:{ire:34},site:"http://www.carlowgolfclub.ie"},
 {n:"Castlerock",lat:55.1651421,lng:-6.78303,clubInfo:{phone:"70848314"},r:"Causeway Coast & Mournes",a:"open",band:"premium",wd:"£160",we:"£160",conf:"est",arch:"Ben Sayers (1901)",spec:"18 · links",note:"A Causeway Coast links neighbouring Royal Portrush.",topIreland:1,t100:{ire:35},site:"http://www.castlerockgc.co.uk"},
 {n:"Galway Bay",lat:53.2493973,lng:-8.975981,clubInfo:{phone:"091790711"},r:"West of Ireland — Galway & Mayo",a:"open",band:"high",wd:"€85",we:"€85",conf:"est",arch:"Christy O'Connor Jr (1993)",spec:"18 · links/parkland",note:"A Christy O'Connor Jr resort course on Galway Bay.",topIreland:1,t100:{ire:36},site:""},
-{n:"The European Club",lat:52.85944,lng:-6.071839,clubInfo:{phone:"47415"},r:"Dublin & East Coast",a:"open",band:"premium",wd:"€200",we:"€200",conf:"est",arch:"Pat Ruddy (1986)",spec:"18 · links",note:"A modern-classic links built by its own owner-architect on the Wicklow coast.",topIreland:1,t100:{ire:37},site:"https://www.theeuropeanclub.com"}
+{n:"The European Club",lat:52.85944,lng:-6.071839,clubInfo:{phone:"47415"},r:"Dublin & East Coast",a:"open",band:"premium",wd:"€200",we:"€200",conf:"est",arch:"Pat Ruddy (1986)",spec:"18 · links",note:"A modern-classic links built by its own owner-architect on the Wicklow coast.",topIreland:1,t100:{ire:37},site:"https://www.theeuropeanclub.com"},
+{n:"Ardglass Golf Club",lat:54.2586327,lng:-5.605249,clubInfo:{phone:"02844841219"},r:"Causeway Coast & Mournes",a:"open",band:"mid",wd:"£65",we:"£75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Balbriggan Golf Club",lat:53.5951767,lng:-6.182618,clubInfo:{phone:"018412229"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Belvoir Park Golf Club",lat:54.5615,lng:-5.913478,clubInfo:{phone:"02890491693"},r:"Causeway Coast & Mournes",a:"open",band:"mid",wd:"£65",we:"£75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Bunclody Golf Club",lat:52.6584549,lng:-6.671018,clubInfo:{phone:"0539374444"},r:"Cork & South Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Carton House (Montgomerie) Golf Club",lat:53.390522,lng:-6.566736,clubInfo:{phone:"015052000"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Clandeboye (Dufferin) Golf Club",lat:54.626358,lng:-5.683152,clubInfo:{phone:"02891271767"},r:"Causeway Coast & Mournes",a:"open",band:"mid",wd:"£65",we:"£75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Concra Wood Golf Club",lat:54.118866,lng:-6.731274,clubInfo:{phone:"00353429749485"},r:"Causeway Coast & Mournes",a:"open",band:"mid",wd:"£65",we:"£75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Dun Laoghaire Golf Club",lat:53.2064972,lng:-6.156725,clubInfo:{phone:"012721866"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Dundalk Golf Club",lat:53.9731026,lng:-6.372931,clubInfo:{phone:"0429321731"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Farnham Estate Golf Club",lat:54.0022545,lng:-7.40002537,clubInfo:{phone:"0494326482"},r:"Causeway Coast & Mournes",a:"open",band:"mid",wd:"£65",we:"£75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Galgorm Castle Golf Club",lat:54.85828,lng:-6.313579,clubInfo:{phone:"02825646161"},r:"Causeway Coast & Mournes",a:"open",band:"mid",wd:"£65",we:"£75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Glasson Golf Club",lat:53.47575,lng:-7.900952,clubInfo:{phone:"0906485120"},r:"West of Ireland — Galway & Mayo",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Golf at The Hawthorn Golf Club",lat:53.268,lng:-8.933,r:"West of Ireland — Galway & Mayo",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Grange Golf Club",lat:53.2808151,lng:-6.282296,clubInfo:{phone:"01-4932889"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Headfort (New) Golf Club",lat:53.7250557,lng:-6.859977,clubInfo:{phone:"00353469240146"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Hermitage Golf Club",lat:53.3593369,lng:-6.417649,clubInfo:{phone:"016268491"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Killarney (Killeen)",lat:52.0604935,lng:-9.563369,clubInfo:{phone:"0646631034"},r:"South West Ireland — Kerry & Clare Links",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Killarney (Mahony's Point)",lat:52.0604935,lng:-9.563369,clubInfo:{phone:"0646631034"},r:"South West Ireland — Kerry & Clare Links",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Laytown & Bettystown Golf Club",lat:53.7048874,lng:-6.246931,clubInfo:{phone:"0419827170"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Lough Erne Golf Club",lat:54.38989,lng:-7.69582844,clubInfo:{phone:"02866345766"},r:"Causeway Coast & Mournes",a:"open",band:"mid",wd:"£65",we:"£75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Macreddin Golf Club",lat:52.8808441,lng:-6.329934,clubInfo:{phone:"0402 36999"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Monkstown Golf Club",lat:51.8502274,lng:-8.343904,clubInfo:{phone:"00353214841376"},r:"South West Ireland — Kerry & Clare Links",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Moyola Park Golf Club",lat:54.7825775,lng:-6.572232,clubInfo:{phone:"02879468468"},r:"Causeway Coast & Mournes",a:"open",band:"mid",wd:"£65",we:"£75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Moyvalley Golf Club",lat:53.41859,lng:-6.927517,clubInfo:{phone:"0469548080"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Mullingar Golf Club",lat:53.48173,lng:-7.357139,clubInfo:{phone:"0449348366"},r:"Cork & South Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Naas Golf Club",lat:53.2476768,lng:-6.640637,clubInfo:{phone:"045897509"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"New Forest Golf Club",lat:53.3999138,lng:-7.42762,clubInfo:{phone:"0449221100"},r:"Cork & South Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"North West Golf Club",lat:55.1092148,lng:-7.468647,clubInfo:{phone:"0866047299"},r:"Causeway Coast & Mournes",a:"open",band:"mid",wd:"£65",we:"£75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Palmerstown House Estate Golf Club",lat:53.24376,lng:-6.628126,clubInfo:{phone:"045906901"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Powerscourt (East) Golf Club",lat:53.1871872,lng:-6.185906,clubInfo:{phone:"012046033"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Powerscourt (West) Golf Club",lat:53.1871872,lng:-6.185906,clubInfo:{phone:"012046033"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Rathsallagh Golf Club",lat:53.02604,lng:-6.73895741,clubInfo:{phone:"045403316"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Rosslare Golf Club",lat:52.2842026,lng:-6.394002,clubInfo:{phone:"0539132203"},r:"Cork & South Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Seapoint Golf Club",lat:53.7525444,lng:-6.255986,clubInfo:{phone:"0419822333"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"St. Anne's Golf Club",lat:53.3752136,lng:-6.137757,clubInfo:{phone:"018336471"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"St. Margaret's Golf Club",lat:53.4231,lng:-6.3639,clubInfo:{phone:"018640400"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"The Heritage Golf Club",lat:53.13269,lng:-7.151716,clubInfo:{phone:"0578642321"},r:"Cork & South Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Tulfarris Golf Club",lat:53.1252747,lng:-6.559183,clubInfo:{phone:"045867609"},r:"Dublin & East Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Tullamore Golf Club",lat:53.2416954,lng:-7.520573,clubInfo:{phone:"0579321439"},r:"Cork & South Coast",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""},
+{n:"Westport Golf Club",lat:53.812397,lng:-9.564694,clubInfo:{phone:"09828262"},r:"Northwest Ireland — Donegal & Sligo",a:"open",band:"mid",wd:"€65",we:"€75",conf:"est",arch:"Unknown",spec:"18",note:"",topIreland:1,site:""}
 ];
 
 

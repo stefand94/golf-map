@@ -1,6 +1,17 @@
 /* ============================================================
-   data/courses-southafrica.js — GOLF-78: 19 curated notable South
-   African golf courses. Sourced via
+   data/courses-southafrica.js — GOLF-78: originally 19 curated
+   notable South African golf courses, grown to 23 by the 2026-08-30
+   multi-course estate audit, then broadened to 99 (2026-09-02) at
+   the stakeholder's explicit request ("do all the top 100 courses
+   in SA") by diffing the existing list against satop100courses.com's
+   full Top 100-by-name list and adding every course missing from it
+   (~76 new entries). The new batch's fee/architect/note fields are
+   deliberately generic placeholders (band:"mid", wd/we:"R750"/"R850",
+   arch:"Unknown", spec:"18", note:"") — unlike the original 19/23,
+   which had hand-researched fee/arch/note text (still marked
+   conf:"est"), these were added purely to get coordinates/region
+   right at Top 100 scale; revisit with real per-course research
+   before trusting the fee figures. Sourced via
    scripts/fetch_south_africa_golf_clubs.py against Handicap Network
    Africa's public club-finder API (handicaps.co.za — the same
    "DotGolf"-shaped POST /api/clubs/FindClubs endpoint name already
@@ -69,7 +80,83 @@ const C_SOUTHAFRICA=[
 {n:"George Golf Club",lat:-33.9533958,lng:22.4453144,clubInfo:{phone:"044 873 6116"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R650",we:"R650",conf:"est",arch:"Established 1885",spec:"18 · parkland",note:"One of South Africa's oldest golf clubs, at the foot of the Outeniqua Mountains.",topSouthAfrica:1,t100:{za:17},site:""},
 {n:"Mount Edgecombe (The Woods)",lat:-29.71694,lng:31.0448685,clubInfo:{phone:"031 5395330"},r:"KwaZulu-Natal",a:"open",band:"mid",wd:"R700",we:"R700",conf:"est",arch:"Established mid-20th century",spec:"18 · parkland",note:"One of Mount Edgecombe's two courses on Durban's North Coast, host to national amateur events.",topSouthAfrica:1,t100:{za:18},site:""},
 {n:"Mount Edgecombe (The Lakes)",lat:-29.71694,lng:31.0448685,clubInfo:{phone:"031 5395330"},r:"KwaZulu-Natal",a:"open",band:"mid",wd:"R700",we:"R700",conf:"est",arch:"Established mid-20th century",spec:"18 · parkland",note:"Mount Edgecombe's second 18, alongside The Woods, sharing the same North Coast clubhouse.",topSouthAfrica:1,site:""},
-{n:"Houghton Golf Club",lat:-26.1676559,lng:28.0741634,clubInfo:{phone:"0117287337"},r:"Gauteng",a:"open",band:"mid",wd:"R800",we:"R800",conf:"est",arch:"Established 1925",spec:"18 · parkland",note:"A historic Johannesburg club, host to several South African Opens.",topSouthAfrica:1,t100:{za:19},site:""}
+{n:"Houghton Golf Club",lat:-26.1676559,lng:28.0741634,clubInfo:{phone:"0117287337"},r:"Gauteng",a:"open",band:"mid",wd:"R800",we:"R800",conf:"est",arch:"Established 1925",spec:"18 · parkland",note:"A historic Johannesburg club, host to several South African Opens.",topSouthAfrica:1,t100:{za:19},site:""},
+{n:"Atlantic Beach Links",lat:-33.7472229,lng:18.44835,clubInfo:{phone:"+27 21 553 2221"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Benoni CC",lat:-26.17165,lng:28.3410835,clubInfo:{phone:"011 8495211"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Blair Atholl Golf & Equestrian Estate",lat:-25.9084,lng:27.908783,clubInfo:{phone:"011 300 5700"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Bloemfontein",lat:-29.1163139,lng:26.2574978,clubInfo:{phone:"051 447 0906"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Bosch Hoek",lat:-29.3521481,lng:30.0961437,clubInfo:{phone:"0332344232"},r:"KwaZulu-Natal",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Bryanston",lat:-26.0619335,lng:28.0125179,clubInfo:{phone:"011 706 1361"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"CCJ Rocklands",lat:-26.0499477,lng:28.076664,clubInfo:{phone:"011 202 1603"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"CCJ Woodmead",lat:-26.0499477,lng:28.076664,clubInfo:{phone:"011 202 1603"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Centurion",lat:-25.873703,lng:28.204092,clubInfo:{phone:"012 665 0279"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Champagne Sports Resort",lat:-28.9968338,lng:29.47108,clubInfo:{phone:"0364688000"},r:"KwaZulu-Natal",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Clovelly",lat:-34.1225166,lng:18.4239368,clubInfo:{phone:"021 784 2111"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Cotswold Downs",lat:-29.75063,lng:30.7939415,clubInfo:{phone:"0317623660"},r:"KwaZulu-Natal",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Dainfern",lat:-25.9889317,lng:27.997406,clubInfo:{phone:"011 875 0401"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"De Zalze",lat:-33.9386826,lng:18.8497715,clubInfo:{phone:"0218807300"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Eagle Canyon",lat:-26.0975838,lng:27.9190273,clubInfo:{phone:"011 801 6600"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"East London Golf Club",lat:-32.9960175,lng:27.9360619,clubInfo:{phone:"0437351356"},r:"Eastern Cape",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Ebotse Links",lat:-26.153944,lng:28.3515568,clubInfo:{phone:"087 285 3557"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Elements",lat:-24.7992821,lng:28.1300259,clubInfo:{phone:"0105912951"},r:"Mpumalanga & Kruger",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Emfuleni",lat:-26.7426147,lng:27.8417187,clubInfo:{phone:"0161009230 / 0169323370"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Eye of Africa",lat:-26.3603725,lng:28.0246315,clubInfo:{phone:"010 5000 300"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Glenvista Golf Club",lat:-26.2822247,lng:28.0557289,clubInfo:{phone:"0114323150"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Goldfields West",lat:-26.3920059,lng:27.4735031,clubInfo:{phone:"018 011 2910/064 814 2177"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Goose Valley",lat:-34.02612,lng:23.3792858,clubInfo:{phone:"+27 44 533 5082"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Gowrie Farm",lat:-29.3627186,lng:30.0035973,clubInfo:{phone:"033 266 6348"},r:"KwaZulu-Natal",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Hermanus",lat:-34.4101143,lng:19.2551823,clubInfo:{phone:"028 312 1954"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Highland Gate",lat:-25.4425678,lng:30.2087116,clubInfo:{phone:"087 287 4653"},r:"Mpumalanga & Kruger",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Huddle Park",lat:-26.1546783,lng:28.1050644,clubInfo:{phone:"0116406693"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Irene",lat:-25.8850613,lng:28.2237759,clubInfo:{phone:"012 6671081"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Jackal Creek",lat:-26.0581322,lng:27.9269028,clubInfo:{phone:"010 880 3999 "},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Kambaku",lat:-25.4330273,lng:31.9534817,clubInfo:{phone:"082 888 0188"},r:"Mpumalanga & Kruger",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Katberg",lat:-32.4993362,lng:26.6844177,clubInfo:{phone:"040 864 1010"},r:"Eastern Cape",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"King David Mowbray",lat:-33.94605,lng:18.4922466,clubInfo:{phone:"021 6853018"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Kingswood",lat:-33.965,lng:22.475,r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Knysna Golf Club",lat:-34.0582161,lng:23.0788612,clubInfo:{phone:"044 3841150"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Krugersdorp",lat:-26.0812912,lng:27.7844181,clubInfo:{phone:"(011)660 4365"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Kyalami",lat:-25.9782066,lng:28.0527725,clubInfo:{phone:"010 5940034"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Maccauvlei",lat:-26.6821213,lng:27.9425163,clubInfo:{phone:"0164213196"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Mbombela",lat:-25.4819,lng:31.0015221,clubInfo:{phone:"013-744 0952/8"},r:"Mpumalanga & Kruger",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Modderfontein",lat:-26.1015911,lng:28.1622963,clubInfo:{phone:"011 6082033/4"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Mossel Bay Golf Club",lat:-34.1892624,lng:22.1313858,clubInfo:{phone:"0446912379"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Olivewood",lat:-32.83,lng:28.1,r:"Eastern Cape",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Paarl Golf Club",lat:-33.7608681,lng:18.9798336,clubInfo:{phone:"021 - 8631140"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Parkview",lat:-26.1617088,lng:28.0193863,clubInfo:{phone:"011 646-5400"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Parys",lat:-26.8893948,lng:27.4660435,clubInfo:{phone:"056 818 1567"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Pecanwood",lat:-25.7718754,lng:27.8532963,clubInfo:{phone:"012 244 8080"},r:"North West",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Pezula",lat:-34.0690575,lng:23.090292,clubInfo:{phone:"044 302 5310"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Plettenberg Bay CC",lat:-34.0623741,lng:23.3556633,clubInfo:{phone:"044 533 2132"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Port Elizabeth Golf Club",lat:-33.9579048,lng:25.58799,clubInfo:{phone:"041 3743140"},r:"Eastern Cape",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Pretoria Country Club",lat:-25.78388,lng:28.2521915,clubInfo:{phone:"0124606241"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Prince's Grant",lat:-29.3391685,lng:31.3750362,clubInfo:{phone:"0324820041"},r:"KwaZulu-Natal",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Randpark",lat:-26.1146069,lng:27.9664364,clubInfo:{phone:"011 215 8600"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Reading Country Club",lat:-26.2653179,lng:28.1071434,clubInfo:{phone:"011 907 8906"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Royal Johannesburg & Kensington (West)",lat:-26.1562252,lng:28.1078758,clubInfo:{phone:"011 640 3021"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Royal Port Alfred",lat:-33.6036453,lng:26.8843689,clubInfo:{phone:"046 624 4796"},r:"Eastern Cape",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Ruimsig",lat:-26.0828323,lng:27.8655319,clubInfo:{phone:"011 958 1905"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"San Lameer",lat:-30.944025,lng:30.2979813,clubInfo:{phone:"039 313 5141"},r:"KwaZulu-Natal",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Selborne Park",lat:-30.37601,lng:30.67837,clubInfo:{phone:"087 135 0559"},r:"KwaZulu-Natal",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Serengeti",lat:-26.0355568,lng:28.28139,clubInfo:{phone:"(011) 552 - 7200"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Sishen",lat:-27.68876,lng:23.0588856,clubInfo:{phone:"0530505727"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Somerset West CC",lat:-34.0817642,lng:18.8348026,clubInfo:{phone:"021 852 2925"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Southbroom",lat:-30.9179363,lng:30.3221817,clubInfo:{phone:"0393166026"},r:"KwaZulu-Natal",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"St Francis Bay",lat:-34.1623878,lng:24.8258286,clubInfo:{phone:"042 2940467"},r:"Eastern Cape",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Steenberg",lat:-34.06797,lng:18.4268,clubInfo:{phone:"021 713-2233"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Stellenbosch",lat:-33.95875,lng:18.850378,clubInfo:{phone:"0218800103"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"The Club at Steyn City",lat:-25.98,lng:27.97,r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Umdoni Park",lat:-30.3924866,lng:30.6894112,clubInfo:{phone:"039 - 975 1615"},r:"KwaZulu-Natal",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Umhlali",lat:-29.5095882,lng:31.1970882,clubInfo:{phone:"032 947 1181"},r:"KwaZulu-Natal",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Victoria Golf Club",lat:-29.57367,lng:30.32664,clubInfo:{phone:"033-3471942"},r:"KwaZulu-Natal",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Wanderers",lat:-26.1334782,lng:28.0518188,clubInfo:{phone:"011 447 3311"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Waterkloof Golf Club",lat:-25.7911224,lng:28.21923,clubInfo:{phone:"(012) 007-1147"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Wedgewood",lat:-33.7139244,lng:25.5207367,clubInfo:{phone:"0414509595"},r:"Eastern Cape",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Westlake",lat:-34.082428,lng:18.446558,clubInfo:{phone:"0217882020"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Wild Coast Country Club",lat:-29.7706089,lng:30.8685665,clubInfo:{phone:"039 305 2799"},r:"Eastern Cape",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Wingate Park",lat:-25.8277359,lng:28.2769165,clubInfo:{phone:"012 997 1312"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Woodhill",lat:-25.8211823,lng:28.3121071,clubInfo:{phone:"012-9980011"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+{n:"Zebula",lat:-24.7642365,lng:27.9500618,clubInfo:{phone:"014 734 7700"},r:"Mpumalanga & Kruger",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""}
 ];
 
 
