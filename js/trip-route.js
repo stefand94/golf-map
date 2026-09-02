@@ -69,10 +69,16 @@ function tripShowOrdered(order,clear=true,fit=true){
     const day=stop.day;
     const fill=day!=null?TRIP_DAY_COLORS[(day-1)%TRIP_DAY_COLORS.length]:'#E6B400';
     const label=day!=null?`D${day}·${idx+1}`:String(idx+1);
-    if(stop.type==='place'){
-      // Hollow diamond-ish ring (via a plain circleMarker with a white
-      // fill and a thick coloured border) so a searched place reads as
-      // visually distinct from a solid golf-course stop at a glance.
+    if(stop.type!=='course'){
+      /* Bug fix (2026-09-02): this used to only check stop.type==='place'
+         (a day-level city field) — but a mid-route stop added via the
+         "add hotel/POI" flow has type:'hotel'/'poi', which fell into the
+         popupHTML(stop.i) branch below with stop.i undefined (only a
+         course stop carries .i), throwing and silently aborting the whole
+         route draw — the exact repro behind the "adding a stop along the
+         way breaks routing" report. Any non-course stop (place/hotel/poi)
+         gets the same hollow ring; only a real course stop gets the full
+         popup/click behaviour, since only it has a course index to bind. */
       L.circleMarker([stop.lat,stop.lng],{radius:8,color:fill,weight:3,fillColor:'#fff',fillOpacity:1})
         .bindTooltip(label,{permanent:true,direction:'center',className:'trip-num'}).addTo(tripLayer);
     }else{
