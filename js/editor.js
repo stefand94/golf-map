@@ -152,7 +152,7 @@ function wipeStoredState(){
   PLAYED.clear();WANT.clear();
   trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1}};
   activeTripId='default';tripRestoreActive();
-  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbAnchor=null;tbDayShown=null; // GOLF-60b
+  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbAnchor=null;tbDayShown=null;tbRegion='';tbBorder=8; // GOLF-60b
   clearStoredState();closeDrawer();render();
 }
 function copyPatch(){const t=document.getElementById('ex');t.select();

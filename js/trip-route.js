@@ -158,9 +158,12 @@ function tbEffectiveAnchor(){
    alone don't know about TRIP, they're shared with nothing else. */
 function tbDiscover(){
   if(tbDiscoveryTab==='region'){
-    const region=document.getElementById('tb-region')?document.getElementById('tb-region').value:'';
-    if(!region)return[];
-    return tripByRegion(region,parseFloat(document.getElementById('tb-border')?.value)||0).filter(({i})=>!TRIP.has(i));
+    /* Bug fix (2026-09-02): read the persisted tbRegion/tbBorder state
+       rather than the live DOM value — tbDiscover() can run from a
+       redraw (e.g. after "+ Wishlist") that happens before/without the
+       change listener firing, so the DOM alone isn't reliable. */
+    if(!tbRegion)return[];
+    return tripByRegion(tbRegion,tbBorder||0).filter(({i})=>!TRIP.has(i));
   }
   if(tbDiscoveryTab==='place'){
     if(!tbPlaceAnchor)return[];

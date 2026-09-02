@@ -633,7 +633,7 @@ function tripSwitchTo(id){
   // per-trip snapshot — reset them on every lifecycle transition so a
   // switched-to trip never inherits stale search text/anchor from whatever
   // trip was active before.
-  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;
+  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbRegion='';tbBorder=8;
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(true);}
   render();
@@ -674,7 +674,7 @@ function tripDuplicate(id){
   trips[newId].name=(src.name||'My trip')+' (copy)';
   trips[newId].created=Date.now();trips[newId].modified=Date.now();
   activeTripId=newId;tripRestoreActive();
-  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null; // GOLF-60b
+  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbRegion='';tbBorder=8; // GOLF-60b
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
   render();
@@ -685,7 +685,7 @@ function tripDelete(id){
   if(!confirm(`Delete "${trips[id].name}"? This can't be undone.`))return;
   delete trips[id];
   if(activeTripId===id){activeTripId=Object.keys(trips)[0];tripRestoreActive();}
-  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null; // GOLF-60b
+  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbRegion='';tbBorder=8; // GOLF-60b
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
   render();
@@ -701,7 +701,7 @@ function tripStartFresh(){
   if(!confirm('Start fresh? This deletes every saved trip on this device and creates one new, empty trip. This cannot be undone.'))return;
   trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1}};
   activeTripId='default';tripRestoreActive();
-  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbAnchor=null;tbDayShown=null;tbDiscoveryTab='place';
+  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbAnchor=null;tbDayShown=null;tbRegion='';tbBorder=8;tbDiscoveryTab='place';
   saveState();
   if(tripBuilderOn)setAppMode('plan'); // GOLF-64: URL follows the mode
   render();
@@ -745,6 +745,16 @@ function tripSwitcherHTML(){return tbTripMenuHTML();}
    added, so picking Dornoch -> Castle Stuart -> Nairn keeps the discovery
    list walking up the coast rather than staying anchored to the first pick. */
 let tripBuilderOn=false,tbAnchor=null,tbDiscoveryTab='anchor';
+/* Bug fix (2026-09-02): the "By region" picker's <select>/<input> used to
+   be read live off the DOM with no backing state — fine for the change
+   listener, but any *other* trigger that rebuilds pane.innerHTML (e.g.
+   tbAddToWishlist()'s render()+renderTripBuilder() after a "+ Wishlist"
+   click) recreates the <select> from scratch with no value= set, which
+   silently resets it to "Choose a region…" and empties the results list.
+   Read as "the region list disappeared the moment I added a course."
+   tbRegion/tbBorder now hold the selection so every re-render can restore
+   it via selected/value=, not just the one that changes it. */
+let tbRegion='',tbBorder=8;
 /* GOLF-58: "start a trip by searching a place" — a plain {label,lat,lng}
    (via the same ORS geocode endpoint the day-place boxes already use),
    not tied to any course. Lets a brand-new trip begin "take me to

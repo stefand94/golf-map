@@ -458,10 +458,10 @@ function tbDiscoverTabHTML(){
     ${tbDiscoveryTab==='place'?`<p class="hint" style="margin:0 0 var(--sp-2)">${tbPlaceAnchor?`Courses near <b>${esc(tbPlaceAnchor.label)}</b>.`:'Search a town or city in the bar above.'}</p>`
       :tbDiscoveryTab==='anchor'?`<p class="hint" style="margin:0 0 var(--sp-2)">${tbEffectiveAnchor()!=null?`Courses near <b>${esc(V(tbEffectiveAnchor(),'n'))}</b>.`:'Add a course to see what\'s nearby.'}</p>`
       :`<div class="tb-day-settings-body" style="padding:0 0 var(--sp-3)">
-        <select id="tb-region" aria-label="Region"><option value="">Choose a region…</option>${REGIONS.map(r=>`<option value="${r}">${r}</option>`).join('')}</select>
+        <select id="tb-region" aria-label="Region"><option value="">Choose a region…</option>${REGIONS.map(r=>`<option value="${r}"${r===tbRegion?' selected':''}>${r}</option>`).join('')}</select>
         <label style="display:inline-flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-caption);color:var(--stone)"
           title="Also include courses just outside the region, within this many miles of its edge">Border
-          <input id="tb-border" type="number" value="8" min="0" max="50" style="width:70px"></label>
+          <input id="tb-border" type="number" value="${tbBorder}" min="0" max="50" style="width:70px"></label>
       </div>`}
     <div id="tb-results">${tbResultsHTML(tbDiscover())}</div>`;
 }
@@ -598,7 +598,11 @@ function renderTripBuilder(){
       if(b)b.addEventListener('click',()=>{tbDiscoveryTab=k;renderTripBuilder();tbDrawMap();});
     });
     if(tbDiscoveryTab==='region'){
-      const run=()=>{document.getElementById('tb-results').innerHTML=tbResultsHTML(tbDiscover());tbDrawMap();};
+      const run=()=>{
+        tbRegion=document.getElementById('tb-region').value;
+        tbBorder=parseFloat(document.getElementById('tb-border').value)||0;
+        document.getElementById('tb-results').innerHTML=tbResultsHTML(tbDiscover());tbDrawMap();
+      };
       document.getElementById('tb-region').addEventListener('change',run);
       document.getElementById('tb-border').addEventListener('change',run);
     }
