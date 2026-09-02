@@ -44,10 +44,28 @@
    entry accidentally points at a URL that redirects. index.html and
    manifest.json were also pointed at the extensionless URL directly,
    so the redirect is avoided on the primary path entirely rather than
-   merely cleaned up after the fact. */
-const CACHE_NAME = 'golfmap-shell-v4';
+   merely cleaned up after the fact.
+
+   v5 fix (adversarial review findings, both confirmed real): (1)
+   `install`'s per-URL loop used to call cache.put() inside each fetch's
+   own .then(), independently — so a single persistently-failing
+   PRECACHE_URLS entry (e.g. a 404) still let every OTHER url that
+   resolved first get durably written into the new cache before
+   Promise.all rejected and install aborted, leaving a partially-
+   populated cache behind while this SW never activated. cache.addAll()
+   itself is atomic (all-or-nothing) — the loop below now matches that:
+   every URL is fetched and cleaned first, and cache.put() only runs
+   once ALL of them have already succeeded. (2) './' (the app's actual
+   root landing page — index.html's redirect stub) was never in
+   PRECACHE_URLS, so a visitor who installs the SW but never happens to
+   visit '/' while online (e.g. always arrives via a bookmark straight
+   to /london-golf-map-v5_1) then goes offline and navigates to '/' hit
+   a raw network error instead of a graceful offline fallback. Added
+   below. */
+const CACHE_NAME = 'golfmap-shell-v5';
 
 const PRECACHE_URLS = [
+  './',
   './london-golf-map-v5_1',
   './manifest.json',
   './images/icon.svg',
@@ -100,9 +118,15 @@ self.addEventListener('install', (event) => {
                 headers: res.headers,
               }))
             : Promise.resolve(res);
-          return clean.then((out) => cache.put(url, out));
+          // v5 fix: return the {url,out} pair instead of writing to the
+          // cache here — see the v5 note up top. Writing only happens
+          // below, once every fetch in this Promise.all has already
+          // resolved, so a failure anywhere leaves the cache untouched
+          // rather than partially populated.
+          return clean.then((out) => ({ url, out }));
         })
-      )))
+      ))
+        .then((entries) => Promise.all(entries.map(({ url, out }) => cache.put(url, out)))))
       .then(() => self.skipWaiting())
   );
 });
