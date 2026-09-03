@@ -461,6 +461,15 @@
   /* Map marker for a day's hotel/POI stops (rendered by tbEmojiIcon). */
   .tb-emoji-marker{background:none;border:none;text-align:center;line-height:1}
   .tb-emoji-marker span{font-size:19px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
+  /* item-4: a scheduled golf stop's map marker (tripGolfMarkerIcon) — same
+     ⛳ glyph as the Trip Builder's own list rows, day-coloured badge, with
+     the existing "D{day}·{order}" route label as a small corner pill. */
+  .trip-golf-marker{background:none;border:none;position:relative}
+  .tgm-badge{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    border:2.5px solid #1B2733;box-shadow:var(--shadow-sm)}
+  .tgm-emoji{font-size:14px;line-height:1}
+  .tgm-num{position:absolute;right:-4px;bottom:-3px;background:#1B2733;color:#fff;font:700 8px/1 var(--font-mono);
+    padding:2px 3px;border-radius:6px;white-space:nowrap}
 
   /* GOLF-31 refactor: cart list was hand-styled with inline `style=` per
      element — pulled into named classes so the checkout look is defined
