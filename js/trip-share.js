@@ -27,8 +27,7 @@ function tripBuildSharePayload(){
       date:d.date||null,driveIn:d.driveIn??null,
       items:tripDayItems(d).map(it=>it.type==='golf'
         ?{id:it.id,type:'golf',i:it.i}
-        :{id:it.id,type:it.type,name:it.name,price:it.price,
-          priceType:it.priceType,guests:it.guests,lat:it.lat,lng:it.lng})
+        :{id:it.id,type:it.type,name:it.name,price:it.price,lat:it.lat,lng:it.lng})
     }))
   };
 }
@@ -44,10 +43,14 @@ function tripEncodeShareURL(){
 function tbShareTrip(btn){
   const url=tripEncodeShareURL();
   history.pushState({appMode},'',url);
-  const original=btn.textContent;
+  // item-6: swap innerHTML, not textContent — the button carries the
+  // SHARE_ICON_SVG icon, and textContent would silently strip it out on
+  // restore (a real bug this fix caught: the icon never came back after
+  // the first "Copied!" round-trip).
+  const original=btn.innerHTML;
   navigator.clipboard.writeText(url)
-    .then(()=>{btn.textContent='Copied!';setTimeout(()=>{btn.textContent=original;},1800);})
-    .catch(()=>{btn.textContent='Copy failed — select from address bar';setTimeout(()=>{btn.textContent=original;},2400);});
+    .then(()=>{btn.innerHTML='Copied!';setTimeout(()=>{btn.innerHTML=original;},1800);})
+    .catch(()=>{btn.innerHTML='Copy failed — select from address bar';setTimeout(()=>{btn.innerHTML=original;},2400);});
 }
 
 /* ── Decode: a #share= hash → a plain payload object, or null on any
@@ -124,20 +127,23 @@ function renderSharedTrip(){
    row has no checkbox/onchange, since that handler would otherwise flip
    the *live* tbIncludeFuel/call renderTripBuilder() against whatever the
    viewer's own trip state happens to be. */
+/* item-5: mirrors tbCostsTabHTML()'s expand-from-the-grouping layout
+   (js/trip-ui.js's costGroupHTML()) so a shared read-only trip looks the
+   same as the live Costs tab it's a frozen snapshot of — just with a
+   plain, non-interactive Fuel row instead of a checkbox. */
 function tbCostsTabReadOnlyHTML(){
   const b=tripCostBreakdown();
   const cur=tripPrimaryCurrency();
   const mixed=b.items.some(x=>x.cur&&x.cur!==cur);
+  const golf=b.items.filter(x=>x.cat==='Golf'),stay=b.items.filter(x=>x.cat==='Stay'),stop=b.items.filter(x=>x.cat==='Stop');
   return`<div class="cost-banner"><div class="cost-banner-label">Trip total${b.groupSize>1?` · ${b.groupSize} travellers`:''}</div><div class="cost-banner-amount">${cur}${b.grand.toFixed(0)}${b.perPerson!=null?`<span class="cost-banner-pp"> · ${cur}${b.perPerson.toFixed(0)} per person</span>`:''}</div></div>
-    <div class="cost-card"><table class="cost-summary-table">
-      <tr><td>⛳ Golf</td><td>${cur}${b.golfTotal.toFixed(0)}</td></tr>
-      <tr><td>🏨 Stays</td><td>${cur}${b.stayTotal.toFixed(0)}</td></tr>
-      <tr><td>📍 Stops</td><td>${cur}${b.poiTotal.toFixed(0)}</td></tr>
-      <tr><td>⛽ Fuel (est.)</td><td>${cur}${b.fuelCost.toFixed(0)}</td></tr>
-    </table></div>
-    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?` Totals are shown in ${cur} but some line items below are priced in a different currency — no conversion is applied yet.`:''}</p>
-    <div class="cost-line-items-label">Line items</div>
-    <div class="cost-card"><table class="cost-line-table">${b.items.length?b.items.map(x=>`<tr><td>${esc(x.label)} <span class="wt">${x.cat}</span>${x.tag?` <span class="wt">${esc(x.tag)}</span>`:''}</td><td>${tbMoney(x.amount,x.cur||cur)}</td></tr>`).join(''):`<tr><td colspan="2" class="hint">No costs yet.</td></tr>`}</table></div>`;
+    <div class="cost-card cost-groups">
+      ${costGroupHTML('⛳','Golf',b.golfTotal,golf,cur)}
+      ${costGroupHTML('🏨','Stays',b.stayTotal,stay,cur)}
+      ${costGroupHTML('📍','Stops',b.poiTotal,stop,cur)}
+      <div class="cost-fuel-row"><span>⛽ Fuel (est.)</span><span class="cost-group-amt">${cur}${b.fuelCost.toFixed(0)}</span></div>
+    </div>
+    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?` Totals are shown in ${cur} but some line items above are priced in a different currency — no conversion is applied yet.`:''}</p>`;
 }
 /* A dedicated Leaflet map instance, entirely separate from the app's main
    `map`/`tripLayer` globals — reusing those (via tripDrawCart()) would

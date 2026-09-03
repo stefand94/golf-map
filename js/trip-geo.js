@@ -224,21 +224,16 @@ function tripDayAccomFallback(d){
    entirely (unlike every other reader of the same field), so a priced POI
    showed as free there while counting in the cost table. Routing all four
    readers through this helper is what fixes it. */
-/* GOLF-74: hotels are commonly quoted "per person sharing" — the figure on
-   the booking page is per head, and a room for two costs double it. The item
-   now carries priceType:'room'|'person' (default 'room' = exactly the
-   pre-GOLF-74 meaning: the entered figure IS the room total) plus guests
-   (default 2, only meaningful when priceType is 'person'). Because the
-   default is 'room', no existing saved trip's total moves by a penny.
-   The regional fallback (tripDayAccomFallback) is a ROOM rate by
-   construction, so it is never multiplied — only an explicitly entered
-   per-person price is. */
+/* GOLF-91 (simplification of GOLF-74): the room/per-person-sharing toggle
+   plus its own editable guest count turned out to be more than needed —
+   stakeholder's explicit ask was "just show the price as per person per
+   night for now". A hotel's entered price is now always read as a
+   per-person-per-night figure, multiplied automatically by the trip's own
+   group size (groupSizeFor()) — no separate priceType/guests choice to
+   make per hotel. The regional fallback (tripDayAccomFallback, used only
+   when no price was entered) stays a flat per-night estimate, unmultiplied
+   — it's a typical ROOM rate, not something the visitor typed as per-head. */
 const HOTEL_GUESTS_DEFAULT=2;
-function tripHotelGuests(it){
-  const g=it&&it.guests;
-  return(typeof g==='number'&&isFinite(g)&&g>0)?Math.round(g):HOTEL_GUESTS_DEFAULT;
-}
-function tripHotelPerPerson(it){return!!(it&&it.type==='hotel'&&it.priceType==='person'&&it.price!=null);}
 /* {base,guests,sharing,total} for any item — the one place the per-person
    multiplication happens, so the itinerary row, the cost table and the
    trip total can never disagree about it. */
@@ -267,11 +262,11 @@ function tripItemPriceDetail(d,it){
   const cur=tripDayCurrency(d);
   if(it.type==='hotel'){
     const entered=it.price??null;
-    if(tripHotelPerPerson(it)){
-      const g=tripHotelGuests(it);
-      return{base:entered,guests:g,sharing:true,total:entered*g,cur};
+    if(entered!=null){
+      const g=gs;
+      return{base:entered,guests:g,sharing:g>1,total:entered*g,cur};
     }
-    const p=entered??tripDayAccomFallback(d);
+    const p=tripDayAccomFallback(d);
     return{base:p,guests:1,sharing:false,total:p,cur};
   }
   // GOLF-87: same reasoning as the golf branch above — sharing stays false

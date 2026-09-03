@@ -194,14 +194,27 @@
   .tb-toolbar{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-1) var(--sp-5) var(--sp-2)}
   .tb-toolbar>*{flex:1 1 0;min-width:0}
   .tb-drop{position:relative;flex:1 1 0;min-width:0}
-  /* GOLF-87: a compact group-size stepper, same visual weight as the trip
-     switcher next to it — flex:0 so it doesn't stretch like the toolbar's
-     other 1fr children. */
-  .tb-groupsize{display:flex;align-items:center;justify-content:center;gap:var(--sp-1);
-    flex:0 0 auto;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-pill);
-    padding:0 var(--sp-1);height:var(--tap-sm)}
-  .tb-groupsize-label{font-size:var(--fs-small);opacity:.7}
-  .tb-groupsize-n{font:600 var(--fs-body) var(--font-sans);min-width:1.4em;text-align:center;font-variant-numeric:tabular-nums}
+  /* GOLF-87/item-7: a compact group-size stepper. Previously a
+     --tap-sm-tall (36px), flat, --paper-tinted pill — visibly shorter and
+     flatter than every other pill beside it in the toolbar (My trip,
+     Filters, Clear trip, Share trip are all --tap/44px with --shadow-sm on
+     a white ground). Brought up to the same height/surface/shadow so it
+     reads as one of the toolbar's pills rather than a smaller, separate
+     control; flex:0 so it still doesn't stretch like the toolbar's other
+     1fr children. */
+  .tb-groupsize{display:flex;align-items:center;justify-content:center;gap:0;
+    flex:0 0 auto;background:#fff;border:1px solid var(--line);border-radius:var(--radius-pill);
+    padding:0 2px;height:var(--tap);box-shadow:var(--shadow-sm)}
+  .tb-groupsize-label{font-size:var(--fs-small);opacity:.6;padding:0 var(--sp-1) 0 var(--sp-3)}
+  .tb-groupsize-n{font:700 var(--fs-body) var(--font-sans);min-width:1.6em;text-align:center;
+    font-variant-numeric:tabular-nums;color:var(--ink)}
+  /* The +/- buttons were plain .is-quiet (no fill, no hover feedback at
+     all) — circular accent-tinted hover/press states give them the same
+     "this is tappable" affordance every other button in the pane has. */
+  .tb-groupsize-btn{border-radius:50%;color:var(--stone)}
+  .tb-groupsize-btn:hover{background:var(--accent-soft);color:var(--accent-deep);
+    border-color:transparent;box-shadow:none;transform:none}
+  .tb-groupsize-btn:active{background:var(--accent-soft);transform:scale(.92)}
   .tb-drop>summary{list-style:none;display:flex;align-items:center;justify-content:center;gap:var(--sp-2);
     min-height:var(--tap);padding:0 var(--sp-3);border:1px solid var(--line);border-radius:var(--radius-pill);
     background:#fff;box-shadow:var(--shadow-sm);cursor:pointer;
@@ -427,23 +440,6 @@
     color:var(--stone);margin-bottom:var(--sp-2)}
   .tb-addstop-row{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-2)}
   .tb-addstop-row input{flex:1 1 120px;min-width:0}
-  /* GOLF-74 (ported into the GOLF-71 token system at merge time): per-room vs
-     per-person-sharing toggle + guest count. Was written with hardcoded px
-     against the old Trip Builder block that GOLF-71 replaced wholesale; the
-     rules below are the same layout re-expressed in the spacing, font-size
-     and radius tokens.
-     The two flex:0 resets matter: .tb-addstop-row input above would otherwise
-     stretch the radio buttons and the guests box to 120px each. */
-  .tb-pricetype{display:flex;gap:var(--sp-3);flex-wrap:wrap;align-items:center;
-    font:500 var(--fs-caption) var(--font-sans);color:var(--stone)}
-  .tb-pricetype label{display:inline-flex;align-items:center;gap:var(--sp-1);cursor:pointer;min-height:var(--tap-sm)}
-  .tb-addstop-row .tb-pricetype input[type="radio"]{flex:0 0 auto;width:auto;min-width:0;margin:0}
-  .tb-guests{display:inline-flex;align-items:center;gap:var(--sp-1);
-    font:500 var(--fs-caption) var(--font-sans);color:var(--stone);white-space:nowrap}
-  .tb-addstop-row .tb-guests input{flex:0 0 64px;width:64px;min-height:var(--tap-sm);
-    padding:var(--sp-1) var(--sp-2);border:1px solid var(--line);border-radius:var(--radius-sm);
-    font:400 var(--fs-small) var(--font-sans);color:var(--ink)}
-
   /* ── Itinerary filtered lists + Costs tab ───────────────────────── */
   .itin-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-card);margin-bottom:var(--sp-3);padding:var(--sp-3) var(--sp-4)}
   .itin-card-head{font:800 var(--fs-caption) var(--font-sans);letter-spacing:.06em;color:var(--accent-dark);margin-bottom:var(--sp-1)}
@@ -475,9 +471,38 @@
   .cost-line-items-label{font:700 var(--fs-caption) var(--font-sans);letter-spacing:.08em;text-transform:uppercase;
     color:var(--stone);margin:var(--sp-4) 0 var(--sp-2)}
   .cost-cov{margin:var(--sp-2) 0 0}
+  /* item-5: each cost category is a <details> the line items expand from,
+     reusing the .fgroup chevron convention (Explore's filter dropdowns)
+     re-skinned as a label+amount row. */
+  .cost-groups{padding-top:var(--sp-1)}
+  .cost-group{border-bottom:1px solid var(--line)}
+  .cost-group:last-of-type{border-bottom:none}
+  .cost-group-summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;
+    gap:var(--sp-2);padding:var(--sp-3) 0;min-height:var(--tap)}
+  .cost-group-summary::-webkit-details-marker{display:none}
+  .cost-group-summary::before{content:'▸';font-size:9px;color:var(--stone);transition:transform .12s;margin-right:var(--sp-2)}
+  .cost-group[open] .cost-group-summary::before{transform:rotate(90deg)}
+  .cost-group-summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .cost-group-label{font-size:var(--fs-small);color:var(--ink);display:flex;align-items:center}
+  .cost-group-amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--ink)}
+  .cost-group-lines{margin:0 0 var(--sp-3) var(--sp-5)}
+  .cost-fuel-row{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);padding:var(--sp-3) 0}
+  .cost-fuel-row .cost-fuel-toggle{padding:0}
+  /* item-6: the Share button's inline SVG icon (SHARE_ICON_SVG) — nudged
+     to sit on the text baseline rather than the glyph's own box-center. */
+  .share-icon{vertical-align:-2px;margin-right:1px}
   /* Map marker for a day's hotel/POI stops (rendered by tbEmojiIcon). */
   .tb-emoji-marker{background:none;border:none;text-align:center;line-height:1}
   .tb-emoji-marker span{font-size:19px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
+  /* item-4: a scheduled golf stop's map marker (tripGolfMarkerIcon) — same
+     ⛳ glyph as the Trip Builder's own list rows, day-coloured badge, with
+     the existing "D{day}·{order}" route label as a small corner pill. */
+  .trip-golf-marker{background:none;border:none;position:relative}
+  .tgm-badge{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    border:2.5px solid #1B2733;box-shadow:var(--shadow-sm)}
+  .tgm-emoji{font-size:14px;line-height:1}
+  .tgm-num{position:absolute;right:-4px;bottom:-3px;background:#1B2733;color:#fff;font:700 8px/1 var(--font-mono);
+    padding:2px 3px;border-radius:6px;white-space:nowrap}
 
   /* GOLF-31 refactor: cart list was hand-styled with inline `style=` per
      element — pulled into named classes so the checkout look is defined

@@ -9,6 +9,14 @@
    the HTML resolve against.
    ============================================================ */
 
+/* item-6: the Share button used a 🔗 chain-link emoji; the stakeholder's
+   screenshot showed the standard iOS/macOS Share glyph (a box with an
+   arrow lifting out of its top) and asked to match it. No system font
+   renders that exact glyph as an emoji, so it's a small inline SVG
+   instead — currentColor so it always matches the button's own text
+   colour (light/dark, hover, disabled) with no separate theming needed. */
+const SHARE_ICON_SVG=`<svg class="share-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>`;
+
 /* ════════════════════════════════════════════════════════════════════
    GOLF-71 workstream B — THE search component.
 
@@ -105,11 +113,12 @@ function tbAttachSearch(id,opts){
   input.addEventListener('input',()=>{
     const text=input.value;
     if(opts.onType)opts.onType(text);
+    const country=typeof opts.country==='function'?opts.country():opts.country;
     tbGeocodeDebounced(id,text,list=>{
       // Don't paint over a field the visitor has already left.
       if(document.activeElement!==input&&!opts.render)return;
       if(opts.render)opts.render(list,results);else paint(list);
-    });
+    },null,country);
   });
   input.addEventListener('keydown',e=>{
     const rs=rows();
@@ -186,14 +195,14 @@ function tbDriveCapHTML(l){
    hardcoded — GBP for GB/NI courses, EUR for Republic of Ireland, ZAR
    (shown as R) for South Africa. */
 const tbMoney=(v,cur='£')=>v!=null?`${cur}${v.toFixed(0)}`:'—';
-/* GOLF-74: the £ figure as the visitor should read it. A per-person-sharing
-   stay shows its arithmetic ("£90 × 2 (sharing) = £180") rather than silently
-   folding the doubling into the trip total — the stakeholder's explicit ask.
+/* GOLF-74/91: the £ figure as the visitor should read it. A hotel priced
+   for more than one traveller shows its arithmetic ("£90 × 2 people = £180")
+   rather than silently folding the multiplication into the trip total.
    Everything else is plain tbMoney(), so this is a strict superset. */
 function tripPriceLabel(det){
   if(!det||det.total==null)return'—';
   const cur=det.cur||'£';
-  return det.sharing?`${cur}${det.base.toFixed(0)} × ${det.guests} (sharing) = ${cur}${det.total.toFixed(0)}`:tbMoney(det.total,cur);
+  return det.sharing?`${cur}${det.base.toFixed(0)} × ${det.guests} people = ${cur}${det.total.toFixed(0)}`:tbMoney(det.total,cur);
 }
 function itinLegRowHTML(l){
   if(l.type==='drive')return tbDriveCapHTML(l);
@@ -210,7 +219,7 @@ function itinLegRowHTML(l){
   return`<div class="tb-day-course tb-item-${l.type}" style="cursor:default">
     <span class="tb-item-icon">${icon}</span>
     <div class="tb-item-main"><span class="tb-item-name">${esc(l.name)}</span>
-      ${sharing?`<div class="cart-region">${cur}${l.detail.base.toFixed(0)} × ${l.detail.guests} (sharing) = ${cur}${l.detail.total.toFixed(0)}</div>`:''}</div>
+      ${sharing?`<div class="cart-region">${cur}${l.detail.base.toFixed(0)} × ${l.detail.guests} people = ${cur}${l.detail.total.toFixed(0)}</div>`:''}</div>
     <span class="tb-item-price">${tbMoney(l.price,cur)}</span>
   </div>`;
 }
@@ -281,8 +290,8 @@ function tripCostLineItems(){
   const gs=groupSizeFor();
   tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{
     const det=tripItemPriceDetail(d,it);
-    const tag=it.type==='hotel'?(det.sharing?'sharing':'as entered'):(gs>1?`× ${gs}`:null);
-    items.push({label:tripItemName(it)+(det.sharing?` (${det.cur}${det.base.toFixed(0)} × ${det.guests} sharing)`:''),
+    const tag=it.type==='hotel'?(det.sharing?`× ${det.guests} people`:'estimated'):(gs>1?`× ${gs}`:null);
+    items.push({label:tripItemName(it)+(det.sharing?` (${det.cur}${det.base.toFixed(0)} × ${det.guests} people)`:''),
       cat:CAT[it.type]||'Stop',amount:det.total,day:idx+1,cur:det.cur,tag});
   }));
   tripUnscheduled().forEach(i=>{
@@ -315,20 +324,40 @@ function tbTripTotal(){return tripCostBreakdown().grand;}
    is labelled est.; a stay's price is edited on the stay), so what's left
    is the one thing the numbers genuinely can't say: how many fees are
    real vs assumed. */
+/* GOLF-91/item-5: line items used to sit in a second, always-open flat
+   table below the category summary — the same figures shown twice, with
+   no link between a category's total and the rows behind it. Each
+   category row is now a <details class="cost-group"> that expands to
+   reveal exactly its own line items — the summary *is* the group header,
+   per the stakeholder's ask ("line items as part of a hierarchy you
+   expand from the grouping above it"). Reuses the .fgroup chevron
+   convention already established for Explore's filter dropdowns
+   (london-golf-map-v5_1.html), just re-skinned to a label+amount row via
+   .cost-group. */
+function costGroupHTML(icon,label,total,items,cur){
+  const rows=items.length
+    ?items.map(x=>`<tr><td>${esc(x.label)}${x.tag?` <span class="wt">${esc(x.tag)}</span>`:''}</td><td>${tbMoney(x.amount,x.cur||cur)}</td></tr>`).join('')
+    :`<tr><td colspan="2" class="hint">Nothing here yet.</td></tr>`;
+  return`<details class="cost-group"><summary class="cost-group-summary">
+      <span class="cost-group-label">${icon} ${label}</span>
+      <span class="cost-group-amt">${cur}${total.toFixed(0)}</span>
+    </summary>
+    <table class="cost-line-table cost-group-lines">${rows}</table>
+  </details>`;
+}
 function tbCostsTabHTML(){
   const b=tripCostBreakdown();
   const cur=tripPrimaryCurrency();
   const mixed=b.items.some(x=>x.cur&&x.cur!==cur);
+  const golf=b.items.filter(x=>x.cat==='Golf'),stay=b.items.filter(x=>x.cat==='Stay'),stop=b.items.filter(x=>x.cat==='Stop');
   return`<div class="cost-banner"><div class="cost-banner-label">Trip total${b.groupSize>1?` · ${b.groupSize} travellers`:''}</div><div class="cost-banner-amount">${cur}${b.grand.toFixed(0)}${b.perPerson!=null?`<span class="cost-banner-pp"> · ${cur}${b.perPerson.toFixed(0)} per person</span>`:''}</div></div>
-    <div class="cost-card"><table class="cost-summary-table">
-      <tr><td>⛳ Golf</td><td>${cur}${b.golfTotal.toFixed(0)}</td></tr>
-      <tr><td>🏨 Stays</td><td>${cur}${b.stayTotal.toFixed(0)}</td></tr>
-      <tr><td>📍 Stops</td><td>${cur}${b.poiTotal.toFixed(0)}</td></tr>
-      <tr><td><label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel (est.)</label></td><td>${cur}${b.fuelCost.toFixed(0)}</td></tr>
-    </table></div>
-    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?` Totals are shown in ${cur} but some line items below are priced in a different currency — no conversion is applied yet.`:''}</p>
-    <div class="cost-line-items-label">Line items</div>
-    <div class="cost-card"><table class="cost-line-table">${b.items.length?b.items.map(x=>`<tr><td>${esc(x.label)} <span class="wt">${x.cat}</span>${x.tag?` <span class="wt">${esc(x.tag)}</span>`:''}</td><td>${tbMoney(x.amount,x.cur||cur)}</td></tr>`).join(''):`<tr><td colspan="2" class="hint">No costs yet.</td></tr>`}</table></div>
+    <div class="cost-card cost-groups">
+      ${costGroupHTML('⛳','Golf',b.golfTotal,golf,cur)}
+      ${costGroupHTML('🏨','Stays',b.stayTotal,stay,cur)}
+      ${costGroupHTML('📍','Stops',b.poiTotal,stop,cur)}
+      <div class="cost-fuel-row"><label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel (est.)</label><span class="cost-group-amt">${cur}${b.fuelCost.toFixed(0)}</span></div>
+    </div>
+    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?` Totals are shown in ${cur} but some line items above are priced in a different currency — no conversion is applied yet.`:''}</p>
     <p class="hint" style="margin-top:var(--sp-2)">🔜 Currency conversion (showing every cost in one currency) is planned for a future update — for now, amounts display in each course's own local currency.</p>`;
 }
 
@@ -439,8 +468,11 @@ function tripDayScheduleHTML(){
 
 /* Plan mode's wishlist. */
 function tbWishlistHTML(){
-  const unscheduled=tripUnscheduled();
-  if(!unscheduled.length)return`<p class="hint">Nothing on your wishlist yet — add any course you fancy playing.</p>`;
+  const allUnscheduled=tripUnscheduled();
+  const unscheduled=state.nation?allUnscheduled.filter(i=>courseNation(i)===state.nation):allUnscheduled;
+  const hidden=allUnscheduled.length-unscheduled.length;
+  const hiddenNote=hidden?`<p class="hint" style="margin:0 0 var(--sp-2)">${hidden} more course${hidden===1?'':'s'} on your wishlist from other countries — clear the country filter above to see ${hidden===1?'it':'them'}.</p>`:'';
+  if(!unscheduled.length)return hiddenNote||`<p class="hint">Nothing on your wishlist yet — add any course you fancy playing.</p>`;
   const rows=unscheduled.map(i=>{
     const fee=extractFee(V(i,'wd'));
     return`<div class="tb-day-course tb-item-golf" style="cursor:default">
@@ -456,11 +488,23 @@ function tbWishlistHTML(){
         <span class="tb-day-place">${unscheduled.length} course${unscheduled.length===1?'':'s'}</span></span>
         <button class="tb-btn is-primary is-sm" onclick="enterBuildMode()" title="Start scheduling these courses into days">Schedule →</button></div>
       <div class="tb-day-rule"></div>
+      ${hiddenNote}
       ${rows}
       ${tripWishlistSummaryHTML(unscheduled)}
     </div>`;
 }
-function tbPlanHTML(){return tbDiscoverTabHTML()+`<div class="tb-section-title" style="margin-top:var(--sp-6)">Your wishlist</div>${tbWishlistHTML()}`;}
+/* GOLF-90: reuses Explore's existing state.nation/NATIONS/courseNation
+   (js/explore.js, GOLF-81) rather than inventing a second country concept —
+   picking a nation here is the exact same fact as picking one on Explore,
+   just surfaced at the top of Plan mode per the stakeholder's answer. The
+   click handler lives in renderTripBuilder()'s wiring block, alongside
+   every other delegated Plan/Build listener. */
+function tbNationPillsHTML(){
+  return`<div class="nation-pills" id="tb-nation-pills" role="group" aria-label="Choose a country">
+    ${NATIONS.map(([k,l])=>`<button class="nation-pill" aria-pressed="${state.nation===k}" data-nation="${k}">${l}</button>`).join('')}
+  </div>`;
+}
+function tbPlanHTML(){return tbNationPillsHTML()+tbDiscoverTabHTML()+`<div class="tb-section-title" style="margin-top:var(--sp-6)">Your wishlist</div>${tbWishlistHTML()}`;}
 
 /* Discover. GOLF-71: its own "Near a place" search box is gone — the one
    search bar at the top of the pane anchors the lens when you pick a
@@ -524,9 +568,9 @@ function renderTripBuilder(){
       ${tbTripMenuHTML()}
       <span class="tb-groupsize" title="How many people is this trip for? Green fees and stop costs scale by this; hotels keep their own per-item sharing setting.">
         <span class="tb-groupsize-label">👥</span>
-        <button type="button" class="tb-btn is-icon is-sm is-quiet" id="tb-groupsize-dec" aria-label="Decrease group size">−</button>
+        <button type="button" class="tb-btn is-icon is-sm is-quiet tb-groupsize-btn" id="tb-groupsize-dec" aria-label="Decrease group size">−</button>
         <span class="tb-groupsize-n">${groupSize}</span>
-        <button type="button" class="tb-btn is-icon is-sm is-quiet" id="tb-groupsize-inc" aria-label="Increase group size">+</button>
+        <button type="button" class="tb-btn is-icon is-sm is-quiet tb-groupsize-btn" id="tb-groupsize-inc" aria-label="Increase group size">+</button>
       </span>
       ${showItinFilters?`<details class="tb-drop" id="tb-filter-drop">
         <summary title="Filter what this itinerary shows">Filters${tbItinFilter!=='all'||!tbDriveToggle?' ·':''}</summary>
@@ -539,7 +583,7 @@ function renderTripBuilder(){
         </div>
       </details>`:''}
       <button class="tb-btn is-danger" id="tb-clear-trip" title="Empties this trip. Your other trips are untouched — to delete every trip use Start fresh in the trip menu.">Clear trip</button>
-      <button class="tb-btn" id="tb-share-trip" title="Copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">🔗 Share trip</button>
+      <button class="tb-btn" id="tb-share-trip" title="Copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">${SHARE_ICON_SVG} Share trip</button>
     </div>
     <div class="tb-tabs" role="tablist">${TABS.map(([k,label])=>
       `<button class="tb-tab-btn" role="tab" data-tab="${k}" aria-pressed="${activeTab===k}">${label}</button>`).join('')}</div>
@@ -551,6 +595,13 @@ function renderTripBuilder(){
     }</div>`;
 
   document.getElementById('tb-clear-trip').addEventListener('click',()=>tripClearAll());
+  const nationPills=document.getElementById('tb-nation-pills');
+  if(nationPills)nationPills.addEventListener('click',e=>{
+    const b=e.target.closest('[data-nation]');if(!b)return;
+    const k=b.dataset.nation;
+    state.nation=state.nation===k?null:k;
+    saveState();renderTripBuilder();tbDrawMap();
+  });
   const shareBtn=document.getElementById('tb-share-trip');
   if(shareBtn)shareBtn.addEventListener('click',()=>tbShareTrip(shareBtn));
   document.getElementById('tb-groupsize-dec').addEventListener('click',()=>tripSetGroupSize(groupSize-1));
@@ -575,6 +626,7 @@ function renderTripBuilder(){
      `render` takes over painting so places and courses can be mixed. ── */
   const searchResultsEl=document.getElementById('tb-search-results');
   tbAttachSearch('tb-unified-search',{
+    country:()=>exploreCountryCode(),
     onType(text){
       tbSearchQ=text;
       const q=text.trim();

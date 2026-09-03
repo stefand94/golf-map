@@ -14,7 +14,8 @@
 function tbSearchResults(){
   const q=tbSearchQ.trim().toLowerCase();
   if(!q)return[];
-  return C.map((c,i)=>i).filter(i=>!TRIP.has(i)&&bookable(i)&&searchMatches(i,q)).slice(0,20);
+  return C.map((c,i)=>i).filter(i=>!TRIP.has(i)&&bookable(i)&&searchMatches(i,q)
+    &&(!state.nation||courseNation(i)===state.nation)).slice(0,20);
 }
 /* GOLF-57: the pane's search bar now lives in the shared chrome above
    every tab (moved up again per GOLF-53's spirit) and adds straight into
