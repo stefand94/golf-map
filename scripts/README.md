@@ -206,6 +206,47 @@ Merges `fetch_club_images.py`'s output into a `data/courses-*.js` file as a
 python3 scripts/merge_club_images.py data/courses-top100.js --images scripts/output/club_images.json
 ```
 
+### `fetch_course_images.py`
+GOLF-88 (implementation): fetches a real, openly-licensed course *photo*
+(distinct from `fetch_club_images.py`'s club-badge/logo) from Wikimedia
+Commons' structured API (`action=query`, `generator=search`,
+`prop=imageinfo` with `iiprop=extmetadata` — free, keyless), for a named
+list of courses. Filters to open licenses (CC0/CC-BY/CC-BY-SA/public
+domain) and away from non-photo files (logos, maps, flags, book-scan
+DjVu/PDF pages) via mime-type and filename heuristics; downloads and
+resizes the first surviving candidate to ~640px wide, JPEG quality 78,
+saved under `images/courses/`. Captures `{photographer, license,
+sourceUrl}` per image — the one genuinely new requirement beyond
+GOLF-21, since CC-BY-SA/BY licenses legally require visible attribution
+(the popup UI's photo credit line, `js/map.js`, renders this).
+
+**Requires Pillow** (`pip install Pillow`), same one-time exception as
+`fetch_club_images.py`.
+
+```bash
+python3 scripts/fetch_course_images.py \
+    --courses scripts/output/course_image_targets.json \
+    --out-dir images/courses
+```
+`course_image_targets.json` is `{key: {"name": "...", "nation": "..."}}`
+— not committed, since the batch changes per run. Writes
+`images/courses/*.jpg` plus `scripts/output/course_images.json` —
+`{courseName: {path, photographer, license, sourceUrl, width, height}}`
+for `merge_course_images.py` to consume. A course with no acceptable
+Commons candidate is simply omitted (degrades gracefully — same
+convention as `logo`).
+
+### `merge_course_images.py`
+Merges `fetch_course_images.py`'s output into `data/courses-*.js` files as
+a `photo:{src,photographer,license,sourceUrl}` field, matched by exact
+course name then by parenthetical-stripped base name (same sibling-club
+convention as `merge_club_images.py`). Idempotent.
+
+```bash
+python3 scripts/merge_course_images.py --images scripts/output/course_images.json \
+    data/courses-top100.js data/courses-scotland.js data/courses-ireland.js data/courses-southafrica.js
+```
+
 ### `fetch_course_stats.py` + `merge_course_stats.py`
 GOLF-12/13: fetches par/slope/course rating from `golfapi.uk` (RapidAPI,
 free tier — 200 requests/month, 5 req/min) and merges it into a

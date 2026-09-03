@@ -185,7 +185,16 @@ function popupHTML(i){
     :(V(i,'walk')||'Outside the rail catchment — no nearby station on this map');
   const search=`https://www.google.com/search?q=${encodeURIComponent(V(i,'n')+' golf club green fees')}`;
   const site=V(i,'site'),book=V(i,'book'),club=c.clubInfo;
-  return `<div class="pop">${c.logo?`<div style="width:100%;height:100px;background:var(--paper);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${c.logo}" alt="${V(i,'n')} club logo" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"></div>`:''}<h3>${V(i,'n')} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want to play</span>':''}${TRIP.has(i)?' <span class="wt">in trip</span>':''}</h3>
+  /* GOLF-88 (implementation): a real course photo, distinct from the small
+     club-logo thumbnail below it — sourced from Wikimedia Commons per the
+     published proposal (see plan file). CC-BY-SA/BY licenses require
+     visible attribution, unlike the logo, so this carries a credit line
+     (photographer + license, linking to the Commons source page) the logo
+     block never needed. Degrades gracefully — simply absent — for the
+     majority of courses with no photo field, same convention as every
+     other optional field in this app. */
+  const photoBlock=c.photo?`<div style="width:100%;border-radius:8px;margin-bottom:8px;overflow:hidden"><img src="${c.photo.src}" alt="${V(i,'n')}" loading="lazy" style="width:100%;height:140px;object-fit:cover;display:block"><div style="font-size:10.5px;color:var(--stone);padding:3px 2px 0">Photo: <a href="${c.photo.sourceUrl}" target="_blank" rel="noopener">${c.photo.photographer}</a> · ${c.photo.license}</div></div>`:'';
+  return `<div class="pop">${photoBlock}${c.logo?`<div style="width:100%;height:100px;background:var(--paper);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${c.logo}" alt="${V(i,'n')} club logo" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"></div>`:''}<h3>${V(i,'n')} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want to play</span>':''}${TRIP.has(i)?' <span class="wt">in trip</span>':''}</h3>
     <p class="sub">${c.r} · ${a.label}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
     <div class="fees"><div class="fee-box"><b>Weekday</b><span>${V(i,'wd')}</span></div>
     <div class="fee-box"><b>Weekend</b><span>${V(i,'we')}</span></div></div>
