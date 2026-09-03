@@ -43,10 +43,14 @@ function tripEncodeShareURL(){
 function tbShareTrip(btn){
   const url=tripEncodeShareURL();
   history.pushState({appMode},'',url);
-  const original=btn.textContent;
+  // item-6: swap innerHTML, not textContent — the button carries the
+  // SHARE_ICON_SVG icon, and textContent would silently strip it out on
+  // restore (a real bug this fix caught: the icon never came back after
+  // the first "Copied!" round-trip).
+  const original=btn.innerHTML;
   navigator.clipboard.writeText(url)
-    .then(()=>{btn.textContent='Copied!';setTimeout(()=>{btn.textContent=original;},1800);})
-    .catch(()=>{btn.textContent='Copy failed — select from address bar';setTimeout(()=>{btn.textContent=original;},2400);});
+    .then(()=>{btn.innerHTML='Copied!';setTimeout(()=>{btn.innerHTML=original;},1800);})
+    .catch(()=>{btn.innerHTML='Copy failed — select from address bar';setTimeout(()=>{btn.innerHTML=original;},2400);});
 }
 
 /* ── Decode: a #share= hash → a plain payload object, or null on any

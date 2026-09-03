@@ -9,6 +9,14 @@
    the HTML resolve against.
    ============================================================ */
 
+/* item-6: the Share button used a 🔗 chain-link emoji; the stakeholder's
+   screenshot showed the standard iOS/macOS Share glyph (a box with an
+   arrow lifting out of its top) and asked to match it. No system font
+   renders that exact glyph as an emoji, so it's a small inline SVG
+   instead — currentColor so it always matches the button's own text
+   colour (light/dark, hover, disabled) with no separate theming needed. */
+const SHARE_ICON_SVG=`<svg class="share-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>`;
+
 /* ════════════════════════════════════════════════════════════════════
    GOLF-71 workstream B — THE search component.
 
@@ -575,7 +583,7 @@ function renderTripBuilder(){
         </div>
       </details>`:''}
       <button class="tb-btn is-danger" id="tb-clear-trip" title="Empties this trip. Your other trips are untouched — to delete every trip use Start fresh in the trip menu.">Clear trip</button>
-      <button class="tb-btn" id="tb-share-trip" title="Copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">🔗 Share trip</button>
+      <button class="tb-btn" id="tb-share-trip" title="Copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">${SHARE_ICON_SVG} Share trip</button>
     </div>
     <div class="tb-tabs" role="tablist">${TABS.map(([k,label])=>
       `<button class="tb-tab-btn" role="tab" data-tab="${k}" aria-pressed="${activeTab===k}">${label}</button>`).join('')}</div>
