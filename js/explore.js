@@ -238,12 +238,20 @@ document.getElementById('place-results').addEventListener('click',e=>{
    results still render into Explore's own strip above the course list
    (not a dropdown), which is why this call site uses the debounce helper
    directly rather than the full tbAttachSearch() binding. */
+/* GOLF-84: map the selected Explore country pill onto the Worker's
+   ISO3 geocode-boundary vocabulary, so a place search made while
+   browsing e.g. South Africa doesn't surface a same-named GB/Ireland
+   place (the reported "Newcastle" collision). No pill selected -> no
+   country -> unrestricted, matching pre-GOLF-84 behavior. */
+function exploreCountryCode(){
+  return state.nation==='gb'?'GBR':state.nation==='ie'?'IRL':state.nation==='za'?'ZAF':null;
+}
 function exploreSearchPlaces(q){
   explorePlaceQ=q;
   tbGeocodeDebounced('explore-q',q,list=>{
     explorePlaceResults=list;
     renderExplorePlaces();
-  });
+  },undefined,exploreCountryCode());
 }
 document.getElementById('q').addEventListener('input',e=>{
   state.q=e.target.value.toLowerCase();saveState();render();

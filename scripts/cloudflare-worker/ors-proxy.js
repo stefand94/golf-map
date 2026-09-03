@@ -451,16 +451,27 @@ out center 80;
 // not just the original one. Update this list whenever a new nation's
 // course data ships.
 const GEOCODE_COUNTRIES = 'GBR,IRL,ZAF';
+// GOLF-84: an optional per-request `country` (one of the three above)
+// ringfences results to a single nation — the app sends this when a
+// visitor has a specific nation selected (Explore's GB/Ireland/South
+// Africa pill), so a bare "Newcastle" search doesn't surface Newcastle
+// upon Tyne while browsing South Africa. Anything not exactly one of the
+// three known codes falls back to the full unrestricted list rather than
+// risk silently scoping to an unrecognised/malformed value.
 async function handleGeocode(body, env) {
   const text = typeof body.text === 'string' ? body.text.trim() : '';
   if (!text) {
     return json({ results: [] });
   }
+  const requestedCountry = typeof body.country === 'string' ? body.country.trim().toUpperCase() : '';
+  const boundaryCountry = GEOCODE_COUNTRIES.split(',').includes(requestedCountry)
+    ? requestedCountry
+    : GEOCODE_COUNTRIES;
 
   const url = new URL(ORS_GEOCODE_URL);
   url.searchParams.set('api_key', env.ORS_API_KEY);
   url.searchParams.set('text', text.slice(0, 200));
-  url.searchParams.set('boundary.country', GEOCODE_COUNTRIES);
+  url.searchParams.set('boundary.country', boundaryCountry);
   url.searchParams.set('size', '6');
 
   let orsRes;

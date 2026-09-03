@@ -133,16 +133,26 @@ function orsLegRoute(a,b){
    cb(results|null) — null means "still loading/unavailable", same
    contract as the leg-estimate helpers above. */
 const orsGeocodeCache=new Map();
-function orsGeocode(text,cb){
+/* GOLF-84: optional `country` (one of 'GBR'/'IRL'/'ZAF', matching the
+   Worker's GEOCODE_COUNTRIES vocabulary) ringfences results to a single
+   nation — e.g. Explore's GB/Ireland/South Africa pill selection — so a
+   bare "Newcastle" search while browsing South Africa doesn't surface
+   Newcastle upon Tyne. Omitted/falsy means "all nations", the pre-GOLF-84
+   default. Folded into the cache key so a query typed under one nation
+   filter never serves a stale cross-nation result under another. */
+function orsGeocode(text,cb,country){
   const q=text.trim();
+  const key=(country||'')+'|'+q;
   if(!ORS_PROXY_URL||!q){cb([]);return;}
-  if(orsGeocodeCache.has(q)){cb(orsGeocodeCache.get(q));return;}
+  if(orsGeocodeCache.has(key)){cb(orsGeocodeCache.get(key));return;}
+  const body={mode:'geocode',text:q};
+  if(country)body.country=country;
   fetch(ORS_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({mode:'geocode',text:q})})
+    body:JSON.stringify(body)})
     .then(r=>r.ok?r.json():Promise.reject(new Error('proxy error '+r.status)))
     .then(data=>{
       const results=Array.isArray(data&&data.results)?data.results:[];
-      orsGeocodeCache.set(q,results);
+      orsGeocodeCache.set(key,results);
       cb(results);
     })
     .catch(()=>cb(null));

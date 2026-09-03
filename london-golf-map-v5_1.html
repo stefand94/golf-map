@@ -702,6 +702,26 @@
     #q,.fld input,.fld select,.fld textarea,#sort{font-size:16px}
     .leaflet-popup-content{width:min(300px,calc(100vw - 60px)) !important}
   }
+
+  /* GOLF-89: print/PDF-ish itinerary. Only meaningful on the read-only
+     #share= view (js/trip-share.js) — the main app's own Explore/Plan/
+     Build panes stay app-chrome-only and are simply hidden outright when
+     printed rather than given their own print layout, since they're an
+     editing surface, not a document. `.no-print` is a small opt-out used
+     by trip-share.js itself for the elements even the shared view
+     shouldn't print (the live map, the Print button, the "frozen
+     snapshot" disclaimer — none of which mean anything on paper). */
+  @media print{
+    .app,.skip-link{display:none !important}
+    #shared-pane{display:block !important}
+    .no-print{display:none !important}
+    .shared-wrap{max-width:100%}
+    .tb-navbar{position:static;box-shadow:none;border-bottom:2px solid var(--ink)}
+    .tb-day{break-inside:avoid;page-break-inside:avoid;border:1px solid var(--line);margin-bottom:var(--sp-3)}
+    .cost-card,.cost-banner{break-inside:avoid;page-break-inside:avoid}
+    a[href]{color:inherit;text-decoration:none}
+    body{background:#fff}
+  }
 </style>
 
 <a href="#map" class="skip-link">Skip to map</a>

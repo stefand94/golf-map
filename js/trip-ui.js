@@ -44,7 +44,7 @@
    genuinely are no matches". Callers should treat undefined as a reason to
    show an explicit "search unavailable" message, not an empty result. */
 const tbGeoTimers={},tbGeoLatest={};
-function tbGeocodeDebounced(key,text,cb,ms){
+function tbGeocodeDebounced(key,text,cb,ms,country){
   clearTimeout(tbGeoTimers[key]);
   tbGeoLatest[key]=text;
   if(!text||!text.trim()){cb(null);return;}
@@ -52,7 +52,7 @@ function tbGeocodeDebounced(key,text,cb,ms){
     orsGeocode(text,list=>{
       if(tbGeoLatest[key]!==text)return; // a newer keystroke has since fired
       cb(list===null?undefined:list);
-    });
+    },country);
   },ms==null?300:ms);
 }
 /* The component's markup. `variant:'bar'` is the full-width pill at the
@@ -540,7 +540,7 @@ function renderTripBuilder(){
         </div>
       </details>`:''}
       <button class="tb-btn is-danger" id="tb-clear-trip" title="Empties this trip. Your other trips are untouched — to delete every trip use Start fresh in the trip menu.">Clear trip</button>
-      ${isBuild?`<button class="tb-btn is-quiet" id="tb-share-trip" title="Copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">🔗 Share</button>`:''}
+      <button class="tb-btn" id="tb-share-trip" title="Copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">🔗 Share trip</button>
     </div>
     <div class="tb-tabs" role="tablist">${TABS.map(([k,label])=>
       `<button class="tb-tab-btn" role="tab" data-tab="${k}" aria-pressed="${activeTab===k}">${label}</button>`).join('')}</div>
