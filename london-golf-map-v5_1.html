@@ -194,14 +194,27 @@
   .tb-toolbar{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-1) var(--sp-5) var(--sp-2)}
   .tb-toolbar>*{flex:1 1 0;min-width:0}
   .tb-drop{position:relative;flex:1 1 0;min-width:0}
-  /* GOLF-87: a compact group-size stepper, same visual weight as the trip
-     switcher next to it — flex:0 so it doesn't stretch like the toolbar's
-     other 1fr children. */
-  .tb-groupsize{display:flex;align-items:center;justify-content:center;gap:var(--sp-1);
-    flex:0 0 auto;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-pill);
-    padding:0 var(--sp-1);height:var(--tap-sm)}
-  .tb-groupsize-label{font-size:var(--fs-small);opacity:.7}
-  .tb-groupsize-n{font:600 var(--fs-body) var(--font-sans);min-width:1.4em;text-align:center;font-variant-numeric:tabular-nums}
+  /* GOLF-87/item-7: a compact group-size stepper. Previously a
+     --tap-sm-tall (36px), flat, --paper-tinted pill — visibly shorter and
+     flatter than every other pill beside it in the toolbar (My trip,
+     Filters, Clear trip, Share trip are all --tap/44px with --shadow-sm on
+     a white ground). Brought up to the same height/surface/shadow so it
+     reads as one of the toolbar's pills rather than a smaller, separate
+     control; flex:0 so it still doesn't stretch like the toolbar's other
+     1fr children. */
+  .tb-groupsize{display:flex;align-items:center;justify-content:center;gap:0;
+    flex:0 0 auto;background:#fff;border:1px solid var(--line);border-radius:var(--radius-pill);
+    padding:0 2px;height:var(--tap);box-shadow:var(--shadow-sm)}
+  .tb-groupsize-label{font-size:var(--fs-small);opacity:.6;padding:0 var(--sp-1) 0 var(--sp-3)}
+  .tb-groupsize-n{font:700 var(--fs-body) var(--font-sans);min-width:1.6em;text-align:center;
+    font-variant-numeric:tabular-nums;color:var(--ink)}
+  /* The +/- buttons were plain .is-quiet (no fill, no hover feedback at
+     all) — circular accent-tinted hover/press states give them the same
+     "this is tappable" affordance every other button in the pane has. */
+  .tb-groupsize-btn{border-radius:50%;color:var(--stone)}
+  .tb-groupsize-btn:hover{background:var(--accent-soft);color:var(--accent-deep);
+    border-color:transparent;box-shadow:none;transform:none}
+  .tb-groupsize-btn:active{background:var(--accent-soft);transform:scale(.92)}
   .tb-drop>summary{list-style:none;display:flex;align-items:center;justify-content:center;gap:var(--sp-2);
     min-height:var(--tap);padding:0 var(--sp-3);border:1px solid var(--line);border-radius:var(--radius-pill);
     background:#fff;box-shadow:var(--shadow-sm);cursor:pointer;

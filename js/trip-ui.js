@@ -568,9 +568,9 @@ function renderTripBuilder(){
       ${tbTripMenuHTML()}
       <span class="tb-groupsize" title="How many people is this trip for? Green fees and stop costs scale by this; hotels keep their own per-item sharing setting.">
         <span class="tb-groupsize-label">👥</span>
-        <button type="button" class="tb-btn is-icon is-sm is-quiet" id="tb-groupsize-dec" aria-label="Decrease group size">−</button>
+        <button type="button" class="tb-btn is-icon is-sm is-quiet tb-groupsize-btn" id="tb-groupsize-dec" aria-label="Decrease group size">−</button>
         <span class="tb-groupsize-n">${groupSize}</span>
-        <button type="button" class="tb-btn is-icon is-sm is-quiet" id="tb-groupsize-inc" aria-label="Increase group size">+</button>
+        <button type="button" class="tb-btn is-icon is-sm is-quiet tb-groupsize-btn" id="tb-groupsize-inc" aria-label="Increase group size">+</button>
       </span>
       ${showItinFilters?`<details class="tb-drop" id="tb-filter-drop">
         <summary title="Filter what this itinerary shows">Filters${tbItinFilter!=='all'||!tbDriveToggle?' ·':''}</summary>
