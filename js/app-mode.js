@@ -1,63 +1,56 @@
 /* ============================================================
-   js/app-mode.js — the three top-level modes (Explore / Plan / Build),
-   the URL hash, pushState/popstate, and the entry points reached from
-   course popups and the masthead.
+   js/app-mode.js — the two top-level trip modes (Plan / Build), the
+   URL hash, pushState/popstate, and the entry points reached from
+   course popups.
 
    Loaded as a plain <script> (not a module) in the fixed order
    listed in london-golf-map-v5_1.html — top-level declarations
    here are global, which is what the inline onclick= handlers in
    the HTML resolve against.
    ============================================================ */
-/* GOLF-64: three explicit top-level modes, layered on the EXISTING pane-swap
-   architecture rather than replacing it — 'plan' and 'build' both still mean
-   "the #tb-pane is showing and body.trip-mode is on", exactly as GOLF-31 set
-   it up; all that's new is which content the pane renders and which URL
-   describes it. `tripBuilderOn` therefore keeps its original meaning ("the
-   pane is open"), so every existing `if(tripBuilderOn)` redraw hook across
-   the file keeps working untouched.
-     ''      -> Explore  (map + filters + list, unchanged)
-     '#plan' -> Plan     (search/discover/wishlist — the conceptual half)
-     '#trip' -> Build    (days, items, costs — the concrete half)
-   '#trip' is deliberately NOT renamed: every GOLF-41 bookmark/shared link
-   still lands somewhere sensible. */
-let appMode='explore';
+/* Explore mode (the old map+filters+list landing view) has been removed
+   for good — not a toggleable default, not just de-prioritized. There is
+   no '#explore' route, no masthead button, and no code path anywhere in
+   this file (or any caller of it) that can set appMode to 'explore'.
+   Every non-shared mode is now a trip mode: 'plan' (search/discover/
+   wishlist — the conceptual half) or 'build' (days, items, costs — the
+   concrete half), plus the separate read-only 'shared' view. 'plan' is
+   the default landing (no hash); '#trip' still opens Build directly, so
+   an old GOLF-41 bookmark/shared link keeps working. `tripBuilderOn`
+   is therefore always true from first render on — every existing
+   `if(tripBuilderOn)` redraw hook across the file keeps working
+   untouched, it's just never false anymore. */
+let appMode='plan';
 function appModeFromHash(){
   if(location.hash.indexOf('#share=')===0)return 'shared';
-  return location.hash==='#trip'?'build':location.hash==='#plan'?'plan':'explore';
+  return location.hash==='#trip'?'build':'plan';
 }
-function appModeHash(m){return m==='plan'?'#plan':m==='build'?'#trip':'';}
+function appModeHash(m){return m==='build'?'#trip':'';}
 function setAppMode(mode,opts){
   opts=opts||{};
   const pushHash=opts.pushHash!==false;
-  const prev=appMode;
   appMode=mode;
   if(mode==='shared'){
     // GOLF-86: a shared link never needs to push its own hash (it's
-    // already the hash that got here), never touches trip-mode/body
-    // classes used by explore/plan/build, and never calls syncMastTripButton()
-    // — the masthead trip button belongs to the live app, not a shared view.
+    // already the hash that got here), and never touches the trip-mode
+    // body class used by every live plan/build mode — a shared view is
+    // its own read-only thing, not part of the live app's mode toggling.
     document.body.classList.remove('trip-mode');
     document.body.classList.add('shared-mode');
     renderSharedTrip();
     return;
   }
   document.body.classList.remove('shared-mode');
-  if(mode==='explore'){
-    tripBuilderOn=false;
-    document.body.classList.remove('trip-mode');
-    /* Keep the cart's route visible on the map after exiting — only the
-       discovery-candidate overlay goes away, not the trip itself. */
-    tripDrawCart(false);
-    render();
-  }else{
-    map.closePopup();
-    tripBuilderOn=true;
-    document.body.classList.add('trip-mode');
-    if(opts.seedAnchor!=null)tbAnchor=opts.seedAnchor;
-    else if(prev==='explore')tbAnchor=tbEffectiveAnchor();
-    renderTripBuilder();
-    tbDrawMap();
-  }
+  /* Explore is gone — every non-shared mode is a trip mode now, so this
+     branch (which used to distinguish Explore from Plan/Build) always
+     runs. body.trip-mode is therefore added once, on first load, and
+     never removed again. */
+  map.closePopup();
+  tripBuilderOn=true;
+  document.body.classList.add('trip-mode');
+  if(opts.seedAnchor!=null)tbAnchor=opts.seedAnchor;
+  renderTripBuilder();
+  tbDrawMap();
   /* GOLF-41: a real, shareable/bookmarkable URL per mode — pushState (not a
      plain location.hash= assignment) so a mode change doesn't clobber a
      legitimate earlier back-stack entry, and the popstate listener below
@@ -66,32 +59,12 @@ function setAppMode(mode,opts){
     const h=appModeHash(mode);
     if((location.hash||'')!==h)history.pushState({appMode:mode},'',h||location.pathname+location.search);
   }
-  syncMastTripButton();
-}
-/* The masthead's top-right pill always read "Plan a trip", even while
-   already inside Plan/Build — a dead-end back to a screen you're already
-   on. While a trip mode is active it becomes "← Back to Explore" instead,
-   wired to exitTripBuilder(); Explore mode gets the original button back,
-   badge and all. */
-function syncMastTripButton(){
-  const btn=document.getElementById('open-trip');
-  if(!btn)return;
-  const badge=document.getElementById('trip-badge');
-  const badgeHTML=badge?badge.outerHTML:'<span id="trip-badge"></span>';
-  if(appMode==='explore'){
-    btn.innerHTML=`Plan a trip${badgeHTML}`;
-    btn.onclick=()=>enterTripBuilder();
-  }else{
-    btn.innerHTML='← Back to Explore';
-    btn.onclick=()=>exitTripBuilder();
-  }
 }
 /* GOLF-64: the header's "Plan a trip" and a popup's "Add to trip" both land
    in PLAN mode now, never straight in Build — you gather candidates into the
    wishlist first (GOLF-62) and commit them to days second. */
 function enterTripBuilder(seedAnchor,opts){setAppMode('plan',Object.assign({seedAnchor:seedAnchor??null},opts||{}));}
 function enterBuildMode(opts){setAppMode('build',opts);}
-function exitTripBuilder(opts){setAppMode('explore',opts);}
 /* GOLF-41/64: back/forward support — popstate fires on both real navigation
    and our own pushState calls above, so this guards against re-entering a
    mode we're already in. Extended from two states to three. */

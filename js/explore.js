@@ -421,10 +421,10 @@ function render(){
      (filter chips, played/want/trip toggles, corrections save, reset,
      wipeStoredState) keeps the Trip Builder pane and the mast's cart-count
      badge in sync for free. */
-  /* GOLF-?? masthead back-button: while a trip mode is active the button
-     reads "← Back to Explore" and carries no #trip-badge span at all (see
-     syncMastTripButton() in js/app-mode.js) — guard the lookup instead of
-     assuming the badge always exists, or this throws and aborts render(). */
+  /* The masthead's #trip-badge (and its "Plan a trip" button) were removed
+     along with Explore mode — there's no button left to badge. Guard the
+     lookup rather than deleting it outright, so this doesn't throw and
+     abort render() if that DOM ever comes back. */
   const tripBadgeEl=document.getElementById('trip-badge');
   if(tripBadgeEl)tripBadgeEl.textContent=TRIP.size?String(TRIP.size):'';
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}

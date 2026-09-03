@@ -11,12 +11,11 @@
 render();
 /* GOLF-41: a direct/shared/bookmarked #trip link opens straight into the
    Trip Builder pane — pushHash:false since the hash is already correct,
-   no need to push a duplicate history entry for it. */
-/* GOLF-64: three URL states now, not two — a cold load on #plan or #trip
-   restores that mode directly (and a bookmarked GOLF-41 #trip link still
-   works, landing in Build exactly as it used to). */
-if(appModeFromHash()!=='explore')setAppMode(appModeFromHash(),{pushHash:false});
-else syncMastTripButton();
+   no need to push a duplicate history entry for it. Explore mode is gone
+   for good (not just non-default) — appModeFromHash() can only ever
+   return 'plan'/'build'/'shared' now, so a cold load always lands in a
+   trip mode, never a bare map. */
+setAppMode(appModeFromHash(),{pushHash:false});
 if(TRIP.size)tripDrawCart(false);
 
 /* GOLF-80/PWA basics: register the service worker after boot, not before —

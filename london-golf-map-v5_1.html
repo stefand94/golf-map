@@ -512,10 +512,6 @@
      immediately. */
   .mast{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:var(--shadow-sm);position:relative;z-index:1}
   .wordmark{font-family:var(--font-display);font-weight:700;font-size:16.5px;letter-spacing:-.01em;color:var(--ink)}
-  #open-trip{display:inline-flex;align-items:center;font:600 12.5px var(--font-sans);color:var(--accent);background:var(--accent-soft);border:1px solid transparent;padding:7px 12px;border-radius:20px;text-decoration:none;transition:box-shadow .12s,transform .12s}
-  #open-trip:hover{box-shadow:var(--shadow-sm);transform:translateY(-1px)}
-  #trip-badge{font-family:var(--font-mono);font-size:10px;font-weight:700;background:var(--accent);color:#fff;padding:1px 6px;border-radius:8px;margin-left:6px}
-  #trip-badge:empty{display:none}
 
   .filters{padding:11px 20px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
   .flabel{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone);display:block;margin-bottom:5px}
@@ -730,7 +726,6 @@
   <aside class="panel">
     <header class="mast">
       <span class="wordmark">Golf Tripper</span>
-      <button class="linkbtn" id="open-trip">Plan a trip<span id="trip-badge"></span></button>
     </header>
     <!-- GOLF-69 (items 1+2): search first, filters folded into one dropdown
          under it. The search box now matches the Trip Builder's unified bar
