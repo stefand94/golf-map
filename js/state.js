@@ -47,15 +47,9 @@ function loadStoredState(){
           price:typeof it.price==='number'&&isFinite(it.price)?it.price:null,
           lat:typeof it.lat==='number'&&isFinite(it.lat)?it.lat:null,
           lng:typeof it.lng==='number'&&isFinite(it.lng)?it.lng:null};
-        /* GOLF-74: hotel pricing basis. A saved item from before this ticket
-           has neither field, so it migrates to 'room' + 2 guests — 'room'
-           means "the entered price IS the room total", i.e. exactly the old
-           behaviour, so no existing trip's total changes. Same defensive
-           default-on-read pattern as kind/date/placeLat above. */
-        if(out.type==='hotel'){
-          out.priceType=it.priceType==='person'?'person':'room';
-          out.guests=(typeof it.guests==='number'&&isFinite(it.guests)&&it.guests>0)?Math.round(it.guests):2;
-        }
+        // GOLF-91: hotel price is read as per-person-per-night, multiplied by
+        // the trip's groupSizeFor() (see tripItemPriceDetail() in trip-geo.js)
+        // — any old priceType/guests fields on a saved item are simply ignored.
         return out;
       }).filter(Boolean);
     };

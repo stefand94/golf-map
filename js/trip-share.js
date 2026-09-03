@@ -27,8 +27,7 @@ function tripBuildSharePayload(){
       date:d.date||null,driveIn:d.driveIn??null,
       items:tripDayItems(d).map(it=>it.type==='golf'
         ?{id:it.id,type:'golf',i:it.i}
-        :{id:it.id,type:it.type,name:it.name,price:it.price,
-          priceType:it.priceType,guests:it.guests,lat:it.lat,lng:it.lng})
+        :{id:it.id,type:it.type,name:it.name,price:it.price,lat:it.lat,lng:it.lng})
     }))
   };
 }

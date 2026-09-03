@@ -427,23 +427,6 @@
     color:var(--stone);margin-bottom:var(--sp-2)}
   .tb-addstop-row{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-2)}
   .tb-addstop-row input{flex:1 1 120px;min-width:0}
-  /* GOLF-74 (ported into the GOLF-71 token system at merge time): per-room vs
-     per-person-sharing toggle + guest count. Was written with hardcoded px
-     against the old Trip Builder block that GOLF-71 replaced wholesale; the
-     rules below are the same layout re-expressed in the spacing, font-size
-     and radius tokens.
-     The two flex:0 resets matter: .tb-addstop-row input above would otherwise
-     stretch the radio buttons and the guests box to 120px each. */
-  .tb-pricetype{display:flex;gap:var(--sp-3);flex-wrap:wrap;align-items:center;
-    font:500 var(--fs-caption) var(--font-sans);color:var(--stone)}
-  .tb-pricetype label{display:inline-flex;align-items:center;gap:var(--sp-1);cursor:pointer;min-height:var(--tap-sm)}
-  .tb-addstop-row .tb-pricetype input[type="radio"]{flex:0 0 auto;width:auto;min-width:0;margin:0}
-  .tb-guests{display:inline-flex;align-items:center;gap:var(--sp-1);
-    font:500 var(--fs-caption) var(--font-sans);color:var(--stone);white-space:nowrap}
-  .tb-addstop-row .tb-guests input{flex:0 0 64px;width:64px;min-height:var(--tap-sm);
-    padding:var(--sp-1) var(--sp-2);border:1px solid var(--line);border-radius:var(--radius-sm);
-    font:400 var(--fs-small) var(--font-sans);color:var(--ink)}
-
   /* ── Itinerary filtered lists + Costs tab ───────────────────────── */
   .itin-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-card);margin-bottom:var(--sp-3);padding:var(--sp-3) var(--sp-4)}
   .itin-card-head{font:800 var(--fs-caption) var(--font-sans);letter-spacing:.06em;color:var(--accent-dark);margin-bottom:var(--sp-1)}

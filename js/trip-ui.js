@@ -187,14 +187,14 @@ function tbDriveCapHTML(l){
    hardcoded — GBP for GB/NI courses, EUR for Republic of Ireland, ZAR
    (shown as R) for South Africa. */
 const tbMoney=(v,cur='£')=>v!=null?`${cur}${v.toFixed(0)}`:'—';
-/* GOLF-74: the £ figure as the visitor should read it. A per-person-sharing
-   stay shows its arithmetic ("£90 × 2 (sharing) = £180") rather than silently
-   folding the doubling into the trip total — the stakeholder's explicit ask.
+/* GOLF-74/91: the £ figure as the visitor should read it. A hotel priced
+   for more than one traveller shows its arithmetic ("£90 × 2 people = £180")
+   rather than silently folding the multiplication into the trip total.
    Everything else is plain tbMoney(), so this is a strict superset. */
 function tripPriceLabel(det){
   if(!det||det.total==null)return'—';
   const cur=det.cur||'£';
-  return det.sharing?`${cur}${det.base.toFixed(0)} × ${det.guests} (sharing) = ${cur}${det.total.toFixed(0)}`:tbMoney(det.total,cur);
+  return det.sharing?`${cur}${det.base.toFixed(0)} × ${det.guests} people = ${cur}${det.total.toFixed(0)}`:tbMoney(det.total,cur);
 }
 function itinLegRowHTML(l){
   if(l.type==='drive')return tbDriveCapHTML(l);
@@ -211,7 +211,7 @@ function itinLegRowHTML(l){
   return`<div class="tb-day-course tb-item-${l.type}" style="cursor:default">
     <span class="tb-item-icon">${icon}</span>
     <div class="tb-item-main"><span class="tb-item-name">${esc(l.name)}</span>
-      ${sharing?`<div class="cart-region">${cur}${l.detail.base.toFixed(0)} × ${l.detail.guests} (sharing) = ${cur}${l.detail.total.toFixed(0)}</div>`:''}</div>
+      ${sharing?`<div class="cart-region">${cur}${l.detail.base.toFixed(0)} × ${l.detail.guests} people = ${cur}${l.detail.total.toFixed(0)}</div>`:''}</div>
     <span class="tb-item-price">${tbMoney(l.price,cur)}</span>
   </div>`;
 }
@@ -282,8 +282,8 @@ function tripCostLineItems(){
   const gs=groupSizeFor();
   tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{
     const det=tripItemPriceDetail(d,it);
-    const tag=it.type==='hotel'?(det.sharing?'sharing':'as entered'):(gs>1?`× ${gs}`:null);
-    items.push({label:tripItemName(it)+(det.sharing?` (${det.cur}${det.base.toFixed(0)} × ${det.guests} sharing)`:''),
+    const tag=it.type==='hotel'?(det.sharing?`× ${det.guests} people`:'estimated'):(gs>1?`× ${gs}`:null);
+    items.push({label:tripItemName(it)+(det.sharing?` (${det.cur}${det.base.toFixed(0)} × ${det.guests} people)`:''),
       cat:CAT[it.type]||'Stop',amount:det.total,day:idx+1,cur:det.cur,tag});
   }));
   tripUnscheduled().forEach(i=>{

@@ -102,9 +102,9 @@ function tripDayMigrateItems(d){
       items.push({id:tripItemNewId(),type:'poi',name:p.name.trim().slice(0,80),price:typeof p.price==='number'&&isFinite(p.price)?p.price:null,lat:null,lng:null});
   });
   if(d.hotel&&typeof d.hotel==='object'&&typeof d.hotel.name==='string'&&d.hotel.name.trim())
-    // GOLF-74: priceType 'room' = the pre-GOLF-74 meaning of `price`, so this
-    // migration remains total-preserving for every old trip.
-    items.push({id:tripItemNewId(),type:'hotel',name:d.hotel.name.trim().slice(0,80),price:typeof d.hotel.price==='number'&&isFinite(d.hotel.price)?d.hotel.price:null,priceType:'room',guests:2,lat:null,lng:null});
+    // GOLF-91: hotel price is read as per-person-per-night now (see
+    // tripItemPriceDetail() in trip-geo.js) — no priceType/guests to migrate.
+    items.push({id:tripItemNewId(),type:'hotel',name:d.hotel.name.trim().slice(0,80),price:typeof d.hotel.price==='number'&&isFinite(d.hotel.price)?d.hotel.price:null,lat:null,lng:null});
   d.items=items;
   delete d.courses;delete d.hotel;delete d.pois;
   return d;
@@ -131,7 +131,7 @@ function tripDayFindItem(dayId,itemId){
 /* Append a hotel/POI item to a day. lat/lng are optional — passing them
    (from the geocode picker) is what turns the stop into a real routable
    waypoint; omitting them keeps the pre-GOLF-63 name-only behaviour. */
-function tripDayAddStop(dayId,type,name,price,lat,lng,priceType,guests){
+function tripDayAddStop(dayId,type,name,price,lat,lng){
   const d=tripDays.find(d=>d.id===dayId);if(!d)return null;
   if(!name||!String(name).trim())return null;
   if(!Array.isArray(d.items))d.items=[];
@@ -140,18 +140,6 @@ function tripDayAddStop(dayId,type,name,price,lat,lng,priceType,guests){
     price:(typeof price==='number'&&isFinite(price))?price:null,
     lat:(typeof lat==='number'&&isFinite(lat))?lat:null,
     lng:(typeof lng==='number'&&isFinite(lng))?lng:null};
-  /* GOLF-74: per-person-sharing pricing, hotels only. Written unconditionally
-     (defaulting to 'room') so every hotel item created from here on has an
-     explicit, self-describing shape; older saved items without the field are
-     read as 'room' by tripItemPriceDetail(), same result. */
-  if(it.type==='hotel'){
-    it.priceType=priceType==='person'?'person':'room';
-    // GOLF-87: a new hotel item's guests default to the trip's own group
-    // size (falling back to HOTEL_GUESTS_DEFAULT if that's somehow unset),
-    // so "flows through" happens naturally at entry time — still freely
-    // editable per-hotel afterward (a group of 4 might book 2 twin rooms).
-    it.guests=(typeof guests==='number'&&isFinite(guests)&&guests>0)?Math.round(guests):(typeof groupSize==='number'&&groupSize>0?groupSize:HOTEL_GUESTS_DEFAULT);
-  }
   d.items.push(it);
   saveState();
   return it;
@@ -172,10 +160,6 @@ function tripDayUpdateStop(dayId,itemId,fields){
   it.price=(typeof fields.price==='number'&&isFinite(fields.price))?fields.price:null;
   it.lat=(typeof fields.lat==='number'&&isFinite(fields.lat))?fields.lat:null;
   it.lng=(typeof fields.lng==='number'&&isFinite(fields.lng))?fields.lng:null;
-  if(it.type==='hotel'){
-    it.priceType=fields.priceType==='person'?'person':'room';
-    it.guests=(typeof fields.guests==='number'&&isFinite(fields.guests)&&fields.guests>0)?Math.round(fields.guests):HOTEL_GUESTS_DEFAULT;
-  }
   saveState();
   return it;
 }
@@ -209,53 +193,42 @@ function tripDaySetCourse(i,dayId){
    one shape means the geocode search-as-you-type wiring, the coordinate
    handling and the price fields exist once, not twice. */
 let tbAddStop=null;
-function tbPromptHotel(dayId){tbAddStop={dayId,itemId:null,type:'hotel',name:'',price:'',priceType:'room',guests:HOTEL_GUESTS_DEFAULT,lat:null,lng:null};renderTripBuilder();}
-function tbPromptPoi(dayId){tbAddStop={dayId,itemId:null,type:'poi',name:'',price:'',priceType:'room',guests:HOTEL_GUESTS_DEFAULT,lat:null,lng:null};renderTripBuilder();}
+function tbPromptHotel(dayId){tbAddStop={dayId,itemId:null,type:'hotel',name:'',price:'',lat:null,lng:null};renderTripBuilder();}
+function tbPromptPoi(dayId){tbAddStop={dayId,itemId:null,type:'poi',name:'',price:'',lat:null,lng:null};renderTripBuilder();}
 function tbEditStop(dayId,itemId){
   const it=tripDayFindItem(dayId,itemId);
   if(!it||(it.type!=='hotel'&&it.type!=='poi'))return;
   tbAddStop={dayId,itemId,type:it.type,name:it.name||'',
     price:it.price!=null?String(it.price):'',
-    priceType:it.priceType==='person'?'person':'room',
-    guests:tripHotelGuests(it),
     lat:it.lat!=null?it.lat:null,lng:it.lng!=null?it.lng:null};
   renderTripBuilder();
 }
 function tbAddStopCancel(){tbAddStop=null;renderTripBuilder();}
 /* Reads whatever is currently typed back into tbAddStop, so a re-render
-   triggered by the pricing toggle doesn't throw away in-progress input. */
+   doesn't throw away in-progress input. */
 function tbAddStopCapture(){
   if(!tbAddStop)return;
-  const nameEl=document.getElementById('tb-addstop-name'),priceEl=document.getElementById('tb-addstop-price'),guestsEl=document.getElementById('tb-addstop-guests');
+  const nameEl=document.getElementById('tb-addstop-name'),priceEl=document.getElementById('tb-addstop-price');
   if(nameEl&&nameEl.value!==tbAddStop.name){tbAddStop.name=nameEl.value;tbAddStop.lat=null;tbAddStop.lng=null;}
   if(priceEl)tbAddStop.price=priceEl.value;
-  if(guestsEl&&guestsEl.value.trim())tbAddStop.guests=Math.max(1,parseInt(guestsEl.value,10)||HOTEL_GUESTS_DEFAULT);
-}
-function tbAddStopSetPriceType(v){
-  if(!tbAddStop)return;
-  tbAddStopCapture();
-  tbAddStop.priceType=v==='person'?'person':'room';
-  renderTripBuilder();
 }
 function tbAddStopCommit(){
   if(!tbAddStop)return;
   const s=tbAddStop;
   const nameEl=document.getElementById('tb-addstop-name');
   const priceEl=document.getElementById('tb-addstop-price');
-  const guestsEl=document.getElementById('tb-addstop-guests');
   const name=nameEl?nameEl.value:s.name;
   if(!name||!name.trim()){if(nameEl)nameEl.focus();return;}
   const rawPrice=priceEl&&priceEl.value.trim()?parseFloat(priceEl.value):NaN;
   const price=Number.isFinite(rawPrice)?rawPrice:null;
-  const guests=guestsEl&&guestsEl.value.trim()?parseInt(guestsEl.value,10):s.guests;
   /* Only keep the picked coordinates if the name still matches what was
      picked — typing over a geocoded pick makes those coordinates a lie.
      On an edit, `s.name` is seeded from the saved item, so leaving the name
      untouched keeps the item's existing coordinates. */
   const keepGeo=s.lat!=null&&s.lng!=null&&s.name&&name.trim()===s.name;
   const lat=keepGeo?s.lat:null,lng=keepGeo?s.lng:null;
-  if(s.itemId)tripDayUpdateStop(s.dayId,s.itemId,{name,price,lat,lng,priceType:s.priceType,guests});
-  else tripDayAddStop(s.dayId,s.type,name,price,lat,lng,s.priceType,guests);
+  if(s.itemId)tripDayUpdateStop(s.dayId,s.itemId,{name,price,lat,lng});
+  else tripDayAddStop(s.dayId,s.type,name,price,lat,lng);
   tbAddStop=null;
   renderTripBuilder();tbDrawMap();
 }
@@ -274,10 +247,10 @@ function tbAddStopFormHTML(dayId,itemId){
   if((tbAddStop.itemId||null)!==(itemId===undefined?null:itemId))return'';
   const isHotel=tbAddStop.type==='hotel';
   const editing=!!tbAddStop.itemId;
-  const person=isHotel&&tbAddStop.priceType==='person';
   const priceNum=parseFloat(tbAddStop.price);
   const dayObj=tripDays.find(d=>d.id===dayId);
   const cur=tripDayCurrency(dayObj);
+  const gs=groupSizeFor();
   return`<div class="tb-addstop">
     <div class="tb-addstop-title">${editing?(isHotel?'Edit this stay':'Edit this stop'):(isHotel?'Add a stay':'Add a stop')}</div>
     ${tbSearchFieldHTML({id:'tb-addstop-name',value:tbAddStop.name,
@@ -285,18 +258,9 @@ function tbAddStopFormHTML(dayId,itemId){
       title:'Pick a search result to give this stop real coordinates, so drive times can be calculated to it. A plain typed name works too.'})}
     <div class="tb-addstop-row">
       <input class="tb-field" type="number" id="tb-addstop-price" min="0" step="5"
-        placeholder="${isHotel?`${cur} / night — optional`:`${cur} — optional`}" value="${esc(tbAddStop.price)}">
-      ${/* GOLF-74 through GOLF-71's design system: same two-radio pricing
-           basis and same conditional Guests field as before, re-expressed
-           with the .tb-field input primitive and token-based .tb-pricetype /
-           .tb-guests styles rather than inline widths. */
-        isHotel?`<span class="tb-pricetype">
-        <label><input type="radio" name="tb-pricetype" value="room" ${person?'':'checked'} onchange="tbAddStopSetPriceType('room')"> Per room / night</label>
-        <label><input type="radio" name="tb-pricetype" value="person" ${person?'checked':''} onchange="tbAddStopSetPriceType('person')"> Per person sharing</label>
-      </span>
-      ${person?`<label class="tb-guests">Guests <input class="tb-field" type="number" id="tb-addstop-guests" min="1" max="12" step="1" value="${tbAddStop.guests}"></label>`:''}`:''}
+        placeholder="${isHotel?`${cur} per person / night — optional`:`${cur} — optional`}" value="${esc(tbAddStop.price)}">
     </div>
-    ${person&&Number.isFinite(priceNum)?`<p class="hint" style="margin:var(--sp-2) 0 0">${cur}${priceNum.toFixed(0)} × ${tbAddStop.guests} (sharing) = <b>${cur}${(priceNum*tbAddStop.guests).toFixed(0)}</b> per night.</p>`:''}
+    ${isHotel&&gs>1&&Number.isFinite(priceNum)?`<p class="hint" style="margin:var(--sp-2) 0 0">${cur}${priceNum.toFixed(0)} × ${gs} people = <b>${cur}${(priceNum*gs).toFixed(0)}</b> per night.</p>`:''}
     <div class="tb-addstop-row" style="margin-top:var(--sp-2)">
       <button class="tb-btn is-primary" onclick="tbAddStopCommit()">${editing?'Save':'Add'}</button>
       <button class="tb-btn is-quiet" onclick="tbAddStopCancel()">Cancel</button>
@@ -608,9 +572,9 @@ let activeTripId='default';
 let groupSize=2;
 // GOLF-87: how many travellers this trip is for — a trip-level fact,
 // persisted/restored through the exact same snapshot path as every other
-// trip field. Green fees/POI costs scale by this; hotels keep their own
-// independent per-item priceType/guests sharing model from GOLF-74 and are
-// deliberately NOT re-multiplied here (see tripItemPriceDetail()).
+// trip field. Green fees/POI costs scale by this; since GOLF-91, hotel
+// prices scale by it too (a hotel's entered price is read as per-person,
+// see tripItemPriceDetail()) — there's no separate per-hotel guest count.
 function tripSetGroupSize(n){
   const v=Math.max(1,Math.round(Number(n)||1));
   groupSize=v;
