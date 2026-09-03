@@ -118,6 +118,14 @@
   @media (min-width:901px){
     body.trip-mode .app{grid-template-columns:minmax(480px,680px) 1fr}
   }
+  /* GOLF-86: shared-trip view — a separate top-level pane, sibling of
+     .app, shown only while appMode==='shared'. The live map/pane stay
+     fully hidden (not just covered) so a shared link never touches or
+     bleeds into the visitor's own trip state. */
+  #shared-pane{display:none}
+  body.shared-mode .app{display:none}
+  body.shared-mode #shared-pane{display:block}
+  .shared-wrap{max-width:760px;margin:0 auto;min-height:100vh;background:var(--paper)}
   /* ══════════════════════════════════════════════════════════════════
      GOLF-71 — Trip Builder pane, rebuilt on the design tokens above.
      Everything below uses --radius-*, --shadow-*, --sp-*, --fs-*, --tap.
@@ -697,6 +705,7 @@
 </style>
 
 <a href="#map" class="skip-link">Skip to map</a>
+<div id="shared-pane"></div>
 <div class="app">
   <aside class="panel">
     <header class="mast">
@@ -803,6 +812,7 @@
 <script src="js/trip-ui.js"></script>
 <script src="js/touch-dnd.js"></script>
 <script src="js/app-mode.js"></script>
+<script src="js/trip-share.js"></script>
 <script src="js/explore.js"></script>
 <script src="js/editor.js"></script>
 <script src="js/boot.js"></script>

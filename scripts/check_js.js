@@ -49,6 +49,7 @@ const ORDER = [
   'trip-ui.js',
   'touch-dnd.js',
   'app-mode.js',
+  'trip-share.js',
   'explore.js',
   'editor.js',
   'boot.js',

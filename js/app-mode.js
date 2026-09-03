@@ -21,13 +21,27 @@
    '#trip' is deliberately NOT renamed: every GOLF-41 bookmark/shared link
    still lands somewhere sensible. */
 let appMode='explore';
-function appModeFromHash(){return location.hash==='#trip'?'build':location.hash==='#plan'?'plan':'explore';}
+function appModeFromHash(){
+  if(location.hash.indexOf('#share=')===0)return 'shared';
+  return location.hash==='#trip'?'build':location.hash==='#plan'?'plan':'explore';
+}
 function appModeHash(m){return m==='plan'?'#plan':m==='build'?'#trip':'';}
 function setAppMode(mode,opts){
   opts=opts||{};
   const pushHash=opts.pushHash!==false;
   const prev=appMode;
   appMode=mode;
+  if(mode==='shared'){
+    // GOLF-86: a shared link never needs to push its own hash (it's
+    // already the hash that got here), never touches trip-mode/body
+    // classes used by explore/plan/build, and never calls syncMastTripButton()
+    // — the masthead trip button belongs to the live app, not a shared view.
+    document.body.classList.remove('trip-mode');
+    document.body.classList.add('shared-mode');
+    renderSharedTrip();
+    return;
+  }
+  document.body.classList.remove('shared-mode');
   if(mode==='explore'){
     tripBuilderOn=false;
     document.body.classList.remove('trip-mode');

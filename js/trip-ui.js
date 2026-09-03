@@ -540,6 +540,7 @@ function renderTripBuilder(){
         </div>
       </details>`:''}
       <button class="tb-btn is-danger" id="tb-clear-trip" title="Empties this trip. Your other trips are untouched — to delete every trip use Start fresh in the trip menu.">Clear trip</button>
+      ${isBuild?`<button class="tb-btn is-quiet" id="tb-share-trip" title="Copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">🔗 Share</button>`:''}
     </div>
     <div class="tb-tabs" role="tablist">${TABS.map(([k,label])=>
       `<button class="tb-tab-btn" role="tab" data-tab="${k}" aria-pressed="${activeTab===k}">${label}</button>`).join('')}</div>
@@ -552,6 +553,8 @@ function renderTripBuilder(){
 
   document.getElementById('tb-exit').addEventListener('click',()=>exitTripBuilder());
   document.getElementById('tb-clear-trip').addEventListener('click',()=>tripClearAll());
+  const shareBtn=document.getElementById('tb-share-trip');
+  if(shareBtn)shareBtn.addEventListener('click',()=>tbShareTrip(shareBtn));
   document.getElementById('tb-groupsize-dec').addEventListener('click',()=>tripSetGroupSize(groupSize-1));
   document.getElementById('tb-groupsize-inc').addEventListener('click',()=>tripSetGroupSize(groupSize+1));
   /* Tabs span both modes: Discover means Plan, the other two mean Build. */
