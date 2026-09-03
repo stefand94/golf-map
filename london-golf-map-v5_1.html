@@ -458,6 +458,23 @@
   .cost-line-items-label{font:700 var(--fs-caption) var(--font-sans);letter-spacing:.08em;text-transform:uppercase;
     color:var(--stone);margin:var(--sp-4) 0 var(--sp-2)}
   .cost-cov{margin:var(--sp-2) 0 0}
+  /* item-5: each cost category is a <details> the line items expand from,
+     reusing the .fgroup chevron convention (Explore's filter dropdowns)
+     re-skinned as a label+amount row. */
+  .cost-groups{padding-top:var(--sp-1)}
+  .cost-group{border-bottom:1px solid var(--line)}
+  .cost-group:last-of-type{border-bottom:none}
+  .cost-group-summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;
+    gap:var(--sp-2);padding:var(--sp-3) 0;min-height:var(--tap)}
+  .cost-group-summary::-webkit-details-marker{display:none}
+  .cost-group-summary::before{content:'▸';font-size:9px;color:var(--stone);transition:transform .12s;margin-right:var(--sp-2)}
+  .cost-group[open] .cost-group-summary::before{transform:rotate(90deg)}
+  .cost-group-summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .cost-group-label{font-size:var(--fs-small);color:var(--ink);display:flex;align-items:center}
+  .cost-group-amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--ink)}
+  .cost-group-lines{margin:0 0 var(--sp-3) var(--sp-5)}
+  .cost-fuel-row{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);padding:var(--sp-3) 0}
+  .cost-fuel-row .cost-fuel-toggle{padding:0}
   /* Map marker for a day's hotel/POI stops (rendered by tbEmojiIcon). */
   .tb-emoji-marker{background:none;border:none;text-align:center;line-height:1}
   .tb-emoji-marker span{font-size:19px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}

@@ -316,20 +316,40 @@ function tbTripTotal(){return tripCostBreakdown().grand;}
    is labelled est.; a stay's price is edited on the stay), so what's left
    is the one thing the numbers genuinely can't say: how many fees are
    real vs assumed. */
+/* GOLF-91/item-5: line items used to sit in a second, always-open flat
+   table below the category summary — the same figures shown twice, with
+   no link between a category's total and the rows behind it. Each
+   category row is now a <details class="cost-group"> that expands to
+   reveal exactly its own line items — the summary *is* the group header,
+   per the stakeholder's ask ("line items as part of a hierarchy you
+   expand from the grouping above it"). Reuses the .fgroup chevron
+   convention already established for Explore's filter dropdowns
+   (london-golf-map-v5_1.html), just re-skinned to a label+amount row via
+   .cost-group. */
+function costGroupHTML(icon,label,total,items,cur){
+  const rows=items.length
+    ?items.map(x=>`<tr><td>${esc(x.label)}${x.tag?` <span class="wt">${esc(x.tag)}</span>`:''}</td><td>${tbMoney(x.amount,x.cur||cur)}</td></tr>`).join('')
+    :`<tr><td colspan="2" class="hint">Nothing here yet.</td></tr>`;
+  return`<details class="cost-group"><summary class="cost-group-summary">
+      <span class="cost-group-label">${icon} ${label}</span>
+      <span class="cost-group-amt">${cur}${total.toFixed(0)}</span>
+    </summary>
+    <table class="cost-line-table cost-group-lines">${rows}</table>
+  </details>`;
+}
 function tbCostsTabHTML(){
   const b=tripCostBreakdown();
   const cur=tripPrimaryCurrency();
   const mixed=b.items.some(x=>x.cur&&x.cur!==cur);
+  const golf=b.items.filter(x=>x.cat==='Golf'),stay=b.items.filter(x=>x.cat==='Stay'),stop=b.items.filter(x=>x.cat==='Stop');
   return`<div class="cost-banner"><div class="cost-banner-label">Trip total${b.groupSize>1?` · ${b.groupSize} travellers`:''}</div><div class="cost-banner-amount">${cur}${b.grand.toFixed(0)}${b.perPerson!=null?`<span class="cost-banner-pp"> · ${cur}${b.perPerson.toFixed(0)} per person</span>`:''}</div></div>
-    <div class="cost-card"><table class="cost-summary-table">
-      <tr><td>⛳ Golf</td><td>${cur}${b.golfTotal.toFixed(0)}</td></tr>
-      <tr><td>🏨 Stays</td><td>${cur}${b.stayTotal.toFixed(0)}</td></tr>
-      <tr><td>📍 Stops</td><td>${cur}${b.poiTotal.toFixed(0)}</td></tr>
-      <tr><td><label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel (est.)</label></td><td>${cur}${b.fuelCost.toFixed(0)}</td></tr>
-    </table></div>
-    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?` Totals are shown in ${cur} but some line items below are priced in a different currency — no conversion is applied yet.`:''}</p>
-    <div class="cost-line-items-label">Line items</div>
-    <div class="cost-card"><table class="cost-line-table">${b.items.length?b.items.map(x=>`<tr><td>${esc(x.label)} <span class="wt">${x.cat}</span>${x.tag?` <span class="wt">${esc(x.tag)}</span>`:''}</td><td>${tbMoney(x.amount,x.cur||cur)}</td></tr>`).join(''):`<tr><td colspan="2" class="hint">No costs yet.</td></tr>`}</table></div>
+    <div class="cost-card cost-groups">
+      ${costGroupHTML('⛳','Golf',b.golfTotal,golf,cur)}
+      ${costGroupHTML('🏨','Stays',b.stayTotal,stay,cur)}
+      ${costGroupHTML('📍','Stops',b.poiTotal,stop,cur)}
+      <div class="cost-fuel-row"><label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel (est.)</label><span class="cost-group-amt">${cur}${b.fuelCost.toFixed(0)}</span></div>
+    </div>
+    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?` Totals are shown in ${cur} but some line items above are priced in a different currency — no conversion is applied yet.`:''}</p>
     <p class="hint" style="margin-top:var(--sp-2)">🔜 Currency conversion (showing every cost in one currency) is planned for a future update — for now, amounts display in each course's own local currency.</p>`;
 }
 
