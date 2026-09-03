@@ -105,11 +105,12 @@ function tbAttachSearch(id,opts){
   input.addEventListener('input',()=>{
     const text=input.value;
     if(opts.onType)opts.onType(text);
+    const country=typeof opts.country==='function'?opts.country():opts.country;
     tbGeocodeDebounced(id,text,list=>{
       // Don't paint over a field the visitor has already left.
       if(document.activeElement!==input&&!opts.render)return;
       if(opts.render)opts.render(list,results);else paint(list);
-    });
+    },null,country);
   });
   input.addEventListener('keydown',e=>{
     const rs=rows();
@@ -439,8 +440,11 @@ function tripDayScheduleHTML(){
 
 /* Plan mode's wishlist. */
 function tbWishlistHTML(){
-  const unscheduled=tripUnscheduled();
-  if(!unscheduled.length)return`<p class="hint">Nothing on your wishlist yet — add any course you fancy playing.</p>`;
+  const allUnscheduled=tripUnscheduled();
+  const unscheduled=state.nation?allUnscheduled.filter(i=>courseNation(i)===state.nation):allUnscheduled;
+  const hidden=allUnscheduled.length-unscheduled.length;
+  const hiddenNote=hidden?`<p class="hint" style="margin:0 0 var(--sp-2)">${hidden} more course${hidden===1?'':'s'} on your wishlist from other countries — clear the country filter above to see ${hidden===1?'it':'them'}.</p>`:'';
+  if(!unscheduled.length)return hiddenNote||`<p class="hint">Nothing on your wishlist yet — add any course you fancy playing.</p>`;
   const rows=unscheduled.map(i=>{
     const fee=extractFee(V(i,'wd'));
     return`<div class="tb-day-course tb-item-golf" style="cursor:default">
@@ -456,11 +460,23 @@ function tbWishlistHTML(){
         <span class="tb-day-place">${unscheduled.length} course${unscheduled.length===1?'':'s'}</span></span>
         <button class="tb-btn is-primary is-sm" onclick="enterBuildMode()" title="Start scheduling these courses into days">Schedule →</button></div>
       <div class="tb-day-rule"></div>
+      ${hiddenNote}
       ${rows}
       ${tripWishlistSummaryHTML(unscheduled)}
     </div>`;
 }
-function tbPlanHTML(){return tbDiscoverTabHTML()+`<div class="tb-section-title" style="margin-top:var(--sp-6)">Your wishlist</div>${tbWishlistHTML()}`;}
+/* GOLF-90: reuses Explore's existing state.nation/NATIONS/courseNation
+   (js/explore.js, GOLF-81) rather than inventing a second country concept —
+   picking a nation here is the exact same fact as picking one on Explore,
+   just surfaced at the top of Plan mode per the stakeholder's answer. The
+   click handler lives in renderTripBuilder()'s wiring block, alongside
+   every other delegated Plan/Build listener. */
+function tbNationPillsHTML(){
+  return`<div class="nation-pills" id="tb-nation-pills" role="group" aria-label="Choose a country">
+    ${NATIONS.map(([k,l])=>`<button class="nation-pill" aria-pressed="${state.nation===k}" data-nation="${k}">${l}</button>`).join('')}
+  </div>`;
+}
+function tbPlanHTML(){return tbNationPillsHTML()+tbDiscoverTabHTML()+`<div class="tb-section-title" style="margin-top:var(--sp-6)">Your wishlist</div>${tbWishlistHTML()}`;}
 
 /* Discover. GOLF-71: its own "Near a place" search box is gone — the one
    search bar at the top of the pane anchors the lens when you pick a
@@ -551,6 +567,13 @@ function renderTripBuilder(){
     }</div>`;
 
   document.getElementById('tb-clear-trip').addEventListener('click',()=>tripClearAll());
+  const nationPills=document.getElementById('tb-nation-pills');
+  if(nationPills)nationPills.addEventListener('click',e=>{
+    const b=e.target.closest('[data-nation]');if(!b)return;
+    const k=b.dataset.nation;
+    state.nation=state.nation===k?null:k;
+    saveState();renderTripBuilder();tbDrawMap();
+  });
   const shareBtn=document.getElementById('tb-share-trip');
   if(shareBtn)shareBtn.addEventListener('click',()=>tbShareTrip(shareBtn));
   document.getElementById('tb-groupsize-dec').addEventListener('click',()=>tripSetGroupSize(groupSize-1));
@@ -575,6 +598,7 @@ function renderTripBuilder(){
      `render` takes over painting so places and courses can be mixed. ── */
   const searchResultsEl=document.getElementById('tb-search-results');
   tbAttachSearch('tb-unified-search',{
+    country:()=>exploreCountryCode(),
     onType(text){
       tbSearchQ=text;
       const q=text.trim();

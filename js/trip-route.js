@@ -160,6 +160,12 @@ function tbEffectiveAnchor(){
 }
 /* Excludes courses already in the cart — tripByAnchor()/tripByRegion()
    alone don't know about TRIP, they're shared with nothing else. */
+/* GOLF-90: with a country pill picked (see tbNationPillsHTML(), Plan mode),
+   every Discover scope is narrowed to that nation's courses — otherwise
+   picking "Ireland" up top and then seeing GB courses in "Nearby" would be
+   incoherent. Applied as a final filter so each scope's own logic
+   (region/anchor/place ranking) is untouched. */
+function tbNationFilter(i){return!state.nation||courseNation(i)===state.nation;}
 function tbDiscover(){
   if(tbDiscoveryTab==='region'){
     /* Bug fix (2026-09-02): read the persisted tbRegion/tbBorder state
@@ -167,17 +173,18 @@ function tbDiscover(){
        redraw (e.g. after "+ Wishlist") that happens before/without the
        change listener firing, so the DOM alone isn't reliable. */
     if(!tbRegion)return[];
-    return tripByRegion(tbRegion,tbBorder||0).filter(({i})=>!TRIP.has(i));
+    return tripByRegion(tbRegion,tbBorder||0).filter(({i})=>!TRIP.has(i)&&tbNationFilter(i));
   }
   if(tbDiscoveryTab==='place'){
     if(!tbPlaceAnchor)return[];
-    return nearestCoursesToPoint(tbPlaceAnchor.lat,tbPlaceAnchor.lng,5+TRIP.size).filter(({i})=>!TRIP.has(i)).slice(0,5);
+    return nearestCoursesToPoint(tbPlaceAnchor.lat,tbPlaceAnchor.lng,5+TRIP.size).filter(({i})=>!TRIP.has(i)&&tbNationFilter(i)).slice(0,5);
   }
   const anchor=tbEffectiveAnchor();
   if(anchor==null)return[];
   // Over-fetch past the 5 we'll show, since some of the nearest courses
-  // overall may already be in the cart and get filtered out below.
-  return tripByAnchor(anchor,5+TRIP.size).filter(({i})=>!TRIP.has(i)).slice(0,5);
+  // overall may already be in the cart (or in a different nation) and get
+  // filtered out below.
+  return tripByAnchor(anchor,5+TRIP.size).filter(({i})=>!TRIP.has(i)&&tbNationFilter(i)).slice(0,5);
 }
 /* GOLF-71: the empty state used to restate whatever the scope line
    directly above it had just said ("Add a course to see what's nearby." /
