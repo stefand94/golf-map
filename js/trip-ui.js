@@ -515,8 +515,7 @@ function renderTripBuilder(){
   pane.innerHTML=`
     <div class="tb-navbar">
       <span class="tb-wordmark">${isBuild?'Build your trip':'Plan a trip'}</span>
-      <span class="tb-navbar-right"><span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${tripPrimaryCurrency()}${total.toFixed(0)}</span>
-        <button class="tb-btn is-sm is-quiet" id="tb-exit">← Explore</button></span>
+      <span class="tb-navbar-right"><span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${tripPrimaryCurrency()}${total.toFixed(0)}</span></span>
     </div>
     ${tbSearchFieldHTML({id:'tb-unified-search',variant:'bar',value:tbSearchQ,
       placeholder:'Search courses, towns and cities…',ariaLabel:'Search courses, towns and cities'})}
@@ -551,7 +550,6 @@ function renderTripBuilder(){
       :tbItineraryHTML()
     }</div>`;
 
-  document.getElementById('tb-exit').addEventListener('click',()=>exitTripBuilder());
   document.getElementById('tb-clear-trip').addEventListener('click',()=>tripClearAll());
   const shareBtn=document.getElementById('tb-share-trip');
   if(shareBtn)shareBtn.addEventListener('click',()=>tbShareTrip(shareBtn));

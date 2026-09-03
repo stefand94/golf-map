@@ -20,12 +20,20 @@
      '#trip' -> Build    (days, items, costs — the concrete half)
    '#trip' is deliberately NOT renamed: every GOLF-41 bookmark/shared link
    still lands somewhere sensible. */
-let appMode='explore';
+/* TRIAL (no-explore-trial branch): default landing changed 'explore'->'plan'
+   so the app opens straight into Plan mode with no Explore step at all —
+   this is a throwaway experiment branch to let the stakeholder feel what
+   the app is like without the separate Explore mode, NOT a decision to
+   remove it. Revert both this default and appModeFromHash()'s empty-hash
+   fallback below to restore Explore as the landing mode. */
+let appMode='plan';
 function appModeFromHash(){
   if(location.hash.indexOf('#share=')===0)return 'shared';
-  return location.hash==='#trip'?'build':location.hash==='#plan'?'plan':'explore';
+  return location.hash==='#trip'?'build':location.hash==='#explore'?'explore':'plan';
 }
-function appModeHash(m){return m==='plan'?'#plan':m==='build'?'#trip':'';}
+/* TRIAL: 'plan' is the default (no hash) now, so 'explore' needs its own
+   explicit hash to round-trip through history/back-forward correctly. */
+function appModeHash(m){return m==='plan'?'':m==='build'?'#trip':m==='explore'?'#explore':'';}
 function setAppMode(mode,opts){
   opts=opts||{};
   const pushHash=opts.pushHash!==false;

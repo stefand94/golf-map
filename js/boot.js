@@ -15,8 +15,14 @@ render();
 /* GOLF-64: three URL states now, not two — a cold load on #plan or #trip
    restores that mode directly (and a bookmarked GOLF-41 #trip link still
    works, landing in Build exactly as it used to). */
-if(appModeFromHash()!=='explore')setAppMode(appModeFromHash(),{pushHash:false});
-else syncMastTripButton();
+/* TRIAL (no-explore-trial branch): 'plan' is now the default landing mode
+   (see js/app-mode.js), so this flips from "switch away from Explore's
+   default render() unless the hash says otherwise" to "switch into Plan's
+   pane unless the hash explicitly asks for the old Explore view via
+   '#explore'." Revert alongside js/app-mode.js's changes to restore. */
+const m0=appModeFromHash();
+if(m0!=='explore')setAppMode(m0,{pushHash:false});
+else{appMode='explore';syncMastTripButton();}
 if(TRIP.size)tripDrawCart(false);
 
 /* GOLF-80/PWA basics: register the service worker after boot, not before —
