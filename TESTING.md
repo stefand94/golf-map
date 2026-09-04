@@ -908,6 +908,31 @@ that touches rendering, filters, or persistence:
     scripts/check_js.js` and `node scripts/test_data.js` unaffected (pure
     app-state/UI, no data-file changes).
 
+44. **Nation pills moved to the very top; automatic 1-day-per-course
+    scheduling (GOLF-94).** Two independent checks:
+    - **Pill placement**: on any tab (Discover/Itinerary/Costs), confirm
+      `#tb-nation-pills` is the very first child of `#tb-pane`, above the
+      navbar — not just visible on Discover.
+    - **Automatic scheduling**: start fresh, add 2+ courses via
+      `tbAddToWishlist()` (search bar/Discover/a popup) with zero days —
+      confirm they land in the wishlist, not a day. Click into the
+      Itinerary or Costs tab (or call `enterBuildMode()`) — confirm each
+      wishlist course got its own new day, appended after any existing
+      days, in nearest-neighbour order, and the wishlist is now empty.
+      Re-enter Build with nothing new queued — confirm no duplicate days
+      are created. Manually insert a `kind:'free'` day between two golf
+      days, add another wishlist course, re-enter Build — confirm the free
+      day stays exactly where it was and the new course is appended as a
+      new day at the end (existing days, of any kind, are never touched by
+      this automatic path). Separately, the manual "Auto schedule ▾ →
+      Reschedule all courses (full reset)" button remains a deliberate,
+      opt-in destructive action: every `kind:'golf'` day is rebuilt from
+      scratch (nearest-neighbour order over every course in the trip,
+      scheduled and unscheduled alike) while free/start/end days keep
+      their exact position. `node scripts/check_js.js` and `node
+      scripts/test_data.js` unaffected (pure app-state/UI, no data-file
+      changes).
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile

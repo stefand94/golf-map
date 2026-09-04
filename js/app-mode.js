@@ -29,6 +29,14 @@ function appModeHash(m){return m==='build'?'#trip':'';}
 function setAppMode(mode,opts){
   opts=opts||{};
   const pushHash=opts.pushHash!==false;
+  /* GOLF-94: "when you move to itinerary it should add 1 course to each
+     day and auto order them by nearest neighbour" — fires exactly once per
+     transition INTO Build (not on re-renders while already in Build, and
+     not on cold-loading straight into Build via a bookmarked '#trip' link
+     — the same check covers both, since appMode still holds its prior
+     value here). See tripAutoScheduleUnscheduled() (js/trip-route.js) for
+     what it actually does and why it's deliberately non-destructive. */
+  const enteringBuild=mode==='build'&&appMode!=='build';
   appMode=mode;
   if(mode==='shared'){
     // GOLF-86: a shared link never needs to push its own hash (it's
@@ -49,6 +57,7 @@ function setAppMode(mode,opts){
   tripBuilderOn=true;
   document.body.classList.add('trip-mode');
   if(opts.seedAnchor!=null)tbAnchor=opts.seedAnchor;
+  if(enteringBuild)tripAutoScheduleUnscheduled();
   renderTripBuilder();
   tbDrawMap();
   /* GOLF-41: a real, shareable/bookmarkable URL per mode — pushState (not a

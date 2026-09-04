@@ -141,10 +141,53 @@ function tripShowOrdered(order,clear=true,fit=true){
    into named days instead of one flat ordered list. tbMove() itself is
    kept — order-within-tripSeq is still what drives the flat fallback
    route (tripDayOrder() when no days exist yet) and the JSON export. */
+/* GOLF-94: "restore auto-order as 1-day-per-course, assigned in
+   nearest-neighbour order" turned out to mean two different things,
+   confirmed separately with the stakeholder:
+     - moving into the Itinerary tab should lightly, non-destructively pick
+       up whatever's sitting in the wishlist (see tripAutoScheduleUnscheduled
+       below);
+     - this manual button is the deliberate, opt-in destructive action —
+       "full reset — rebuild every day from scratch" (the stakeholder's own
+       words, explicitly NOT the lighter "only handle new courses" option).
+   Every EXISTING golf day is discarded and rebuilt as a fresh one-course
+   day, in nearest-neighbour order over every course in the trip (scheduled
+   and unscheduled alike) — free/start/end days are never touched and keep
+   their original position, per the stakeholder's separately-confirmed "keep
+   it in place, only touch golf days." Implementation: walk the ORIGINAL day
+   list once, replacing each 'golf'-kind day in place with the next
+   freshly-built one-course day off the nn-ordered queue (so a free day
+   sandwiched between two golf days stays sandwiched between two golf days,
+   just re-populated); any courses left over once every old golf slot is
+   used are appended as new days at the end (covers a trip that had fewer
+   golf days than courses, or none at all yet). */
 function tripAutoOrder(){
-  tripSeq=tripOrder([...TRIP]);
+  const ordered=tripOrder([...TRIP]);
+  const freshGolfDay=i=>({id:tripDayNextId++,items:[{id:tripItemNewId(),type:'golf',i}],driveIn:null,date:null,kind:'golf',place:null,placeLat:null,placeLng:null});
+  let qi=0;
+  const rebuilt=tripDays.map(d=>d.kind==='golf'?(qi<ordered.length?freshGolfDay(ordered[qi++]):null):d).filter(Boolean);
+  while(qi<ordered.length)rebuilt.push(freshGolfDay(ordered[qi++]));
+  tripDays=rebuilt;
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(false);}
+}
+/* GOLF-94: the lightweight, automatic half of the same request — fires once
+   on every transition INTO Build mode (see setAppMode(), js/app-mode.js).
+   Takes only whatever's currently in the wishlist (tripUnscheduled() —
+   courses added but not yet on any day) and gives each its own new day,
+   appended after every existing day, in nearest-neighbour order. Existing
+   days — golf, free, start, end, however already arranged/reordered by the
+   visitor — are never touched, never reordered, never rebuilt: this is
+   strictly additive, unlike the manual "Auto schedule" button above, which
+   is the deliberate destructive full-reset action. A no-op when the
+   wishlist is empty (e.g. re-entering Build with nothing new to schedule). */
+function tripAutoScheduleUnscheduled(){
+  const unscheduled=tripUnscheduled();
+  if(!unscheduled.length)return;
+  tripOrder(unscheduled).forEach(i=>{
+    tripDays.push({id:tripDayNextId++,items:[{id:tripItemNewId(),type:'golf',i}],driveIn:null,date:null,kind:'golf',place:null,placeLat:null,placeLng:null});
+  });
+  saveState();
 }
 /* GOLF-31: Trip Builder pane — retires the modal openTripPlanner()/
    tripPlannerMode() flow (region/anchor/mine mode buttons in a centered
