@@ -933,6 +933,34 @@ that touches rendering, filters, or persistence:
       scripts/test_data.js` unaffected (pure app-state/UI, no data-file
       changes).
 
+45. **Prompt-based day-reorder suggestion (GOLF-95).** Supersedes any
+    notion of a silent/automatic reorder — the app must never reorder
+    days on its own; it only ever offers, via a dismissible banner at the
+    top of the Itinerary tab. Build a 4-course trip (auto-scheduled into
+    4 golf days per GOLF-94), then insert a `kind:'free'` day with real
+    `placeLat`/`placeLng` between day 2 and day 3 such that it's *not*
+    the nearest-neighbour-optimal slot (e.g. a day whose place is
+    actually closest to day 4). Confirm `tripSuggestedDayReorder()`
+    returns a non-null `{origIdxs,suggestedIdxs,sig}` and the banner
+    ("This order looks inefficient — want to auto-order the trip for a
+    better route?") renders above the day cards. Click **Auto-order**:
+    confirm the days are correctly reordered (nearest-neighbour over
+    every locatable day's first stop), `driveIn` is cleared only on days
+    whose predecessor changed, dates are untouched, and the banner
+    disappears. Re-create the same suboptimal arrangement and click
+    **Not now**: confirm the banner disappears and does **not** reappear
+    on a subsequent render of the *same* arrangement (`tbReorderDismissedSig`
+    correctly suppresses re-prompting for that exact day-id sequence);
+    then change the day arrangement again (a different sig) and confirm
+    the banner *does* reappear despite the earlier decline. Confirm a
+    day arrangement that's already nearest-neighbour-optimal shows no
+    banner at all. Confirm `tbReorderDismissedSig` resets on every
+    trip-lifecycle boundary (`tripCreateNew`, `tripDelete`, `tripSwitchTo`,
+    `tripDuplicate`, `wipeStoredState`, `tripStartFresh`) alongside the
+    other GOLF-60b transients. `node scripts/check_js.js` and `node
+    scripts/test_data.js` unaffected (pure app-state/UI, no data-file
+    changes).
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile

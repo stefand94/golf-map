@@ -403,6 +403,12 @@ function tbDragSetCourse(i,ev,el){tbDrag={kind:'course',i};tbDayDrag=null;tbDrag
    first and falls through to the untouched item logic when it's null.
    Net: zero changes to tbDropOn()'s behaviour. */
 let tbDayDrag=null;
+/* GOLF-95: a decline of the suggested-day-reorder prompt should stick until
+   the day arrangement actually changes again, not re-nag on every render —
+   holds the day-id-sequence signature (tripSuggestedDayReorder()'s `sig`)
+   that was dismissed. Transient, not persisted; reset alongside every other
+   pane-session transient at every trip-lifecycle boundary (GOLF-60b). */
+let tbReorderDismissedSig=null;
 function tbDayDragSet(dayId,ev,el){tbDayDrag=dayId;tbDrag=null;tbDragStart(ev,el&&el.closest?el.closest('.tb-day'):el,'day:'+dayId);}
 /* A day's stored `driveIn` is a manual override of the leg driven INTO
    that day (GOLF-43) — it describes the gap between it and whatever day
@@ -616,7 +622,7 @@ function tripSwitchTo(id){
   // per-trip snapshot — reset them on every lifecycle transition so a
   // switched-to trip never inherits stale search text/anchor from whatever
   // trip was active before.
-  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbRegion='';tbBorder=8;
+  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbReorderDismissedSig=null;tbRegion='';tbBorder=8;
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(true);}
   render();
@@ -636,7 +642,7 @@ function tripCreateNew(){
   // GOLF-64: a brand-new trip always drops you back at the start of the
   // workflow — and via setAppMode(), so the URL follows the mode instead of
   // leaving a stale #trip pointing at Plan-mode content.
-  tbDiscoveryTab='anchor';tbPlaceAnchor=null;tbSearchQ='';
+  tbDiscoveryTab='anchor';tbPlaceAnchor=null;tbSearchQ='';tbReorderDismissedSig=null;
   saveState();
   if(tripBuilderOn)setAppMode('plan');
   render();
@@ -657,7 +663,7 @@ function tripDuplicate(id){
   trips[newId].name=(src.name||'My trip')+' (copy)';
   trips[newId].created=Date.now();trips[newId].modified=Date.now();
   activeTripId=newId;tripRestoreActive();
-  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbRegion='';tbBorder=8; // GOLF-60b
+  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbReorderDismissedSig=null;tbRegion='';tbBorder=8; // GOLF-60b
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
   render();
@@ -668,7 +674,7 @@ function tripDelete(id){
   if(!confirm(`Delete "${trips[id].name}"? This can't be undone.`))return;
   delete trips[id];
   if(activeTripId===id){activeTripId=Object.keys(trips)[0];tripRestoreActive();}
-  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbRegion='';tbBorder=8; // GOLF-60b
+  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbReorderDismissedSig=null;tbRegion='';tbBorder=8; // GOLF-60b
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
   render();
@@ -684,7 +690,7 @@ function tripStartFresh(){
   if(!confirm('Start fresh? This deletes every saved trip on this device and creates one new, empty trip. This cannot be undone.'))return;
   trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1,groupSize:2}};
   activeTripId='default';tripRestoreActive();
-  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbAnchor=null;tbDayShown=null;tbRegion='';tbBorder=8;tbDiscoveryTab='anchor';
+  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbReorderDismissedSig=null;tbAnchor=null;tbDayShown=null;tbRegion='';tbBorder=8;tbDiscoveryTab='anchor';
   saveState();
   if(tripBuilderOn)setAppMode('plan'); // GOLF-64: URL follows the mode
   render();

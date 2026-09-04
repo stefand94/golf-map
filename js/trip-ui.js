@@ -438,12 +438,29 @@ function tbDayCardHTML(d,idx){
    With a real 44px drag handle, a visible lift on pickup and a solid
    insertion line, the gesture teaches itself — so the paragraph is gone
    and "Auto-order" is simply a button you can see. */
+/* GOLF-95: a dismissible banner offering to auto-order the trip whenever a
+   day-structure change (e.g. inserting a stopover) has made the current
+   order suboptimal versus nearest-neighbour routing. Never reorders
+   silently — Accept applies it, Decline sticks (via tbReorderDismissedSig)
+   until the day arrangement changes again. */
+function tbReorderSuggestionHTML(){
+  const sug=tripSuggestedDayReorder();
+  if(!sug||sug.sig===tbReorderDismissedSig)return'';
+  return`<div class="tb-day tb-reorder-suggest" style="border-left-color:var(--accent)">
+    <p class="hint" style="margin:0 0 var(--sp-2)">This order looks inefficient — want to auto-order the trip for a better route? Free/start/end days stay exactly where they are.</p>
+    <div style="display:flex;gap:var(--sp-2)">
+      <button class="tb-btn is-primary is-sm" onclick="tripApplySuggestedDayReorder();">Auto-order</button>
+      <button class="tb-btn is-quiet is-sm" onclick="tbDismissSuggestedDayReorder('${esc(sug.sig)}');">Not now</button>
+    </div>
+  </div>`;
+}
 function tripDayScheduleHTML(){
   if(!tripSeq.length&&!tripDays.length)
     return`<p class="hint">Nothing scheduled yet.</p>
       <div class="tb-day-add" style="padding-left:0"><button class="tb-btn is-primary" onclick="tbAddDayWithPlace();">＋ Add a day</button>
       <button class="tb-btn" onclick="setAppMode('plan')">Browse courses</button></div>`;
   const unscheduled=tripUnscheduled();
+  const reorderHTML=tbReorderSuggestionHTML();
   const daysHTML=tripDays.map((d,idx)=>tbDayCardHTML(d,idx)).join('');
   const unschedHTML=unscheduled.length?`
     <div class="tb-day tb-day-wish" ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
@@ -454,7 +471,7 @@ function tripDayScheduleHTML(){
       ${unscheduled.map(i=>tripDayCourseRowHTML(i,null)).join('')}
     </div>`:'';
   const total=tbTripTotal();
-  return`${daysHTML}${unschedHTML}
+  return`${reorderHTML}${daysHTML}${unschedHTML}
     <div class="tb-day-endzone tb-day-add" style="padding-left:0"
       ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
       ondrop="event.preventDefault();tbDropOut(this);tbDropDayAtEnd();">

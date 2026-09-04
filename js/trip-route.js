@@ -189,6 +189,91 @@ function tripAutoScheduleUnscheduled(){
   });
   saveState();
 }
+/* GOLF-95: prompt-based reorder suggestion, superseding the earlier
+   silent-automatic/manual-full-reset-only design. Stakeholder's own
+   example: 4 courses auto-scheduled into 4 days (tripAutoScheduleUnscheduled
+   above), then a stopover inserted between day 2 and 3 that may or may not
+   be the efficient spot — the app should ask before reordering, and a
+   decline must stick (not re-nag) until the day arrangement actually
+   changes again. */
+/* A day's own routable anchor — its first located stop, or null when it
+   has none (a placeless free/rest day). Generalizes tripOrder()'s
+   course-index-only nearest-neighbour walk to work per-day, since a day's
+   anchor may be a place, a course, or a hotel/POI. */
+function tripDayAnchorPoint(dayIdx){
+  const s=tripDayFirstStop(dayIdx);
+  return s?{lat:s.lat,lng:s.lng}:null;
+}
+/* Indices of days that have a routable anchor — placeless days are
+   excluded entirely from reorder consideration (nothing to route them by,
+   and moving one would violate "keep a free day in place" unless it's
+   already keyed to a real location). */
+function tripLocatableDayIndices(){
+  return tripDays.map((d,i)=>i).filter(i=>tripDayAnchorPoint(i)!=null);
+}
+/* Nearest-neighbour permutation of a set of day indices, by their anchor
+   points, fixed starting point = the first of them in current order (so
+   the trip's start never moves). Sibling of tripOrder(), keyed on day
+   index instead of course index. */
+function tripNearestNeighbourDayOrder(dayIdxs){
+  if(!dayIdxs.length)return[];
+  const remaining=[...dayIdxs];
+  const order=[remaining.shift()];
+  while(remaining.length){
+    const lastPt=tripDayAnchorPoint(order[order.length-1]);
+    let bestIdx=0,bestDist=Infinity;
+    remaining.forEach((di,idx)=>{
+      const pt=tripDayAnchorPoint(di);
+      const d=haversineMiles(lastPt.lat,lastPt.lng,pt.lat,pt.lng);
+      if(d<bestDist){bestDist=d;bestIdx=idx}
+    });
+    order.push(remaining.splice(bestIdx,1)[0]);
+  }
+  return order;
+}
+/* Returns {origIdxs,suggestedIdxs,sig} when the current day order differs
+   from the nearest-neighbour order over locatable days, or null when
+   there's nothing to suggest (fewer than 2 locatable days, or the current
+   order already matches). `sig` is the current day-id sequence — used so a
+   decline sticks until the arrangement actually changes again, rather than
+   re-prompting on every render. */
+function tripSuggestedDayReorder(){
+  const locIdxs=tripLocatableDayIndices();
+  if(locIdxs.length<2)return null;
+  const suggested=tripNearestNeighbourDayOrder(locIdxs);
+  const sig=tripDays.map(d=>d.id).join(',');
+  if(suggested.join(',')===locIdxs.join(','))return null;
+  return{origIdxs:locIdxs,suggestedIdxs:suggested,sig};
+}
+/* Applies a suggested reorder: walks the ORIGINAL tripDays array once,
+   replacing only locatable slots with the next day off the nn-ordered
+   queue (mirrors tripAutoOrder()'s "walk original, replace matching slots"
+   pattern) — non-locatable/placeless days are left completely untouched,
+   in their original position. Clears driveIn only on days whose
+   predecessor changed (mirrors tbDayMoveTo()'s before/after-snapshot
+   pattern) — dates are never touched, same reasoning as GOLF-65. */
+function tripApplySuggestedDayReorder(){
+  const sug=tripSuggestedDayReorder();
+  if(!sug)return false;
+  const before=tbDayPredecessors();
+  const queue=sug.suggestedIdxs.map(i=>tripDays[i]);
+  const locSet=new Set(sug.origIdxs);
+  let qi=0;
+  tripDays=tripDays.map((d,i)=>locSet.has(i)?queue[qi++]:d);
+  const after=tbDayPredecessors();
+  tripDays.forEach(d=>{if(before.get(d.id)!==after.get(d.id))d.driveIn=null;});
+  tbReorderDismissedSig=null;
+  saveState();
+  if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
+  return true;
+}
+/* Transient (not persisted) — a decline sticks only until the day
+   arrangement changes again. Reset alongside every other pane-session
+   transient at every trip-lifecycle boundary (GOLF-60b convention). */
+function tbDismissSuggestedDayReorder(sig){
+  tbReorderDismissedSig=sig;
+  if(tripBuilderOn)renderTripBuilder();
+}
 /* GOLF-31: Trip Builder pane — retires the modal openTripPlanner()/
    tripPlannerMode() flow (region/anchor/mine mode buttons in a centered
    drawer) in favour of a persistent left-pane "page within a page":
