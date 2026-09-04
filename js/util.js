@@ -27,6 +27,30 @@ function flagSVG(colour,pole,size,ring){
   </svg>`;
 }
 
+/* GOLF (stakeholder feedback, 2026-09-02): the on-map course marker
+   (pinFor(), js/map.js) used to be flagSVG() coloured by access tier —
+   the most common tier ("Pay & play") is yellow, which read as "a tennis
+   ball" and didn't stand out against the basemap. Replaced with a fixed,
+   high-contrast design per explicit spec: a blue map-pin badge, a red
+   flag on a pale pole, and a green ellipse ("the green") under the flag.
+   Access tier is no longer colour-coded on the map pin itself (it's
+   still visible in the popup and in the access-tier filter chips/legend,
+   which still use flagSVG() above, unchanged) — trading that one signal
+   for a consistently legible, distinctive marker was the explicit ask. */
+function golfPinSVG(size,ring){
+  const w=size,h=size*1.3;
+  const cx=w*0.5,cy=h*0.38,r=w*0.40;
+  const tailW=r*0.55,tipY=h*0.94;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
+    ${ring?`<circle cx="${cx}" cy="${cy}" r="${r+3}" fill="none" stroke="#E6B400" stroke-width="2"/>`:''}
+    <path d="M${cx-tailW},${cy+r*0.55} Q${cx},${tipY} ${cx+tailW},${cy+r*0.55} Z" fill="#1C6FD1" stroke="#0B2E52" stroke-width="1"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="#1C6FD1" stroke="#0B2E52" stroke-width="1.4"/>
+    <ellipse cx="${cx}" cy="${cy+r*0.40}" rx="${r*0.62}" ry="${r*0.24}" fill="#2E8B45"/>
+    <line x1="${cx}" y1="${cy-r*0.55}" x2="${cx}" y2="${cy+r*0.30}" stroke="#F4F4F0" stroke-width="1.4" stroke-linecap="round"/>
+    <polygon points="${cx},${cy-r*0.55} ${cx+r*0.56},${cy-r*0.32} ${cx},${cy-r*0.10}" fill="#D6392E" stroke="#7A1912" stroke-width="0.6"/>
+  </svg>`;
+}
+
 const STN={},STN_LINES={};
 Object.entries(R).forEach(([rk,arr])=>arr.forEach(([n,la,ln])=>{
   (STN_LINES[n]=STN_LINES[n]||new Set()).add(ROUTE_LINE[rk]);

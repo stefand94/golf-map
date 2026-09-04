@@ -891,6 +891,23 @@ that touches rendering, filters, or persistence:
     "undefined". `node scripts/test_data.js` reports "OK — 382 courses
     (114 Top 100)".
 
+43. **"Near a place" merged into "Nearby" (GOLF-91).** Note: supersedes
+    every earlier mention above of a separate "Near a place" Discover
+    sub-tab (steps 32/33/34) — Discover is now a 2-way segmented control,
+    "Nearby" / "By region", not 3-way. Open the Discover tab on a fresh
+    trip — it should show "Nearby" and "By region" only, no third button.
+    With nothing anchored yet, "Nearby" should read "Add a course, or
+    search a town or city in the bar above, to see what's nearby." Add a
+    course from anywhere (search bar, a course popup, Discover results) —
+    "Nearby" should now read "Courses near **<course name>**." and list 5
+    nearby courses. Search a place in the top bar and pick it — "Nearby"
+    should switch to "Courses near **<place name>**." (the place wins).
+    Add another course after that — "Nearby" should switch back to that
+    course (most-recently-added anchor wins, matching "select a course or
+    a place, see nearby regardless"). No "undefined"; `node
+    scripts/check_js.js` and `node scripts/test_data.js` unaffected (pure
+    app-state/UI, no data-file changes).
+
 ## What's explicitly not covered
 
 Visual regression (screenshots), cross-browser testing, real mobile

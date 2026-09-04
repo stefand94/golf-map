@@ -17,6 +17,27 @@ function tbSearchResults(){
   return C.map((c,i)=>i).filter(i=>!TRIP.has(i)&&bookable(i)&&searchMatches(i,q)
     &&(!state.nation||courseNation(i)===state.nation)).slice(0,20);
 }
+/* GOLF-92: place search wasn't ringfenced to the trip a visitor is
+   actually planning — a South Africa trip's "add a stop" location field
+   queried all nations, so a South African street name could surface an
+   Irish result of the same name. Explore's own state.nation pill (what
+   exploreCountryCode() reads) is the wrong signal here: it's Explore-mode
+   filter state, often untouched or set to something unrelated while
+   planning a trip in Build mode. Instead, infer the nation from the
+   trip's own courses — the given day's golf items first (most specific:
+   a South Africa trip could still have one UK add-on day), then every
+   day in the trip, then the wishlist — falling back to Explore's pill
+   only if the trip itself carries no nation signal yet (e.g. a brand-new
+   trip with nothing added), and finally unrestricted. Returns
+   'GBR'/'IRL'/'ZAF'/null, matching orsGeocode()'s `country` vocabulary. */
+function tbTripCountryCode(dayId){
+  const codeFor=i=>{const n=courseNation(i);return n==='ie'?'IRL':n==='za'?'ZAF':n==='gb'?'GBR':null;};
+  const day=dayId==null?null:tripDays.find(d=>d.id===dayId);
+  if(day)for(const it of tripDayItems(day))if(it.type==='golf'){const c=codeFor(it.i);if(c)return c;}
+  for(const d of tripDays)for(const it of tripDayItems(d))if(it.type==='golf'){const c=codeFor(it.i);if(c)return c;}
+  for(const i of tripSeq){const c=codeFor(i);if(c)return c;}
+  return typeof exploreCountryCode==='function'?exploreCountryCode():null;
+}
 /* GOLF-57: the pane's search bar now lives in the shared chrome above
    every tab (moved up again per GOLF-53's spirit) and adds straight into
    whichever day the Add tab currently has selected (tbDayShown), falling
@@ -53,8 +74,12 @@ function tbSearchResults(){
    thing that's allowed to seed a day, exactly as confirmed with the
    stakeholder. Adding straight to a specific day (tbAddToDay below) stays
    available as an explicit power path while a day is focused. */
+// GOLF-91: adding a course is the "select a course" half of "select a
+// course or a place, see nearby regardless" — clearing tbPlaceAnchor here
+// hands the merged Nearby scope's anchor back to the course just added,
+// exactly the recency rule tbNearbyAnchorPoint() (trip-route.js) expects.
 function tbAddToWishlist(i){
-  if(!TRIP.has(i)){TRIP.add(i);tripSeq.push(i);tripLastAdded=i;tbAnchor=i;}
+  if(!TRIP.has(i)){TRIP.add(i);tripSeq.push(i);tripLastAdded=i;tbAnchor=i;tbPlaceAnchor=null;}
   saveState();render();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(true);}
 }
@@ -64,7 +89,7 @@ function tbAddToDay(i,dayId){
     const shown=tripDays.find(d=>d.id===tbDayShown);
     dayId=(shown||tripDays[tripDays.length-1]).id;
   }
-  if(!TRIP.has(i)){TRIP.add(i);tripSeq.push(i);tripLastAdded=i;tbAnchor=i;}
+  if(!TRIP.has(i)){TRIP.add(i);tripSeq.push(i);tripLastAdded=i;tbAnchor=i;tbPlaceAnchor=null;}
   tripDaySetCourse(i,dayId);
   tbDayShown=dayId;
   saveState();render();renderTripBuilder();tbDrawMap();
@@ -77,9 +102,10 @@ function tbAddToDay(i,dayId){
 let tbUnifiedPlaceResults=null;
 /* GOLF-61: picking a place from the unified search always anchors the
    whole trip there (confirmed with the stakeholder) — jumps Discover's
-   "Near a place" tab to this point and clears the search, same behavior
-   as the existing Discover-tab place box, just reachable from the one
-   main search bar now instead of a second, buried box. */
+   "Nearby" scope (GOLF-91: merged with the old separate "Near a place"
+   tab) to this point and clears the search, same behavior as the
+   existing Discover-tab place box, just reachable from the one main
+   search bar now instead of a second, buried box. */
 /* GOLF-82: the "Anchor here" (lens-only) and "+ Add to trip" (day-only)
    buttons are merged into this one action, on the stakeholder's explicit
    instruction after real-world use ("get rid of the anchor here option").
@@ -93,11 +119,11 @@ let tbUnifiedPlaceResults=null;
        plain course adds (see tbAddToWishlist above); a later place is
        appended as its own 'free' day instead, alongside whatever's
        already there.
-   (b) it ALWAYS moves tbPlaceAnchor (+tbDiscoveryTab='place') to this
+   (b) it ALWAYS moves tbPlaceAnchor (+tbDiscoveryTab='anchor') to this
        point, even on an already-started trip — this is still the only
-       code path that ever sets tbPlaceAnchor to a real value, and Discover's
-       "Near a place" sub-tab has no other way to get seeded, so dropping
-       this side effect would silently strand it. */
+       code path that ever sets tbPlaceAnchor to a real value, and the
+       merged "Nearby" scope (GOLF-91) has no other way to get seeded by a
+       place, so dropping this side effect would silently strand it. */
 let tbPlaceAddedNote=null;
 function tbAddPlaceToTrip(lat,lng,label){
   const fresh=tripDays.length===0;
@@ -107,7 +133,7 @@ function tbAddPlaceToTrip(lat,lng,label){
   tripDaySetPlaceGeo(d.id,label,lat,lng);
   tbDayShown=d.id;
   tbPlaceAnchor={label,lat,lng};
-  tbDiscoveryTab='place';
+  tbDiscoveryTab='anchor'; // GOLF-91: "Near a place" merged into "Nearby"
   tbSearchQ='';tbUnifiedPlaceResults=null;
   tbPlaceAddedNote={label,day:tripDays.length};
   saveState();

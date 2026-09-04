@@ -165,6 +165,22 @@ function tbEffectiveAnchor(){
    incoherent. Applied as a final filter so each scope's own logic
    (region/anchor/place ranking) is untouched. */
 function tbNationFilter(i){return!state.nation||courseNation(i)===state.nation;}
+/* GOLF-91: "Near a place" and "Nearby" were two tabs doing the exact same
+   "nearest 5 bookable courses to a point" query, differing only in where
+   the point came from (a searched place vs. the last course added) — a
+   genuine duplication the stakeholder flagged directly. Collapsed into
+   one "Nearby" scope whose anchor point is whichever was set more
+   recently: tbAddToWishlist()/tbAddToDay()/toggleTrip() all now clear
+   tbPlaceAnchor the moment a course is added, so a place anchor only
+   survives until the next course is picked, exactly mirroring "select a
+   course or a place, see nearby regardless." Returns {lat,lng,label} or
+   null. */
+function tbNearbyAnchorPoint(){
+  if(tbPlaceAnchor)return tbPlaceAnchor;
+  const anchor=tbEffectiveAnchor();
+  if(anchor==null)return null;
+  return{lat:C[anchor].lat,lng:C[anchor].lng,label:V(anchor,'n')};
+}
 function tbDiscover(){
   if(tbDiscoveryTab==='region'){
     /* Bug fix (2026-09-02): read the persisted tbRegion/tbBorder state
@@ -174,16 +190,12 @@ function tbDiscover(){
     if(!tbRegion)return[];
     return tripByRegion(tbRegion,tbBorder||0).filter(({i})=>!TRIP.has(i)&&tbNationFilter(i));
   }
-  if(tbDiscoveryTab==='place'){
-    if(!tbPlaceAnchor)return[];
-    return nearestCoursesToPoint(tbPlaceAnchor.lat,tbPlaceAnchor.lng,5+TRIP.size).filter(({i})=>!TRIP.has(i)&&tbNationFilter(i)).slice(0,5);
-  }
-  const anchor=tbEffectiveAnchor();
-  if(anchor==null)return[];
+  const pt=tbNearbyAnchorPoint();
+  if(!pt)return[];
   // Over-fetch past the 5 we'll show, since some of the nearest courses
   // overall may already be in the cart (or in a different nation) and get
   // filtered out below.
-  return tripByAnchor(anchor,5+TRIP.size).filter(({i})=>!TRIP.has(i)&&tbNationFilter(i)).slice(0,5);
+  return nearestCoursesToPoint(pt.lat,pt.lng,5+TRIP.size).filter(({i})=>!TRIP.has(i)&&tbNationFilter(i)).slice(0,5);
 }
 /* GOLF-71: the empty state used to restate whatever the scope line
    directly above it had just said ("Add a course to see what's nearby." /
@@ -192,8 +204,7 @@ function tbDiscover(){
    region scope, which has no scope line of its own. */
 function tbResultsHTML(items){
   if(!items.length)return tbDiscoveryTab==='region'?`<p class="hint">No courses in that region yet — pick one above.</p>`:'';
-  const anchorPt=tbDiscoveryTab==='anchor'?(tbEffectiveAnchor()!=null?{lat:C[tbEffectiveAnchor()].lat,lng:C[tbEffectiveAnchor()].lng}:null)
-    :tbDiscoveryTab==='place'?tbPlaceAnchor:null;
+  const anchorPt=tbDiscoveryTab==='anchor'?tbNearbyAnchorPoint():null;
   return items.map(({i,border})=>{
     const dist=anchorPt?` — ${haversineMiles(anchorPt.lat,anchorPt.lng,C[i].lat,C[i].lng).toFixed(1)} mi`:'';
     return`<div class="tb-row">
@@ -397,9 +408,14 @@ function tbDrawMap(){
      Costs/Add) just show the confirmed trip route. */
   let pts2=[];
   if(appMode==='plan'){
-    const anchor=tbDiscoveryTab==='anchor'?tbEffectiveAnchor():null;
-    pts2=tripShow(tbDiscover(),anchor,false,false);
-    if(tbDiscoveryTab==='place'&&tbPlaceAnchor)pts2=[...pts2,[tbPlaceAnchor.lat,tbPlaceAnchor.lng]];
+    // GOLF-91: the merged Nearby scope's anchor can be a place (no course
+    // index — tripShow()'s special anchor marker needs one) or a course
+    // (which it can draw distinctly). Only pass a course anchor through;
+    // a place anchor just contributes its point to the fit-bounds list,
+    // same as the old 'place' tab did.
+    const courseAnchor=(tbDiscoveryTab==='anchor'&&!tbPlaceAnchor)?tbEffectiveAnchor():null;
+    pts2=tripShow(tbDiscover(),courseAnchor,false,false);
+    if(tbDiscoveryTab==='anchor'&&tbPlaceAnchor)pts2=[...pts2,[tbPlaceAnchor.lat,tbPlaceAnchor.lng]];
   }
   tbDrawHeritage();
   tbDrawTripItems();

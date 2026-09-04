@@ -153,8 +153,8 @@ const layer=L.markerClusterGroup({
 }).addTo(map),markers=new Map();
 const HC_TEES={};
 function ranked(i){const t=C[i].t100;return t&&(typeof t.gl==='number'||t.gbi||typeof t.eng==='number'||typeof t.sco==='number'||typeof t.wal==='number')}
-function pinFor(i){const a=ACCESS[V(i,'a')],rk=ranked(i),size=rk?28:20;
-  return L.divIcon({className:'',html:flagSVG(a.colour,a.pole,size,rk),iconSize:[size,size*1.3],iconAnchor:[size*0.28,size*1.25]})}
+function pinFor(i){const rk=ranked(i),size=rk?30:22;
+  return L.divIcon({className:'',html:golfPinSVG(size,rk),iconSize:[size,size*1.3],iconAnchor:[size*0.5,size*1.19]})}
 const CONF={club:"Rate from the club's own page",press:"Rate published in trade press or a golf guide",est:"Indicative — verify with the club before travelling"};
 /* Card space is tight — show only the single most prestigious ranking
    (ENG > GB&I > GL), with a "+N" hint if a course carries more than one. */

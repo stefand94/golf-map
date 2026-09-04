@@ -153,7 +153,13 @@ const C_SOUTHAFRICA=[
 {n:"Waterkloof Golf Club",lat:-25.7911224,lng:28.21923,clubInfo:{phone:"(012) 007-1147"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
 {n:"Wedgewood",lat:-33.7139244,lng:25.5207367,clubInfo:{phone:"0414509595"},r:"Eastern Cape",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
 {n:"Westlake",lat:-34.082428,lng:18.446558,clubInfo:{phone:"0217882020"},r:"Western Cape & Garden Route",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
-{n:"Wild Coast Country Club",lat:-29.7706089,lng:30.8685665,clubInfo:{phone:"039 305 2799"},r:"Eastern Cape",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
+/* GOLF-84 (stakeholder-reported): was "Wild Coast Country Club" at
+   -29.7706089,30.8685665 — a Durban-area coordinate for what is actually
+   the Wild Coast Sun Country Club, Mzamba Beach, Eastern Cape (near Port
+   Edward, on the KZN/Eastern Cape border). Corrected name + coordinates
+   verified via WebSearch (golfpass.com/where2golf.com listings agree on
+   Mzamba Beach, Eastern Cape; -31.086134,30.180084). */
+{n:"Wild Coast Sun Country Club",lat:-31.086134,lng:30.180084,clubInfo:{phone:"039 305 2799"},r:"Eastern Cape",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
 {n:"Wingate Park",lat:-25.8277359,lng:28.2769165,clubInfo:{phone:"012 997 1312"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
 {n:"Woodhill",lat:-25.8211823,lng:28.3121071,photo:{src:"images/courses/woodhill.jpg",photographer:"Cards84664",license:"CC BY-SA 4.0",sourceUrl:"https://commons.wikimedia.org/wiki/File:Buckeye_Woodhill,_June_2019.jpg"},clubInfo:{phone:"012-9980011"},r:"Gauteng",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""},
 {n:"Zebula",lat:-24.7642365,lng:27.9500618,clubInfo:{phone:"014 734 7700"},r:"Mpumalanga & Kruger",a:"open",band:"mid",wd:"R750",we:"R850",conf:"est",arch:"Unknown",spec:"18",note:"",topSouthAfrica:1,site:""}

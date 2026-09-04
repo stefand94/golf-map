@@ -538,6 +538,7 @@ function toggleTrip(i){
        thing allowed to auto-create Day 1 is picking a PLACE as a starting
        point (tbAddPlaceToTrip, trip-add.js). */
     TRIP.add(i);tripSeq.push(i);tripLastAdded=i;tbAnchor=i;
+    tbPlaceAnchor=null; // GOLF-91: selecting a course re-anchors the merged Nearby scope to it
   }
   saveState();render();
   /* GOLF-31: clicking "Add to trip" straight from a popup (not via the
@@ -635,7 +636,7 @@ function tripCreateNew(){
   // GOLF-64: a brand-new trip always drops you back at the start of the
   // workflow — and via setAppMode(), so the URL follows the mode instead of
   // leaving a stale #trip pointing at Plan-mode content.
-  tbDiscoveryTab='place';tbPlaceAnchor=null;tbSearchQ='';
+  tbDiscoveryTab='anchor';tbPlaceAnchor=null;tbSearchQ='';
   saveState();
   if(tripBuilderOn)setAppMode('plan');
   render();
@@ -683,7 +684,7 @@ function tripStartFresh(){
   if(!confirm('Start fresh? This deletes every saved trip on this device and creates one new, empty trip. This cannot be undone.'))return;
   trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1,groupSize:2}};
   activeTripId='default';tripRestoreActive();
-  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbAnchor=null;tbDayShown=null;tbRegion='';tbBorder=8;tbDiscoveryTab='place';
+  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbAnchor=null;tbDayShown=null;tbRegion='';tbBorder=8;tbDiscoveryTab='anchor';
   saveState();
   if(tripBuilderOn)setAppMode('plan'); // GOLF-64: URL follows the mode
   render();

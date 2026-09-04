@@ -28,7 +28,10 @@ const SHARE_ICON_SVG=`<svg class="share-icon" width="15" height="15" viewBox="0 
      1. renderTripBuilder()  — the unified search bar
      2. renderTripBuilder()  — each day's "search a city" box
      3. renderTripBuilder()  — the "add hotel/POI" form's location box
-     4. renderTripBuilder()  — Discover's "Near a place" box
+     4. renderTripBuilder()  — Discover's place-search box (GOLF-91: this
+        and the old "Nearby" scope were later merged into one "Nearby"
+        scope; the search box itself lives in the unified bar (#1) now,
+        not a separate box)
      5. explore.js           — the Explore panel's #q place lookup
 
    Now there is one debounce (tbGeocodeDebounced), one markup helper
@@ -456,7 +459,7 @@ function tripDayScheduleHTML(){
       ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
       ondrop="event.preventDefault();tbDropOut(this);tbDropDayAtEnd();">
       <button class="tb-btn is-primary" onclick="tbAddDayWithPlace();">＋ Add a day</button>
-      ${tripDays.length>1?`<details class="tb-drop">
+      ${tripSeq.length>1?`<details class="tb-drop">
         <summary class="tb-btn" title="Automatically reorder your trip">Auto schedule ▾</summary>
         <div class="tb-drop-body">
           <button type="button" class="tb-menu-item" onclick="tripAutoOrder();renderTripBuilder();tbDrawMap();" title="Reorder your courses by nearest-neighbour to cut driving">Order by nearest-neighbour</button>
@@ -508,14 +511,20 @@ function tbPlanHTML(){return tbNationPillsHTML()+tbDiscoverTabHTML()+`<div class
 
 /* Discover. GOLF-71: its own "Near a place" search box is gone — the one
    search bar at the top of the pane anchors the lens when you pick a
-   place, which is what that box did. The scope segmented control stays. */
+   place, which is what that box did. The scope segmented control stays.
+   GOLF-91: "Near a place" and "Nearby" were two scopes running the exact
+   same "nearest 5 courses to a point" query, differing only in whether
+   the point came from a searched place or the last course added —
+   genuinely redundant, per the stakeholder's own read. Merged into one
+   "Nearby" scope (see tbNearbyAnchorPoint() in trip-route.js): searching
+   a place or adding a course both feed the same list, whichever happened
+   more recently. */
 function tbDiscoverTabHTML(){
-  const scopes=[['place','Near a place'],['anchor','Nearby'],['region','By region']];
+  const scopes=[['anchor','Nearby'],['region','By region']];
   return`<div class="tb-section-title">Find courses</div>
     <div class="tb-seg" style="margin-bottom:var(--sp-3)">${scopes.map(([k,label])=>
       `<button id="tb-tab-${k}" aria-pressed="${tbDiscoveryTab===k}">${label}</button>`).join('')}</div>
-    ${tbDiscoveryTab==='place'?`<p class="hint" style="margin:0 0 var(--sp-2)">${tbPlaceAnchor?`Courses near <b>${esc(tbPlaceAnchor.label)}</b>.`:'Search a town or city in the bar above.'}</p>`
-      :tbDiscoveryTab==='anchor'?`<p class="hint" style="margin:0 0 var(--sp-2)">${tbEffectiveAnchor()!=null?`Courses near <b>${esc(V(tbEffectiveAnchor(),'n'))}</b>.`:'Add a course to see what\'s nearby.'}</p>`
+    ${tbDiscoveryTab==='anchor'?(()=>{const pt=tbNearbyAnchorPoint();return`<p class="hint" style="margin:0 0 var(--sp-2)">${pt?`Courses near <b>${esc(pt.label)}</b>.`:'Add a course, or search a town or city in the bar above, to see what\'s nearby.'}</p>`;})()
       :`<div class="tb-day-settings-body" style="padding:0 0 var(--sp-3)">
         <select id="tb-region" aria-label="Region"><option value="">Choose a region…</option>${REGIONS.map(r=>`<option value="${r}"${r===tbRegion?' selected':''}>${r}</option>`).join('')}</select>
         <label style="display:inline-flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-caption);color:var(--stone)"
@@ -626,7 +635,7 @@ function renderTripBuilder(){
      `render` takes over painting so places and courses can be mixed. ── */
   const searchResultsEl=document.getElementById('tb-search-results');
   tbAttachSearch('tb-unified-search',{
-    country:()=>exploreCountryCode(),
+    country:()=>tbTripCountryCode(null), // GOLF-92: trip's own nation first, Explore's pill as fallback
     onType(text){
       tbSearchQ=text;
       const q=text.trim();
@@ -654,6 +663,7 @@ function renderTripBuilder(){
   /* ── Call site 2: the open "add a stop" form's location field. ── */
   if(tbAddStop&&document.getElementById('tb-addstop-name')){
     tbAttachSearch('tb-addstop-name',{
+      country:()=>tbTripCountryCode(tbAddStop&&tbAddStop.dayId), // GOLF-92: ringfence to this trip's nation
       onType(text){tbAddStop.name=text;tbAddStop.lat=null;tbAddStop.lng=null;},
       onPick(r){
         const priceEl=document.getElementById('tb-addstop-price');
@@ -669,7 +679,7 @@ function renderTripBuilder(){
      untouched (harmless — it just never gets set to anything meaningful
      any more) rather than threading its removal through every reset site. */
   if(appMode==='plan'){
-    ['place','anchor','region'].forEach(k=>{
+    ['anchor','region'].forEach(k=>{ // GOLF-91: 'place' scope merged into 'anchor' ("Nearby")
       const b=document.getElementById('tb-tab-'+k);
       if(b)b.addEventListener('click',()=>{tbDiscoveryTab=k;renderTripBuilder();tbDrawMap();});
     });
