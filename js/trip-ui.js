@@ -496,18 +496,30 @@ function tbWishlistHTML(){
       ${tripWishlistSummaryHTML(unscheduled)}
     </div>`;
 }
-/* GOLF-90: reuses Explore's existing state.nation/NATIONS/courseNation
+/* GOLF-90/93: reuses Explore's old state.nation/NATIONS/courseNation
    (js/explore.js, GOLF-81) rather than inventing a second country concept —
-   picking a nation here is the exact same fact as picking one on Explore,
-   just surfaced at the top of Plan mode per the stakeholder's answer. The
-   click handler lives in renderTripBuilder()'s wiring block, alongside
-   every other delegated Plan/Build listener. */
+   picking a nation here is the exact same fact Explore's pill used to set,
+   before Explore itself was removed. GOLF-93: since this pane is now the
+   app's only page (Discover/Itinerary/Costs all live under it), the pills
+   moved out of the Discover-only tbPlanHTML() into the shared chrome in
+   renderTripBuilder() — rendered once, above the tab row, so the choice
+   persists and stays visible switching tabs instead of disappearing the
+   moment you leave Discover. It already filters everything nation-scoped
+   below it: course search (tbSearchResults, js/trip-add.js), Discover's
+   Nearby/By-region results (tbNationFilter, js/trip-route.js) and the
+   wishlist's unscheduled list (js/trip-ui.js). The Itinerary/Costs tabs
+   are deliberately NOT filtered by it — they show the trip you've already
+   built, which can legitimately span more than one nation, and hiding an
+   already-added course/day because the pill moved would silently corrupt
+   the view of your own trip. The click handler lives in
+   renderTripBuilder()'s wiring block, alongside every other delegated
+   listener. */
 function tbNationPillsHTML(){
   return`<div class="nation-pills" id="tb-nation-pills" role="group" aria-label="Choose a country">
     ${NATIONS.map(([k,l])=>`<button class="nation-pill" aria-pressed="${state.nation===k}" data-nation="${k}">${l}</button>`).join('')}
   </div>`;
 }
-function tbPlanHTML(){return tbNationPillsHTML()+tbDiscoverTabHTML()+`<div class="tb-section-title" style="margin-top:var(--sp-6)">Your wishlist</div>${tbWishlistHTML()}`;}
+function tbPlanHTML(){return tbDiscoverTabHTML()+`<div class="tb-section-title" style="margin-top:var(--sp-6)">Your wishlist</div>${tbWishlistHTML()}`;}
 
 /* Discover. GOLF-71: its own "Near a place" search box is gone — the one
    search bar at the top of the pane anchors the lens when you pick a
@@ -594,6 +606,7 @@ function renderTripBuilder(){
       <button class="tb-btn is-danger" id="tb-clear-trip" title="Empties this trip. Your other trips are untouched — to delete every trip use Start fresh in the trip menu.">Clear trip</button>
       <button class="tb-btn" id="tb-share-trip" title="Copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">${SHARE_ICON_SVG} Share trip</button>
     </div>
+    ${tbNationPillsHTML()}
     <div class="tb-tabs" role="tablist">${TABS.map(([k,label])=>
       `<button class="tb-tab-btn" role="tab" data-tab="${k}" aria-pressed="${activeTab===k}">${label}</button>`).join('')}</div>
     <div class="tb-tab-content">${
