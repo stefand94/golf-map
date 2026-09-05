@@ -258,7 +258,14 @@ document.getElementById('q').addEventListener('input',e=>{
   exploreSearchPlaces(e.target.value.trim());
 });
 document.getElementById('sort').addEventListener('change',e=>{state.sort=e.target.value;saveState();render()});
-map.on('moveend zoomend',saveState);
+/* GOLF-84: a pan or zoom fires moveend/zoomend in bursts, and saveState()
+   serialises the whole state blob to localStorage each time. The view is
+   only a convenience to restore, so coalesce the writes. */
+let _viewSaveTimer=null;
+map.on('moveend zoomend',()=>{
+  clearTimeout(_viewSaveTimer);
+  _viewSaveTimer=setTimeout(saveState,400);
+});
 document.getElementById('reset').addEventListener('click',()=>{
   ['access','price','region','flag','arch'].forEach(k=>state[k].clear());state.q="";
   state.feeMin=null;state.feeMax=null;feeRangeSync(); // GOLF-69

@@ -101,8 +101,8 @@ function saveEdit(i){const g=id=>document.getElementById(id).value;
   if(JSON.stringify(csNext)!==JSON.stringify(C[i].courseStats))diff.courseStats=csNext===undefined?null:csNext;
   const why=g('e-why').trim();if(why)diff._why=why;
   if(Object.keys(diff).length)EDITS[i]=diff;else delete EDITS[i];
-  saveState();closeDrawer();render()}
-function revertEdit(i){delete EDITS[i];saveState();closeDrawer();render()}
+  tripStopChainInvalidate();saveState();closeDrawer();render()}
+function revertEdit(i){delete EDITS[i];tripStopChainInvalidate();saveState();closeDrawer();render()}
 function corrections(){return Object.keys(EDITS).filter(isEdited).map(i=>{
   const changed={};Object.entries(EDITS[i]).forEach(([k,v])=>{if(k!=='_why')changed[k]={from:C[i][k],to:v}});
   return{course:C[i].n,why:EDITS[i]._why||null,changed}})}

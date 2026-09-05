@@ -390,9 +390,33 @@ function tripDayLastStop(dayIdx){const s=tripDayStops(dayIdx);return s.length?s[
    day produced no driving at all. Every consecutive pair in this chain is
    a leg, exactly as the day-to-day legs always were; unscheduled wishlist
    courses are excluded (they have no position in the trip yet). */
+/* GOLF-84: one renderTripBuilder() pass asks for the chain many times over
+   (tripDayLegs / tripDayTotal / tripCostBreakdown -> tripTotalDriveMiles),
+   and rebuilding it each time is pure waste. Rather than invalidate from
+   every mutation site, we cache the chain against a cheap signature of
+   everything it is derived from — tripSeq plus each day's id, place,
+   geocode and item identity/coordinates. If the signature string differs
+   from the cached one, the chain is rebuilt; otherwise the cached array is
+   returned. Callers only ever read the chain, so sharing it is safe. */
+let _stopChainSig=null,_stopChainCache=null;
+/* Stop names come from EDITS-corrected course data, which the signature
+   deliberately doesn't walk; the editor calls this after a correction. */
+function tripStopChainInvalidate(){_stopChainSig=null;_stopChainCache=null;}
+function tripStopChainSig(){
+  let sig=tripSeq.join(',')+'|';
+  for(const d of tripDays){
+    sig+=d.id+'~'+(d.place||'')+'~'+d.placeLat+'~'+d.placeLng+'~';
+    for(const it of tripDayItems(d))sig+=it.id+':'+it.type+':'+(it.type==='golf'?it.i:it.lat+','+it.lng)+';';
+    sig+='|';
+  }
+  return sig;
+}
 function tripStopChain(){
+  const sig=tripStopChainSig();
+  if(sig===_stopChainSig&&_stopChainCache)return _stopChainCache;
   const chain=[];
   tripDays.forEach((d,idx)=>tripDayStops(idx).forEach(s=>chain.push(Object.assign({dayIdx:idx},s))));
+  _stopChainSig=sig;_stopChainCache=chain;
   return chain;
 }
 /* The stop immediately before this one in the trip-wide chain, or null for
