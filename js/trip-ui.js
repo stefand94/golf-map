@@ -426,9 +426,10 @@ function tbDayCardHTML(d,idx){
         ondrop="event.preventDefault();event.stopPropagation();tbDropOut(this);tbDropInDay(${d.id},null);">↓ Put it last on Day ${idx+1}</div>
       ${tripDaySuggestedTown(d)?`<div class="tb-day-town">Staying near <b>${esc(tripDaySuggestedTown(d))}</b>${tbPoiPoint(d)&&ORS_PROXY_URL?` · <a href="#" class="linkbtn" onclick="event.preventDefault();tbToggleHeritage(${d.id})">${tbHeritageOn.has(d.id)?'hide':'show'} POI's</a>`:''}</div>`:''}
       ${tbHeritageListHTML(d)}
+      ${tbHotelPickerHTML(d)}
       ${tbAddStopFormHTML(d.id)}
       <div class="tb-day-add">
-        <button class="tb-btn is-sm" onclick="tbPromptHotel(${d.id})">🏨 Add stay</button>
+        <button class="tb-btn is-sm" onclick="tbOpenHotelPicker(${d.id})">🏨 Add stay</button>
         <button class="tb-btn is-sm" onclick="tbPromptPoi(${d.id})">📍 Add stop</button>
       </div>
     </div>`;

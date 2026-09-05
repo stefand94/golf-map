@@ -310,3 +310,81 @@ function tbHeritageListHTML(day){
   if(!pois.length)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Nothing found nearby.</p></div>`;
   return`<div class="tb-poi-list">${pois.map((p,idx)=>`<div class="tb-poi-row"><span>${esc(p.name)}</span>${p.category?`<span class="wt">${esc(p.category)}</span>`:''}<button class="tb-btn is-sm is-icon" onclick="tbAddHeritagePoi(${day.id},${idx})" title="Add to trip">＋</button></div>`).join('')}</div>`;
 }
+
+/* GOLF-96: "Add a stay" — zoom to the day's area and offer real nearby
+   hotels to pick from, sourced from OpenStreetMap via the Worker's
+   'hotels' mode (Overpass-only, no ORS_API_KEY dependency — works even
+   while ORS itself is down). Mirrors tbHeritageFor()'s exact
+   cache/dedupe/silent-fail contract; the picker panel (list + map
+   markers) is a convenience layer in front of the existing
+   tbAddStopFormHTML add-stay form, not a replacement for it — manual
+   entry still works unchanged. */
+const HOTELS_CACHE_KEY='golfmap:hotelscache:v1';
+function hotelsCacheLoad(){try{return JSON.parse(localStorage.getItem(HOTELS_CACHE_KEY)||'{}');}catch(e){return{};}}
+function hotelsCacheSave(c){try{localStorage.setItem(HOTELS_CACHE_KEY,JSON.stringify(c));}catch(e){}}
+let hotelsPending=new Set();
+/* dayId currently showing the hotel picker, or null — one panel open at
+   a time, same convention as tbAddStop. */
+let tbHotelPickerFor=null;
+function tbHotelsFor(day){
+  if(!ORS_PROXY_URL)return null;
+  const pt=tbPoiPoint(day);
+  if(!pt)return null;
+  const key=poiKey(pt.lat,pt.lng);
+  const cache=hotelsCacheLoad();
+  if(cache[key])return cache[key].pois;
+  if(hotelsPending.has(key))return null;
+  hotelsPending.add(key);
+  fetch(ORS_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({mode:'hotels',point:[pt.lng,pt.lat],radius:3000})})
+    .then(r=>r.ok?r.json():Promise.reject(new Error('proxy error '+r.status)))
+    .then(data=>{
+      if(data&&Array.isArray(data.pois)){
+        const c=hotelsCacheLoad();
+        c[key]={pois:data.pois,ts:Date.now()};
+        hotelsCacheSave(c);
+        if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
+      }
+    })
+    .catch(()=>{ /* silent — on-demand only, no retry loop; panel just stays empty */ })
+    .finally(()=>{hotelsPending.delete(key);});
+  return null;
+}
+/* Opens the picker: flies the map to the day's anchor point (falling
+   back to opening the plain add-stay form immediately if the day has no
+   resolvable point at all — a day with no course/place yet). */
+function tbOpenHotelPicker(dayId){
+  const d=tripDays.find(d=>d.id===dayId);if(!d)return;
+  const pt=tbPoiPoint(d);
+  if(!pt){tbPromptHotel(dayId);return;}
+  if(typeof showMobileMap==='function')showMobileMap();
+  if(typeof map!=='undefined'&&map)map.flyTo([pt.lat,pt.lng],13,{duration:.6});
+  tbHotelPickerFor=dayId;
+  renderTripBuilder();tbDrawMap();
+}
+function tbCloseHotelPicker(){tbHotelPickerFor=null;renderTripBuilder();tbDrawMap();}
+/* Picking a candidate doesn't add it immediately — it pre-fills the
+   existing add-stay form (name/coordinates), same "confirm before it's
+   real" pattern as everywhere else a search result feeds a form. */
+function tbPickHotelCandidate(dayId,idx){
+  const d=tripDays.find(d=>d.id===dayId);if(!d)return;
+  const pois=tbHotelsFor(d);
+  const p=pois&&pois[idx];if(!p)return;
+  tbHotelPickerFor=null;
+  tbAddStop={dayId,itemId:null,type:'hotel',name:p.name,price:'',lat:p.lat,lng:p.lng,nights:'1'};
+  renderTripBuilder();tbDrawMap();
+}
+function tbHotelPickerHTML(day){
+  if(tbHotelPickerFor!==day.id)return'';
+  if(!ORS_PROXY_URL)return'';
+  const pois=tbHotelsFor(day);
+  const body=pois==null
+    ?`<p class="hint" style="margin:4px 10px">Looking for nearby hotels…</p>`
+    :!pois.length
+      ?`<p class="hint" style="margin:4px 10px">No hotels found nearby — you can still add one by name below.</p>`
+      :`<div class="tb-poi-list">${pois.map((p,idx)=>`<div class="tb-poi-row"><span>${esc(p.name)}</span>${p.category?`<span class="wt">${esc(p.category)}</span>`:''}<button class="tb-btn is-sm is-icon" onclick="tbPickHotelCandidate(${day.id},${idx})" title="Use this hotel">＋</button></div>`).join('')}</div>`;
+  return`<div class="tb-hotel-picker">
+    <div class="tb-addstop-title">Nearby hotels<button class="tb-btn is-sm is-quiet" style="float:right" onclick="tbCloseHotelPicker()">Close</button></div>
+    ${body}
+  </div>`;
+}

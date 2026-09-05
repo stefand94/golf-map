@@ -50,6 +50,13 @@ function loadStoredState(){
         // GOLF-91: hotel price is read as per-person-per-night, multiplied by
         // the trip's groupSizeFor() (see tripItemPriceDetail() in trip-geo.js)
         // — any old priceType/guests fields on a saved item are simply ignored.
+        // GOLF-96: nights/stayId link every night of one multi-night stay —
+        // absent on any older/single-night item, which reads as nights:1,
+        // stayId:null everywhere they're consumed.
+        if(it.type==='hotel'){
+          out.nights=(typeof it.nights==='number'&&isFinite(it.nights)&&it.nights>1)?Math.min(30,Math.round(it.nights)):1;
+          out.stayId=typeof it.stayId==='string'?it.stayId:null;
+        }
         return out;
       }).filter(Boolean);
     };

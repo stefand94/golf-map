@@ -34,6 +34,11 @@
  *      POST {mode:'heritage-pois', point:[lng,lat], radius?:metres}
  *      -> {pois:[{name, category, lat, lng}, ...]}
  *
+ *   5. Nearby hotels/guest houses (GOLF-96 — Trip Builder's "Add a stay"
+ *      map picker), also Overpass-sourced, no ORS key needed:
+ *      POST {mode:'hotels', point:[lng,lat], radius?:metres}
+ *      -> {pois:[{name, category, lat, lng}, ...]}
+ *
  * No database, no state, no logging of requests beyond Cloudflare's own
  * standard request logs — a pure pass-through either way.
  *
@@ -101,6 +106,17 @@ export default {
       return json({ error: 'invalid JSON body' }, 400);
     }
 
+    if (body && body.mode === 'heritage-pois') {
+      // GOLF-96: Overpass-only modes need no ORS_API_KEY at all — moved
+      // this branch (and 'hotels' below) ahead of the ORS_API_KEY guard so
+      // they keep working even when the ORS account/key is down, which has
+      // happened for real more than once (see plan Phase 22/25/33).
+      return handleHeritagePois(body);
+    }
+    if (body && body.mode === 'hotels') {
+      return handleHotels(body);
+    }
+
     if (!env.ORS_API_KEY) {
       return json({ error: 'ORS_API_KEY secret is not configured on this Worker' }, 500);
     }
@@ -110,14 +126,6 @@ export default {
     }
     if (body && body.mode === 'geocode') {
       return handleGeocode(body, env);
-    }
-    if (body && body.mode === 'heritage-pois') {
-      // Overpass needs no ORS_API_KEY at all — but the guard above already
-      // 500'd if it's missing, so this mode is only reachable on a Worker
-      // that's otherwise correctly configured. Fine: it costs nothing to
-      // require the same setup as every other mode, and avoids a second,
-      // differently-gated code path.
-      return handleHeritagePois(body);
     }
     return handleRoute(body, env);
   },
@@ -434,6 +442,83 @@ out center 80;
     })
     // 2026-09-02: drop unnamed results — a bare "Heritage site" pin with no
     // name is noise, not a detour-worthy suggestion (stakeholder request).
+    .filter((p) => p.name && typeof p.lat === 'number' && typeof p.lng === 'number')
+    .slice(0, 40);
+
+  return json({ pois });
+}
+
+// GOLF-96: nearby hotels/guest houses for the "Add a stay" picker — a
+// direct sibling of handleHeritagePois() above, same Overpass mirrors, same
+// response shape, but querying tourism accommodation tags unconditionally
+// (no wiki-notability gate — a real, ungated hotel doesn't need a
+// Wikipedia page to be worth showing, same reasoning already applied to
+// craft=winery/distillery/brewery above).
+async function handleHotels(body) {
+  const { point } = body || {};
+  if (!isCoord(point)) {
+    return json({ error: 'point must be a [lng, lat] number pair' }, 400);
+  }
+  const rawRadius = typeof body.radius === 'number' ? body.radius : 3000;
+  const radius = Math.min(5000, Math.max(200, rawRadius));
+  const [lng, lat] = point;
+
+  const query = `
+[out:json][timeout:20];
+(
+  nwr(around:${radius},${lat},${lng})["tourism"~"^(hotel|guest_house|hostel|apartment|motel)$"];
+);
+out center 60;
+`.trim();
+
+  let data, lastError;
+  for (let i = 0; i < OVERPASS_URLS.length; i++) {
+    let opRes;
+    try {
+      opRes = await fetch(OVERPASS_URLS[i], {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(query),
+      });
+    } catch (e) {
+      lastError = { error: 'could not reach Overpass', status: 502 };
+      continue;
+    }
+    if (!opRes.ok) {
+      lastError = { error: 'Overpass request failed', status: opRes.status };
+      continue;
+    }
+    try {
+      data = await opRes.json();
+      lastError = null;
+      break;
+    } catch (e) {
+      lastError = { error: 'Overpass returned invalid JSON', status: 502 };
+    }
+  }
+  if (lastError) return json(lastError, 502);
+
+  const HOTEL_CATEGORY_LABELS = {
+    hotel: 'Hotel',
+    guest_house: 'Guest house',
+    hostel: 'Hostel',
+    apartment: 'Apartment',
+    motel: 'Motel',
+  };
+
+  const elements = Array.isArray(data && data.elements) ? data.elements : [];
+  const pois = elements
+    .map((el) => {
+      const tags = el.tags || {};
+      const elLat = typeof el.lat === 'number' ? el.lat : el.center && el.center.lat;
+      const elLng = typeof el.lon === 'number' ? el.lon : el.center && el.center.lon;
+      return {
+        name: tags.name || null,
+        category: HOTEL_CATEGORY_LABELS[tags.tourism] || 'Hotel',
+        lat: typeof elLat === 'number' ? elLat : null,
+        lng: typeof elLng === 'number' ? elLng : null,
+      };
+    })
     .filter((p) => p.name && typeof p.lat === 'number' && typeof p.lng === 'number')
     .slice(0, 40);
 

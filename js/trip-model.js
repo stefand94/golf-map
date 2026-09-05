@@ -131,16 +131,34 @@ function tripDayFindItem(dayId,itemId){
 /* Append a hotel/POI item to a day. lat/lng are optional — passing them
    (from the geocode picker) is what turns the stop into a real routable
    waypoint; omitting them keeps the pre-GOLF-63 name-only behaviour. */
-function tripDayAddStop(dayId,type,name,price,lat,lng){
+/* GOLF-96: nights>1 on a hotel spans the same stay across the following
+   nights-1 days in trip order — reusing an existing day where one is
+   already there, auto-creating a new one (appended, matching
+   tripDayAdd()'s own convention) where it isn't. Every night's item
+   shares one stayId so tripDayUpdateStop()/tripDayRemoveItem() can treat
+   the whole booking as one unit. */
+function tripDayAddStop(dayId,type,name,price,lat,lng,nights){
   const d=tripDays.find(d=>d.id===dayId);if(!d)return null;
   if(!name||!String(name).trim())return null;
   if(!Array.isArray(d.items))d.items=[];
-  const it={id:tripItemNewId(),type:type==='hotel'?'hotel':'poi',
-    name:String(name).trim().slice(0,80),
-    price:(typeof price==='number'&&isFinite(price))?price:null,
-    lat:(typeof lat==='number'&&isFinite(lat))?lat:null,
-    lng:(typeof lng==='number'&&isFinite(lng))?lng:null};
+  const isHotel=type==='hotel';
+  const n=(isHotel&&typeof nights==='number'&&isFinite(nights)&&nights>1)?Math.min(30,Math.round(nights)):1;
+  const stayId=n>1?tripItemNewId():null;
+  const nm=String(name).trim().slice(0,80);
+  const pr=(typeof price==='number'&&isFinite(price))?price:null;
+  const la=(typeof lat==='number'&&isFinite(lat))?lat:null;
+  const lo=(typeof lng==='number'&&isFinite(lng))?lng:null;
+  const it={id:tripItemNewId(),type:isHotel?'hotel':'poi',name:nm,price:pr,lat:la,lng:lo,nights:n,stayId};
   d.items.push(it);
+  if(n>1){
+    let idx=tripDays.indexOf(d);
+    for(let k=1;k<n;k++){
+      if(idx+k>=tripDays.length)tripDayAdd();
+      const nd=tripDays[idx+k];
+      if(!Array.isArray(nd.items))nd.items=[];
+      nd.items.push({id:tripItemNewId(),type:'hotel',name:nm,price:pr,lat:la,lng:lo,nights:n,stayId});
+    }
+  }
   saveState();
   return it;
 }
@@ -150,22 +168,33 @@ function tripDayAddStop(dayId,type,name,price,lat,lng){
    own corrections editor, and the only per-trip fact a golf row carries — the
    day it sits on — is already changeable from the row's own day dropdown.
    Passing a null/blank name is a no-op rather than a silent delete. */
+/* GOLF-96: a multi-night stay's items share a stayId — editing any one
+   night's item applies the same fields to every night of that booking,
+   so the stay behaves as one unit rather than N items that can drift. */
 function tripDayUpdateStop(dayId,itemId,fields){
   const d=tripDays.find(d=>d.id===dayId);if(!d)return null;
   const it=tripDayItems(d).find(x=>x.id===itemId);
   if(!it||(it.type!=='hotel'&&it.type!=='poi'))return null;
   const name=fields&&fields.name!=null?String(fields.name).trim():'';
   if(!name)return null;
-  it.name=name.slice(0,80);
-  it.price=(typeof fields.price==='number'&&isFinite(fields.price))?fields.price:null;
-  it.lat=(typeof fields.lat==='number'&&isFinite(fields.lat))?fields.lat:null;
-  it.lng=(typeof fields.lng==='number'&&isFinite(fields.lng))?fields.lng:null;
+  const nm=name.slice(0,80);
+  const pr=(typeof fields.price==='number'&&isFinite(fields.price))?fields.price:null;
+  const la=(typeof fields.lat==='number'&&isFinite(fields.lat))?fields.lat:null;
+  const lo=(typeof fields.lng==='number'&&isFinite(fields.lng))?fields.lng:null;
+  const targets=it.stayId?tripDays.flatMap(dd=>tripDayItems(dd).filter(x=>x.stayId===it.stayId)):[it];
+  targets.forEach(x=>{x.name=nm;x.price=pr;x.lat=la;x.lng=lo;});
   saveState();
   return it;
 }
 function tripDayRemoveItem(dayId,itemId){
   const d=tripDays.find(d=>d.id===dayId);if(!d||!Array.isArray(d.items))return;
-  d.items=d.items.filter(it=>it.id!==itemId);
+  const it=d.items.find(x=>x.id===itemId);
+  const stayId=it&&it.stayId;
+  if(stayId){
+    tripDays.forEach(dd=>{if(Array.isArray(dd.items))dd.items=dd.items.filter(x=>x.stayId!==stayId)});
+  }else{
+    d.items=d.items.filter(x=>x.id!==itemId);
+  }
   saveState();
 }
 /* Removes a course from whichever day (if any) currently holds it —
@@ -193,14 +222,15 @@ function tripDaySetCourse(i,dayId){
    one shape means the geocode search-as-you-type wiring, the coordinate
    handling and the price fields exist once, not twice. */
 let tbAddStop=null;
-function tbPromptHotel(dayId){tbAddStop={dayId,itemId:null,type:'hotel',name:'',price:'',lat:null,lng:null};renderTripBuilder();}
-function tbPromptPoi(dayId){tbAddStop={dayId,itemId:null,type:'poi',name:'',price:'',lat:null,lng:null};renderTripBuilder();}
+function tbPromptHotel(dayId){tbAddStop={dayId,itemId:null,type:'hotel',name:'',price:'',lat:null,lng:null,nights:'1'};renderTripBuilder();}
+function tbPromptPoi(dayId){tbAddStop={dayId,itemId:null,type:'poi',name:'',price:'',lat:null,lng:null,nights:'1'};renderTripBuilder();}
 function tbEditStop(dayId,itemId){
   const it=tripDayFindItem(dayId,itemId);
   if(!it||(it.type!=='hotel'&&it.type!=='poi'))return;
   tbAddStop={dayId,itemId,type:it.type,name:it.name||'',
     price:it.price!=null?String(it.price):'',
-    lat:it.lat!=null?it.lat:null,lng:it.lng!=null?it.lng:null};
+    lat:it.lat!=null?it.lat:null,lng:it.lng!=null?it.lng:null,
+    nights:it.nights!=null?String(it.nights):'1'};
   renderTripBuilder();
 }
 function tbAddStopCancel(){tbAddStop=null;renderTripBuilder();}
@@ -209,8 +239,10 @@ function tbAddStopCancel(){tbAddStop=null;renderTripBuilder();}
 function tbAddStopCapture(){
   if(!tbAddStop)return;
   const nameEl=document.getElementById('tb-addstop-name'),priceEl=document.getElementById('tb-addstop-price');
+  const nightsEl=document.getElementById('tb-addstop-nights');
   if(nameEl&&nameEl.value!==tbAddStop.name){tbAddStop.name=nameEl.value;tbAddStop.lat=null;tbAddStop.lng=null;}
   if(priceEl)tbAddStop.price=priceEl.value;
+  if(nightsEl)tbAddStop.nights=nightsEl.value;
 }
 function tbAddStopCommit(){
   if(!tbAddStop)return;
@@ -228,7 +260,12 @@ function tbAddStopCommit(){
   const keepGeo=s.lat!=null&&s.lng!=null&&s.name&&name.trim()===s.name;
   const lat=keepGeo?s.lat:null,lng=keepGeo?s.lng:null;
   if(s.itemId)tripDayUpdateStop(s.dayId,s.itemId,{name,price,lat,lng});
-  else tripDayAddStop(s.dayId,s.type,name,price,lat,lng);
+  else{
+    const nightsEl=document.getElementById('tb-addstop-nights');
+    const rawNights=nightsEl?parseInt(nightsEl.value,10):parseInt(s.nights,10);
+    const nights=Number.isFinite(rawNights)&&rawNights>1?rawNights:1;
+    tripDayAddStop(s.dayId,s.type,name,price,lat,lng,nights);
+  }
   tbAddStop=null;
   renderTripBuilder();tbDrawMap();
 }
@@ -259,6 +296,9 @@ function tbAddStopFormHTML(dayId,itemId){
     <div class="tb-addstop-row">
       <input class="tb-field" type="number" id="tb-addstop-price" min="0" step="5"
         placeholder="${isHotel?`${cur} per person / night — optional`:`${cur} — optional`}" value="${esc(tbAddStop.price)}">
+      ${isHotel&&!editing?`<input class="tb-field" type="number" id="tb-addstop-nights" min="1" step="1"
+        title="Book this hotel for more than one night — it will automatically be added to the following day(s) too, creating new days if needed."
+        placeholder="Nights" value="${esc(tbAddStop.nights||'1')}" style="max-width:88px">`:''}
     </div>
     ${isHotel&&gs>1&&Number.isFinite(priceNum)?`<p class="hint" style="margin:var(--sp-2) 0 0">${cur}${priceNum.toFixed(0)} × ${gs} people = <b>${cur}${(priceNum*gs).toFixed(0)}</b> per night.</p>`:''}
     <div class="tb-addstop-row" style="margin-top:var(--sp-2)">
@@ -272,6 +312,7 @@ function tripDayRemove(dayId){
   tripDays=tripDays.filter(d=>d.id!==dayId);
   if(tbAddStop&&tbAddStop.dayId===dayId)tbAddStop=null;
   tbHeritageOn.delete(dayId);
+  if(tbHotelPickerFor===dayId)tbHotelPickerFor=null;
   saveState();
 }
 function tripDaySetDriveIn(dayId,mins){
@@ -515,7 +556,7 @@ function tbDropOn(dayId,beforeRef){
 function tripClearAll(){
   if(!TRIP.size)return;
   if(!confirm(`Clear all ${TRIP.size} course${TRIP.size===1?'':'s'} from your trip? This can't be undone.`))return;
-  TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;tripDays=[];tripDayNextId=1;tbHeritageOn.clear();
+  TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;tripDays=[];tripDayNextId=1;tbHeritageOn.clear();tbHotelPickerFor=null;
   tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null; // GOLF-65/66/67 transient state
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(false);}

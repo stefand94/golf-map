@@ -472,6 +472,23 @@ function tbDrawHeritage(){
     });
   });
 }
+/* GOLF-96: the hotel-picker's real OSM candidates, shown alongside a day's
+   already-added stays (tbDrawTripItems, drawn as solid 🏨 pins) — these are
+   deliberately visually distinct (a hollow ring, not a solid emoji marker)
+   so "pick one of these" never reads as "already booked", and excluded
+   from fitBounds for the same reason tbDrawHeritage()'s candidates are. */
+function tbDrawHotelCandidates(){
+  if(tbHotelPickerFor==null)return;
+  const d=tripDays.find(d=>d.id===tbHotelPickerFor);if(!d)return;
+  const pois=tbHotelsFor(d);
+  if(!pois)return;
+  pois.forEach((p,idx)=>{
+    L.circleMarker([p.lat,p.lng],{radius:7,color:'#1b5e20',weight:2,fillColor:'#fff',fillOpacity:.85})
+      .bindTooltip(`🏨 ${esc(p.name)}${p.category?' — '+esc(p.category):''}`,{direction:'top'})
+      .on('click',()=>tbPickHotelCandidate(d.id,idx))
+      .addTo(tripLayer);
+  });
+}
 function tbDayFallbackPoint(idx){
   const d=tripDays[idx];
   if(!d)return null;
@@ -547,6 +564,7 @@ function tbDrawMap(){
   }
   tbDrawHeritage();
   tbDrawTripItems();
+  tbDrawHotelCandidates();
   const pts=[...pts1,...pts2];
   if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
 }
