@@ -409,10 +409,18 @@ function tbHotelPickerHTML(day){
   const body=pois==null
     ?`<p class="hint" style="margin:4px 10px">Looking for nearby hotels…</p>`
     :!pois.length
-      ?`<p class="hint" style="margin:4px 10px">No hotels found nearby — you can still add one by name below.</p>`
+      ?`<p class="hint" style="margin:4px 10px">No hotels found nearby.</p>`
       :`<div class="tb-poi-list">${pois.map((p,idx)=>`<div class="tb-poi-row"><span>${esc(p.name)}</span>${p.category?`<span class="wt">${esc(p.category)}</span>`:''}<button class="tb-btn is-sm is-icon" onclick="tbPickHotelCandidate(${day.id},${idx})" title="Use this hotel">＋</button></div>`).join('')}</div>`;
+  /* GOLF-96 follow-up: the picker used to be a dead end when the nearby
+     list didn't have what the visitor wanted — it replaced the search/
+     manual-entry form entirely instead of sitting alongside it. This
+     footer link hands off to tbPromptHotel(), which opens that same
+     form (a real search-as-you-type field, not just free text) without
+     losing the picker's own "browse nearby" convenience for the common
+     case. */
   return`<div class="tb-hotel-picker">
     <div class="tb-addstop-title">Nearby hotels<button class="tb-btn is-sm is-quiet" style="float:right" onclick="tbCloseHotelPicker()">Close</button></div>
     ${body}
+    <button class="tb-btn is-sm is-quiet" style="margin-top:var(--sp-2)" onclick="tbPromptHotel(${day.id})">🔍 Search or add a hotel by name</button>
   </div>`;
 }
