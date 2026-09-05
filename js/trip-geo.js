@@ -154,6 +154,22 @@ function feeNumberForDate(i,dateStr){
   if(field==='we'&&C[i]&&C[i].fee)return r.max;
   return(r.min+r.max)/2;
 }
+/* GOLF-97 Costs-tab support: the range/confidence context behind a golf
+   item's single £ figure, for wherever the UI wants to show the real spread
+   rather than just the blended number feeNumberForDate() returns. `used`
+   records which of min/max/mid the price actually reflects, matching
+   feeNumberForDate()'s own logic exactly (so the two never disagree). A
+   legacy wd/we-only course reports confidence:null and min===max===used —
+   its "range" is degenerate, which is exactly why it renders as a plain
+   figure rather than a range in the UI (see tripCostLineItems()). */
+function feeRangeForDate(i,dateStr){
+  const field=feeFieldForDate(dateStr);
+  const r=feeRangeFor(i,field);
+  if(!r)return null;
+  const hasFee=!!(C[i]&&C[i].fee);
+  const used=(field==='we'&&hasFee)?r.max:(r.min+r.max)/2;
+  return{min:r.min,max:r.max,confidence:r.confidence,used};
+}
 /* Currency correctness: a trip can mix nations (a UK/NI course priced in £,
    a Republic of Ireland course in €, a South African course in R), so a
    single flat total is potentially meaningless. tripDayCurrency() picks the
@@ -292,7 +308,8 @@ function tripItemPriceDetail(d,it){
     // The "× groupSize" tag these items get instead is computed
     // independently in tripCostLineItems() from gs itself.
     const p=feeNumberForDate(it.i,d&&d.date);
-    return{base:p,guests:gs,sharing:false,total:p==null?null:p*gs,cur:courseCurrency(it.i)};
+    const range=feeRangeForDate(it.i,d&&d.date);
+    return{base:p,guests:gs,sharing:false,total:p==null?null:p*gs,cur:courseCurrency(it.i),feeRange:range};
   }
   const cur=tripDayCurrency(d);
   if(it.type==='hotel'){

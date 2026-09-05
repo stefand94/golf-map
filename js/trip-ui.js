@@ -291,15 +291,35 @@ function tripCostLineItems(){
   // rows "× groupSize"; a stay keeps its own GOLF-74 sharing tag (or "as
   // entered" when it's a plain room rate).
   const gs=groupSizeFor();
+  // GOLF-97: a golf item whose course carries hand-researched fee data shows
+  // its real range ("£65–£90") and a confidence tag instead of the old
+  // single blended figure — a legacy wd/we-only course (feeRange.confidence
+  // null, or feeRange.min===feeRange.max) still renders exactly as before.
+  const feeRangeLabel=fr=>(fr&&fr.confidence&&fr.min!=null&&fr.max!=null&&fr.min!==fr.max)
+    ?` (${fr.min===fr.max?'':`${tbMoney(fr.min,'')}–`}${tbMoney(fr.max,'')})`:'';
+  const FEE_CONF_TAG={'published-range':'researched','published-from-only':'from-only','estimated':'estimated','poa':'POA'};
   tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{
     const det=tripItemPriceDetail(d,it);
-    const tag=it.type==='hotel'?(det.sharing?`× ${det.guests} people`:'estimated'):(gs>1?`× ${gs}`:null);
-    items.push({label:tripItemName(it)+(det.sharing?` (${det.cur}${det.base.toFixed(0)} × ${det.guests} people)`:''),
-      cat:CAT[it.type]||'Stop',amount:det.total,day:idx+1,cur:det.cur,tag});
+    let tag=it.type==='hotel'?(det.sharing?`× ${det.guests} people`:'estimated'):(gs>1?`× ${gs}`:null);
+    let label=tripItemName(it)+(det.sharing?` (${det.cur}${det.base.toFixed(0)} × ${det.guests} people)`:'');
+    if(it.type==='golf'&&det.feeRange&&det.feeRange.confidence){
+      label+=feeRangeLabel(det.feeRange);
+      const confTag=FEE_CONF_TAG[det.feeRange.confidence];
+      tag=tag?`${tag} · ${confTag}`:confTag;
+    }
+    items.push({label,cat:CAT[it.type]||'Stop',amount:det.total,day:idx+1,cur:det.cur,tag});
   }));
   tripUnscheduled().forEach(i=>{
     const fee=feeNumberFor(i,'wd');
-    items.push({label:V(i,'n'),cat:'Golf',amount:fee==null?null:fee*gs,day:null,cur:courseCurrency(i),tag:gs>1?`× ${gs}`:null});
+    const fr=feeRangeFor(i,'wd');
+    let label=V(i,'n');
+    let tag=gs>1?`× ${gs}`:null;
+    if(fr&&fr.confidence){
+      label+=feeRangeLabel(fr);
+      const confTag=FEE_CONF_TAG[fr.confidence];
+      tag=tag?`${tag} · ${confTag}`:confTag;
+    }
+    items.push({label,cat:'Golf',amount:fee==null?null:fee*gs,day:null,cur:courseCurrency(i),tag});
   });
   return items;
 }
