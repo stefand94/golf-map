@@ -113,11 +113,6 @@ function extractFee(s){
   if(!nums.length)return null;
   return nums.length>1?(nums[0]+nums[1])/2:nums[0];
 }
-function tripCostEstimate(indices){
-  let total=0,covered=0;
-  indices.forEach(i=>{const fee=extractFee(V(i,'wd'));if(fee!=null){total+=fee;covered++}});
-  return{total,covered,of:indices.length};
-}
 /* Currency correctness: a trip can mix nations (a UK/NI course priced in £,
    a Republic of Ireland course in €, a South African course in R), so a
    single flat total is potentially meaningless. tripDayCurrency() picks the
@@ -166,11 +161,11 @@ function feeFieldForDate(dateStr){
   const dow=d.getDay(); // 0=Sun .. 6=Sat
   return(dow===0||dow===6)?'we':'wd';
 }
-/* GOLF-48: weekend-aware replacement for tripCostEstimate(tripSeq) in the
-   cost summary below — a course scheduled on a dated day is costed at
-   that day's correct wd/we rate; a course with no day-date (including
-   every Unscheduled course, which has no day context at all) falls back
-   to the plain wd-only behavior tripCostEstimate() already had. */
+/* GOLF-48: weekend-aware course costing for the cost summary below — a
+   course scheduled on a dated day is costed at that day's correct wd/we
+   rate; a course with no day-date (including every Unscheduled course,
+   which has no day context at all) falls back to the plain weekday-only
+   behavior the original flat estimate had. */
 function tripCostEstimateByDay(){
   const buckets={};let covered=0,of=0;
   const gs=groupSizeFor(); // GOLF-87: each traveller pays their own green fee
@@ -233,7 +228,6 @@ function tripDayAccomFallback(d){
    make per hotel. The regional fallback (tripDayAccomFallback, used only
    when no price was entered) stays a flat per-night estimate, unmultiplied
    — it's a typical ROOM rate, not something the visitor typed as per-head. */
-const HOTEL_GUESTS_DEFAULT=2;
 /* {base,guests,sharing,total} for any item — the one place the per-person
    multiplication happens, so the itinerary row, the cost table and the
    trip total can never disagree about it. */
@@ -315,20 +309,4 @@ function tripCostSummary(){
   const gs=groupSizeFor();
   const perPerson=gs>1?grand/gs:null;
   return{fees,accomCost,accomBuckets,nights,fuelMiles,fuelCost,grand,grandBuckets,primaryCur,groupSize:gs,perPerson};
-}
-function tripCostSummaryHTML(){
-  const s=tripCostSummary();
-  const cur=s.primaryCur;
-  const mixed=Object.keys(s.fees.buckets).length>1;
-  return`<div class="cart-cost-lines">
-      <div class="cart-cost-line"><span>Green fees${s.groupSize>1?` <span class="wt">× ${s.groupSize}</span>`:''}</span><span>${s.fees.covered?moneyBucketFmt(s.fees.buckets):'—'}</span></div>
-      <div class="cart-cost-cov">${s.fees.covered} of ${s.fees.of} course${s.fees.of===1?'':'s'} have a parseable weekday fee${mixed?' · multiple currencies':''}</div>
-      <label class="cart-cost-line"><span><input type="checkbox" ${tbIncludeAccom?'checked':''} onchange="tbIncludeAccom=this.checked;renderTripBuilder();"> Accommodation${s.nights?` (${s.nights} night${s.nights===1?'':'s'}, typical rate)`:''} <span class="wt">as entered</span></span><span>${s.nights?moneyBucketFmt(s.accomBuckets):'—'}</span></label>
-      <label class="cart-cost-line"><span><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel${s.fuelMiles?` (est. ${s.fuelMiles.toFixed(0)} mi)`:''} <span class="wt">shared</span></span><span>${s.fuelMiles?`${cur}${s.fuelCost.toFixed(0)}`:'—'}</span></label>
-    </div>
-    <p class="hint" style="margin:6px 0 0">Accommodation and fuel are typical-rate/straight-line estimates, not live prices or a real route — untick either to leave it out of the total below.${mixed?' Green fees are shown in each course’s own currency; no conversion is applied yet — see the note below.':''}</p>
-    <div class="cart-total">
-      <div><div class="cart-total-label">Estimated trip total</div><div class="cart-total-coverage">${s.fees.covered} of ${s.fees.of} course fee${s.fees.of===1?'':'s'} counted${s.groupSize>1?` · ${s.groupSize} travellers`:''}</div></div>
-      <div class="cart-total-amount">${moneyBucketFmt(s.grandBuckets)}${s.perPerson!=null?`<div class="cart-total-pp">${cur}${s.perPerson.toFixed(0)} per person</div>`:''}</div>
-    </div>`;
 }

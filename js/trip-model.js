@@ -234,16 +234,6 @@ function tbEditStop(dayId,itemId){
   renderTripBuilder();
 }
 function tbAddStopCancel(){tbAddStop=null;renderTripBuilder();}
-/* Reads whatever is currently typed back into tbAddStop, so a re-render
-   doesn't throw away in-progress input. */
-function tbAddStopCapture(){
-  if(!tbAddStop)return;
-  const nameEl=document.getElementById('tb-addstop-name'),priceEl=document.getElementById('tb-addstop-price');
-  const nightsEl=document.getElementById('tb-addstop-nights');
-  if(nameEl&&nameEl.value!==tbAddStop.name){tbAddStop.name=nameEl.value;tbAddStop.lat=null;tbAddStop.lng=null;}
-  if(priceEl)tbAddStop.price=priceEl.value;
-  if(nightsEl)tbAddStop.nights=nightsEl.value;
-}
 function tbAddStopCommit(){
   if(!tbAddStop)return;
   const s=tbAddStop;
@@ -318,28 +308,6 @@ function tripDayRemove(dayId){
 function tripDaySetDriveIn(dayId,mins){
   const d=tripDays.find(d=>d.id===dayId);if(!d)return;
   d.driveIn=(mins===''||mins==null||isNaN(mins))?null:Math.max(0,Math.round(mins));
-  saveState();
-}
-/* GOLF-48: attaching a real date to a day is what lets the cost estimate
-   pick the correct wd/we fee field for that day (see feeFieldForDate()) —
-   entirely optional, defaults to null (pre-GOLF-48 wd-only behavior). */
-function tripDaySetDate(dayId,value){
-  const d=tripDays.find(d=>d.id===dayId);if(!d)return;
-  d.date=(typeof value==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(value))?value:null;
-  saveState();
-}
-function tripDaySetKind(dayId,kind){
-  const d=tripDays.find(d=>d.id===dayId);if(!d)return;
-  d.kind=TRIP_DAY_KINDS[kind]?kind:'golf';
-  saveState();
-}
-/* Manual free-text edit — clears any previously-geocoded coordinates,
-   since typed-over text is no longer verified against a real place. Use
-   tripDaySetPlaceGeo() below for picking a real search result instead. */
-function tripDaySetPlace(dayId,value){
-  const d=tripDays.find(d=>d.id===dayId);if(!d)return;
-  d.place=(typeof value==='string'&&value.trim())?value.trim().slice(0,80):null;
-  d.placeLat=null;d.placeLng=null;
   saveState();
 }
 /* GOLF-56: picking a real result from the place search box — sets both

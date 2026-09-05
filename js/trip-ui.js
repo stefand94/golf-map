@@ -380,10 +380,10 @@ let tbBuildTab='itin',tbItinFilter='all',tbDriveToggle=true,tbDayShown=null;
    day title (reusing the same tbRowMenuHTML() pattern every item row
    already uses), since a day that could never be deleted once created
    would be a real dead end, not just decluttering. Day kind/city/date/
-   drive-in override have no UI entry point any more — their functions
-   (TRIP_DAY_KINDS, tripDaySetKind/SetDate, the manual drive-in field) are
-   left intact in the data model and read normally wherever they're already
-   set, in case this needs revisiting. */
+   drive-in override have no UI entry point any more — the setters behind
+   them have since been removed, but the fields themselves (d.kind against
+   TRIP_DAY_KINDS, d.date, d.driveIn) are still read normally wherever
+   they're already set, in case this needs revisiting. */
 function tbDayCardHTML(d,idx){
   const kind=TRIP_DAY_KINDS[d.kind]?d.kind:'golf';
   const items=tripDayItems(d);
