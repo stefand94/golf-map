@@ -180,9 +180,9 @@ function rankChips(i){const t=C[i].t100;if(!t)return'';const p=[];
 
 function popupHTML(i){
   const c=C[i],a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')],near=c.nearStation;
-  const travel=stn?`<b style="color:${LINES[stn.l].c}">${stn.n}</b> · ${LINES[stn.l].n}${nrBadge(stn.l)} — ${V(i,'walk')}`
-    :near?`<b>${near.n}</b>${nrBadge()} — ${near.mi} mi, straight-line (nearest station nationally, not a walking route)`
-    :(V(i,'walk')||'Outside the rail catchment — no nearby station on this map');
+  const travel=stn?`<b style="color:${LINES[stn.l].c}">${esc(stn.n)}</b> · ${esc(LINES[stn.l].n)}${nrBadge(stn.l)} — ${esc(V(i,'walk'))}`
+    :near?`<b>${esc(near.n)}</b>${nrBadge()} — ${near.mi} mi, straight-line (nearest station nationally, not a walking route)`
+    :(esc(V(i,'walk'))||'Outside the rail catchment — no nearby station on this map');
   const search=`https://www.google.com/search?q=${encodeURIComponent(V(i,'n')+' golf club green fees')}`;
   const site=V(i,'site'),book=V(i,'book'),club=c.clubInfo;
   /* GOLF-88 (implementation): a real course photo, distinct from the small
@@ -193,25 +193,25 @@ function popupHTML(i){
      block never needed. Degrades gracefully — simply absent — for the
      majority of courses with no photo field, same convention as every
      other optional field in this app. */
-  const photoBlock=c.photo?`<div style="width:100%;border-radius:8px;margin-bottom:8px;overflow:hidden"><img src="${c.photo.src}" alt="${V(i,'n')}" loading="lazy" style="width:100%;height:140px;object-fit:cover;display:block"><div style="font-size:10.5px;color:var(--stone);padding:3px 2px 0">Photo: <a href="${c.photo.sourceUrl}" target="_blank" rel="noopener">${c.photo.photographer}</a> · ${c.photo.license}</div></div>`:'';
-  return `<div class="pop">${photoBlock}${c.logo?`<div style="width:100%;height:100px;background:var(--paper);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${c.logo}" alt="${V(i,'n')} club logo" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"></div>`:''}<h3>${V(i,'n')} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want to play</span>':''}${TRIP.has(i)?' <span class="wt">in trip</span>':''}</h3>
-    <p class="sub">${c.r} · ${a.label}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
-    <div class="fees"><div class="fee-box"><b>Weekday</b><span>${V(i,'wd')}</span></div>
-    <div class="fee-box"><b>Weekend</b><span>${V(i,'we')}</span></div></div>
-    <dl><dt>Course</dt><dd>${V(i,'spec')}</dd><dt>Design</dt><dd>${V(i,'arch')}</dd>${c.topSouthAfrica?'':`<dt>By rail</dt><dd>${travel}</dd>`}${club&&club.phone?`<dt>Phone</dt><dd>${club.phone}</dd>`:''}${(c.top100||c.topScot||c.topWales||c.topIreland||c.topSouthAfrica)?`<dt>From home</dt><dd>${distMiles(i)} mi, as the crow flies</dd>`:''}</dl>
-    <p class="note">${V(i,'note')}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${club.blurb}</span>`:''}</p>
+  const photoBlock=c.photo?`<div style="width:100%;border-radius:8px;margin-bottom:8px;overflow:hidden"><img src="${esc(escUrl(c.photo.src))}" alt="${esc(V(i,'n'))}" loading="lazy" style="width:100%;height:140px;object-fit:cover;display:block"><div style="font-size:10.5px;color:var(--stone);padding:3px 2px 0">Photo: <a href="${esc(escUrl(c.photo.sourceUrl))}" target="_blank" rel="noopener">${esc(c.photo.photographer)}</a> · ${esc(c.photo.license)}</div></div>`:'';
+  return `<div class="pop">${photoBlock}${c.logo?`<div style="width:100%;height:100px;background:var(--paper);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${esc(escUrl(c.logo))}" alt="${esc(V(i,'n'))} club logo" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"></div>`:''}<h3>${esc(V(i,'n'))} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want to play</span>':''}${TRIP.has(i)?' <span class="wt">in trip</span>':''}</h3>
+    <p class="sub">${esc(c.r)} · ${esc(a.label)}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
+    <div class="fees"><div class="fee-box"><b>Weekday</b><span>${esc(V(i,'wd'))}</span></div>
+    <div class="fee-box"><b>Weekend</b><span>${esc(V(i,'we'))}</span></div></div>
+    <dl><dt>Course</dt><dd>${esc(V(i,'spec'))}</dd><dt>Design</dt><dd>${esc(V(i,'arch'))}</dd>${c.topSouthAfrica?'':`<dt>By rail</dt><dd>${travel}</dd>`}${club&&club.phone?`<dt>Phone</dt><dd>${esc(club.phone)}</dd>`:''}${(c.top100||c.topScot||c.topWales||c.topIreland||c.topSouthAfrica)?`<dt>From home</dt><dd>${distMiles(i)} mi, as the crow flies</dd>`:''}</dl>
+    <p class="note">${esc(V(i,'note'))}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${esc(club.blurb)}</span>`:''}</p>
     ${calcHTML(i)}
     <div class="actions">
       <button class="btn primary" onclick="${TRIP.has(i)?`toggleTrip(${i})`:`tbAddToPlan(${i})`}">${TRIP.has(i)?'✓ In your trip — remove':'+ Add to trip'}</button>
-      ${site?`<a class="btn" href="${site}" target="_blank" rel="noopener">Club website</a>`:`<a class="btn ghost" href="${search}" target="_blank" rel="noopener">Find the club site</a>`}
-      ${book&&book!==site?`<a class="btn ghost" href="${book}" target="_blank" rel="noopener">Green fees</a>`:''}
-      ${club&&club.teeBooking&&club.teeBooking!==site&&club.teeBooking!==book?`<a class="btn ghost" href="${club.teeBooking}" target="_blank" rel="noopener">Tee booking</a>`:''}
-      ${club&&club.membership&&club.membership!==site?`<a class="btn ghost" href="${club.membership}" target="_blank" rel="noopener">Membership</a>`:''}
+      ${site?`<a class="btn" href="${esc(escUrl(site))}" target="_blank" rel="noopener">Club website</a>`:`<a class="btn ghost" href="${esc(search)}" target="_blank" rel="noopener">Find the club site</a>`}
+      ${book&&book!==site?`<a class="btn ghost" href="${esc(escUrl(book))}" target="_blank" rel="noopener">Green fees</a>`:''}
+      ${club&&club.teeBooking&&club.teeBooking!==site&&club.teeBooking!==book?`<a class="btn ghost" href="${esc(escUrl(club.teeBooking))}" target="_blank" rel="noopener">Tee booking</a>`:''}
+      ${club&&club.membership&&club.membership!==site?`<a class="btn ghost" href="${esc(escUrl(club.membership))}" target="_blank" rel="noopener">Membership</a>`:''}
       <button class="btn subtle" onclick="togglePlayed(${i})">${PLAYED.has(i)?'Unmark played':'Mark played'}</button>
       <button class="btn subtle" onclick="toggleWant(${i})">${WANT.has(i)?'Remove from want-to-play':'Want to play'}</button>
       <button class="btn subtle" onclick="openEditor(${i})">Correct this</button>
       <button class="btn subtle" onclick="setAsAnchor(${i})">Set as anchor course for a trip</button>
-    </div><p class="conf">${CONF[c.conf]}</p></div>`;
+    </div><p class="conf">${esc(CONF[c.conf])}</p></div>`;
 }
 /* GOLF-52: a lightweight hover tooltip (name/fee/ranking) so a visitor
    can scan the map without clicking every pin open — the full popup
@@ -225,7 +225,7 @@ function courseTooltipHTML(i){
     else if(t.sco)ranks.push('Scotland #'+t.sco);
     else if(t.wal)ranks.push('Wales #'+t.wal);
   }
-  return`<div class="course-tt-name">${V(i,'n')}</div><div class="course-tt-meta">${V(i,'wd')}${ranks.length?' · '+ranks[0]:''}</div>`;
+  return`<div class="course-tt-name">${esc(V(i,'n'))}</div><div class="course-tt-meta">${esc(V(i,'wd'))}${ranks.length?' · '+ranks[0]:''}</div>`;
 }
 /* GOLF: a handful of clubs (Sunningdale Old/New, Saunton East/West,
    Woburn's three courses, etc.) share one clubhouse and so share the exact

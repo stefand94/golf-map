@@ -51,6 +51,23 @@ function golfPinSVG(size,ring){
   </svg>`;
 }
 
+/* HTML escaping. Lived in js/editor.js (the last module in load order)
+   while only the corrections form used it; every module that interpolates
+   a user- or network-supplied string into innerHTML needs it, so it lives
+   here in the first module instead. `'` is escaped too — a single-quoted
+   attribute is common enough in this codebase's inline handlers that
+   leaving it out is a real hole. */
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;')}
+/* Anything interpolated into an href= goes through this first: a saved
+   correction or an imported/shared payload can carry a `javascript:` (or
+   `data:`) URL, which esc() alone does nothing about. Only http(s), mailto,
+   site-absolute and in-page URLs survive; everything else becomes '#'.
+   The result is still esc()'d by the caller for the attribute quoting. */
+function escUrl(s){
+  const v=String(s==null?'':s).trim();
+  return /^(https?:|mailto:|\/|#)/i.test(v)?v:'#';
+}
+
 const STN={},STN_LINES={};
 Object.entries(R).forEach(([rk,arr])=>arr.forEach(([n,la,ln])=>{
   (STN_LINES[n]=STN_LINES[n]||new Set()).add(ROUTE_LINE[rk]);

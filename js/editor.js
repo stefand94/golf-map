@@ -43,7 +43,6 @@ drawer.addEventListener('keydown',e=>{
   if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
   else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
 });
-function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
 let editTees=[];
 function teeRowHTML(idx,t){
   return `<div class="tee-row" data-idx="${idx}" style="display:flex;gap:6px;align-items:end;margin-bottom:6px">

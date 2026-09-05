@@ -468,7 +468,9 @@ function tbDrawHeritage(){
     if(!pois)return;
     pois.forEach(p=>{
       L.circleMarker([p.lat,p.lng],{radius:5,color:'#8A5A2B',weight:1.5,fillColor:'#fff',fillOpacity:.9})
-        .bindTooltip(p.category?`${p.name} — ${p.category}`:p.name,{direction:'top'}).addTo(tripLayer);
+        // p.name/p.category come straight from Overpass — escape both, same
+        // as tbDrawHotelCandidates() below already does.
+        .bindTooltip(p.category?`${esc(p.name)} — ${esc(p.category)}`:esc(p.name),{direction:'top'}).addTo(tripLayer);
     });
   });
 }

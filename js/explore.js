@@ -404,9 +404,9 @@ function renderNearestList(anchorIdx){
   if(!rows.length){list.innerHTML=`<p class="empty">Nothing else bookable nearby — try "All results".</p>`;return;}
   list.innerHTML=rows.map(({i,mi})=>{const ac=ACCESS[V(i,'a')];
     return`<div class="card" data-i="${i}"><div class="card-top">
-      <p class="cname">${flagSVG(ac.colour,ac.pole,15,false)}${V(i,'n')}</p>
-      <span class="cfee">${V(i,'wd')}<small>${mi.toFixed(0)} mi away</small></span></div>
-      <p class="cmeta"><span>${ac.label}</span><span>${esc(C[i].r)}</span>${bestRankBadge(i)}</p>
+      <p class="cname">${flagSVG(ac.colour,ac.pole,15,false)}${esc(V(i,'n'))}</p>
+      <span class="cfee">${esc(V(i,'wd'))}<small>${mi.toFixed(0)} mi away</small></span></div>
+      <p class="cmeta"><span>${esc(ac.label)}</span><span>${esc(C[i].r)}</span>${bestRankBadge(i)}</p>
       <p class="cmeta"><button class="btn2" data-add="${i}" style="padding:5px 10px;font-size:11px">+ Add to trip</button></p></div>`}).join('');
   list.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',e=>{
     e.stopPropagation();
@@ -473,10 +473,10 @@ function render(){
     return}
   list.innerHTML=shown.map(i=>{const a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')],near=C[i].nearStation;
     return `<button class="card" data-i="${i}"><div class="card-top">
-      <p class="cname">${flagSVG(a.colour,a.pole,15,false)}${V(i,'n')}${isEdited(i)?' <span class="edited">EDITED</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want</span>':''}</p>
-      <span class="cfee">${V(i,'wd')}<small>wknd ${V(i,'we')}</small></span></div>
-      <p class="cmeta"><span>${a.label}</span>
-      ${stn?`<span>${stn.n} · ${LINES[stn.l].n}</span>`:near?`<span>${near.n} · ${near.mi} mi straight-line</span>`:C[i].topSouthAfrica?'':`<span style="color:var(--stone)">no close station</span>`}
+      <p class="cname">${flagSVG(a.colour,a.pole,15,false)}${esc(V(i,'n'))}${isEdited(i)?' <span class="edited">EDITED</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want</span>':''}</p>
+      <span class="cfee">${esc(V(i,'wd'))}<small>wknd ${esc(V(i,'we'))}</small></span></div>
+      <p class="cmeta"><span>${esc(a.label)}</span>
+      ${stn?`<span>${esc(stn.n)} · ${esc(LINES[stn.l].n)}</span>`:near?`<span>${esc(near.n)} · ${esc(near.mi)} mi straight-line</span>`:C[i].topSouthAfrica?'':`<span style="color:var(--stone)">no close station</span>`}
       ${(C[i].top100||C[i].topScot||C[i].topWales||C[i].topIreland||C[i].topSouthAfrica)?`<span style="color:var(--stone)">${distMiles(i)} mi from home</span>`:''}
       ${bestRankBadge(i)}${C[i].sweep?'<span class="wt">sweep</span>':''}${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
   list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
