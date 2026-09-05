@@ -55,14 +55,68 @@ function tbShareTrip(btn){
 
 /* ── Decode: a #share= hash → a plain payload object, or null on any
    malformed/truncated input (graceful degradation — never throws past
-   this function). ── */
+   this function). ──
+
+   Everything here comes off the URL hash, i.e. from whoever wrote the
+   link — so this is untrusted input, not just possibly-truncated input.
+   The payload is therefore rebuilt field by field into a fresh object
+   (never copied wholesale) with the same defensive discipline as
+   validateTripEntry() in js/state.js: every string is String()'d and
+   length-capped, every number is Number.isFinite-checked and clamped,
+   coordinates are range-checked, item types are restricted to the three
+   the renderer knows, and the day/item counts are capped so a link can't
+   ask the page to render an unbounded itinerary. Anything that doesn't
+   fit is dropped; a structurally wrong payload returns null and
+   renderSharedTrip()'s existing "link looks broken" fallback handles it. */
+const SHARE_MAX_DAYS=30, SHARE_MAX_ITEMS_PER_DAY=20, SHARE_MAX_STR=120;
+function shareStr(v,max){
+  if(typeof v!=='string')return null;
+  const s=String(v).trim().slice(0,max||SHARE_MAX_STR);
+  return s?s:null;
+}
+function shareNum(v,min,max){
+  if(typeof v!=='number'||!Number.isFinite(v))return null;
+  return Math.min(max,Math.max(min,v));
+}
 function tripDecodeSharePayload(hash){
   try{
     if(!hash||hash.indexOf('#share=')!==0)return null;
     const json=decodeURIComponent(hash.slice('#share='.length));
     const p=JSON.parse(json);
-    if(!p||typeof p!=='object'||!Array.isArray(p.days)||!Array.isArray(p.seq))return null;
-    return p;
+    if(!p||typeof p!=='object'||Array.isArray(p)||!Array.isArray(p.days)||!Array.isArray(p.seq))return null;
+    const seq=p.seq.filter(i=>Number.isInteger(i)&&C[i]).slice(0,500);
+    const days=p.days.slice(0,SHARE_MAX_DAYS).map((d,idx)=>{
+      if(!d||typeof d!=='object')return null;
+      const items=(Array.isArray(d.items)?d.items:[]).slice(0,SHARE_MAX_ITEMS_PER_DAY).map((it,n)=>{
+        if(!it||typeof it!=='object')return null;
+        const id=shareStr(it.id,64)||('s'+idx+'-'+n);
+        if(it.type==='golf')return(Number.isInteger(it.i)&&C[it.i])?{id,type:'golf',i:it.i}:null;
+        if(it.type!=='hotel'&&it.type!=='poi')return null;
+        const name=shareStr(it.name,80);
+        if(!name)return null;
+        const out={id,type:it.type,name,
+          price:shareNum(it.price,0,1e6),
+          lat:shareNum(it.lat,-90,90),lng:shareNum(it.lng,-180,180)};
+        if(it.type==='hotel'){
+          const n2=shareNum(it.nights,1,30);
+          out.nights=n2!=null?Math.round(n2):1;
+          out.stayId=shareStr(it.stayId,64);
+        }
+        return out;
+      }).filter(Boolean);
+      const id=Number.isInteger(d.id)?d.id:idx+1;
+      return{
+        id,
+        kind:TRIP_DAY_KINDS[d.kind]?d.kind:'golf',
+        place:shareStr(d.place,80),
+        placeLat:shareNum(d.placeLat,-90,90),placeLng:shareNum(d.placeLng,-180,180),
+        date:(typeof d.date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d.date))?d.date:null,
+        driveIn:shareNum(d.driveIn,0,10000),
+        items
+      };
+    }).filter(Boolean);
+    const gs=shareNum(p.gs,1,16);
+    return{v:1,gs:gs!=null?Math.round(gs):1,seq,days};
   }catch(e){return null;}
 }
 
@@ -90,15 +144,13 @@ function renderSharedTrip(){
   }
   const savedTrip=new Set(TRIP),savedSeq=tripSeq,savedDays=tripDays,savedGS=groupSize,savedFuel=tbIncludeFuel;
   try{
-    TRIP.clear();payload.seq.forEach(i=>{if(typeof i==='number'&&C[i])TRIP.add(i);});
-    tripSeq=payload.seq.filter(i=>typeof i==='number'&&C[i]);
-    tripDays=payload.days.map(d=>({
-      id:d.id,kind:d.kind||'golf',place:d.place||null,
-      placeLat:d.placeLat??null,placeLng:d.placeLng??null,
-      date:d.date||null,driveIn:d.driveIn??null,
-      items:Array.isArray(d.items)?d.items.map(it=>Object.assign({},it)):[]
-    })).map(tripDayMigrateItems);
-    groupSize=typeof payload.gs==='number'&&payload.gs>0?Math.round(payload.gs):1;
+    /* tripDecodeSharePayload() has already rebuilt every field of this
+       payload from scratch and validated it — nothing here is copied
+       wholesale off the URL, so these can be used as-is. */
+    TRIP.clear();payload.seq.forEach(i=>TRIP.add(i));
+    tripSeq=[...payload.seq];
+    tripDays=payload.days.map(d=>({...d,items:d.items.map(it=>({...it}))}));
+    groupSize=payload.gs;
     tbIncludeFuel=true;
     const dayCount=tripDays.length;
     const grand=tripCostBreakdown().grand;
@@ -165,7 +217,7 @@ function renderSharedMap(){
     const day=stop.day;
     const fill=day!=null?TRIP_DAY_COLORS[(day-1)%TRIP_DAY_COLORS.length]:'#E6B400';
     L.circleMarker([stop.lat,stop.lng],{radius:8,color:'#1B2733',weight:2,fillColor:fill,fillOpacity:1})
-      .bindTooltip(`${idx+1}. ${stop.name||''}`,{direction:'top'}).addTo(m);
+      .bindTooltip(`${idx+1}. ${esc(stop.name||'')}`,{direction:'top'}).addTo(m);
     pts.push([stop.lat,stop.lng]);
   });
   for(let k=1;k<order.length;k++){
