@@ -62,7 +62,7 @@
    to /london-golf-map-v5_1) then goes offline and navigates to '/' hit
    a raw network error instead of a graceful offline fallback. Added
    below. */
-const CACHE_NAME = 'golfmap-shell-v5-16c8d10c19';
+const CACHE_NAME = 'golfmap-shell-v5-6be39aa355';
 
 const PRECACHE_URLS = [
   './',
