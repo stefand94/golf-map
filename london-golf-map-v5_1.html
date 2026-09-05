@@ -440,6 +440,25 @@
     color:var(--stone);margin-bottom:var(--sp-2)}
   .tb-addstop-row{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-2)}
   .tb-addstop-row input{flex:1 1 120px;min-width:0}
+  /* GOLF-96 follow-up: this panel had NO rule of its own — it inherited
+     zero margin/padding/background, so it sat flush against the card edge
+     while .tb-addstop (rendered right above it) is inset and boxed. That
+     mismatch is exactly what read as "alignment/indentation is wrong".
+     Match .tb-addstop's own box treatment so the two read as one
+     consistent component stacked together, not two different ones. */
+  .tb-hotel-picker{margin:calc(-1 * var(--sp-2)) var(--sp-3) var(--sp-3);padding:var(--sp-3);background:var(--paper-2);
+    border:1px solid var(--line);border-radius:var(--radius-md)}
+  .tb-hotel-picker .tb-poi-list{padding:0}
+  /* GOLF-95 follow-up: the reorder-suggestion banner (js/trip-ui.js
+     tbReorderSuggestionHTML) gained a "Now" vs "Suggested" path preview
+     so a visitor can see WHICH day is out of place, not just a blind
+     Accept/Decline — this styles that preview. */
+  .tb-reorder-row{display:flex;gap:var(--sp-2);align-items:baseline;flex-wrap:wrap;margin-bottom:var(--sp-1);font:var(--fs-small) var(--font-sans)}
+  .tb-reorder-row-label{flex:0 0 auto;font-weight:700;color:var(--stone);width:64px}
+  .tb-reorder-row-path{flex:1 1 auto;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+  .tb-reorder-stop{color:var(--ink)}
+  .tb-reorder-stop.is-moved{font-weight:700;color:var(--accent-dark);background:var(--accent-soft);border-radius:var(--radius-xs);padding:1px 6px}
+  .tb-reorder-arrow{color:var(--stone);opacity:.6}
   /* ── Itinerary filtered lists + Costs tab ───────────────────────── */
   .itin-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-card);margin-bottom:var(--sp-3);padding:var(--sp-3) var(--sp-4)}
   .itin-card-head{font:800 var(--fs-caption) var(--font-sans);letter-spacing:.06em;color:var(--accent-dark);margin-bottom:var(--sp-1)}
@@ -495,7 +514,13 @@
   .cost-group-toggle::before{content:'+'}
   .cost-group[open] .cost-group-toggle::before{content:'–'}
   .cost-group-amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--ink)}
-  .cost-group-lines{margin:0 0 var(--sp-3) var(--sp-5)}
+  /* GOLF-97: width:100% is computed against the containing block, not
+     "100% minus this element's own margin" — a bare width:100% next to
+     margin-left:var(--sp-5) overflowed the card by exactly that margin,
+     which is what was pushing hotel/course price cells past the card's
+     right edge. Subtracting the indent from the width keeps the table's
+     right edge flush with its siblings'. */
+  .cost-group-lines{margin:0 0 var(--sp-3) var(--sp-5);width:calc(100% - var(--sp-5))}
   .cost-fuel-row{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);padding:var(--sp-3) 0}
   .cost-fuel-row .cost-fuel-toggle{padding:0}
   /* item-6: the Share button's inline SVG icon (SHARE_ICON_SVG) — nudged

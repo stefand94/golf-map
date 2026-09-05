@@ -245,6 +245,29 @@ function tripSuggestedDayReorder(){
   if(suggested.join(',')===locIdxs.join(','))return null;
   return{origIdxs:locIdxs,suggestedIdxs:suggested,sig};
 }
+/* A short, human label for a day — its first stop's name (course/place),
+   falling back to a plain day number for a day with no stops. Used only
+   for the reorder-suggestion banner below, so a visitor can see WHICH
+   day is out of place rather than just being told "the order looks
+   off". */
+function tripReorderDayLabel(dayIdx){
+  const s=tripDayFirstStop(dayIdx);
+  return s&&s.name?s.name:`Day ${dayIdx+1}`;
+}
+/* Builds the "here's what would change" detail for the reorder banner:
+   the current and suggested sequences as short labels (so the whole
+   route is visible, not just the mover), plus which specific days moved
+   position — this is what lets the banner "show where the issue is"
+   instead of only offering a blind Accept/Decline. */
+function tripReorderDetail(sug){
+  const origLabels=sug.origIdxs.map(i=>tripReorderDayLabel(i));
+  const suggLabels=sug.suggestedIdxs.map(i=>tripReorderDayLabel(i));
+  const moved=sug.origIdxs
+    .map((i,pos)=>({i,from:pos,to:sug.suggestedIdxs.indexOf(i)}))
+    .filter(m=>m.from!==m.to)
+    .map(m=>tripReorderDayLabel(m.i));
+  return{origLabels,suggLabels,moved};
+}
 /* Applies a suggested reorder: walks the ORIGINAL tripDays array once,
    replacing only locatable slots with the next day off the nn-ordered
    queue (mirrors tripAutoOrder()'s "walk original, replace matching slots"

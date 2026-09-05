@@ -271,7 +271,13 @@ function tbEditStop(dayId,itemId){
     nights:it.nights!=null?String(it.nights):'1'};
   renderTripBuilder();
 }
-function tbAddStopCancel(){tbAddStop=null;renderTripBuilder();}
+/* GOLF-96 follow-up: the hotel picker (js/ors.js) now opens this same
+   form immediately (search on top, nearby list below, one panel) rather
+   than as a separate step — so cancelling/committing here must also
+   close that list, or a stray "Nearby hotels" panel is left open with
+   nothing to do. Clearing tbHotelPickerFor for a non-hotel stop is a
+   harmless no-op (it only ever matches a hotel-type day slot). */
+function tbAddStopCancel(){tbAddStop=null;if(typeof tbHotelPickerFor!=='undefined')tbHotelPickerFor=null;renderTripBuilder();}
 function tbAddStopCommit(){
   if(!tbAddStop)return;
   const s=tbAddStop;
@@ -297,6 +303,7 @@ function tbAddStopCommit(){
     tripDayAddStop(s.dayId,s.type,name,price,lat,lng,nights);
   }
   tbAddStop=null;
+  if(typeof tbHotelPickerFor!=='undefined')tbHotelPickerFor=null;
   renderTripBuilder();tbDrawMap();
 }
 /* GOLF-71 copy audit: the form used to carry a two-sentence footnote

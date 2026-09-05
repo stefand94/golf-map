@@ -378,49 +378,61 @@ function tbHotelsFor(day){
     .finally(()=>{hotelsPending.delete(key);});
   return null;
 }
-/* Opens the picker: flies the map to the day's anchor point (falling
+/* Opens the picker: jumps the map to the day's anchor point (falling
    back to opening the plain add-stay form immediately if the day has no
-   resolvable point at all — a day with no course/place yet). */
+   resolvable point at all — a day with no course/place yet), and opens
+   the search field (tbAddStop) at the same time as the nearby-hotel list
+   so a visitor sees "search on top, candidates below" in one panel
+   instead of a two-click reveal.
+   GOLF-96 follow-up fix: this used to call map.flyTo(), whose animation
+   does not reliably complete in some environments (confirmed against
+   this project's own automated-preview testing, and matching the
+   stakeholder's live report of the map failing to move here) — setView
+   jumps instantly and has no animation to stall, same fix already
+   applied to the nation-pill zoom. */
 function tbOpenHotelPicker(dayId){
   const d=tripDays.find(d=>d.id===dayId);if(!d)return;
   const pt=tbPoiPoint(d);
   if(!pt){tbPromptHotel(dayId);return;}
   if(typeof showMobileMap==='function')showMobileMap();
-  if(typeof map!=='undefined'&&map)map.flyTo([pt.lat,pt.lng],13,{duration:.6});
+  if(typeof map!=='undefined'&&map)map.setView([pt.lat,pt.lng],13);
   tbHotelPickerFor=dayId;
+  tbAddStop={dayId,itemId:null,type:'hotel',name:'',price:'',lat:null,lng:null,nights:'1'};
   renderTripBuilder();tbDrawMap();
 }
-function tbCloseHotelPicker(){tbHotelPickerFor=null;renderTripBuilder();tbDrawMap();}
+function tbCloseHotelPicker(){tbHotelPickerFor=null;tbAddStop=null;renderTripBuilder();tbDrawMap();}
 /* Picking a candidate doesn't add it immediately — it pre-fills the
    existing add-stay form (name/coordinates), same "confirm before it's
-   real" pattern as everywhere else a search result feeds a form. */
+   real" pattern as everywhere else a search result feeds a form. The
+   nearby list stays open underneath (tbHotelPickerFor is left set) so a
+   visitor can glance at another candidate without re-opening the picker. */
 function tbPickHotelCandidate(dayId,idx){
   const d=tripDays.find(d=>d.id===dayId);if(!d)return;
   const pois=tbHotelsFor(d);
   const p=pois&&pois[idx];if(!p)return;
-  tbHotelPickerFor=null;
   tbAddStop={dayId,itemId:null,type:'hotel',name:p.name,price:'',lat:p.lat,lng:p.lng,nights:'1'};
   renderTripBuilder();tbDrawMap();
 }
+/* GOLF-96 follow-up: this used to be its own boxed panel (title + Close +
+   a "search by name" footer button) sitting ABOVE the separate add-stay
+   form, only reachable via a second click — reported live as "clicking
+   add a stay should open a search bar on top and list a few options
+   below," which this wasn't doing. tbOpenHotelPicker() now opens the
+   search form (tbAddStopFormHTML) and this list together, and js/trip-ui.js
+   renders the form first — so this is now just the "below" half: a plain
+   "Nearby" heading plus the candidate rows, no box of its own, sharing
+   the form's Cancel/Close instead of duplicating one. */
 function tbHotelPickerHTML(day){
   if(tbHotelPickerFor!==day.id)return'';
   if(!ORS_PROXY_URL)return'';
   const pois=tbHotelsFor(day);
   const body=pois==null
-    ?`<p class="hint" style="margin:4px 10px">Looking for nearby hotels…</p>`
+    ?`<p class="hint" style="margin:4px 0 0">Looking for nearby hotels…</p>`
     :!pois.length
-      ?`<p class="hint" style="margin:4px 10px">No hotels found nearby.</p>`
-      :`<div class="tb-poi-list">${pois.map((p,idx)=>`<div class="tb-poi-row"><span>${esc(p.name)}</span>${p.category?`<span class="wt">${esc(p.category)}</span>`:''}<button class="tb-btn is-sm is-icon" onclick="tbPickHotelCandidate(${day.id},${idx})" title="Use this hotel">＋</button></div>`).join('')}</div>`;
-  /* GOLF-96 follow-up: the picker used to be a dead end when the nearby
-     list didn't have what the visitor wanted — it replaced the search/
-     manual-entry form entirely instead of sitting alongside it. This
-     footer link hands off to tbPromptHotel(), which opens that same
-     form (a real search-as-you-type field, not just free text) without
-     losing the picker's own "browse nearby" convenience for the common
-     case. */
+      ?`<p class="hint" style="margin:4px 0 0">No hotels found nearby — search above instead.</p>`
+      :`<div class="tb-poi-list" style="padding-left:0">${pois.map((p,idx)=>`<div class="tb-poi-row"><span>${esc(p.name)}</span>${p.category?`<span class="wt">${esc(p.category)}</span>`:''}<button class="tb-btn is-sm is-icon" onclick="tbPickHotelCandidate(${day.id},${idx})" title="Use this hotel">＋</button></div>`).join('')}</div>`;
   return`<div class="tb-hotel-picker">
-    <div class="tb-addstop-title">Nearby hotels<button class="tb-btn is-sm is-quiet" style="float:right" onclick="tbCloseHotelPicker()">Close</button></div>
+    <div class="tb-addstop-title">Nearby</div>
     ${body}
-    <button class="tb-btn is-sm is-quiet" style="margin-top:var(--sp-2)" onclick="tbPromptHotel(${day.id})">🔍 Search or add a hotel by name</button>
   </div>`;
 }

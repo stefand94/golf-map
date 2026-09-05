@@ -426,8 +426,12 @@ function tbDayCardHTML(d,idx){
         ondrop="event.preventDefault();event.stopPropagation();tbDropOut(this);tbDropInDay(${d.id},null);">↓ Put it last on Day ${idx+1}</div>
       ${tripDaySuggestedTown(d)?`<div class="tb-day-town">Staying near <b>${esc(tripDaySuggestedTown(d))}</b>${tbPoiPoint(d)&&ORS_PROXY_URL?` · <a href="#" class="linkbtn" onclick="event.preventDefault();tbToggleHeritage(${d.id})">${tbHeritageOn.has(d.id)?'hide':'show'} POI's</a>`:''}</div>`:''}
       ${tbHeritageListHTML(d)}
-      ${tbHotelPickerHTML(d)}
+      ${/* GOLF-96 follow-up: search bar on top, nearby candidates below —
+           the form (tbAddStopFormHTML) now always opens together with the
+           hotel picker's own list (tbOpenHotelPicker, js/ors.js), so this
+           order is what actually renders "search on top, options below". */''}
       ${tbAddStopFormHTML(d.id)}
+      ${tbHotelPickerHTML(d)}
       <div class="tb-day-add">
         <button class="tb-btn is-sm" onclick="tbOpenHotelPicker(${d.id})">🏨 Add stay</button>
         <button class="tb-btn is-sm" onclick="tbPromptPoi(${d.id})">📍 Add stop</button>
@@ -447,11 +451,24 @@ function tbDayCardHTML(d,idx){
 function tbReorderSuggestionHTML(){
   const sug=tripSuggestedDayReorder();
   if(!sug||sug.sig===tbReorderDismissedSig)return'';
+  const det=tripReorderDetail(sug);
+  const movedTxt=det.moved.length
+    ?`${det.moved.map(esc).join(', ')} ${det.moved.length===1?'looks':'look'} out of place`
+    :'the order looks off';
+  const rowHTML=(label,arr)=>`<div class="tb-reorder-row">
+      <span class="tb-reorder-row-label">${label}</span>
+      <span class="tb-reorder-row-path">${arr.map((n,i)=>{
+        const wasMoved=det.moved.includes(n);
+        return`<span class="tb-reorder-stop${wasMoved?' is-moved':''}">${esc(n)}</span>`+(i<arr.length-1?'<span class="tb-reorder-arrow">→</span>':'');
+      }).join('')}</span>
+    </div>`;
   return`<div class="tb-day tb-reorder-suggest" style="border-left-color:var(--accent)">
-    <p class="hint" style="margin:0 0 var(--sp-2)">This order looks inefficient — want to auto-order the trip for a better route? Free/start/end days stay exactly where they are.</p>
-    <div style="display:flex;gap:var(--sp-2)">
-      <button class="tb-btn is-primary is-sm" onclick="tripApplySuggestedDayReorder();">Auto-order</button>
-      <button class="tb-btn is-quiet is-sm" onclick="tbDismissSuggestedDayReorder('${esc(sug.sig)}');">Not now</button>
+    <p class="hint" style="margin:0 0 var(--sp-2)">This order looks inefficient — ${movedTxt}. Free/start/end days stay exactly where they are.</p>
+    ${rowHTML('Now',det.origLabels)}
+    ${rowHTML('Suggested',det.suggLabels)}
+    <div style="display:flex;gap:var(--sp-2);margin-top:var(--sp-2)">
+      <button class="tb-btn is-primary is-sm" onclick="tripApplySuggestedDayReorder();">Use suggested order</button>
+      <button class="tb-btn is-quiet is-sm" onclick="tbDismissSuggestedDayReorder('${esc(sug.sig)}');">Keep current order</button>
     </div>
   </div>`;
 }
@@ -643,6 +660,18 @@ function renderTripBuilder(){
     const k=b.dataset.nation;
     state.nation=state.nation===k?null:k;
     saveState();renderTripBuilder();tbDrawMap();
+    /* GOLF-98: this pane's own pill click never actually moved the map —
+       js/explore.js's now-unreachable Explore-mode pills had this, the
+       pane's pills never picked it up. Fly to the picked nation's course
+       bounds; picking the same pill again (clearing the filter) leaves
+       the map where it is rather than snapping back out. */
+    if(state.nation&&typeof map!=='undefined'&&map){
+      const pts=C.map((c,i)=>i).filter(i=>courseNation(i)===state.nation).map(i=>[C[i].lat,C[i].lng]);
+      /* fitBounds, not flyToBounds — this app's own testing notes (see the
+         plan file) document flyTo's animation stalling in at least one
+         environment; fitBounds jumps instantly and is never unreliable. */
+      if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[28,28]});
+    }
   });
   const shareBtn=document.getElementById('tb-share-trip');
   if(shareBtn)shareBtn.addEventListener('click',()=>tbShareTrip(shareBtn));

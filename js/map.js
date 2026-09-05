@@ -10,7 +10,13 @@
    the HTML resolve against.
    ============================================================ */
 
-const startView=restoredView||{center:[51.45,-0.15],zoom:9};
+/* GOLF-98: a first-time visitor (no restoredView yet) used to land
+   zoomed into London at 9 — arbitrary, and it made every other nation's
+   courses (Scotland, Wales, Ireland, South Africa) invisible until the
+   visitor manually zoomed out with no on-screen hint to do so. Default
+   to a GB+Ireland-wide view instead; South Africa stays reachable via
+   its own nation pill (js/trip-ui.js), which flies the map there. */
+const startView=restoredView||{center:[54.3,-4.2],zoom:5};
 map=L.map('map',{scrollWheelZoom:true,zoomControl:false}).setView(startView.center,startView.zoom);
 L.control.zoom({position:'bottomright'}).addTo(map);
 /* GOLF: basemap went CartoDB Light -> OpenTopoMap -> CartoDB Voyager.
