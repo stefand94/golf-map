@@ -556,8 +556,8 @@ function tbDropOn(dayId,beforeRef){
 function tripClearAll(){
   if(!TRIP.size)return;
   if(!confirm(`Clear all ${TRIP.size} course${TRIP.size===1?'':'s'} from your trip? This can't be undone.`))return;
-  TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;tripDays=[];tripDayNextId=1;tbHeritageOn.clear();tbHotelPickerFor=null;
-  tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null; // GOLF-65/66/67 transient state
+  TRIP.clear();tripSeq=[];tripLastAdded=null;tbAnchor=null;tripDays=[];tripDayNextId=1;
+  tbResetTransients();
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(false);}
   render();
@@ -656,14 +656,44 @@ function tripListAll(){
   return Object.entries(trips).map(([id,t])=>({id,name:t.name||'My trip',count:(t.trip||[]).length,modified:t.modified||0}))
     .sort((a,b)=>b.modified-a.modified);
 }
+/* GOLF-60b: the tb* page-session globals live OUTSIDE the per-trip
+   snapshot (see tripSnapshotActive()) — search text, drag state, the
+   focused/expanded day, the region picker's selection, which days have
+   POIs toggled on. Every trip-lifecycle transition (switch, new,
+   duplicate, delete, start fresh, clear, and wipeStoredState() in
+   js/editor.js) has to clear all of them, or the next trip inherits
+   stale state keyed to day ids that no longer exist.
+   Each of those used to hand-copy its own slightly different subset,
+   which is exactly how tbDayShown/tbHeritageOn/tbHotelPickerFor ended up
+   being reset in some paths and not others.
+
+   >>> Any new tb* transient must be registered HERE and nowhere else. <<<
+
+   tbAnchor and tbDiscoveryTab are deliberately NOT in this list:
+   tbAnchor is part of the per-trip snapshot (tripRestoreActive() sets it),
+   and tbDiscoveryTab is a deliberate per-caller navigation choice. Callers
+   that want either set do it themselves, right after calling this.
+   tbHeritageOn/tbHotelPickerFor (js/ors.js) and tbUnifiedPlaceResults
+   (js/trip-add.js) live in modules loaded after this one — fine, since
+   this only ever runs from a user action, long after load. */
+function tbResetTransients(){
+  tbSearchQ='';
+  tbUnifiedPlaceResults=null;
+  tbPlaceAnchor=null;
+  tbPlaceAddedNote=null;
+  tbFocusDayPlace=null;
+  tbDayShown=null;
+  tbDayDrag=null;
+  tbReorderDismissedSig=null;
+  tbRegion='';
+  tbBorder=8;
+  tbHeritageOn.clear();
+  tbHotelPickerFor=null;
+}
 function tripSwitchTo(id){
   if(id===activeTripId||!trips[id])return;
   tripSnapshotActive();activeTripId=id;tripRestoreActive();
-  // GOLF-60b: tbSearchQ/tbPlaceAnchor are page-session globals outside the
-  // per-trip snapshot — reset them on every lifecycle transition so a
-  // switched-to trip never inherits stale search text/anchor from whatever
-  // trip was active before.
-  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbReorderDismissedSig=null;tbRegion='';tbBorder=8;
+  tbResetTransients();
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(true);}
   render();
@@ -683,7 +713,7 @@ function tripCreateNew(){
   // GOLF-64: a brand-new trip always drops you back at the start of the
   // workflow — and via setAppMode(), so the URL follows the mode instead of
   // leaving a stale #trip pointing at Plan-mode content.
-  tbDiscoveryTab='anchor';tbPlaceAnchor=null;tbSearchQ='';tbReorderDismissedSig=null;
+  tbResetTransients();tbDiscoveryTab='anchor';
   saveState();
   if(tripBuilderOn)setAppMode('plan');
   render();
@@ -704,7 +734,7 @@ function tripDuplicate(id){
   trips[newId].name=(src.name||'My trip')+' (copy)';
   trips[newId].created=Date.now();trips[newId].modified=Date.now();
   activeTripId=newId;tripRestoreActive();
-  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbReorderDismissedSig=null;tbRegion='';tbBorder=8; // GOLF-60b
+  tbResetTransients();
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
   render();
@@ -715,7 +745,7 @@ function tripDelete(id){
   if(!confirm(`Delete "${trips[id].name}"? This can't be undone.`))return;
   delete trips[id];
   if(activeTripId===id){activeTripId=Object.keys(trips)[0];tripRestoreActive();}
-  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbReorderDismissedSig=null;tbRegion='';tbBorder=8; // GOLF-60b
+  tbResetTransients();
   saveState();
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
   render();
@@ -731,7 +761,7 @@ function tripStartFresh(){
   if(!confirm('Start fresh? This deletes every saved trip on this device and creates one new, empty trip. This cannot be undone.'))return;
   trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1,groupSize:2}};
   activeTripId='default';tripRestoreActive();
-  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbReorderDismissedSig=null;tbAnchor=null;tbDayShown=null;tbRegion='';tbBorder=8;tbDiscoveryTab='anchor';
+  tbResetTransients();tbAnchor=null;tbDiscoveryTab='anchor';
   saveState();
   if(tripBuilderOn)setAppMode('plan'); // GOLF-64: URL follows the mode
   render();

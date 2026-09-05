@@ -147,7 +147,7 @@ function wipeStoredState(){
   PLAYED.clear();WANT.clear();
   trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1,groupSize:2}};
   activeTripId='default';tripRestoreActive();
-  tbSearchQ='';tbPlaceAnchor=null;tbPlaceAddedNote=null;tbFocusDayPlace=null;tbDayDrag=null;tbReorderDismissedSig=null;tbAnchor=null;tbDayShown=null;tbRegion='';tbBorder=8; // GOLF-60b
+  tbResetTransients();tbAnchor=null; // GOLF-60b — see tbResetTransients() in js/trip-model.js
   clearStoredState();closeDrawer();render();
 }
 function copyPatch(){const t=document.getElementById('ex');t.select();
