@@ -298,7 +298,7 @@ function tripCostLineItems(){
       cat:CAT[it.type]||'Stop',amount:det.total,day:idx+1,cur:det.cur,tag});
   }));
   tripUnscheduled().forEach(i=>{
-    const fee=extractFee(V(i,'wd'));
+    const fee=feeNumberFor(i,'wd');
     items.push({label:V(i,'n'),cat:'Golf',amount:fee==null?null:fee*gs,day:null,cur:courseCurrency(i),tag:gs>1?`× ${gs}`:null});
   });
   return items;
@@ -512,7 +512,7 @@ function tbWishlistHTML(){
   const hiddenNote=hidden?`<p class="hint" style="margin:0 0 var(--sp-2)">${hidden} more course${hidden===1?'':'s'} on your wishlist from other countries — clear the country filter above to see ${hidden===1?'it':'them'}.</p>`:'';
   if(!unscheduled.length)return hiddenNote||`<p class="hint">Nothing on your wishlist yet — add any course you fancy playing.</p>`;
   const rows=unscheduled.map(i=>{
-    const fee=extractFee(V(i,'wd'));
+    const fee=feeNumberFor(i,'wd');
     return`<div class="tb-day-course tb-item-golf" style="cursor:default">
       <span class="tb-item-icon">⛳</span>
       <div class="tb-item-main"><a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>

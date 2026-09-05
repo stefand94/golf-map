@@ -113,6 +113,47 @@ function extractFee(s){
   if(!nums.length)return null;
   return nums.length>1?(nums[0]+nums[1])/2:nums[0];
 }
+/* GOLF-97: banded green-fee schema. A course optionally carries a
+   structured C[i].fee object ({weekday:{min,max}, weekend:{min,max},
+   weekendTwilight?, confidence, lastVerified}) alongside the legacy
+   free-text wd/we fields (untouched, never removed — see SCHEMA.md).
+   feeRangeFor() is the one place that decides between the two: real fee
+   data wins when present, the old regex-on-text extractFee() is the
+   fallback for every course not yet hand-researched (GOLF-98). field is
+   'wd'|'we', matching every existing caller's vocabulary. */
+function feeRangeFor(i,field){
+  const fee=C[i]&&C[i].fee;
+  const key=field==='we'?'weekend':'weekday';
+  if(fee&&fee[key]&&(fee[key].min!=null||fee[key].max!=null)){
+    const min=fee[key].min??fee[key].max,max=fee[key].max??fee[key].min;
+    return{min,max,confidence:fee.confidence||null};
+  }
+  const legacy=extractFee(V(i,field));
+  if(legacy==null)return null;
+  return{min:legacy,max:legacy,confidence:null};
+}
+/* A single blended figure — the pre-GOLF-97 behaviour, still needed
+   wherever the UI/cost math only wants one number (e.g. summing a day's
+   total). Legacy courses get exactly today's midpoint; a real fee range
+   is also averaged here — feeNumberForDate() below is where a real
+   weekend range gets to show its true peak instead. */
+function feeNumberFor(i,field){
+  const r=feeRangeFor(i,field);
+  return r?(r.min+r.max)/2:null;
+}
+/* GOLF-48 + GOLF-97: the date-aware single-figure cost for a scheduled
+   round. On a real Saturday/Sunday with hand-researched fee data present,
+   this deliberately returns the true peak (fee.weekend.max) rather than a
+   midpoint — the whole point of GOLF-97 was that a "from £60" figure was
+   silently hiding a real £90 Saturday rate. A legacy wd/we-only course
+   (no fee object) keeps exactly the old midpoint behaviour, unchanged. */
+function feeNumberForDate(i,dateStr){
+  const field=feeFieldForDate(dateStr);
+  const r=feeRangeFor(i,field);
+  if(!r)return null;
+  if(field==='we'&&C[i]&&C[i].fee)return r.max;
+  return(r.min+r.max)/2;
+}
 /* Currency correctness: a trip can mix nations (a UK/NI course priced in £,
    a Republic of Ireland course in €, a South African course in R), so a
    single flat total is potentially meaningless. tripDayCurrency() picks the
@@ -173,13 +214,13 @@ function tripCostEstimateByDay(){
     const field=feeFieldForDate(d.date);
     tripDayCourses(d).forEach(i=>{
       of++;
-      const fee=extractFee(V(i,field));
+      const fee=feeNumberFor(i,field);
       if(fee!=null){moneyBucketAdd(buckets,courseCurrency(i),fee*gs);covered++;}
     });
   });
   tripUnscheduled().forEach(i=>{
     of++;
-    const fee=extractFee(V(i,'wd'));
+    const fee=feeNumberFor(i,'wd');
     if(fee!=null){moneyBucketAdd(buckets,courseCurrency(i),fee*gs);covered++;}
   });
   const total=buckets[tripPrimaryCurrency()]||0;
@@ -250,7 +291,7 @@ function tripItemPriceDetail(d,it){
     // label logic misfire (and throw on an unpriced course, base===null).
     // The "× groupSize" tag these items get instead is computed
     // independently in tripCostLineItems() from gs itself.
-    const p=extractFee(V(it.i,feeFieldForDate(d&&d.date)));
+    const p=feeNumberForDate(it.i,d&&d.date);
     return{base:p,guests:gs,sharing:false,total:p==null?null:p*gs,cur:courseCurrency(it.i)};
   }
   const cur=tripDayCurrency(d);

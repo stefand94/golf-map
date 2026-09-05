@@ -43,7 +43,7 @@ function tripWishlistSummaryHTML(unscheduled){
   // other fee figure in the app (tripItemPriceDetail/groupSizeFor).
   const gs=groupSizeFor();
   const feeBuckets={};let covered=0;
-  order.forEach(i=>{const f=extractFee(V(i,'wd'));if(f!=null){moneyBucketAdd(feeBuckets,courseCurrency(i),f*gs);covered++;}});
+  order.forEach(i=>{const f=feeNumberFor(i,'wd');if(f!=null){moneyBucketAdd(feeBuckets,courseCurrency(i),f*gs);covered++;}});
   let miles=0,mins=0;
   for(let k=1;k<order.length;k++){
     const a=order[k-1],b=order[k];

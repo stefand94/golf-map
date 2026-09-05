@@ -235,7 +235,7 @@ function tbRowDragAttrs(startExpr,dropExpr){
 /* A wishlist (unscheduled) course row — no item of its own yet, so it
    drags by course index. */
 function tripDayCourseRowHTML(i,dayId){
-  const fee=extractFee(V(i,'wd'));
+  const fee=feeNumberFor(i,'wd');
   const menu=tbRowMenuHTML(
     `<div class="tb-menu-label">Move to</div>${tbDayMenuItemsHTML(i,dayId)}
      <div class="tb-menu-sep"></div>

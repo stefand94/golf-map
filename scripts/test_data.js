@@ -100,6 +100,30 @@ C.forEach((c, i) => {
   if (c.logo && !fs.existsSync(path.join(ROOT, c.logo))) {
     fail(`${label}: logo path "${c.logo}" does not exist on disk`);
   }
+  // GOLF-97: banded green-fee schema — additive, optional. When present,
+  // shape must be {weekday,weekend,weekendTwilight?,confidence,lastVerified}
+  // with each band a {min,max} pair (numbers or null, for 'poa' courses).
+  if (c.fee) {
+    const fee = c.fee;
+    const validConf = ['published-range', 'published-from-only', 'estimated', 'poa'];
+    if (fee.confidence !== undefined && !validConf.includes(fee.confidence)) {
+      fail(`${label}: fee.confidence "${fee.confidence}" not one of ${validConf.join(', ')}`);
+    }
+    if (fee.lastVerified !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(fee.lastVerified)) {
+      fail(`${label}: fee.lastVerified "${fee.lastVerified}" is not an ISO date (YYYY-MM-DD)`);
+    }
+    ['weekday', 'weekend', 'weekendTwilight'].forEach(k => {
+      const band = fee[k];
+      if (band === undefined) return;
+      if (typeof band !== 'object' || band === null) { fail(`${label}: fee.${k} is not an object`); return; }
+      ['min', 'max'].forEach(mk => {
+        const v = band[mk];
+        if (v !== null && v !== undefined && typeof v !== 'number') {
+          fail(`${label}: fee.${k}.${mk} is not numeric or null`);
+        }
+      });
+    });
+  }
 });
 
 // ---- duplicate detection (name+coords) ----
