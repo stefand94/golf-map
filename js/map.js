@@ -249,11 +249,29 @@ function jitteredLatLng(c){
 C.forEach((c,i)=>{
   const[lat,lng]=jitteredLatLng(c);
   const m=L.marker([lat,lng],{icon:pinFor(i),title:c.n});
-  m.on('click',()=>{m.setPopupContent(popupHTML(i));highlight(i);drawLink(i)});
-  m.bindPopup(popupHTML(i),{maxWidth:340});
-  m.bindTooltip(courseTooltipHTML(i),{direction:'top',offset:[0,-28],className:'course-tt'});
+  /* Leaflet's function form: the content is built the first time the
+     popup/tooltip is actually opened, not here. Building all 557 popups
+     (each one a large HTML string including calcHTML()) plus all 557
+     tooltips at load time was the single most expensive thing the page
+     did on cold start — and redundant, since the click handler below has
+     always re-generated the popup on open anyway (that's what keeps a
+     popup showing freshly EDITS-corrected values after a correction is
+     saved, and the current played/want/in-trip badges). With the function
+     form, every open — first or subsequent — reads current state, so the
+     click handler no longer has to set the content itself. */
+  m.on('click',()=>{highlight(i);drawLink(i)});
+  m.bindPopup(()=>popupHTML(i),{maxWidth:340});
+  m.bindTooltip(()=>courseTooltipHTML(i),{direction:'top',offset:[0,-28],className:'course-tt'});
   markers.set(i,m);
 });
+/* Redraws whichever course popup is currently open, if any, from current
+   state — see the call site in render() (js/explore.js). No-op when
+   nothing is open. */
+function refreshOpenCoursePopup(){
+  markers.forEach(m=>{
+    if(m.isPopupOpen&&m.isPopupOpen())m.getPopup().update();
+  });
+}
 function drawLink(i){linkLayer.clearLayers();
   const stnObj=STN[V(i,'stn')],near=C[i].nearStation,s=stnObj||near;if(!s)return;
   L.polyline([[s.lat,s.lng],[C[i].lat,C[i].lng]],{color:'#1B2733',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(linkLayer);
@@ -291,4 +309,4 @@ mobToggle.addEventListener('click',()=>{
 });
 
 function goToCourse(i){map.closePopup();showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
-  markers.get(i).setPopupContent(popupHTML(i));markers.get(i).openPopup();highlight(i);drawLink(i)}
+  markers.get(i).openPopup();highlight(i);drawLink(i)}

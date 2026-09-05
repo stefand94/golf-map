@@ -414,7 +414,7 @@ function renderNearestList(anchorIdx){
   }));
   list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
     const i=+el.dataset.i;showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
-    markers.get(i).setPopupContent(popupHTML(i));markers.get(i).openPopup();highlight(i);drawLink(i)}));
+    markers.get(i).openPopup();highlight(i);drawLink(i)}));
 }
 function render(){
   /* GOLF-31: single hook point — every existing render() call site
@@ -451,7 +451,19 @@ function render(){
     fee:(a,b)=>feeNum(a)-feeNum(b),rank:(a,b)=>rankNum(a)-rankNum(b),
     dist:(a,b)=>distOut(a)-distOut(b),name:(a,b)=>V(a,'n').localeCompare(V(b,'n'))};
   shown.sort(S_[state.sort]);
-  shown.forEach(i=>{markers.get(i).setIcon(pinFor(i));markers.get(i).setPopupContent(popupHTML(i));layer.addLayer(markers.get(i))});
+  // The popup/tooltip content is bound lazily (function form, js/map.js),
+  // so it is regenerated from current state on every open — there is
+  // nothing to pre-set here. The icon still has to be refreshed: pinFor()
+  // depends on the filter/ranking state this render just recomputed.
+  shown.forEach(i=>{markers.get(i).setIcon(pinFor(i));layer.addLayer(markers.get(i))});
+  /* One exception to the above: an *already open* popup does need a nudge.
+     togglePlayed()/toggleWant()/toggleTrip() and saveEdit() are all
+     reachable from inside an open popup and all call render(), and the
+     popup's own buttons/badges have to change under the click. update()
+     re-runs the bound content function, so the open popup redraws from
+     current state — exactly what the old blanket setPopupContent() loop
+     achieved for all 557 markers, now done for the one that needs it. */
+  refreshOpenCoursePopup();
   document.getElementById('count').textContent=`${shown.length} of ${C.length}`;
   document.getElementById('editcount').textContent=editCount();
   /* GOLF-69 (item 3): "once I have selected and added the first course to a
@@ -481,7 +493,7 @@ function render(){
       ${bestRankBadge(i)}${C[i].sweep?'<span class="wt">sweep</span>':''}${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
   list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
     const i=+el.dataset.i;showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
-    markers.get(i).setPopupContent(popupHTML(i));markers.get(i).openPopup();highlight(i);drawLink(i)}));
+    markers.get(i).openPopup();highlight(i);drawLink(i)}));
 }
 
 const legend=L.control({position:'topright'});
