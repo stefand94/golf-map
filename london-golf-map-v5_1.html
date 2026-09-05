@@ -464,8 +464,8 @@
   .cost-summary-table,.cost-line-table{width:100%;border-collapse:collapse}
   .cost-summary-table td,.cost-line-table td{padding:var(--sp-3) 0;border-bottom:1px solid var(--line);font-size:var(--fs-small)}
   .cost-summary-table tr:last-child td,.cost-line-table tr:last-child td{border-bottom:none}
-  .cost-summary-table td:first-child,.cost-line-table td:first-child{color:var(--ink)}
-  .cost-summary-table td:last-child,.cost-line-table td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .cost-summary-table td:first-child,.cost-line-table td:first-child{color:var(--ink);overflow-wrap:anywhere;padding-right:var(--sp-2)}
+  .cost-summary-table td:last-child,.cost-line-table td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;width:1%}
   .cost-fuel-toggle{display:flex;align-items:center;gap:var(--sp-2);min-height:var(--tap);cursor:pointer}
   .cost-fuel-toggle input{width:20px;height:20px;accent-color:var(--accent);cursor:pointer}
   .cost-line-items-label{font:700 var(--fs-caption) var(--font-sans);letter-spacing:.08em;text-transform:uppercase;
@@ -480,10 +480,20 @@
   .cost-group-summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;
     gap:var(--sp-2);padding:var(--sp-3) 0;min-height:var(--tap)}
   .cost-group-summary::-webkit-details-marker{display:none}
-  .cost-group-summary::before{content:'▸';font-size:9px;color:var(--stone);transition:transform .12s;margin-right:var(--sp-2)}
-  .cost-group[open] .cost-group-summary::before{transform:rotate(90deg)}
   .cost-group-summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  .cost-group-label{font-size:var(--fs-small);color:var(--ink);display:flex;align-items:center}
+  /* Two flex children only (label-group, amount) so space-between puts
+     them at the true left/right edges — the expand/collapse indicator
+     used to live on ::before on this same flex container, which counts
+     as a THIRD flex item and pushed the label into visually-centered
+     middle ground instead of flush left. Moved inside .cost-group-label
+     and restyled as a clearer "+"/"–" per the stakeholder's request
+     (was a barely-visible 9px "▸"). */
+  .cost-group-label{font-size:var(--fs-small);color:var(--ink);display:flex;align-items:center;gap:var(--sp-2);text-align:left}
+  .cost-group-toggle{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:var(--paper-2);
+    color:var(--ink);font:700 14px/20px var(--font-sans);text-align:center}
+  .cost-group[open] .cost-group-toggle{background:var(--accent-soft);color:var(--accent)}
+  .cost-group-toggle::before{content:'+'}
+  .cost-group[open] .cost-group-toggle::before{content:'–'}
   .cost-group-amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--ink)}
   .cost-group-lines{margin:0 0 var(--sp-3) var(--sp-5)}
   .cost-fuel-row{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);padding:var(--sp-3) 0}

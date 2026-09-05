@@ -186,6 +186,44 @@ function tripDayUpdateStop(dayId,itemId,fields){
   saveState();
   return it;
 }
+/* GOLF-96 follow-up: extending/shrinking an already-added stay's night
+   count from the Edit form. Editing used to hide the Nights field
+   entirely once a stay existed — the only way to change how many nights
+   a booking spanned was to delete it and re-add it from scratch, which
+   read to a visitor as "the feature is missing." This re-spans the stay
+   exactly the way tripDayAddStop() first creates one: drop every item
+   sharing the old stayId (or the lone item, for a plain 1-night stay),
+   then rebuild n-1 nights forward from this item's day, auto-creating
+   new trip days if the trip doesn't have enough yet. A no-op when the
+   night count is unchanged. */
+function tripDayResizeStay(dayId,itemId,newNights){
+  const d=tripDays.find(d=>d.id===dayId);if(!d)return null;
+  const it=tripDayItems(d).find(x=>x.id===itemId);
+  if(!it||it.type!=='hotel')return null;
+  const n=Math.max(1,Math.min(30,Math.round(newNights)||1));
+  const curNights=it.nights||1;
+  if(n===curNights)return it;
+  const startIdx=tripDays.indexOf(d);
+  const curStayId=it.stayId;
+  if(curStayId){
+    tripDays.forEach(dd=>{if(Array.isArray(dd.items))dd.items=dd.items.filter(x=>x.stayId!==curStayId)});
+  }else{
+    d.items=d.items.filter(x=>x.id!==itemId);
+  }
+  const stayId=n>1?tripItemNewId():null;
+  const fresh={id:tripItemNewId(),type:'hotel',name:it.name,price:it.price,lat:it.lat,lng:it.lng,nights:n,stayId};
+  d.items.push(fresh);
+  if(n>1){
+    for(let k=1;k<n;k++){
+      if(startIdx+k>=tripDays.length)tripDayAdd();
+      const nd=tripDays[startIdx+k];
+      if(!Array.isArray(nd.items))nd.items=[];
+      nd.items.push({id:tripItemNewId(),type:'hotel',name:it.name,price:it.price,lat:it.lat,lng:it.lng,nights:n,stayId});
+    }
+  }
+  saveState();
+  return fresh;
+}
 function tripDayRemoveItem(dayId,itemId){
   const d=tripDays.find(d=>d.id===dayId);if(!d||!Array.isArray(d.items))return;
   const it=d.items.find(x=>x.id===itemId);
@@ -249,11 +287,13 @@ function tbAddStopCommit(){
      untouched keeps the item's existing coordinates. */
   const keepGeo=s.lat!=null&&s.lng!=null&&s.name&&name.trim()===s.name;
   const lat=keepGeo?s.lat:null,lng=keepGeo?s.lng:null;
-  if(s.itemId)tripDayUpdateStop(s.dayId,s.itemId,{name,price,lat,lng});
-  else{
-    const nightsEl=document.getElementById('tb-addstop-nights');
-    const rawNights=nightsEl?parseInt(nightsEl.value,10):parseInt(s.nights,10);
-    const nights=Number.isFinite(rawNights)&&rawNights>1?rawNights:1;
+  const nightsEl=document.getElementById('tb-addstop-nights');
+  const rawNights=nightsEl?parseInt(nightsEl.value,10):parseInt(s.nights,10);
+  const nights=Number.isFinite(rawNights)&&rawNights>1?rawNights:1;
+  if(s.itemId){
+    tripDayUpdateStop(s.dayId,s.itemId,{name,price,lat,lng});
+    if(s.type==='hotel')tripDayResizeStay(s.dayId,s.itemId,nights);
+  }else{
     tripDayAddStop(s.dayId,s.type,name,price,lat,lng,nights);
   }
   tbAddStop=null;
@@ -286,8 +326,8 @@ function tbAddStopFormHTML(dayId,itemId){
     <div class="tb-addstop-row">
       <input class="tb-field" type="number" id="tb-addstop-price" min="0" step="5"
         placeholder="${isHotel?`${cur} per person / night — optional`:`${cur} — optional`}" value="${esc(tbAddStop.price)}">
-      ${isHotel&&!editing?`<input class="tb-field" type="number" id="tb-addstop-nights" min="1" step="1"
-        title="Book this hotel for more than one night — it will automatically be added to the following day(s) too, creating new days if needed."
+      ${isHotel?`<input class="tb-field" type="number" id="tb-addstop-nights" min="1" step="1"
+        title="${editing?'Change how many nights this stay spans — extends or shrinks the following day(s) to match, creating new days if needed.':'Book this hotel for more than one night — it will automatically be added to the following day(s) too, creating new days if needed.'}"
         placeholder="Nights" value="${esc(tbAddStop.nights||'1')}" style="max-width:88px">`:''}
     </div>
     ${isHotel&&gs>1&&Number.isFinite(priceNum)?`<p class="hint" style="margin:var(--sp-2) 0 0">${cur}${priceNum.toFixed(0)} × ${gs} people = <b>${cur}${(priceNum*gs).toFixed(0)}</b> per night.</p>`:''}

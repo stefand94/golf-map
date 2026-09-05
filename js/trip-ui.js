@@ -342,7 +342,7 @@ function costGroupHTML(icon,label,total,items,cur){
     ?items.map(x=>`<tr><td>${esc(x.label)}${x.tag?` <span class="wt">${esc(x.tag)}</span>`:''}</td><td>${tbMoney(x.amount,x.cur||cur)}</td></tr>`).join('')
     :`<tr><td colspan="2" class="hint">Nothing here yet.</td></tr>`;
   return`<details class="cost-group"><summary class="cost-group-summary">
-      <span class="cost-group-label">${icon} ${label}</span>
+      <span class="cost-group-label"><span class="cost-group-toggle" aria-hidden="true"></span>${icon} ${label}</span>
       <span class="cost-group-amt">${cur}${total.toFixed(0)}</span>
     </summary>
     <table class="cost-line-table cost-group-lines">${rows}</table>
