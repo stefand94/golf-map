@@ -132,17 +132,47 @@ function loadStoredState(){
   if(saved.mapCenter&&saved.mapZoom)restoredView={center:saved.mapCenter,zoom:saved.mapZoom};
 }
 function saveState(){
+  let payload;
   try{
     tripSnapshotActive();
     const c=map?map.getCenter():null;
-    localStorage.setItem(LS_KEY,JSON.stringify({
+    payload=JSON.stringify({
       edits:EDITS,
       played:[...PLAYED],want:[...WANT],trips,activeTripId,
       filters:{access:[...state.access],price:[...state.price],region:[...state.region],flag:[...state.flag],arch:[...state.arch],feeMin:state.feeMin,feeMax:state.feeMax},
       q:state.q,sort:state.sort,nation:state.nation,
       mapCenter:c?[c.lat,c.lng]:undefined,mapZoom:map?map.getZoom():undefined
-    }));
-  }catch(e){/* storage unavailable or full — persistence is best-effort */}
+    });
+    localStorage.setItem(LS_KEY,payload);
+  }catch(e){
+    /* Persistence is best-effort, but it used to be silently best-effort:
+       an empty catch here meant that once the origin's quota was full,
+       every trip edit from then on was quietly discarded — the trip looked
+       saved and came back empty on the next reload, with nothing in the
+       console to explain it.
+       The likeliest thing filling that quota is our own ORS/POI caches
+       (js/ors.js), which are pure derived data and safe to throw away —
+       so on a quota error, drop them and retry the write once. Anything
+       else (or a still-failing retry) is warned about rather than
+       swallowed. The three keys are named as literals deliberately: this
+       module loads before js/ors.js, and this must work even if that
+       module failed to load at all. */
+    const quota=payload!==undefined&&e&&(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED'||e.code===22||e.code===1014);
+    if(quota){
+      try{
+        ['golfmap:legcache:v2','golfmap:heritagecache:v4','golfmap:hotelscache:v1'].forEach(k=>localStorage.removeItem(k));
+        if(typeof orsCacheMemo!=='undefined')orsCacheMemo=null;
+        if(typeof heritageCacheMemo!=='undefined')heritageCacheMemo=null;
+        if(typeof hotelsCacheMemo!=='undefined')hotelsCacheMemo=null;
+        localStorage.setItem(LS_KEY,JSON.stringify(payload));
+        return;
+      }catch(e2){
+        console.warn('golfmap: could not save to localStorage even after clearing the route/POI caches — this session\'s changes will not persist.',e2);
+        return;
+      }
+    }
+    console.warn('golfmap: could not save to localStorage — this session\'s changes will not persist.',e);
+  }
 }
 function clearStoredState(){try{localStorage.removeItem(LS_KEY)}catch(e){}}
 

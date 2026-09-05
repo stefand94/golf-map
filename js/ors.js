@@ -61,7 +61,33 @@ function orsCacheLoad(){
   try{orsCacheMemo=JSON.parse(localStorage.getItem(ORS_CACHE_KEY)||'{}');}catch(e){orsCacheMemo={};}
   return orsCacheMemo;
 }
-function orsCacheSave(c){orsCacheMemo=c;try{localStorage.setItem(ORS_CACHE_KEY,JSON.stringify(c));}catch(e){}}
+/* GOLF (architecture review): all three localStorage caches below grew
+   without any bound — every leg, every heritage-POI point and every
+   hotel-POI point ever fetched stayed forever, so a heavy user eventually
+   filled their origin's storage quota and every subsequent write (this
+   app's own saveState() included) started failing.
+
+   Each entry carries a `ts` stamped at write time; this keeps the newest
+   `cap` entries and drops the rest. Recency-of-write, not of read — a
+   read hit deliberately doesn't write anything back, since touching
+   localStorage on every cache lookup is exactly the cost these caches
+   exist to avoid. Entries with no ts (written before this shipped) sort
+   as oldest and are evicted first. Returns the same object when it's
+   already within cap, so the common case allocates nothing. */
+function orsCacheTrim(c,cap){
+  const keys=Object.keys(c);
+  if(keys.length<=cap)return c;
+  keys.sort((a,b)=>((c[b]&&c[b].ts)||0)-((c[a]&&c[a].ts)||0));
+  const out={};
+  keys.slice(0,cap).forEach(k=>{out[k]=c[k];});
+  return out;
+}
+const ORS_LEG_CACHE_CAP=150, ORS_POI_CACHE_CAP=100;
+function orsCacheSave(c){
+  const t=orsCacheTrim(c,ORS_LEG_CACHE_CAP);
+  orsCacheMemo=t;
+  try{localStorage.setItem(ORS_CACHE_KEY,JSON.stringify(t));}catch(e){}
+}
 /* GOLF-56: keyed off plain {lat,lng} points rather than course indices,
    so a leg touching a searched place (which has no course index) works
    identically to a leg between two courses. */
@@ -246,8 +272,22 @@ function tripDaySuggestedTown(day){
    distillery/brewery and shop=wine are now queried unconditionally
    alongside the notability query, not gated behind it. */
 const HERITAGE_CACHE_KEY='golfmap:heritagecache:v4';
-function heritageCacheLoad(){try{return JSON.parse(localStorage.getItem(HERITAGE_CACHE_KEY)||'{}');}catch(e){return{};}}
-function heritageCacheSave(c){try{localStorage.setItem(HERITAGE_CACHE_KEY,JSON.stringify(c));}catch(e){}}
+/* Memoised in memory exactly like orsCacheLoad() above, and for the same
+   reason: tbHeritageFor() is called once per day per render, so an open
+   pane re-parsed this out of localStorage on every keystroke-triggered
+   re-render. Our own save is the only writer, so it's the only thing that
+   has to invalidate it. */
+let heritageCacheMemo=null;
+function heritageCacheLoad(){
+  if(heritageCacheMemo)return heritageCacheMemo;
+  try{heritageCacheMemo=JSON.parse(localStorage.getItem(HERITAGE_CACHE_KEY)||'{}');}catch(e){heritageCacheMemo={};}
+  return heritageCacheMemo;
+}
+function heritageCacheSave(c){
+  const t=orsCacheTrim(c,ORS_POI_CACHE_CAP);
+  heritageCacheMemo=t;
+  try{localStorage.setItem(HERITAGE_CACHE_KEY,JSON.stringify(t));}catch(e){}
+}
 function poiKey(lat,lng){return lat.toFixed(4)+','+lng.toFixed(4);}
 let heritagePending=new Set();
 /* dayIds currently toggled "on" — pure UI state, not persisted, same as
@@ -320,8 +360,18 @@ function tbHeritageListHTML(day){
    tbAddStopFormHTML add-stay form, not a replacement for it — manual
    entry still works unchanged. */
 const HOTELS_CACHE_KEY='golfmap:hotelscache:v1';
-function hotelsCacheLoad(){try{return JSON.parse(localStorage.getItem(HOTELS_CACHE_KEY)||'{}');}catch(e){return{};}}
-function hotelsCacheSave(c){try{localStorage.setItem(HOTELS_CACHE_KEY,JSON.stringify(c));}catch(e){}}
+/* Memoised like the two caches above — same reasoning, same invalidation. */
+let hotelsCacheMemo=null;
+function hotelsCacheLoad(){
+  if(hotelsCacheMemo)return hotelsCacheMemo;
+  try{hotelsCacheMemo=JSON.parse(localStorage.getItem(HOTELS_CACHE_KEY)||'{}');}catch(e){hotelsCacheMemo={};}
+  return hotelsCacheMemo;
+}
+function hotelsCacheSave(c){
+  const t=orsCacheTrim(c,ORS_POI_CACHE_CAP);
+  hotelsCacheMemo=t;
+  try{localStorage.setItem(HOTELS_CACHE_KEY,JSON.stringify(t));}catch(e){}
+}
 let hotelsPending=new Set();
 /* dayId currently showing the hotel picker, or null — one panel open at
    a time, same convention as tbAddStop. */
