@@ -4,6 +4,21 @@ _Stable IDs `DEC-nnn`. Record: decision · context · alternatives · reason ·
 date · affected features. Newest first. Full rationale for older calls lives
 in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 
+## DEC-008 — Nearest-railway-station feature hidden (dormant, not removed)
+
+- **Decision:** the rail-line / station / nearest-station-link feature is
+  flag-gated off (GOLF-110). Code, data (`data/stations.js`,
+  `data/rail-geometry.js`, `nearStation` fields) and functions stay in the
+  repo, disabled behind one flag.
+- **Context:** it is a leftover from the original London-Tube-only concept.
+  For a GB/Ireland/South Africa road-trip planner it is clutter and implies
+  a public-transport planning capability that does not exist.
+- **Alternatives:** delete it (loses the work if PT planning is ever
+  wanted); leave it on (misleading, adds map clutter).
+- **Reason:** cheap, reversible, de-clutters the map before go-live. Revisit
+  if/when public-transport routing becomes a real feature.
+- **Date:** 2026-09-07 · **Affects:** GOLF-110, `js/map.js`, shared view.
+
 ## DEC-007 — Affiliate-first monetization steers the hotel-provider choice (direction, not firm)
 
 - **Decision:** early monetization is assumed to be **booking affiliate
