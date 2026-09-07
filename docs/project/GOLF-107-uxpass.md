@@ -36,9 +36,9 @@ never shown once the user has a trip.
 4. Course pins must not visually bury the trip route — keep the route and
    trip-course markers styled on top / more prominent.
 
-**Open question (owner):** in the Itinerary tab, should the extra nearby
-pins be **always on**, **on above a zoom threshold**, or behind a small
-**"show nearby courses" toggle**? Recommendation: toggle, default on.
+**Resolved (owner 2026-09-07):** build it as a **"show nearby courses"
+toggle**, but **default it to ON** for now (owner may flip the default
+later without code change).
 
 **Acceptance criteria:**
 - [ ] Fresh load, trip has ≥1 course, pick "Great Britain" → GB course
@@ -107,18 +107,25 @@ all the functions in place — flag-gated, not removed.
 
 ---
 
-## GOLF-111 — Course marker redesign · Blocker: NO (nice-to-have) · S once asset decided
+## GOLF-111 — Course marker redesign · Blocker: NO (nice-to-have) · S
 
-**Ask (owner item 4):** replace the current pins; owner asked what format
-to supply. See "Marker asset — what to hand over" at the bottom of this
-doc. **Blocked on owner providing the asset/spec.**
+**Ask (owner item 4):** replace the current pins.
 
-**Requirement:** new marker must work as a *map pin at small size* — flat,
-crisp at 22–32px, transparent background, ideally one or two flat colours,
-and able to carry the states the map already encodes: ranked vs unranked
-(currently size 30 vs 22 via `pinFor()`/`golfPinSVG()`), plus the
-in-trip / played / want states shown in tooltips/popups. Inline SVG,
-consistent with the current `golfPinSVG()` approach.
+**Design intent (owner 2026-09-07):** a **golf ball on a tee**.
+
+**Requirement:** implement it as a **flat inline SVG** (NOT a raster
+image — see "Marker asset" note at the bottom), replacing `golfPinSVG()`
+in `js/map.js`. Design at ~24px so it stays crisp and legible as a small
+map pin over the new basemap (GOLF-105). Must still carry the states the
+map encodes today: ranked vs unranked (currently size 30 vs 22 via
+`pinFor()`), plus in-trip / played / want (via colour or a small accent,
+as now). A subtle drop/anchor shadow so it reads as a pin is fine; no
+baked-in gradients. Restyle the cluster badge (`.mcluster`) to match if
+needed.
+
+**Note:** a starter SVG can be produced in a design pass if the owner
+wants a concrete shape to react to; otherwise the coding agent draws it
+from this description.
 
 **Acceptance criteria:**
 - [ ] New pin renders sharp on retina at both sizes; no raster blur.
@@ -241,7 +248,7 @@ the Costs-tab breakdown by `stayId` (fall back to name+coords), sum
 
 ---
 
-## GOLF-100 (update) — Costs tab: total + per-person columns · Blocker: owner's call · M
+## GOLF-100 (update) — Costs tab: total + per-person columns · Blocker: YES (in go-live scope, owner 2026-09-07) · M
 
 Owner wants the Costs tab to show **two columns: total and per-person**
 (group size ÷). This is squarely GOLF-100's remit — fold it in rather than
