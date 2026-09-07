@@ -78,7 +78,7 @@ filters), including the 2nd/3rd course of a shared venue.
 
 ---
 
-## GOLF-110 — Hide the nearest-railway-station feature · Blocker: recommend YES (declutter) · S
+## GOLF-110 — Hide the nearest-railway-station feature · Blocker: recommend YES (declutter) · S · STATUS: CLOSED ✅
 
 **Ask (owner item 3):** rail/station stuff is a legacy of the original
 London-only concept; hide it until/unless public-transport planning is a
@@ -105,7 +105,7 @@ all the functions in place — flag-gated, not removed.
 - [x] Flipping the flag back to `true` restores today's behaviour.
 - [x] `check_js.js` passes.
 
-**DONE (2026-09-08, branch `golf-114-110-uxpass` → `main`):** added a single
+**DONE / CLOSED (2026-09-08, branch `golf-114-110-uxpass` → `main`):** added a single
 `const RAIL_FEATURE=false;` at the top of `js/map.js`. With it off: the
 rail-polyline build loop and the station-dot build loop are skipped
 entirely (`railPolys`/`stnDots` stay empty), `restyleRail()` early-returns
@@ -173,7 +173,7 @@ Recommendation: temporary marker + view.
 
 ---
 
-## GOLF-113 — "Discover by Region" region list must match the selected nation · Blocker: YES · S
+## GOLF-113 — "Discover by Region" region list must match the selected nation · Blocker: YES · S · STATUS: CLOSED ✅
 
 **Symptom (owner item 8):** the By-region `<select>` lists every region
 globally — "Gauteng" shows while browsing the UK.
@@ -191,14 +191,24 @@ with `REGIONS.filter(r => C.some((c,i) => C[i].r === r && courseNation(i)
 === state.nation))`, or build a region→nation map once.
 
 **Acceptance criteria:**
-- [ ] GB selected → only GB/Scotland/Wales regions in the dropdown.
-- [ ] South Africa selected → only SA regions.
-- [ ] Switching nation updates the dropdown; a now-invalid selected region
+- [x] GB selected → only GB/Scotland/Wales regions in the dropdown.
+- [x] South Africa selected → only SA regions.
+- [x] Switching nation updates the dropdown; a now-invalid selected region
       resets cleanly (no stale filter).
+
+**DONE / CLOSED (2026-09-07, branch `golf-113-115-uxpass` → `main`):** new
+`tbRegionsForNation()` + `tbRegionOptionsHTML()` in `js/trip-ui.js` build the
+`#tb-region` options from `REGIONS.filter(r => C.some((c,i) => C[i].r === r &&
+courseNation(i) === state.nation))`. With no nation selected the list is
+grouped by nation via `<optgroup>`. The nation-pill click handler clears
+`tbRegion` when it is no longer valid for the newly selected nation, so no
+stale region filter lingers. Verified in-browser: GB → 25 options, no
+Gauteng; South Africa → 6 SA regions; ZA→GB with "Gauteng" selected resets
+`tbRegion` to `''` while a still-valid region survives.
 
 ---
 
-## GOLF-114 — Header + nation pills layout · Blocker: YES (looks unfinished) · S–M
+## GOLF-114 — Header + nation pills layout · Blocker: YES (looks unfinished) · S–M · STATUS: CLOSED ✅
 
 **Symptom (owner item 7):** too little space between the header and the
 pills; pills are small and don't fill the sidebar or distribute evenly.
@@ -222,7 +232,7 @@ pills; pills are small and don't fill the sidebar or distribute evenly.
 - [x] Clear gap between header and pills at all pane widths; nothing
       clipped on a 360px-wide screen.
 
-**DONE (2026-09-08, branch `golf-114-110-uxpass` → `main`):** `.nation-pills`
+**DONE / CLOSED (2026-09-08, branch `golf-114-110-uxpass` → `main`):** `.nation-pills`
 is now `display:grid; grid-template-columns:repeat(var(--nation-count,3),1fr)`
 with `gap:var(--sp-2)` and `padding:var(--sp-6) var(--sp-5) var(--sp-2)` —
 `--sp-6` (24px) top is the header→pills breathing room, `--sp-5` sides match
@@ -239,7 +249,7 @@ nothing clipped at a 360px viewport. `check_js.js` + `test_data.js` pass.
 
 ---
 
-## GOLF-115 — Long trip name gets clipped · Blocker: YES · S
+## GOLF-115 — Long trip name gets clipped · Blocker: YES · S · STATUS: CLOSED ✅
 
 **Symptom (owner item 6, screenshot):** a long trip name is truncated
 mid-word with no affordance.
@@ -250,9 +260,19 @@ field grows. Pick per the design system; must not push the toolbar layout
 around. The edit affordance stays reachable.
 
 **Acceptance criteria:**
-- [ ] A 60-character trip name is fully readable (inline or on hover) and
+- [x] A 60-character trip name is fully readable (inline or on hover) and
       doesn't break the toolbar row.
-- [ ] Rename still works; share view shows the full name too.
+- [x] Rename still works; share view shows the full name too.
+
+**DONE / CLOSED (2026-09-07, branch `golf-113-115-uxpass` → `main`):** the
+trip-menu `<summary>` in `tbTripMenuHTML()` (`js/trip-model.js`) wraps the
+name in a `.tb-drop-label` span that ellipsises inside the fixed toolbar
+cell (`.tb-toolbar > * { flex:1 1 0; min-width:0 }` keeps the row from
+growing) and carries the full name as a `title` tooltip. The shared-trip
+payload now carries `nm` (`js/trip-share.js`, length-capped like every other
+field) and `renderSharedTrip()` shows it in the wordmark in place of
+"Shared trip". Verified in-browser: a 61-char name is fully present + on
+hover, toolbar width unchanged, shared view shows the full name.
 
 ---
 
