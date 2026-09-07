@@ -1,0 +1,109 @@
+# Golf Map — project guide for Claude
+
+Solo static-web golf trip-planner. Read this instead of re-deriving history
+from `.claude/plans/lets-just-go-with-wise-graham.md` (huge, append-only —
+useful for archaeology, not for onboarding).
+
+## What this app is
+
+- Fully static site, zero build step, zero framework. Plain `<script src>`
+  tags (non-module — inline `onclick=`/`onchange=` handlers depend on
+  global scope), loaded in a fixed order from `london-golf-map-v5_1.html`.
+- Zero runtime API calls for course data — everything in `data/*.js` is
+  pre-fetched once by a `scripts/*.py` script and hand-merged in. The only
+  live network call is to one small Cloudflare Worker
+  (`scripts/cloudflare-worker/ors-proxy.js`, deployed at
+  `geofftheworker.stefand94.workers.dev`) that proxies OpenRouteService
+  (driving directions/geocoding) and OpenStreetMap Overpass (heritage POIs,
+  hotels) so no API key ever reaches the browser.
+- All per-visitor state (trips, corrections, filters) lives in that
+  browser's own `localStorage`. No accounts, no database, no server beyond
+  the one stateless Worker.
+- Hosted on **GitHub Pages** (canonical/live) and **Cloudflare Pages**
+  (per-branch preview URLs) — see `docs/deploying.md`.
+
+## App structure (3 modes, one pane)
+
+Explore mode was retired. The app is `appMode`: `'plan'` (default —
+search/discover/wishlist) or `'build'` (`#trip` — days/items/costs), plus a
+read-only `'shared'` view (`#share=...`). `js/app-mode.js` is the single
+entry/exit point (`setAppMode()`), hash-routed, `popstate`-synced.
+
+`js/trip-ui.js`'s `renderTripBuilder()` renders the whole pane: navbar →
+unified search → toolbar (trip menu, group size, filters, clear/share) →
+nation pills (GB/Ireland/South Africa) → 3 tabs (Discover / Itinerary /
+Costs).
+
+## Data model (trip)
+
+- `TRIP` (Set of course indices) + `tripSeq` (order) = the cart/wishlist.
+- `tripDays[]`: `{id, kind:'golf'|'start'|'free'|'end', place, placeLat,
+  placeLng, date, driveIn, items:[]}`. Each day's `items[]` is the single
+  ordered source of truth (`{id,type:'golf'|'hotel'|'poi',...}`) — golf
+  carries a course index, hotel/poi carry `{name,price,priceType,guests,
+  lat,lng,nights,stayId}`. Drive legs are always *computed* between
+  consecutive located stops, never a manually-added item type.
+- Multi-trip: `trips{tripId:{...snapshot}}` + `activeTripId`, snapshotted
+  on every `saveState()`.
+- Course green fees: legacy free-text `wd`/`we` strings, being migrated
+  course-by-course to a structured `fee:{weekday,weekend,weekendTwilight?,
+  confidence,lastVerified}` object (GOLF-97/98, in progress — see
+  `data/courses-top100.js` for the furthest-along file).
+
+## Data files
+
+`data/courses-{london,top100,scotland,wales,ireland,southafrica}.js` +
+`data/{config,stations,rail-geometry}.js`. Schema documented in
+`SCHEMA.md`. 557 courses total (114 in the England Top 100).
+
+## Conventions (from accumulated user feedback — see memory files)
+
+- **Push aggressively to `main`** — no PR review, no feature-branch hosting
+  needed for most changes. Larger/riskier UI rewrites sometimes land on a
+  branch first for stakeholder review (check `git branch`/`git log` for
+  anything unmerged before assuming `main` is current).
+- **Ask before implementing anything ambiguous** — don't silently guess on
+  product decisions.
+- **When told to work autonomously**, implement the full batch and report
+  back concisely rather than pausing to check in.
+- **Always clear trip/test `localStorage` state** (`tripStartFresh()` or
+  equivalent) before ending a session that touched the live app.
+- **Data-entry/research jobs** (course lists, green fees) follow a
+  fetch-once → JSON intermediate → manual/scripted merge pattern — never
+  write scrapers against a site whose ToS forbids it (see GOLF-97/98's BRS
+  Golf finding). Background Haiku agents are used for large batch research
+  jobs; each returns JSON, never edits data files directly (avoids
+  concurrent-write conflicts) — merge by hand or with a small script after.
+
+## Verification checklist after any change
+
+```bash
+node scripts/test_data.js   # data-file integrity + course counts
+node scripts/check_js.js    # all js/*.js modules parse + correct load order
+```
+Plus, for UI changes: in-browser check for console errors and "undefined"
+in rendered popups; `TESTING.md` has a numbered manual-check list (40+
+entries) for anything not covered by the two scripts above.
+
+## Where to look for more detail
+
+- `SCHEMA.md` — full data-field reference.
+- `TESTING.md` — manual regression checklist.
+- `scripts/README.md` — what each fetch/merge script does.
+- `docs/deploying.md` — Cloudflare Pages preview-URL workflow.
+- `docs/pwa.md` — PWA manifest/service-worker notes.
+- `.claude/plans/lets-just-go-with-wise-graham.md` — full phase-by-phase
+  history if you need to know *why* something is the way it is. Long; grep
+  for a ticket number (e.g. `GOLF-97`) rather than reading linearly.
+
+## Known outstanding issues (check before assuming these are fixed)
+
+- OpenRouteService **Geocoding** endpoint intermittently 403s (account-side
+  issue, not code) — place search degrades to a "temporarily unavailable"
+  message rather than looking broken. Confirm live before troubleshooting
+  place-search bugs.
+- Cloudflare Worker's `hotels` mode (GOLF-96) needs a manual redeploy via
+  the Cloudflare dashboard before it's live — check with a direct `curl`
+  against the Worker if hotel search seems to be doing nothing.
+- GOLF-98 (real green-fee data entry) is an ongoing, incremental job —
+  check `.claude/plans/...md`'s latest phase for exactly how far it's got.
