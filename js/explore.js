@@ -278,8 +278,9 @@ function toggle(id,lyr){const b=document.getElementById(id);
 /* t-rail/t-lbl/t-stn don't add/remove their layer directly — restyleRail()
    also gates them on zoom (RAIL_MIN_ZOOM/STN_MIN_ZOOM), so flip the button
    state and let it decide what's actually shown. */
-['t-rail','t-lbl','t-stn'].forEach(id=>{
+if(RAIL_FEATURE)['t-rail','t-lbl','t-stn'].forEach(id=>{ // GOLF-110: wiring dormant with the rail feature hidden
   const b=document.getElementById(id);
+  if(!b)return;
   b.addEventListener('click',()=>{
     b.setAttribute('aria-pressed',String(b.getAttribute('aria-pressed')!=='true'));
     restyleRail();
