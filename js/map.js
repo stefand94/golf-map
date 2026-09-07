@@ -30,6 +30,16 @@ L.control.zoom({position:'bottomright'}).addTo(map);
    no key at all and has no such gate. */
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',maxZoom:19}).addTo(map);
 
+/* GOLF-110 (DEC-008): the rail/station map layer is a legacy of the
+   original London-only concept. Hidden behind this single flag until
+   public-transport planning is a real feature — set to true to restore
+   every bit of today's behaviour (rail polylines, station dots/labels,
+   the Rail/Stations/Labels toggles, the dashed course->station link line
+   on marker click, and the "By rail" row in the course popup). The data
+   (data/stations.js, data/rail-geometry.js, every nearStation field) and
+   all the functions below stay in place, just dormant. */
+const RAIL_FEATURE=false;
+
 const railLayer=L.layerGroup().addTo(map),lblLayer=L.layerGroup().addTo(map),
       stnLayer=L.layerGroup().addTo(map),stnLblLayer=L.layerGroup().addTo(map),
       linkLayer=L.layerGroup().addTo(map);
@@ -49,6 +59,7 @@ function stnRadius(ix){const z=map.getZoom();const b=z<10?1.4:z<12?2:z<14?2.8:3.
    family's real geometry is drawn once (not once per branch key) since
    RAIL_GEOM already holds every distinct segment for that family. */
 const geomDrawn=new Set();
+if(RAIL_FEATURE){
 Object.entries(R).forEach(([rk,stations])=>{
   const fam=ROUTE_LINE[rk],L_=LINES[fam];
   if(typeof RAIL_GEOM!=='undefined'&&RAIL_GEOM[fam]){
@@ -100,6 +111,7 @@ Object.values(STN).forEach(s=>{
   const lbl=L.marker([s.lat,s.lng],{interactive:false,icon:L.divIcon({className:'',html:`<div class="stnlabel">${s.n}${isNR?' <span style="color:#B5121B;font-weight:700">NR</span>':''}</div>`,iconSize:[0,0],iconAnchor:[-6,6]})});
   stnDots[stnDots.length-1].lbl=lbl;
 });
+} // if(RAIL_FEATURE)
 
 /* GOLF: at country-wide zoom (default view, zoom 9) the London rail
    network is 100+ overlapping polylines squeezed into a tiny area — pure
@@ -117,6 +129,7 @@ function railToggledOn(){return document.getElementById('t-rail').getAttribute('
 function lblToggledOn(){return document.getElementById('t-lbl').getAttribute('aria-pressed')==='true'}
 function stnToggledOn(){return document.getElementById('t-stn').getAttribute('aria-pressed')==='true'}
 function restyleRail(){
+  if(!RAIL_FEATURE)return; // GOLF-110: dormant behind the flag
   const w=railWeight();
   railPolys.forEach(p=>p.setStyle({weight:w}));
   stnDots.forEach(o=>{o.dot.setRadius(stnRadius(o.ix));if(o.ring)o.ring.setRadius(stnRadius(o.ix)+3);});
@@ -135,7 +148,7 @@ function restyleRail(){
   if(showStn&&!map.hasLayer(stnLayer))map.addLayer(stnLayer);
   if(!showStn&&map.hasLayer(stnLayer))map.removeLayer(stnLayer);
 }
-map.on('zoomend',restyleRail);restyleRail();
+if(RAIL_FEATURE){map.on('zoomend',restyleRail);restyleRail();}
 
 L.marker(HOME,{icon:L.divIcon({className:'',html:'<div class="home"></div>',iconSize:[21,21],iconAnchor:[10.5,10.5]})})
  .addTo(map).bindPopup('<div class="pop"><h3>Finchley Road</h3><p class="sub">Your starting point</p><p class="note" style="border:0;padding:0">Jubilee and Metropolitan. West Hampstead Thameslink is a 6-minute walk — that unlocks Mill Hill Broadway, Elstree, Radlett, St Albans City, Harpenden and West Dulwich directly.</p></div>');
@@ -204,7 +217,7 @@ function popupHTML(i){
     <p class="sub">${esc(c.r)} · ${esc(a.label)}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
     <div class="fees"><div class="fee-box"><b>Weekday</b><span>${esc(V(i,'wd'))}</span></div>
     <div class="fee-box"><b>Weekend</b><span>${esc(V(i,'we'))}</span></div></div>
-    <dl><dt>Course</dt><dd>${esc(V(i,'spec'))}</dd><dt>Design</dt><dd>${esc(V(i,'arch'))}</dd>${c.topSouthAfrica?'':`<dt>By rail</dt><dd>${travel}</dd>`}${club&&club.phone?`<dt>Phone</dt><dd>${esc(club.phone)}</dd>`:''}${(c.top100||c.topScot||c.topWales||c.topIreland||c.topSouthAfrica)?`<dt>From home</dt><dd>${distMiles(i)} mi, as the crow flies</dd>`:''}</dl>
+    <dl><dt>Course</dt><dd>${esc(V(i,'spec'))}</dd><dt>Design</dt><dd>${esc(V(i,'arch'))}</dd>${(!RAIL_FEATURE||c.topSouthAfrica)?'':`<dt>By rail</dt><dd>${travel}</dd>`}${club&&club.phone?`<dt>Phone</dt><dd>${esc(club.phone)}</dd>`:''}${(c.top100||c.topScot||c.topWales||c.topIreland||c.topSouthAfrica)?`<dt>From home</dt><dd>${distMiles(i)} mi, as the crow flies</dd>`:''}</dl>
     <p class="note">${esc(V(i,'note'))}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${esc(club.blurb)}</span>`:''}</p>
     ${calcHTML(i)}
     <div class="actions">
@@ -279,6 +292,7 @@ function refreshOpenCoursePopup(){
   });
 }
 function drawLink(i){linkLayer.clearLayers();
+  if(!RAIL_FEATURE)return; // GOLF-110: no course->station link line while the rail feature is hidden
   const stnObj=STN[V(i,'stn')],near=C[i].nearStation,s=stnObj||near;if(!s)return;
   L.polyline([[s.lat,s.lng],[C[i].lat,C[i].lng]],{color:'#1B2733',weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(linkLayer);
   /* GOLF: nationwide nearStation lookups are always National Rail (no

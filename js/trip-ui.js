@@ -588,7 +588,9 @@ function tbRegionOptionsHTML(){
   }).join('');
 }
 function tbNationPillsHTML(){
-  return`<div class="nation-pills" id="tb-nation-pills" role="group" aria-label="Choose a country">
+  /* GOLF-114: --nation-count drives the equal-width grid in CSS, so adding
+     a nation to NATIONS redistributes the row with no style change. */
+  return`<div class="nation-pills" id="tb-nation-pills" role="group" aria-label="Choose a country" style="--nation-count:${NATIONS.length}">
     ${NATIONS.map(([k,l])=>`<button class="nation-pill" aria-pressed="${state.nation===k}" data-nation="${k}">${l}</button>`).join('')}
   </div>`;
 }

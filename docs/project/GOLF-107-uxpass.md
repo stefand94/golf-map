@@ -99,11 +99,27 @@ all the functions in place — flag-gated, not removed.
 **Decision:** recorded as DEC-008.
 
 **Acceptance criteria:**
-- [ ] No rail/station toggles, lines, dots, labels or link lines anywhere
+- [x] No rail/station toggles, lines, dots, labels or link lines anywhere
       (main map + shared view) at any zoom.
-- [ ] No course popup/tooltip shows rail info; no "undefined" left behind.
-- [ ] Flipping the flag back to `true` restores today's behaviour.
-- [ ] `check_js.js` passes.
+- [x] No course popup/tooltip shows rail info; no "undefined" left behind.
+- [x] Flipping the flag back to `true` restores today's behaviour.
+- [x] `check_js.js` passes.
+
+**DONE (2026-09-08, branch `golf-114-110-uxpass` → `main`):** added a single
+`const RAIL_FEATURE=false;` at the top of `js/map.js`. With it off: the
+rail-polyline build loop and the station-dot build loop are skipped
+entirely (`railPolys`/`stnDots` stay empty), `restyleRail()` early-returns
+and its `zoomend` binding is not attached, `drawLink()` clears `linkLayer`
+and returns before drawing the dashed course→station line, the `<dt>By
+rail</dt>` row in `popupHTML()` is gated out, and the `t-rail`/`t-lbl`/
+`t-stn` toggle wiring in `js/explore.js` is gated (the buttons themselves
+already sit in the always-`display:none` retired `.filters` block).
+`courseTooltipHTML()` had no rail line to remove (it shows fee + rank only).
+`data/stations.js`, `data/rail-geometry.js`, every `nearStation` field and
+all the rail functions are untouched — setting the flag to `true` restores
+the previous behaviour in full. Verified in-browser: 0 rail/station layers
+render at z13 over London, no "By rail" in popups, `drawLink()` a no-op.
+`check_js.js` + `test_data.js` pass.
 
 ---
 
@@ -200,11 +216,26 @@ pills; pills are small and don't fill the sidebar or distribute evenly.
 4. Long nation labels: wrap or shrink gracefully, don't overflow.
 
 **Acceptance criteria:**
-- [ ] 3 pills fill the sidebar edge-to-edge, equal width.
-- [ ] Temporarily adding a fake 4th nation → 4 equal pills, no layout
+- [x] 3 pills fill the sidebar edge-to-edge, equal width.
+- [x] Temporarily adding a fake 4th nation → 4 equal pills, no layout
       change needed.
-- [ ] Clear gap between header and pills at all pane widths; nothing
+- [x] Clear gap between header and pills at all pane widths; nothing
       clipped on a 360px-wide screen.
+
+**DONE (2026-09-08, branch `golf-114-110-uxpass` → `main`):** `.nation-pills`
+is now `display:grid; grid-template-columns:repeat(var(--nation-count,3),1fr)`
+with `gap:var(--sp-2)` and `padding:var(--sp-6) var(--sp-5) var(--sp-2)` —
+`--sp-6` (24px) top is the header→pills breathing room, `--sp-5` sides match
+the navbar/toolbar gutter so the row spans the full sidebar. `--nation-count`
+is written inline (`style="--nation-count:${NATIONS.length}"`) by
+`tbNationPillsHTML()` in `js/trip-ui.js`, so adding a nation to `NATIONS`
+redistributes the row with zero CSS change. Each `.nation-pill` is a centred
+flexbox with `min-height:var(--tap)` (44px ≥ 40), reduced horizontal padding,
+`min-width:0` and `overflow-wrap:break-word` so long labels wrap instead of
+overflowing; grid keeps all pills equal height. Verified: 3 equal pills
+edge-to-edge, a temporary 4th nation → 4 equal pills (equal height with a
+wrapped long label), 24px visible gap under the "Golf Tripper" masthead, and
+nothing clipped at a 360px viewport. `check_js.js` + `test_data.js` pass.
 
 ---
 

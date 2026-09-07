@@ -622,9 +622,17 @@
      pill shape/weight as .chip but a distinct class — .chip's handler is
      the generic data-k/data-v Set-toggle wiring and would misfire on
      these (single-select, not a Set). */
-  .nation-pills{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-bottom:var(--sp-1)}
-  .nation-pill{min-height:var(--tap-sm);padding:0 var(--sp-4);border:1px solid var(--line);border-radius:var(--radius-pill);
-    background:#fff;color:var(--ink-soft);font:600 var(--fs-small) var(--font-sans);cursor:pointer;
+  /* GOLF-114: the row spans the full sidebar and the pills share its width
+     evenly — the column count comes from --nation-count (set inline from
+     NATIONS.length by tbNationPillsHTML), so a 4th/5th nation redistributes
+     with no CSS change. --sp-6 above it is the breathing room from the
+     "Golf Tripper" masthead; --sp-5 sides match the navbar/toolbar gutter. */
+  .nation-pills{display:grid;grid-template-columns:repeat(var(--nation-count,3),1fr);
+    gap:var(--sp-2);padding:var(--sp-6) var(--sp-5) var(--sp-2)}
+  .nation-pill{display:flex;align-items:center;justify-content:center;text-align:center;
+    min-height:var(--tap);min-width:0;padding:var(--sp-1) var(--sp-2);border:1px solid var(--line);border-radius:var(--radius-pill);
+    background:#fff;color:var(--ink-soft);font:600 var(--fs-small)/1.15 var(--font-sans);cursor:pointer;
+    overflow-wrap:break-word;hyphens:auto;
     transition:background .12s,border-color .12s,color .12s,box-shadow .12s}
   .nation-pill:hover{border-color:var(--accent);color:var(--ink)}
   .nation-pill[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:var(--shadow-sm)}
