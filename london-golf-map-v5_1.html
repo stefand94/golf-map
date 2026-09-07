@@ -221,6 +221,7 @@
     font:600 var(--fs-small)/1 var(--font-sans);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
     transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
   .tb-drop>summary::-webkit-details-marker{display:none}
+  .tb-drop-label{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
   .tb-drop>summary::after{content:'';flex:0 0 auto;width:6px;height:6px;border-right:2px solid var(--stone);
     border-bottom:2px solid var(--stone);transform:translateY(-2px) rotate(45deg);transition:transform var(--dur) var(--ease)}
   .tb-drop[open]>summary{border-color:var(--accent);color:var(--accent);box-shadow:var(--shadow-focus)}

@@ -571,6 +571,22 @@ function tbWishlistHTML(){
    the view of your own trip. The click handler lives in
    renderTripBuilder()'s wiring block, alongside every other delegated
    listener. */
+/* GOLF-113: the By-region dropdown must only offer regions that actually
+   contain a course in the currently selected nation — region names are
+   already nation-distinct in data/config.js, so we derive the list rather
+   than maintain a second map. With no nation picked we group every
+   region by nation via <optgroup>. */
+function tbRegionsForNation(nation){
+  return REGIONS.filter(r=>C.some((c,i)=>C[i].r===r&&courseNation(i)===nation));
+}
+function tbRegionOptionsHTML(){
+  const opt=r=>`<option value="${esc(r)}"${r===tbRegion?' selected':''}>${esc(r)}</option>`;
+  if(state.nation)return tbRegionsForNation(state.nation).map(opt).join('');
+  return NATIONS.map(([k,l])=>{
+    const rs=tbRegionsForNation(k);
+    return rs.length?`<optgroup label="${esc(l)}">${rs.map(opt).join('')}</optgroup>`:'';
+  }).join('');
+}
 function tbNationPillsHTML(){
   return`<div class="nation-pills" id="tb-nation-pills" role="group" aria-label="Choose a country">
     ${NATIONS.map(([k,l])=>`<button class="nation-pill" aria-pressed="${state.nation===k}" data-nation="${k}">${l}</button>`).join('')}
@@ -595,7 +611,7 @@ function tbDiscoverTabHTML(){
       `<button id="tb-tab-${k}" aria-pressed="${tbDiscoveryTab===k}">${label}</button>`).join('')}</div>
     ${tbDiscoveryTab==='anchor'?(()=>{const pt=tbNearbyAnchorPoint();return`<p class="hint" style="margin:0 0 var(--sp-2)">${pt?`Courses near <b>${esc(pt.label)}</b>.`:'Add a course, or search a town or city in the bar above, to see what\'s nearby.'}</p>`;})()
       :`<div class="tb-day-settings-body" style="padding:0 0 var(--sp-3)">
-        <select id="tb-region" aria-label="Region"><option value="">Choose a region…</option>${REGIONS.map(r=>`<option value="${r}"${r===tbRegion?' selected':''}>${r}</option>`).join('')}</select>
+        <select id="tb-region" aria-label="Region"><option value="">Choose a region…</option>${tbRegionOptionsHTML()}</select>
         <label style="display:inline-flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-caption);color:var(--stone)"
           title="Also include courses just outside the region, within this many miles of its edge">Border
           <input id="tb-border" type="number" value="${tbBorder}" min="0" max="50" style="width:70px"></label>
@@ -679,6 +695,9 @@ function renderTripBuilder(){
     const b=e.target.closest('[data-nation]');if(!b)return;
     const k=b.dataset.nation;
     state.nation=state.nation===k?null:k;
+    /* GOLF-113: drop a now-invalid region filter so switching nation
+       doesn't leave a stale By-region selection filtering the results. */
+    if(tbRegion&&state.nation&&!tbRegionsForNation(state.nation).includes(tbRegion))tbRegion='';
     saveState();renderTripBuilder();tbDrawMap();
     /* GOLF-98: this pane's own pill click never actually moved the map —
        js/explore.js's now-unreachable Explore-mode pills had this, the
