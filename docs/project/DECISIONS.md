@@ -4,6 +4,23 @@ _Stable IDs `DEC-nnn`. Record: decision · context · alternatives · reason ·
 date · affected features. Newest first. Full rationale for older calls lives
 in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 
+## DEC-007 — Affiliate-first monetization steers the hotel-provider choice (direction, not firm)
+
+- **Decision:** early monetization is assumed to be **booking affiliate
+  commission**, so hotel-data provider evaluation (GOLF-103) weights
+  "gives affiliate deep links" alongside coverage. Leading candidate is an
+  affiliate-native aggregator (Travelpayouts/Hotellook) over a
+  pure-data API (Google Places) or a pricing API (Amadeus).
+- **Context:** owner wants a cheap path to first revenue; a test user
+  called hotel info "really cool and convenient". No accounts yet, so
+  ad/subscription models are weak; affiliate links need no login.
+- **Alternatives:** ads, subscription, paid tier — all need a backend /
+  accounts (GOLF-104) first; Google Places gives better data but no
+  revenue rail.
+- **Status:** directional — revisit once real booking-referral volume (or
+  lack of it) is known. Not a firm commitment.
+- **Date:** 2026-09-07 · **Affects:** GOLF-103, GOLF-104.
+
 ## DEC-006 — Cloudflare Pages is the canonical host; dev instance is password-gated
 
 - **Decision:** consolidate hosting onto **Cloudflare Pages** (retire GitHub
