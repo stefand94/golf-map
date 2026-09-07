@@ -797,8 +797,12 @@ function tbTripMenuHTML(){
   const list=tripListAll();
   const active=list.find(t=>t.id===activeTripId);
   const rows=list.map(t=>`<button type="button" class="tb-menu-item" onclick="tripSwitchTo('${t.id}')">${t.id===activeTripId?'✓':'&nbsp;&nbsp;'} ${esc(t.name)}</button>`).join('');
+  /* GOLF-115: a long trip name must stay fully readable. The label span
+     ellipsises inside the fixed toolbar cell (so the row never grows) and
+     carries the full name as a title/tooltip on hover. */
+  const activeName=active?active.name:'Trip';
   return`<details class="tb-drop" id="tb-trip-drop">
-    <summary title="Switch or manage trips">${esc(active?active.name:'Trip')}</summary>
+    <summary title="${esc(activeName)}"><span class="tb-drop-label">${esc(activeName)}</span></summary>
     <div class="tb-drop-body">
       ${list.length>1?`<div class="tb-menu-label">Your trips</div>${rows}<div class="tb-menu-sep"></div>`:''}
       <button type="button" class="tb-menu-item" onclick="tripCreateNew()">＋ New trip</button>

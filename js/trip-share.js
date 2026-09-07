@@ -20,6 +20,8 @@ function tripBuildSharePayload(){
   return{
     v:1,
     gs:groupSize,
+    nm:((trips[activeTripId]||{}).name)||null, // GOLF-115: carry the trip name so the shared view can show it in full
+
     seq:[...tripSeq],
     days:tripDays.map(d=>({
       id:d.id,kind:d.kind,place:d.place||null,
@@ -116,7 +118,7 @@ function tripDecodeSharePayload(hash){
       };
     }).filter(Boolean);
     const gs=shareNum(p.gs,1,16);
-    return{v:1,gs:gs!=null?Math.round(gs):1,seq,days};
+    return{v:1,gs:gs!=null?Math.round(gs):1,nm:shareStr(p.nm,80),seq,days};
   }catch(e){return null;}
 }
 
@@ -155,7 +157,7 @@ function renderSharedTrip(){
     const dayCount=tripDays.length;
     const grand=tripCostBreakdown().grand;
     pane.innerHTML=`<div class="shared-wrap">
-      <div class="tb-navbar"><span class="tb-wordmark">Shared trip</span>
+      <div class="tb-navbar"><span class="tb-wordmark">${payload.nm?esc(payload.nm):'Shared trip'}</span>
         <span class="tb-navbar-right"><span class="tb-pill">${dayCount?`${dayCount} day${dayCount===1?'':'s'} · `:''}${tripPrimaryCurrency()}${grand.toFixed(0)}</span>
         <button class="tb-btn is-sm is-quiet no-print" id="shared-print" title="Opens the browser's print dialog — save as PDF from there for a nice printable itinerary.">🖨️ Print / Save as PDF</button></span></div>
       <p class="hint no-print" style="margin:var(--sp-3) var(--sp-4)">📸 <b>Frozen snapshot</b> — this shows the trip exactly as it was when the link was made. It won't update if the trip changes, and viewing it doesn't touch your own trip.</p>
