@@ -4,6 +4,28 @@ _Stable IDs `DEC-nnn`. Record: decision · context · alternatives · reason ·
 date · affected features. Newest first. Full rationale for older calls lives
 in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 
+## DEC-006 — Cloudflare Pages is the canonical host; dev instance is password-gated
+
+- **Decision:** consolidate hosting onto **Cloudflare Pages** (retire GitHub
+  Pages once a custom domain is confirmed stable). The live site goes on a
+  custom domain the product owner buys (leaning Cloudflare Registrar). All
+  deployments stay **link-only / `noindex`** for now. Preview deployments
+  get a **shared-password gate** via a `functions/_middleware.js` Basic-Auth
+  check, keyed off a `DEV_PASSWORD` env var set on the **Preview**
+  environment only. The ORS proxy Worker gets a **CORS allowlist** now and
+  **rate limiting** once it sits on the custom domain.
+- **Context:** product owner wants a real URL to share plus a hidden place
+  to build/test, and is very keen that no API keys/secrets leak.
+- **Alternatives:** keep GitHub Pages canonical (two hosts, no easy dev
+  lock); Cloudflare Access / per-user SSO for the dev gate (heavier than
+  needed); leave Worker CORS open (quota-abuse risk once public).
+- **Reason:** one platform already in use, free preview URLs, at-cost
+  domains, and a minimal no-build password gate. Secrets are already
+  server-side only (`ORS_API_KEY` in the Worker) — this work keeps it that
+  way and closes the CORS/abuse gap.
+- **Date:** 2026-09-07 · **Affects:** GOLF-35, GOLF-102, `docs/deploying.md`,
+  `ors-proxy.js`, PWA manifest/`sw.js`.
+
 ## DEC-005 — Trip sharing v1 ships as a throwaway demo
 
 - **Decision:** the first shareable-trip feature (GOLF-99) is an explicitly
