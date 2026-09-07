@@ -1,8 +1,10 @@
 # Golf Map — project guide for Claude
 
-Solo static-web golf trip-planner. Read this instead of re-deriving history
-from `.claude/plans/lets-just-go-with-wise-graham.md` (huge, append-only —
-useful for archaeology, not for onboarding).
+Solo static-web golf trip-planner. Current status, backlog, decisions and
+risks live in `docs/project/` (maintained via the `golf-ba-pm` skill) —
+start there. Full phase-by-phase history is archived at
+`.claude/plans/history/2026-H1-archive.md` (huge, append-only — useful for
+archaeology, not for onboarding; grep it by ticket number).
 
 ## What this app is
 
@@ -82,19 +84,20 @@ node scripts/test_data.js   # data-file integrity + course counts
 node scripts/check_js.js    # all js/*.js modules parse + correct load order
 ```
 Plus, for UI changes: in-browser check for console errors and "undefined"
-in rendered popups; `TESTING.md` has a numbered manual-check list (40+
-entries) for anything not covered by the two scripts above.
+in rendered popups; `TESTING.md` is the short checklist, `docs/testing-full.md`
+the exhaustive one for anything not covered by the two scripts above.
 
 ## Where to look for more detail
 
+- `docs/project/` — status, backlog, decisions, risks (living SoT).
 - `SCHEMA.md` — full data-field reference.
-- `TESTING.md` — manual regression checklist.
+- `TESTING.md` / `docs/testing-full.md` — short / exhaustive test checklist.
 - `scripts/README.md` — what each fetch/merge script does.
 - `docs/deploying.md` — Cloudflare Pages preview-URL workflow.
 - `docs/pwa.md` — PWA manifest/service-worker notes.
-- `.claude/plans/lets-just-go-with-wise-graham.md` — full phase-by-phase
-  history if you need to know *why* something is the way it is. Long; grep
-  for a ticket number (e.g. `GOLF-97`) rather than reading linearly.
+- `.claude/plans/history/2026-H1-archive.md` — full phase-by-phase history if
+  you need to know *why* something is the way it is. Long; grep for a ticket
+  number (e.g. `GOLF-97`) rather than reading linearly.
 
 ## Known outstanding issues (check before assuming these are fixed)
 
@@ -106,4 +109,4 @@ entries) for anything not covered by the two scripts above.
   the Cloudflare dashboard before it's live — check with a direct `curl`
   against the Worker if hotel search seems to be doing nothing.
 - GOLF-98 (real green-fee data entry) is an ongoing, incremental job —
-  check `.claude/plans/...md`'s latest phase for exactly how far it's got.
+  check `docs/project/IN_PROGRESS.md` for exactly how far it's got.
