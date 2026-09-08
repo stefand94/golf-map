@@ -8,11 +8,15 @@ framework, progressive enhancement only.
   Linked via `<link rel="manifest">` in `london-golf-map-v5_1.html`'s
   `<head>`.
 - **`sw.js`** — a plain service worker, registered from `js/boot.js`
-  after first render. Cache-first for the app shell (the HTML, every
-  `js/*.js`/`data/*.js` file, the manifest, the icons); anything else
-  (the ORS proxy, map tiles, Google Fonts) passes straight through to
-  the network untouched. A same-origin file fetched later that wasn't
-  in the precache list gets cached opportunistically too.
+  after first render. **Network-first for navigation requests** (the
+  HTML documents) so a single reload after a deploy shows fresh content
+  (GOLF-122), falling back to cache — then to the canonical
+  `./london-golf-map-v5_1` shell — only when offline. **Cache-first for
+  everything else** in the app shell (every `js/*.js`/`data/*.js` file,
+  the manifest, the icons); anything else (the ORS proxy, map tiles,
+  Google Fonts) passes straight through to the network untouched. A
+  same-origin file fetched later that wasn't in the precache list gets
+  cached opportunistically too.
 - **Icons**: `images/icon.svg` (any purpose) and
   `images/icon-maskable.svg` (maskable, extra padding for the safe
   zone Android/iOS crop to) — plain SVG, `sizes:"any"`, no PNG export
