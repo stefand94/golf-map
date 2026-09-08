@@ -515,6 +515,11 @@
   .cost-group-toggle::before{content:'+'}
   .cost-group[open] .cost-group-toggle::before{content:'–'}
   .cost-group-amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--ink)}
+  /* GOLF-100: the per-person figure sits under its total, right-aligned,
+     lighter — a second "column" that can't overflow a narrow sidebar. */
+  .cost-pp{display:block;font:400 var(--fs-caption)/1.35 var(--font-sans);color:var(--stone);
+    font-variant-numeric:tabular-nums;white-space:nowrap}
+  .cost-line-table td .cost-pp{text-align:right}
   /* GOLF-97: width:100% is computed against the containing block, not
      "100% minus this element's own margin" — a bare width:100% next to
      margin-left:var(--sp-5) overflowed the card by exactly that margin,
@@ -527,6 +532,10 @@
   /* item-6: the Share button's inline SVG icon (SHARE_ICON_SVG) — nudged
      to sit on the text baseline rather than the glyph's own box-center. */
   .share-icon{vertical-align:-2px;margin-right:1px}
+  /* GOLF-112: transient marker dropped when a searched town/city is
+     focused on the map (tbFocusPlaceOnMap) — not a trip stop. */
+  .tb-temp-place-pin{background:none;border:none;text-align:center;line-height:1;font-size:22px;
+    filter:drop-shadow(0 1px 3px rgba(0,0,0,.45))}
   /* Map marker for a day's hotel/POI stops (rendered by tbEmojiIcon). */
   .tb-emoji-marker{background:none;border:none;text-align:center;line-height:1}
   .tb-emoji-marker span{font-size:19px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}

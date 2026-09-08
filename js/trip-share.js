@@ -195,7 +195,7 @@ function tbCostsTabReadOnlyHTML(){
       ${costGroupHTML('⛳','Golf',b.golfTotal,golf,cur)}
       ${costGroupHTML('🏨','Stays',b.stayTotal,stay,cur)}
       ${costGroupHTML('📍','Stops',b.poiTotal,stop,cur)}
-      <div class="cost-fuel-row"><span>⛽ Fuel (est.)</span><span class="cost-group-amt">${cur}${b.fuelCost.toFixed(0)}</span></div>
+      <div class="cost-fuel-row"><span>⛽ Fuel (est.)</span><span class="cost-group-amt">${cur}${b.fuelCost.toFixed(0)}${costPP(b.fuelCost,cur,b.groupSize)}</span></div>
     </div>
     <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?` Totals are shown in ${cur} but some line items above are priced in a different currency — no conversion is applied yet.`:''}</p>`;
 }
