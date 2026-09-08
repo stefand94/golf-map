@@ -53,12 +53,12 @@ function golfPinSVG(size,opts){
   const cupY=cy+r*0.72,stemY=cy+r*1.18,tipY=h-ow*0.6;
   const cupHalf=r*0.46,stemHalf=r*0.13;
   const tee=`M${cx-cupHalf},${cupY} L${cx+cupHalf},${cupY} L${cx+stemHalf},${stemY} L${cx},${tipY} L${cx-stemHalf},${stemY} Z`;
-  const dot=(dx,dy,rr)=>`<circle cx="${(cx+dx).toFixed(1)}" cy="${(cy+dy).toFixed(1)}" r="${rr.toFixed(1)}" fill="#C4CED6"/>`;
+  const dot=(dx,dy,rr)=>`<circle cx="${(cx+dx).toFixed(1)}" cy="${(cy+dy).toFixed(1)}" r="${rr.toFixed(1)}" fill="#93A6B4"/>`;
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.38))">
     ${ranked?`<circle cx="${cx}" cy="${cy}" r="${(r+ow*1.7).toFixed(1)}" fill="none" stroke="#E6B400" stroke-width="${(ow*1.5).toFixed(1)}"/>`:''}
     <path d="${tee}" fill="${teeFill}" stroke="${outline}" stroke-width="${ow}" stroke-linejoin="round"/>
     <circle cx="${cx}" cy="${cy}" r="${r}" fill="#FFFFFF" stroke="${outline}" stroke-width="${ow}"/>
-    ${dot(-r*0.30,-r*0.20,r*0.11)}${dot(r*0.14,-r*0.34,r*0.10)}${dot(r*0.30,r*0.08,r*0.10)}${dot(-r*0.06,r*0.26,r*0.10)}${dot(-r*0.34,r*0.16,r*0.08)}
+    <g opacity="0.85">${dot(-r*0.32,-r*0.22,r*0.15)}${dot(r*0.08,-r*0.38,r*0.14)}${dot(r*0.36,-r*0.02,r*0.14)}${dot(-r*0.04,r*0.30,r*0.14)}${dot(-r*0.40,r*0.16,r*0.12)}${dot(r*0.24,r*0.30,r*0.12)}</g>
   </svg>`;
 }
 
