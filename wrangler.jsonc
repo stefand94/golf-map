@@ -1,0 +1,18 @@
+{
+  // Root-level config for Cloudflare's "Connect to Git" auto-deploy of the
+  // ORS proxy Worker. Cloudflare Workers Builds runs `npx wrangler versions
+  // upload` (preview branches) / `npx wrangler deploy` (production) from the
+  // REPO ROOT, and the dashboard "Root directory" setting has not reliably
+  // moved that CWD — so wrangler needs a config file here, with `main`
+  // pointing at where the Worker actually lives.
+  //
+  // scripts/cloudflare-worker/wrangler.toml is kept for local/manual
+  // `wrangler` runs from inside that folder; both files describe the same
+  // Worker (same `name`) and the same entry file.
+  //
+  // This file has no `pages_build_output_dir`, so the Cloudflare Pages
+  // project that also builds this repo ignores it.
+  "name": "geofftheworker",
+  "main": "scripts/cloudflare-worker/ors-proxy.js",
+  "compatibility_date": "2026-08-27"
+}

@@ -298,9 +298,43 @@ function tripCostLineItems(){
   const feeRangeLabel=fr=>(fr&&fr.confidence&&fr.min!=null&&fr.max!=null&&fr.min!==fr.max)
     ?` (${fr.min===fr.max?'':`${tbMoney(fr.min,'')}–`}${tbMoney(fr.max,'')})`:'';
   const FEE_CONF_TAG={'published-range':'researched','published-from-only':'from-only','estimated':'estimated','poa':'POA'};
+  // GOLF-116: a hotel booked for N nights is stored as N separate night-items
+  // sharing one stayId (older trips: no stayId, so fall back to hotel name +
+  // rounded coordinates). The Costs breakdown groups them into ONE line —
+  // "Hotel A (£150/night × 3 nights)" — summing the per-night amounts so the
+  // grand total is byte-for-byte unchanged, only the breakdown is regrouped.
+  // priceType is not part of the current hotel model (GOLF-91 made every
+  // hotel price per-person-per-night); if an old trip ever carries a flat
+  // 'total'/'flat' price, honour it by not multiplying across nights.
+  // TODO GOLF-74 per-room model: hotels are priced per-person-per-night ×
+  // whole-trip group size today; revisit here if a real per-room split lands.
+  const stayGroups=new Map(); // group key -> index into items[]
+  const stayKey=it=>it.stayId||('@'+String(it.name||'').trim().toLowerCase()
+    +'|'+(typeof it.lat==='number'?it.lat.toFixed(3):'?')
+    +'|'+(typeof it.lng==='number'?it.lng.toFixed(3):'?'));
   tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{
     const det=tripItemPriceDetail(d,it);
-    let tag=it.type==='hotel'?(det.sharing?`× ${det.guests} people`:'estimated'):(gs>1?`× ${gs}`:null);
+    if(it.type==='hotel'){
+      const flat=it.priceType==='total'||it.priceType==='flat';
+      const key=stayKey(it);
+      const name=tripItemName(it);
+      const sharingBit=det.sharing?` (${det.cur}${(det.base||0).toFixed(0)} × ${det.guests} people)`:'';
+      if(stayGroups.has(key)){
+        const row=items[stayGroups.get(key)];
+        row._nights++;
+        if(!flat)row.amount=(row.amount||0)+(det.total||0);
+        row.label=row._nights>1
+          ? `${row._name} (${row._cur}${(row.amount/row._nights).toFixed(0)}/night × ${row._nights} nights)`
+          : row._name+sharingBit;
+      }else{
+        stayGroups.set(key,items.length);
+        items.push({label:name+sharingBit,cat:'Stay',amount:det.total,day:idx+1,cur:det.cur,
+          tag:det.sharing?`× ${det.guests} people`:'estimated',
+          _nights:1,_name:name,_cur:det.cur});
+      }
+      return;
+    }
+    let tag=gs>1?`× ${gs}`:null;
     let label=tripItemName(it)+(det.sharing?` (${det.cur}${det.base.toFixed(0)} × ${det.guests} people)`:'');
     if(it.type==='golf'&&det.feeRange&&det.feeRange.confidence){
       label+=feeRangeLabel(det.feeRange);
@@ -357,13 +391,22 @@ function tbTripTotal(){return tripCostBreakdown().grand;}
    convention already established for Explore's filter dropdowns
    (london-golf-map-v5_1.html), just re-skinned to a label+amount row via
    .cost-group. */
+/* GOLF-100: every cost line is priced for the whole party (golf/POI ×
+   group size, hotels per-person-per-night × group size), so the
+   per-person figure is simply the line total ÷ group size — shown as a
+   small second amount under the total, in both the group header and each
+   line row. Group size 1 (or unset) → no second figure (it would just
+   repeat the total). Stacked rather than a third column so it can't
+   overflow a 360px sidebar. */
+const costPP=(v,cur,gs)=>(gs>1&&v>0)?`<span class="cost-pp">${cur}${Math.round(v/gs)} pp</span>`:'';
 function costGroupHTML(icon,label,total,items,cur){
+  const gs=groupSizeFor();
   const rows=items.length
-    ?items.map(x=>`<tr><td>${esc(x.label)}${x.tag?` <span class="wt">${esc(x.tag)}</span>`:''}</td><td>${tbMoney(x.amount,x.cur||cur)}</td></tr>`).join('')
+    ?items.map(x=>`<tr><td>${esc(x.label)}${x.tag?` <span class="wt">${esc(x.tag)}</span>`:''}</td><td>${tbMoney(x.amount,x.cur||cur)}${costPP(x.amount,x.cur||cur,gs)}</td></tr>`).join('')
     :`<tr><td colspan="2" class="hint">Nothing here yet.</td></tr>`;
   return`<details class="cost-group"><summary class="cost-group-summary">
       <span class="cost-group-label"><span class="cost-group-toggle" aria-hidden="true"></span>${icon} ${label}</span>
-      <span class="cost-group-amt">${cur}${total.toFixed(0)}</span>
+      <span class="cost-group-amt">${cur}${total.toFixed(0)}${costPP(total,cur,gs)}</span>
     </summary>
     <table class="cost-line-table cost-group-lines">${rows}</table>
   </details>`;
@@ -378,7 +421,7 @@ function tbCostsTabHTML(){
       ${costGroupHTML('⛳','Golf',b.golfTotal,golf,cur)}
       ${costGroupHTML('🏨','Stays',b.stayTotal,stay,cur)}
       ${costGroupHTML('📍','Stops',b.poiTotal,stop,cur)}
-      <div class="cost-fuel-row"><label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel (est.)</label><span class="cost-group-amt">${cur}${b.fuelCost.toFixed(0)}</span></div>
+      <div class="cost-fuel-row"><label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel (est.)</label><span class="cost-group-amt">${cur}${b.fuelCost.toFixed(0)}${costPP(b.fuelCost,cur,b.groupSize)}</span></div>
     </div>
     <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?` Totals are shown in ${cur} but some line items above are priced in a different currency — no conversion is applied yet.`:''}</p>
     <p class="hint" style="margin-top:var(--sp-2)">🔜 Currency conversion (showing every cost in one currency) is planned for a future update — for now, amounts display in each course's own local currency.</p>`;
@@ -742,6 +785,7 @@ function renderTripBuilder(){
     onType(text){
       tbSearchQ=text;
       const q=text.trim();
+      if(typeof tbClearTempPlaceMarker==='function')tbClearTempPlaceMarker(); // GOLF-112: a new search clears the focused-place marker
       searchResultsEl.style.display=q?'':'none';
       tbUnifiedPlaceResults=null;
       tbPlaceAddedNote=null; // the "added as Day N" note belongs to the query that produced it
@@ -756,6 +800,24 @@ function renderTripBuilder(){
     onPick(){/* unreachable: `render` owns this field's results panel */}
   });
   searchResultsEl.addEventListener('click',e=>{
+    // GOLF-112: clicking the place name focuses the map (no trip change).
+    const focus=e.target.closest('.tb-unified-place-focus');
+    if(focus){
+      e.preventDefault();
+      const lat=parseFloat(focus.dataset.lat),lng=parseFloat(focus.dataset.lng),label=focus.dataset.label;
+      /* GOLF-112 bug fix: focusing a place must also re-scope Discover's
+         "Nearby" list to it (without adding a trip stop). Without this,
+         tbPlaceAnchor stays pointed at the last course added, so after
+         adding courses near City A and then focusing City B the Nearby
+         list keeps showing City A's courses. tbAddPlaceToTrip() is still
+         the only path that also creates a day. Redraw first, then fly —
+         so tbDrawMap()'s fitBounds doesn't clobber the camera focus. */
+      tbPlaceAnchor={label,lat,lng};
+      tbDiscoveryTab='anchor';
+      if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
+      tbFocusPlaceOnMap(lat,lng,label);
+      return;
+    }
     // GOLF-82: one place action now, not two — tbAnchorTripToPlace() is gone.
     const trip=e.target.closest('.tb-unified-place-trip');
     if(!trip)return;

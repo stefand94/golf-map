@@ -157,9 +157,13 @@ function tbUnifiedSearchResultsHTML(){
        a trip exists, "+ Add to trip" once one does (tbAddPlaceToTrip
        handles both cases itself, see its comment above). */
     const started=tbPlaceAnchor!=null||tripDays.length>0;
+    /* GOLF-112: the place name itself is now a link that just focuses the
+       map (fly + temporary marker, no trip change); dropping it into the
+       trip is the separate, explicit button to its right. */
     html+=`<div class="tb-section-title">Towns &amp; cities</div>`+
+      `<p class="hint" style="margin:0 0 var(--sp-2)">Tap a place to see it on the map — or add it to your trip.</p>`+
       places.map(p=>`<div class="tb-row">
-        <div>📍 ${esc(p.label)}</div>
+        <div><a href="#" class="linkbtn tb-unified-place-focus" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}">📍 ${esc(p.label)}</a></div>
         <div style="display:flex;gap:var(--sp-2);flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
           <button class="tb-btn is-sm is-primary tb-unified-place-trip" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}">${started?'＋ Add to trip':'Start a trip here'}</button>
         </div>
