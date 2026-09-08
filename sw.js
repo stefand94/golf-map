@@ -61,7 +61,20 @@
    visit '/' while online (e.g. always arrives via a bookmark straight
    to /london-golf-map-v5_1) then goes offline and navigates to '/' hit
    a raw network error instead of a graceful offline fallback. Added
-   below. */
+   below.
+
+   v6 fix (GOLF-122, stale-after-deploy): the fetch handler was
+   cache-first for *everything* same-origin, including the HTML
+   navigation — so after a deploy the old SW served the stale shell
+   instantly and the new CACHE_NAME only took effect on the *next*
+   load, making every deploy look like it needed a double-reload.
+   Navigation requests (req.mode === 'navigate') are now network-first:
+   try the network, run the same redirect-cleanup, refresh the cache,
+   and only fall back to cache (then to the canonical
+   './london-golf-map-v5_1' shell) when offline. Scripts, data, images,
+   manifest and icons are unchanged — still cache-first, since they get
+   a fresh CACHE_NAME whenever their content changes and that's what
+   keeps repeat/offline loads instant. */
 const CACHE_NAME = 'golfmap-shell-v5-4614474826';
 
 const PRECACHE_URLS = [
@@ -142,6 +155,24 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Rebuild a clean, redirect-free Response with the same body/status/
+// headers. Chrome refuses to let a service worker satisfy a *navigation*
+// request with a Response whose `redirected` flag is true ("Response
+// served by service worker has redirections"), and a redirected Response
+// reaching the cache is a landmine for any later navigation that matches
+// it. Cloudflare Pages serves this app's clean/extensionless URL (e.g.
+// /london-golf-map-v5_1) via an internal redirect, so fetch(req) picks
+// up that flag on first load. Scripts/data/images are unaffected by the
+// restriction, but running them through this is harmless.
+function stripRedirect(res) {
+  if (!res.redirected) return Promise.resolve(res);
+  return res.blob().then((body) => new Response(body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers: res.headers,
+  }));
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   // Only handle same-origin GETs — everything else (the ORS Worker,
@@ -149,48 +180,46 @@ self.addEventListener('fetch', (event) => {
   // network exactly as if this service worker didn't exist.
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
 
-  event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req).then((res) => {
-        // Chrome refuses to let a service worker satisfy a *navigation*
-        // request with a Response whose `redirected` flag is true — it
-        // throws "Response served by service worker has redirections".
-        // Cloudflare Pages serves this app's clean/extensionless URL
-        // (e.g. /london-golf-map-v5_1) via an internal redirect to the
-        // real .html file, so a plain `fetch(req)` here picks up that
-        // flag on first load. Rebuild a clean Response with the same
-        // body/status/headers but no redirect history — everything else
-        // (scripts, data, images) is unaffected by this restriction and
-        // uses res as-is.
-        //
-        // v3 fix: this rebuild MUST happen before the opportunistic
-        // cache-write below, not after. v2 cached `res` itself (the
-        // still-redirected response) here, then returned the cleaned
-        // version only for that one response — every later visit hit
-        // caches.match(req) above and got the *cached, still-redirected*
-        // copy back directly, permanently bypassing this fix. Cache
-        // whatever we're about to return, never the raw fetch result.
-        const finalRes = (req.mode === 'navigate' && res.redirected)
-          ? res.blob().then((body) => new Response(body, {
-              status: res.status,
-              statusText: res.statusText,
-              headers: res.headers,
-            }))
-          : Promise.resolve(res);
-
-        return finalRes.then((out) => {
-          // Opportunistically cache anything same-origin and OK that
-          // wasn't in the precache list (e.g. a data file added later
-          // without a service-worker update) so it's available offline
-          // on the next visit too.
+  // GOLF-122: network-first for navigation requests (the HTML documents —
+  // './' and './london-golf-map-v5_1') so a single reload after a deploy
+  // shows fresh content. Cache-first served the stale shell instantly and
+  // the new version only took effect on the *next* load, so every deploy
+  // looked like it needed a double-reload. Everything else stays
+  // cache-first below — those files get a fresh CACHE_NAME whenever their
+  // content changes, so cache-first is both correct and what keeps
+  // repeat/offline loads instant.
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req)
+        .then((res) => stripRedirect(res).then((out) => {
           if (out && out.ok) {
             const copy = out.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
           }
           return out;
-        });
-      }).catch(() => cached);
+        }))
+        // Offline: fall back to this request's cached copy, then to the
+        // canonical shell so any in-app URL still renders.
+        .catch(() => caches.match(req)
+          .then((hit) => hit || caches.match('./london-golf-map-v5_1')))
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      if (cached) return cached;
+      return fetch(req).then((res) => stripRedirect(res).then((out) => {
+        // Opportunistically cache anything same-origin and OK that
+        // wasn't in the precache list (e.g. a data file added later
+        // without a service-worker update) so it's available offline
+        // on the next visit too.
+        if (out && out.ok) {
+          const copy = out.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+        }
+        return out;
+      })).catch(() => cached);
     })
   );
 });
