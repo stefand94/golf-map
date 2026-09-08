@@ -200,3 +200,47 @@ time split is the core deliverable.
 > Inspect the existing codebase and follow established project patterns
 > (plain ordered non-module scripts, globals, design-system spacing
 > tokens, no build step) before introducing anything new.
+
+---
+
+## Status 2026-09-08 — implemented, then PARKED pending routing-provider decision
+
+Branch `golf-118-ferry` (pushed, not merged). Implements Parts 1–3 in
+full plus a scope addition agreed with the owner: when a leg has a ferry
+the drawn route is split **road → straight port-to-port line → road**
+(Worker returns a new `routeParts` field; `data/ferries.js` / Part 4 was
+skipped). `ferryMinutes` derived from ORS step-duration overlap with a
+distance/18mph fallback. All check scripts pass; verified in-browser with
+a mocked ferry cache entry.
+
+**Why parked:** testing against a real trip (Shiskine, Arran → Royal
+Troon) exposed that ORS routes it **156 mi / 4.1 h the long way round
+Kintyre** — it refuses the direct Firth of Clyde car ferry (the known ORS
+limitation from GOLF-117 §1, issue #678). GOLF-118 only makes the ferry
+*honest*; it can't fix a route ORS won't generate. The owner does not
+want a hardcoded crossing table, so the real question is now
+**routing-provider reliability**, not this ticket.
+
+Quick keyless comparison run 2026-09-08 (public Valhalla / FOSSGIS demo):
+
+| Leg | ORS today | Valhalla `costing:auto` |
+| --- | --- | --- |
+| Oban → Craignure (Mull) | 10.4 mi ✅ | 10.8 mi, Oban–Craignure ferry ✅ |
+| Kennacraig → Port Askaig | 29.5 mi ✅ | 32.0 mi, correct ferry ✅ |
+| Ardrossan → Brodick (Arran) | 89.5 mi, long way ❌ | 14.2 mi, Ardrossan–Brodick ferry ✅ |
+| Shiskine → Royal Troon | 156 mi / 4.1 h ❌ | 31.8 mi / 1.8 h, Troon–Brodick ferry ✅ |
+| Cairnryan → Belfast | 53.9 mi ✅ | 430 mi via Isle of Man ferries ❌ |
+
+Valhalla fixes the Arran cases outright but mis-routes Cairnryan→Belfast
+on the untuned public demo — a swap needs `use_ferry`/`ferry_cost` tuning
+and a production host (Stadia Maps, or self-host). Mapbox Directions not
+yet tested (needs an access token). Map layer / basemap stays Leaflet+OSM
+either way; Google is the *most* disruptive option (ToS couples routing
+to the Google basemap + caching restrictions), not the least.
+
+**Next step:** owner is researching. When resumed, spin this out as a
+routing-provider spike (fixed ~10-leg matrix: the ferry cases above +
+plain mainland regressions; run ORS vs tuned Valhalla vs Mapbox vs HERE;
+pick on the numbers). GOLF-118's client/UI code is done and rides on top
+of whichever provider wins — only the Worker's `handleRoute()` parse
+layer changes.
