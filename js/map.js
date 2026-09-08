@@ -172,8 +172,18 @@ const layer=L.markerClusterGroup({
 }).addTo(map),markers=new Map();
 const HC_TEES={};
 function ranked(i){const t=C[i].t100;return t&&(typeof t.gl==='number'||t.gbi||typeof t.eng==='number'||typeof t.sco==='number'||typeof t.wal==='number')}
-function pinFor(i){const rk=ranked(i),size=rk?30:22;
-  return L.divIcon({className:'',html:golfPinSVG(size,rk),iconSize:[size,size*1.3],iconAnchor:[size*0.5,size*1.19]})}
+/* GOLF-111: the tee colour is the map's in-trip / played / want signal.
+   Precedence matches the popup's always-on "in trip" badge winning over
+   the played/want pair. null => golfPinSVG()'s default red tee. */
+function pinStateTint(i){
+  if(TRIP.has(i))return'#2E5C8A';   // in trip — accent blue
+  if(PLAYED.has(i))return'#2E8B45'; // played — green
+  if(WANT.has(i))return'#B98900';   // want to play — amber
+  return null;
+}
+function pinFor(i){const rk=ranked(i),size=rk?30:22,h=size*1.5;
+  return L.divIcon({className:'',html:golfPinSVG(size,{ranked:rk,tint:pinStateTint(i)}),
+    iconSize:[size,h],iconAnchor:[size*0.5,h],popupAnchor:[0,-h+2],tooltipAnchor:[0,-h+2]})}
 const CONF={club:"Rate from the club's own page",press:"Rate published in trade press or a golf guide",est:"Indicative — verify with the club before travelling"};
 /* Card space is tight — show only the single most prestigious ranking
    (ENG > GB&I > GL), with a "+N" hint if a course carries more than one. */
@@ -280,7 +290,7 @@ C.forEach((c,i)=>{
      click handler no longer has to set the content itself. */
   m.on('click',()=>{highlight(i);drawLink(i)});
   m.bindPopup(()=>popupHTML(i),{maxWidth:340});
-  m.bindTooltip(()=>courseTooltipHTML(i),{direction:'top',offset:[0,-28],className:'course-tt'});
+  m.bindTooltip(()=>courseTooltipHTML(i),{direction:'top',className:'course-tt'}); // sits above the ball via the icon's tooltipAnchor (GOLF-111)
   markers.set(i,m);
 });
 /* Redraws whichever course popup is currently open, if any, from current

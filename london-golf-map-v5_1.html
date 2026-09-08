@@ -732,9 +732,11 @@
   .conf{font-family:var(--font-mono);font-size:9.5px;color:var(--stone);margin:7px 0 0}
 
   .home{width:13px;height:13px;border-radius:50%;background:#fff;border:4px solid var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.4)}
-  .mcluster{display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:var(--accent);color:#fff;font:700 12px var(--font-sans);font-variant-numeric:tabular-nums;border:2.5px solid #fff;box-shadow:var(--shadow-md)}
-  .mcluster-md{background:var(--accent-dark);font-size:13px}
-  .mcluster-lg{background:var(--ink);font-size:14px}
+  /* GOLF-111: match the golf-ball marker — white fill, dark outline, ink
+     count; heavier ring for the larger tiers instead of a colour change. */
+  .mcluster{display:flex;align-items:center;justify-content:center;width:100%;height:100%;border-radius:50%;background:#fff;color:#23303A;font:700 12px var(--font-sans);font-variant-numeric:tabular-nums;border:2.5px solid #23303A;box-shadow:var(--shadow-md)}
+  .mcluster-md{font-size:13px;border-width:3px}
+  .mcluster-lg{font-size:14px;border-width:3.5px}
   .lnlabel{font:600 9px var(--font-mono);letter-spacing:.04em;color:#fff;padding:1.5px 4px;border-radius:2.5px;white-space:nowrap;opacity:.95}
   .stnlabel{font:500 9.5px var(--font-sans);color:#33403A;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;white-space:nowrap}
 

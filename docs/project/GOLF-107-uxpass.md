@@ -123,7 +123,22 @@ render at z13 over London, no "By rail" in popups, `drawLink()` a no-op.
 
 ---
 
-## GOLF-111 — Course marker redesign · Blocker: NO (nice-to-have) · S
+## GOLF-111 — Course marker redesign · Blocker: NO (nice-to-have) · S · STATUS: DONE ✅
+
+**DONE / CLOSED (2026-09-08):** `golfPinSVG()` rebuilt in `js/util.js`
+(not `js/map.js` — it moved there earlier) from the owner's reference PNG
+(2026-09-08): flat inline SVG, white ball with a few dimple hints,
+coloured tee, `#23303A` outline, `drop-shadow` filter, no gradients.
+`pinFor()` (`js/map.js`) now sets `iconAnchor` at the tee tip
+(bottom-centre) and passes `{ranked, tint}`. Ranked keeps the 30-vs-22
+size step plus a gold halo ring; `pinStateTint()` colours the tee
+in-trip → `#2E5C8A` / played → `#2E8B45` / want → `#B98900`, default red
+`#D14A3A`, and the icon refreshes live via the `setIcon` loop already in
+`render()`. `.mcluster` badge restyled to white fill / dark ring / ink
+count, heavier ring for the bigger tiers. `tooltipAnchor` added so the
+hover card still clears the taller marker. Verified: `check_js.js` +
+`test_data.js` pass; all 8 size×state SVGs render correct in a browser
+harness; no console errors.
 
 **Ask (owner item 4):** replace the current pins.
 
@@ -144,10 +159,14 @@ wants a concrete shape to react to; otherwise the coding agent draws it
 from this description.
 
 **Acceptance criteria:**
-- [ ] New pin renders sharp on retina at both sizes; no raster blur.
-- [ ] Ranked/unranked still visually distinct.
-- [ ] Cluster badges (`.mcluster`) restyled to match if needed.
-- [ ] Legible on the new basemap (coordinate with GOLF-105).
+- [x] New pin renders sharp on retina at both sizes; no raster blur.
+- [x] Ranked/unranked still visually distinct (size step + gold halo).
+- [x] In-trip / played / want still visually distinct (tee colour).
+- [x] Pin tip sits on the course coordinate (anchor at tee tip).
+- [x] Cluster badges (`.mcluster`) restyled to match.
+- [ ] Legible on the new basemap — recheck when GOLF-105 lands (drawn
+      against current OSM tiles for now; white ball + dark outline is a
+      deliberately basemap-agnostic choice).
 
 ---
 

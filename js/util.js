@@ -27,27 +27,38 @@ function flagSVG(colour,pole,size,ring){
   </svg>`;
 }
 
-/* GOLF (stakeholder feedback, 2026-09-02): the on-map course marker
-   (pinFor(), js/map.js) used to be flagSVG() coloured by access tier —
-   the most common tier ("Pay & play") is yellow, which read as "a tennis
-   ball" and didn't stand out against the basemap. Replaced with a fixed,
-   high-contrast design per explicit spec: a blue map-pin badge, a red
-   flag on a pale pole, and a green ellipse ("the green") under the flag.
-   Access tier is no longer colour-coded on the map pin itself (it's
-   still visible in the popup and in the access-tier filter chips/legend,
-   which still use flagSVG() above, unchanged) — trading that one signal
-   for a consistently legible, distinctive marker was the explicit ask. */
-function golfPinSVG(size,ring){
-  const w=size,h=size*1.3;
-  const cx=w*0.5,cy=h*0.38,r=w*0.40;
-  const tailW=r*0.55,tipY=h*0.94;
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">
-    ${ring?`<circle cx="${cx}" cy="${cy}" r="${r+3}" fill="none" stroke="#E6B400" stroke-width="2"/>`:''}
-    <path d="M${cx-tailW},${cy+r*0.55} Q${cx},${tipY} ${cx+tailW},${cy+r*0.55} Z" fill="#1C6FD1" stroke="#0B2E52" stroke-width="1"/>
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="#1C6FD1" stroke="#0B2E52" stroke-width="1.4"/>
-    <ellipse cx="${cx}" cy="${cy+r*0.40}" rx="${r*0.62}" ry="${r*0.24}" fill="#2E8B45"/>
-    <line x1="${cx}" y1="${cy-r*0.55}" x2="${cx}" y2="${cy+r*0.30}" stroke="#F4F4F0" stroke-width="1.4" stroke-linecap="round"/>
-    <polygon points="${cx},${cy-r*0.55} ${cx+r*0.56},${cy-r*0.32} ${cx},${cy-r*0.10}" fill="#D6392E" stroke="#7A1912" stroke-width="0.6"/>
+/* GOLF-111 (owner item 4, 2026-09-08): the on-map course marker is a
+   golf ball on a tee — a flat inline SVG (no raster asset, no baked-in
+   gradients so it scales and recolours cleanly), drawn to an owner-
+   supplied reference (white ball, red tee, dark outline). Replaces the
+   earlier blue map-pin badge, which itself replaced flagSVG().
+
+   State encoding the map carries, unchanged from before:
+   - ranked vs unranked — size step (30 vs 22, see pinFor()) plus a gold
+     halo ring on ranked courses;
+   - in-trip / played / want — the tee colour, via the `tint` hook below
+     (pinStateTint() in js/map.js picks it). Default tee is the red from
+     the reference. Access tier stays uncoded on the pin (popup + filter
+     chips still carry it).
+
+   Anchor is the base of the tee (bottom-centre) — set in pinFor(). */
+function golfPinSVG(size,opts){
+  if(opts===true||opts===false)opts={ranked:opts}; // back-compat: golfPinSVG(size, ranked)
+  opts=opts||{};
+  const ranked=!!opts.ranked;
+  const teeFill=opts.tint||'#D14A3A';
+  const w=size,h=size*1.5;
+  const cx=w*0.5,cy=w*0.40,r=w*0.40;
+  const outline='#23303A',ow=Math.max(1.1,size*0.05);
+  const cupY=cy+r*0.72,stemY=cy+r*1.18,tipY=h-ow*0.6;
+  const cupHalf=r*0.46,stemHalf=r*0.13;
+  const tee=`M${cx-cupHalf},${cupY} L${cx+cupHalf},${cupY} L${cx+stemHalf},${stemY} L${cx},${tipY} L${cx-stemHalf},${stemY} Z`;
+  const dot=(dx,dy,rr)=>`<circle cx="${(cx+dx).toFixed(1)}" cy="${(cy+dy).toFixed(1)}" r="${rr.toFixed(1)}" fill="#C4CED6"/>`;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.38))">
+    ${ranked?`<circle cx="${cx}" cy="${cy}" r="${(r+ow*1.7).toFixed(1)}" fill="none" stroke="#E6B400" stroke-width="${(ow*1.5).toFixed(1)}"/>`:''}
+    <path d="${tee}" fill="${teeFill}" stroke="${outline}" stroke-width="${ow}" stroke-linejoin="round"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="#FFFFFF" stroke="${outline}" stroke-width="${ow}"/>
+    ${dot(-r*0.30,-r*0.20,r*0.11)}${dot(r*0.14,-r*0.34,r*0.10)}${dot(r*0.30,r*0.08,r*0.10)}${dot(-r*0.06,r*0.26,r*0.10)}${dot(-r*0.34,r*0.16,r*0.08)}
   </svg>`;
 }
 
