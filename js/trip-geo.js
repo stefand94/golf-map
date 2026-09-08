@@ -78,22 +78,37 @@ function tripClear(){tripLayer.clearLayers()}
    reported) that never expanded into anything when clicked. Give every
    course dot the same click→popup behaviour as the main flag markers
    (bindPopup(popupHTML(i)) + highlight/drawLink on click) so a dot drawn
-   here is just as inspectable as one drawn on the normal Explore map. */
+   here is just as inspectable as one drawn on the normal Explore map.
+
+   GOLF-124: they're now drawn as the GOLF-111 golf-ball-on-a-tee pin
+   (pinFor() — same icon, size step, gold halo and in-trip/played/want tee
+   tint as the main Explore layer) instead of a bare circle. Adding the
+   first course to a trip populates tripLayer, which makes render() skip
+   the main marker layer entirely (declutter, js/explore.js) — so without
+   this every nearby course visibly "reverted" from the new pin to a plain
+   dot the moment the trip became non-empty. A candidate outside the
+   "nearest N" promise (border:true) is just faded rather than given a
+   different shape. */
 function tripShow(items,anchor,clear=true,fit=true){
   if(clear)tripClear();
   const pts=[];
   items.forEach(({i,border})=>{
-    L.circleMarker([C[i].lat,C[i].lng],{radius:9,color:border?'#8C8478':'#E6B400',weight:2.5,fillColor:'#fff',fillOpacity:.9,dashArray:border?'2 3':null})
+    L.marker([C[i].lat,C[i].lng],{icon:pinFor(i),opacity:border?0.5:1,title:C[i].n})
       .bindPopup(popupHTML(i),{maxWidth:340})
-      .bindTooltip(courseTooltipHTML(i),{direction:'top',offset:[0,-10],className:'course-tt'})
+      .bindTooltip(courseTooltipHTML(i),{direction:'top',className:'course-tt'})
       .on('click',()=>{highlight(i);drawLink(i)})
       .addTo(tripLayer);
     pts.push([C[i].lat,C[i].lng]);
   });
   if(anchor!=null){
-    L.circleMarker([C[anchor].lat,C[anchor].lng],{radius:11,color:'#1B2733',weight:3,fillColor:'#E6B400',fillOpacity:1})
+    // A gold ring behind the anchor's flag pin keeps "this is the course
+    // everything else is measured from" legible now that the pin itself is
+    // the same shape as every other candidate.
+    L.circleMarker([C[anchor].lat,C[anchor].lng],{radius:15,color:'#E6B400',weight:3,fill:false,opacity:.9})
+      .addTo(tripLayer);
+    L.marker([C[anchor].lat,C[anchor].lng],{icon:pinFor(anchor),title:C[anchor].n})
       .bindPopup(popupHTML(anchor),{maxWidth:340})
-      .bindTooltip(courseTooltipHTML(anchor),{direction:'top',offset:[0,-12],className:'course-tt'})
+      .bindTooltip(courseTooltipHTML(anchor),{direction:'top',className:'course-tt'})
       .on('click',()=>{highlight(anchor);drawLink(anchor)})
       .addTo(tripLayer);
     pts.push([C[anchor].lat,C[anchor].lng]);
