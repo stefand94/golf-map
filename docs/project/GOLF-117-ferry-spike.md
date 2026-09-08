@@ -100,45 +100,63 @@ hacky and shouldn't be first choice.
 
 ---
 
-## 4. Recommended v1 scope
+## 4. Approved v1 scope (owner 2026-09-08)
 
-**Flag ferry legs. Do not integrate timetables or fares.**
+**Flag ferry legs and split out the crossing duration. No timetables, no
+fares.** Owner confirmed: the exact sailing schedule doesn't matter for
+v1, but the user must be able to see (a) that a leg needs a ferry at all,
+and (b) how much of the leg time is ferry vs driving.
 
-1. **Worker:** add `extra_info:["waytypes"]` to the `handleRoute()` ORS
-   call; return `hasFerry` (bool) and `ferryMiles` (number). Backwards
-   compatible — existing callers ignore the new fields.
-2. **App:** on any itinerary drive-leg row where `hasFerry` is true, show a
-   ferry glyph + a short note: *"This leg includes a ferry crossing —
-   check sailing times and book ahead."*
-3. **Operator link:** a small curated `data/ferries.js` (~12–15 rows:
-   crossing name, operator, operator-page URL, rough duration, car/foot,
-   seasonal note). Match the leg to the nearest crossing in that table by
-   coordinates and link to the operator page. Same fetch-once /
-   hand-maintain pattern as green fees; `lastVerified` per row.
-4. **Explicitly out of v1:** adding crossing time or fare into the trip
-   cost/duration estimate; live availability; foot-passenger vs car-deck
-   pricing; seasonal schedule logic. All of that depends on date selection
-   (not built) and belongs with the GOLF-103/104-era work.
+1. **Worker (`handleRoute()`):** add `extra_info:["waytypes"]` to the ORS
+   directions request and parse the way-type breakdown (code `9` = ferry).
+   Return three new fields alongside the existing `{minutes, miles, route}`:
+   - `hasFerry` (bool)
+   - `ferryMinutes` (number) — the portion of `minutes` spent on ferry
+     ways. Best-effort: intersect the `waytypes` coordinate index ranges
+     with the per-segment durations ORS returns; if a precise split is
+     awkward, an estimate from ferry distance ÷ a fixed assumed ferry
+     speed is acceptable for v1 (note the method in the PR).
+   - `ferryMiles` (number)
+   Backwards compatible — existing callers ignore unknown fields; the
+   client treats all three as absent/false on older cached routes.
+2. **App — itinerary drive-leg row:** when `hasFerry`:
+   - show a distinct **"⛴ This route has a ferry"** tag on the leg;
+   - break the leg time into drive + ferry, e.g.
+     *"2h 10m driving + ~55m ferry"* (round the ferry figure, keep the
+     `~`); the leg's total time is unchanged.
+3. **Operator link (nice-to-have, not required for v1):** a small curated
+   `data/ferries.js` (~12–15 rows: crossing name, operator, operator-page
+   URL, rough duration, car/foot, seasonal note). Match the leg's ferry
+   sub-segment to the nearest crossing by coordinates and link out. Same
+   fetch-once / hand-maintain pattern as green fees; `lastVerified` per
+   row. Ship without it if it adds meaningful time.
+4. **Explicitly out of v1:** sailing timetables; fares/cost in the
+   estimate; live availability; foot-passenger vs car-deck logic; seasonal
+   schedule handling. All depend on date selection (not built) — parked
+   with GOLF-103/104-era work.
 
-**Effort:** Worker change S; UI note + `data/ferries.js` S–M. Post-go-live.
+**Known limitation to document, not fix:** ORS sometimes declines a ferry
+and routes the long way instead (Ardrossan→Arran in §1). In that case
+`hasFerry` is false and the leg just shows a long drive — acceptable for
+v1; note it in the ticket so it isn't re-reported as a bug.
 
-**Value:** low-cost honesty fix. Right now a trip that hops to Mull or
-Islay shows a driving time that quietly assumes a ferry is always waiting —
-flagging it stops the estimate from being misleading, without pretending we
-have timetable data we don't.
+**Effort:** Worker S; UI split + tag S; optional `data/ferries.js` S–M.
+Post-go-live.
+
+**Value:** honesty fix. A trip to Mull or Islay currently shows a single
+driving time that hides a ferry entirely — splitting it out and tagging it
+makes the estimate truthful without pretending we have schedule data.
 
 ---
 
-## 5. Proposed follow-up ticket
+## 5. Follow-up ticket — now approved
 
-> **GOLF-118 — Flag ferry legs in the itinerary** · P3 · post-go-live
-> Worker returns `hasFerry`/`ferryMiles` via ORS `waytypes`; itinerary
-> drive-leg rows with a ferry show a glyph + "check sailing times" note +
-> operator link from a curated `data/ferries.js`. No timetable/fare
-> integration (parked until date selection exists). Deps: none.
+**GOLF-118 — Flag ferry legs + split ferry/drive time in the itinerary**
+· P3 · READY · post-go-live. Full scope = §4 above. Handover:
+`HANDOVER-GOLF-118.md`. Deps: none.
 
-Timetable/fare integration stays an **IDEA**, dependent on date-selection
-being built first.
+Timetable / fare integration stays an **IDEA**, dependent on date
+selection being built first.
 
 ---
 
