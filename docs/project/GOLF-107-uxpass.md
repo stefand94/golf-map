@@ -151,7 +151,19 @@ from this description.
 
 ---
 
-## GOLF-112 — City search: click a result to focus the map · Blocker: NO (strong nice-to-have) · M
+## GOLF-112 — City search: click a result to focus the map · Blocker: NO (strong nice-to-have) · M · STATUS: CLOSED ✅
+
+**DONE / CLOSED (2026-09-08, branch `golf-116-100-112` → `main`):** the
+place-name in the unified search results is now a link (`.tb-unified-place-focus`)
+that flies the map (`tbFocusPlaceOnMap()` in `js/map.js`) and drops a
+temporary 📍 marker — cleared on the next search, the next manual pan/zoom,
+or Escape. No trip stop is added. "Add to trip" / "Start a trip here"
+stays as a separate primary button on the row. The click also moves
+`tbPlaceAnchor` + `tbDiscoveryTab='anchor'` so Discover's "Nearby" list
+re-scopes to the focused place (fix landed after owner review: without it
+the list stayed pinned to the last course added). geocode-403 graceful
+degradation untouched. Works in Discover and Itinerary. Link underline
+dropped (hover-only) per owner feedback.
 
 **Ask (owner item 2):** searching a city should let you click the result
 to fly the map there, not only add it as a trip stop.
@@ -276,7 +288,16 @@ hover, toolbar width unchanged, shared view shows the full name.
 
 ---
 
-## GOLF-116 — Costs tab: consolidate hotel stays into one line · Blocker: YES (costs are wrong) · M
+## GOLF-116 — Costs tab: consolidate hotel stays into one line · Blocker: YES (costs are wrong) · M · STATUS: CLOSED ✅
+
+**DONE / CLOSED (2026-09-08, branch `golf-116-100-112` → `main`):**
+`tripCostLineItems()` (`js/trip-ui.js`) now groups hotel night-items by
+`stayId` (fallback `name + lat/lng` to 3dp) into one row —
+`Hotel A (£300/night × 2 nights) — £600`. Grand total is unchanged
+(the consolidated amount is the sum of the same per-night `det.total`
+values that were previously separate rows). Golf/POI lines untouched.
+Owner reviewed — "the other 2 [116/100] are working, will need tweaking
+down the line."
 
 **Symptom (owner item 5):** a hotel stayed twice / for multiple nights
 shows one line per night, so a 2-night stay appears as two lines.
@@ -299,7 +320,20 @@ the Costs-tab breakdown by `stayId` (fall back to name+coords), sum
 
 ---
 
-## GOLF-100 (update) — Costs tab: total + per-person columns · Blocker: YES (in go-live scope, owner 2026-09-07) · M
+## GOLF-100 (update) — Costs tab: total + per-person columns · Blocker: YES (in go-live scope, owner 2026-09-07) · M · STATUS: CLOSED ✅
+
+**DONE / CLOSED (2026-09-08, branch `golf-116-100-112` → `main`):** a
+per-person figure (`.cost-pp`, "£X pp") now renders under every amount in
+the Costs tab — line rows, category headers, fuel, grand total — shown
+only when group size > 1, driven by the existing toolbar group-size
+control. **GOLF-74 open question resolved from the code:** GOLF-91
+replaced GOLF-74's per-room model with per-person-per-night × whole-trip
+group size, and every cost line divides cleanly by group size, so
+per-person = line total ÷ group size uniformly (no special per-room
+path). Documented in PR #2. Owner reviewed — working, minor tweaks
+expected later.
+
+---
 
 Owner wants the Costs tab to show **two columns: total and per-person**
 (group size ÷). This is squarely GOLF-100's remit — fold it in rather than
