@@ -309,7 +309,20 @@ per-room/per-person model from GOLF-74.
 
 ---
 
-## GOLF-117 — Research spike: ferry legs · Blocker: NO · research only
+## GOLF-117 — Research spike: ferry legs · Blocker: NO · research only · STATUS: CLOSED ✅
+
+**DONE 2026-09-08** — full write-up in `GOLF-117-ferry-spike.md`. TL;DR:
+ORS `driving-car` already routes over `route=ferry` ways (verified live —
+Islay, Mull, Cairnryan work; Arran doesn't) but inconsistently and with no
+timetable awareness. Ferry legs become detectable by adding
+`extra_info:["waytypes"]` (code 9 = ferry) to the Worker's directions call
+— small change. No free CalMac API (only TNDS TransXChange XML); Kintyre
+Express (Islay↔Ireland) is passenger-only + seasonal; Port Ellen closed
+2026–29. Recommendation: **flag-only v1** (glyph + "check sailing times" +
+operator link from a curated `data/ferries.js`), no timetable/fare
+integration until date selection exists. Follow-up ticket **GOLF-118**
+(P3, post-go-live) raised.
+
 
 **Ask (owner item 10):** ferries are the practical way between Scottish
 islands, and open up an Islay→Ireland routing. Spike, not a build.
