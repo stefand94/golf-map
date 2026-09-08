@@ -227,7 +227,7 @@ function popupHTML(i){
     <p class="sub">${esc(c.r)} · ${esc(a.label)}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
     <div class="fees"><div class="fee-box"><b>Weekday</b><span>${esc(V(i,'wd'))}</span></div>
     <div class="fee-box"><b>Weekend</b><span>${esc(V(i,'we'))}</span></div></div>
-    <dl><dt>Course</dt><dd>${esc(V(i,'spec'))}</dd><dt>Design</dt><dd>${esc(V(i,'arch'))}</dd>${(!RAIL_FEATURE||c.topSouthAfrica)?'':`<dt>By rail</dt><dd>${travel}</dd>`}${club&&club.phone?`<dt>Phone</dt><dd>${esc(club.phone)}</dd>`:''}${(c.top100||c.topScot||c.topWales||c.topIreland||c.topSouthAfrica)?`<dt>From home</dt><dd>${distMiles(i)} mi, as the crow flies</dd>`:''}</dl>
+    <dl><dt>Course</dt><dd>${esc(V(i,'spec'))}</dd><dt>Design</dt><dd>${esc(V(i,'arch'))}</dd>${(!RAIL_FEATURE||c.topSouthAfrica)?'':`<dt>By rail</dt><dd>${travel}</dd>`}${club&&club.phone?`<dt>Phone</dt><dd>${esc(club.phone)}</dd>`:''}</dl>
     <p class="note">${esc(V(i,'note'))}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${esc(club.blurb)}</span>`:''}</p>
     ${calcHTML(i)}
     <div class="actions">

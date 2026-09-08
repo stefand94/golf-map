@@ -175,18 +175,18 @@ const PLAYED=new Set(),WANT=new Set();
 function togglePlayed(i){if(PLAYED.has(i))PLAYED.delete(i);else{PLAYED.add(i);WANT.delete(i)}saveState();render();}
 function toggleWant(i){if(WANT.has(i))WANT.delete(i);else{WANT.add(i);PLAYED.delete(i)}saveState();render();}
 
-/* GOLF-70: these four course metrics lived beside the Explore filters until
-   the split, but they are read from three different modules — popupHTML()
-   (js/map.js) calls distMiles() while it builds the marker popups at load
-   time, and FEE_SLIDER_MAX (js/explore.js) calls feeNum() from a top-level
-   IIFE. They are pure functions of C/EDITS/HOME, so they belong here, ahead
-   of every reader. Unchanged otherwise. */
+/* GOLF-70: these course metrics lived beside the Explore filters until the
+   split, but they are read from several modules — FEE_SLIDER_MAX
+   (js/explore.js) calls feeNum() from a top-level IIFE, and the "distance"
+   sort calls distOut(). They are pure functions of C/EDITS/HOME, so they
+   belong here, ahead of every reader. Unchanged otherwise. */
 function feeNum(i){const m=String(V(i,'wd')).match(/\d+(\.\d+)?/);return m?parseFloat(m[0]):9999}
+/* distOut() is in degrees — only used internally to rank courses by
+   straight-line distance from HOME for the "distance" sort. GOLF-123
+   removed the user-facing "X mi from home, as the crow flies" row from the
+   card and popup (a raw great-circle figure from a hard-coded home point
+   was meaningless), so there is no longer a distMiles() miles conversion. */
 function distOut(i){const dy=C[i].lat-HOME[0],dx=(C[i].lng-HOME[1])*Math.cos(HOME[0]*Math.PI/180);return Math.hypot(dy,dx)}
-/* GOLF-16: distOut() is in degrees (used internally for sorting); miles
-   at ~69 mi/degree latitude is accurate enough for a labelled "as the
-   crow flies" stat, not for anything requiring real precision. */
-function distMiles(i){return Math.round(distOut(i)*69)}
 // GOLF-81: was only checking gl/gbi — every England-Top100/Scotland/Wales/
 // Ireland/South-Africa course (t100.eng/sco/wal/ire/za) fell through to
 // the flat 500 default, so "Sort: by ranking" never actually ordered a

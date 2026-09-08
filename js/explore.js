@@ -287,10 +287,9 @@ if(RAIL_FEATURE)['t-rail','t-lbl','t-stn'].forEach(id=>{ // GOLF-110: wiring dor
   });
 });
 
-/* GOLF-70: feeNum/distOut/distMiles/rankNum moved to js/util.js — they are
-   shared course metrics, not Explore-only ones: popupHTML() (js/map.js) calls
-   distMiles() while building the marker popups at load time, which is before
-   this file has been evaluated. See the note at the top of js/util.js. */
+/* GOLF-70: feeNum/distOut/rankNum moved to js/util.js — they are shared
+   course metrics, not Explore-only ones, and js/util.js is evaluated ahead
+   of every reader. See the note at the top of js/util.js. */
 function passes(i){const c=C[i];
   // GOLF-81: nothing passes — map and list both stay empty — until a
   // country pill has been picked.
@@ -497,7 +496,6 @@ function render(){
       <span class="cfee">${esc(V(i,'wd'))}<small>wknd ${esc(V(i,'we'))}</small></span></div>
       <p class="cmeta"><span>${esc(a.label)}</span>
       ${stn?`<span>${esc(stn.n)} · ${esc(LINES[stn.l].n)}</span>`:near?`<span>${esc(near.n)} · ${esc(near.mi)} mi straight-line</span>`:C[i].topSouthAfrica?'':`<span style="color:var(--stone)">no close station</span>`}
-      ${(C[i].top100||C[i].topScot||C[i].topWales||C[i].topIreland||C[i].topSouthAfrica)?`<span style="color:var(--stone)">${distMiles(i)} mi from home</span>`:''}
       ${bestRankBadge(i)}${C[i].sweep?'<span class="wt">sweep</span>':''}${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
   list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
     const i=+el.dataset.i;showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
