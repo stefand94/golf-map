@@ -330,3 +330,38 @@ mobToggle.addEventListener('click',()=>{
 
 function goToCourse(i){map.closePopup();showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
   markers.get(i).openPopup();highlight(i);drawLink(i)}
+
+/* GOLF-112: a town/city picked from the unified search can now be looked
+   at on the map without being dropped into the trip. tbFocusPlaceOnMap()
+   flies the camera there and drops a TEMPORARY marker (never a trip stop);
+   the marker is cleared on the next search, the next manual pan/zoom, or
+   Escape. Lives here, not in the trip-* modules, because it's pure map
+   state keyed to the `map` global this file owns. */
+let tbTempPlaceMarker=null;
+let tbTempPlaceSetAt=0;
+function tbClearTempPlaceMarker(){
+  if(tbTempPlaceMarker){map.removeLayer(tbTempPlaceMarker);tbTempPlaceMarker=null;}
+}
+function tbFocusPlaceOnMap(lat,lng,label){
+  if(!isFinite(lat)||!isFinite(lng))return;
+  showMobileMap();
+  tbClearTempPlaceMarker();
+  tbTempPlaceSetAt=Date.now();
+  tbTempPlaceMarker=L.marker([lat,lng],{
+    icon:L.divIcon({className:'tb-temp-place-pin',html:'📍',iconSize:[24,24],iconAnchor:[12,22]}),
+    keyboard:false,interactive:false,zIndexOffset:1000
+  }).addTo(map);
+  if(label)tbTempPlaceMarker.bindTooltip(String(label),{direction:'top',offset:[0,-20]}).openTooltip();
+  /* flyTo's easing math needs a sized container; fall back to a plain jump
+     if the map hasn't been laid out yet (mirrors tbDrawMap()'s own guard). */
+  try{map.flyTo([lat,lng],12,{duration:.6});}catch(e){map.setView([lat,lng],12);}
+}
+/* A manual map gesture clears the temp marker — but the programmatic
+   flyTo above (and showMobileMap()'s invalidateSize) also fire these
+   events, so ignore anything within ~1s of dropping the marker. */
+map.on('zoomstart movestart dragstart',()=>{
+  if(!tbTempPlaceMarker)return;
+  if(Date.now()-tbTempPlaceSetAt<1000)return;
+  tbClearTempPlaceMarker();
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')tbClearTempPlaceMarker();});
