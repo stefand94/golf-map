@@ -804,7 +804,18 @@ function renderTripBuilder(){
     const focus=e.target.closest('.tb-unified-place-focus');
     if(focus){
       e.preventDefault();
-      tbFocusPlaceOnMap(parseFloat(focus.dataset.lat),parseFloat(focus.dataset.lng),focus.dataset.label);
+      const lat=parseFloat(focus.dataset.lat),lng=parseFloat(focus.dataset.lng),label=focus.dataset.label;
+      /* GOLF-112 bug fix: focusing a place must also re-scope Discover's
+         "Nearby" list to it (without adding a trip stop). Without this,
+         tbPlaceAnchor stays pointed at the last course added, so after
+         adding courses near City A and then focusing City B the Nearby
+         list keeps showing City A's courses. tbAddPlaceToTrip() is still
+         the only path that also creates a day. Redraw first, then fly —
+         so tbDrawMap()'s fitBounds doesn't clobber the camera focus. */
+      tbPlaceAnchor={label,lat,lng};
+      tbDiscoveryTab='anchor';
+      if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
+      tbFocusPlaceOnMap(lat,lng,label);
       return;
     }
     // GOLF-82: one place action now, not two — tbAnchorTripToPlace() is gone.

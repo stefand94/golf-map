@@ -669,6 +669,10 @@
      (the negative margin keeps them sitting on the text baseline). */
   .linkbtn{background:none;border:none;padding:var(--sp-2) 2px;margin:calc(var(--sp-2) * -1) 0;
     font:inherit;color:var(--accent);cursor:pointer;text-decoration:underline}
+  /* GOLF-112: the town/city name in the search results reads as a plain
+     tappable label, not an inline hyperlink — no underline until hover. */
+  .linkbtn.tb-unified-place-focus{text-decoration:none;font-weight:500}
+  .linkbtn.tb-unified-place-focus:hover{text-decoration:underline}
   #sort{font:500 11px var(--font-sans);padding:5px 7px;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink-soft)}
 
   .list{overflow-y:auto;flex:1;padding:10px 12px 24px;display:flex;flex-direction:column;gap:7px}
