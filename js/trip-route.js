@@ -126,6 +126,25 @@ function tripShowOrdered(order,clear=true,fit=true){
     const a=order[idx-1],b=order[idx];
     const segDay=b.day??a.day;
     const segColor=segDay!=null?TRIP_DAY_COLORS[(segDay-1)%TRIP_DAY_COLORS.length]:'#1B2733';
+    /* GOLF-118: a leg that crosses water is drawn as road → straight
+       port-to-port line → road, using the Worker's routeParts split —
+       ORS's own geometry for a ferry hugs the coast and reads as a huge
+       driving detour. Each road piece keeps the day colour; the ferry
+       piece is a distinct dashed navy line with a "⛴ Ferry" tooltip.
+       Falls back to the whole-leg polyline whenever routeParts isn't
+       available (older cache entry, older Worker deploy, or no ferry). */
+    const finfo=(typeof legFerryInfo==='function')?legFerryInfo(a,b):{hasFerry:false};
+    const parts=finfo.hasFerry&&(typeof orsLegRouteParts==='function')?orsLegRouteParts(a,b):null;
+    if(parts&&parts.length){
+      parts.forEach(p=>{
+        if(!p||!Array.isArray(p.pts)||p.pts.length<2)return;
+        const line=L.polyline(p.pts,p.ferry
+          ?{color:'#1B2A4A',weight:3,opacity:.9,dashArray:'7 6',lineCap:'round'}
+          :{color:segColor,weight:4,opacity:.8,lineCap:'round'}).addTo(tripLayer);
+        if(p.ferry)line.bindTooltip('⛴ Ferry crossing',{sticky:true});
+      });
+      continue;
+    }
     const route=orsLegRoute(a,b);
     const latlngs=(route&&route.length)?route:[[a.lat,a.lng],[b.lat,b.lng]];
     L.polyline(latlngs,route&&route.length
@@ -457,10 +476,14 @@ function tripLegEstimate(a,b){
     const key=orsLegKey(a,b);
     const hit=orsCacheLoad()[key];
     if(hit&&typeof hit.minutes==='number')
-      return{minutes:hit.minutes,miles:hit.miles!=null?hit.miles:miles,real:true};
+      /* GOLF-118: hasFerry/ferryMinutes ride along so the itinerary row
+         can show the "⛴ ferry" tag and split the time into drive + ferry.
+         Absent on a leg resolved before ferry data existed → plain drive. */
+      return{minutes:hit.minutes,miles:hit.miles!=null?hit.miles:miles,real:true,
+        hasFerry:!!hit.hasFerry,ferryMinutes:hit.ferryMinutes||0};
     orsEnsureLeg(key,a,b);
   }
-  return{minutes:Math.max(5,Math.round((miles/DRIVE_AVG_MPH*60)/5)*5),miles,real:false};
+  return{minutes:Math.max(5,Math.round((miles/DRIVE_AVG_MPH*60)/5)*5),miles,real:false,hasFerry:false,ferryMinutes:0};
 }
 /* Total driving distance across the whole trip — every consecutive pair in
    the chain, not just the day boundaries, so the fuel estimate reflects

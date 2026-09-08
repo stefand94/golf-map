@@ -23,15 +23,29 @@ function tripBuildSharePayload(){
     nm:((trips[activeTripId]||{}).name)||null, // GOLF-115: carry the trip name so the shared view can show it in full
 
     seq:[...tripSeq],
-    days:tripDays.map(d=>({
+    days:tripDays.map((d,idx)=>({
       id:d.id,kind:d.kind,place:d.place||null,
       placeLat:d.placeLat??null,placeLng:d.placeLng??null,
       date:d.date||null,driveIn:d.driveIn??null,
+      /* GOLF-118: freeze the inbound leg's ferry facts (the viewer's ORS
+         cache is empty, so the shared itinerary can't recompute them).
+         Presence of the object = "this leg has a ferry". */
+      ferryIn:tripShareInboundFerry(idx),
       items:tripDayItems(d).map(it=>it.type==='golf'
         ?{id:it.id,type:'golf',i:it.i}
         :{id:it.id,type:it.type,name:it.name,price:it.price,lat:it.lat,lng:it.lng})
     }))
   };
+}
+/* GOLF-118: {mins} for the ferry portion of a day's inbound leg (previous
+   day's last stop → this day's first stop), or null when that leg has no
+   ferry / isn't ORS-resolved. Mirrors tripDayRealEstimate()'s leg pick. */
+function tripShareInboundFerry(dayIdx){
+  if(typeof legFerryInfo!=='function')return null;
+  const a=tripDayLastStop(dayIdx-1),b=tripDayFirstStop(dayIdx);
+  if(!a||!b)return null;
+  const f=legFerryInfo(a,b);
+  return f.hasFerry?{mins:Math.round(f.ferryMinutes||0)}:null;
 }
 function tripEncodeShareURL(){
   const encoded=encodeURIComponent(JSON.stringify(tripBuildSharePayload()));
@@ -114,6 +128,9 @@ function tripDecodeSharePayload(hash){
         placeLat:shareNum(d.placeLat,-90,90),placeLng:shareNum(d.placeLng,-180,180),
         date:(typeof d.date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d.date))?d.date:null,
         driveIn:shareNum(d.driveIn,0,10000),
+        /* GOLF-118 — object present ⇒ inbound leg has a ferry; mins clamped. */
+        ferryIn:(d.ferryIn&&typeof d.ferryIn==='object')
+          ?{hasFerry:true,ferryMinutes:Math.round(shareNum(d.ferryIn.mins,0,10000)||0)}:null,
         items
       };
     }).filter(Boolean);
@@ -225,7 +242,16 @@ function renderSharedMap(){
   for(let k=1;k<order.length;k++){
     const a=order[k-1],b=order[k];
     if(a.lat==null||b.lat==null)continue;
-    L.polyline([[a.lat,a.lng],[b.lat,b.lng]],{color:'#3E7CB1',weight:3,dashArray:'5,7',opacity:.85}).addTo(m);
+    /* GOLF-118: the shared map already draws every leg as a straight line,
+       so a ferry crossing needs no re-routing here — just flag the
+       day-boundary leg navy + label it when that day's frozen ferryIn
+       says the inbound leg has a ferry. */
+    const bd=(b.day!=null&&a.day!==b.day)?tripDays[b.day-1]:null;
+    const isFerry=!!(bd&&bd.ferryIn);
+    const line=L.polyline([[a.lat,a.lng],[b.lat,b.lng]],
+      isFerry?{color:'#1B2A4A',weight:3,dashArray:'7,6',opacity:.9}
+             :{color:'#3E7CB1',weight:3,dashArray:'5,7',opacity:.85}).addTo(m);
+    if(isFerry)line.bindTooltip('⛴ Ferry crossing',{sticky:true});
   }
   if(pts.length>1)m.fitBounds(L.latLngBounds(pts),{padding:[28,28]});
   else if(pts.length===1)m.setView(pts[0],11);

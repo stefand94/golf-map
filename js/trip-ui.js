@@ -167,8 +167,16 @@ function tripDayLegs(dayIdx){
     const cur=chain[pos];
     const leg=tripLegEstimate(prev,cur);
     const isDayFirst=pos===firstPos;
-    const mins=(isDayFirst&&d.driveIn!=null)?d.driveIn:(leg?leg.minutes:null);
-    return{type:'drive',label:`${prev.name} → ${cur.name}`,mins,real:!!(leg&&leg.real),dayFirst:isDayFirst};
+    const overridden=isDayFirst&&d.driveIn!=null;
+    const mins=overridden?d.driveIn:(leg?leg.minutes:null);
+    /* GOLF-118: ferry info for this leg. In the read-only shared view the
+       live ORS cache isn't populated, so the day-first leg's ferry facts
+       are frozen onto the day object at share time (d.ferryIn) — same
+       mechanism as driveIn. Live app: straight off the leg estimate. */
+    const fin=(isDayFirst&&d.ferryIn)?d.ferryIn:leg;
+    const hasFerry=!!(fin&&fin.hasFerry),ferryMinutes=(fin&&fin.ferryMinutes)||0;
+    return{type:'drive',label:`${prev.name} → ${cur.name}`,mins,real:!!(leg&&leg.real),
+      dayFirst:isDayFirst,overridden,hasFerry,ferryMinutes};
   };
   const legs=[];
   if(placePos>=0){const r=driveRow(placePos);if(r)legs.push(r);}
@@ -190,7 +198,21 @@ function tripDayTotal(dayIdx){
    the stop names for attention. */
 function tbDriveCapHTML(l){
   if(l.mins==null&&!l.label)return'';
-  return`<div class="tb-drive-cap" title="${esc(l.label)}">🚗 Drive ${l.mins!=null?esc(fmtDriveMinutes(l.mins)):'—'}${l.real?` <span class="tb-drive-real">· live</span>`:''}</div>`;
+  /* GOLF-118: when the leg crosses water, split the time into drive + ferry
+     ("2h 0m driving + ~55m ferry") and add a ⛴ tag. A manual driveIn
+     override keeps its own number (no split) but still shows the tag so the
+     ferry isn't hidden; hasFerry with a zero ferry estimate → tag only. */
+  let timeHTML;
+  if(l.hasFerry&&l.ferryMinutes>0&&!l.overridden&&l.mins!=null){
+    const drive=l.mins-l.ferryMinutes;
+    timeHTML=drive>=1
+      ?`${esc(fmtDriveMinutes(drive))} driving + ~${esc(fmtDriveMinutes(l.ferryMinutes))} ferry`
+      :`~${esc(fmtDriveMinutes(l.ferryMinutes))} ferry`;
+  }else{
+    timeHTML=l.mins!=null?esc(fmtDriveMinutes(l.mins)):'—';
+  }
+  const tag=l.hasFerry?` <span class="wt tb-ferry-tag" title="This route has a ferry">⛴ This route has a ferry</span>`:'';
+  return`<div class="tb-drive-cap${l.hasFerry?' has-ferry':''}" title="${esc(l.label)}">🚗 Drive ${timeHTML}${l.real?` <span class="tb-drive-real">· live</span>`:''}${tag}</div>`;
 }
 /* Currency correctness: every £ figure in the pane now takes an optional
    currency symbol (defaulting to £, the common case), sourced from

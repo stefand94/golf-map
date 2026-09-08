@@ -49,7 +49,13 @@ const ORS_PROXY_URL='https://geofftheworker.stefand94.workers.dev/';
    stuck permanently believing "no geometry available" — v1 entries are
    simply abandoned, a fresh v2 cache starts empty and refetches as
    needed, same one-time cost as any other cache-key bump would have. */
-const ORS_CACHE_KEY='golfmap:legcache:v2';
+/* GOLF-118: v3 — the cached shape gained hasFerry/ferryMinutes/ferryMiles/
+   routeParts. Bumped (rather than tolerating missing fields on v2 entries)
+   because orsLegRoute() short-circuits on any entry that already has a
+   `route` key, so a v2 entry would never re-fetch to pick up ferry data —
+   it'd silently show a ferry crossing as a plain drive forever. A clean v3
+   cache refetches lazily, same one-time cost as the GOLF-50 v1->v2 bump. */
+const ORS_CACHE_KEY='golfmap:legcache:v3';
 /* GOLF-63: legs are now computed per item rather than per day boundary, so
    this is read once per leg in loops that got an order of magnitude longer
    — memoised in-memory (invalidated by our own writes, the only writer) so
@@ -109,7 +115,16 @@ function orsEnsureLeg(key,a,b){
       if(data&&typeof data.minutes==='number'){
         const c=orsCacheLoad();
         c[key]={minutes:Math.round(data.minutes),miles:data.miles!=null?Math.round(data.miles*10)/10:null,
-          route:Array.isArray(data.route)?data.route:null,ts:Date.now()};
+          route:Array.isArray(data.route)?data.route:null,
+          /* GOLF-118 — every reader treats a missing key as "no ferry": a
+             pre-v3 entry, or a leg resolved against an older Worker deploy,
+             simply has hasFerry undefined (falsy) and the ferry tag/split
+             never shows for it until it re-resolves. */
+          hasFerry:!!data.hasFerry,
+          ferryMinutes:typeof data.ferryMinutes==='number'?Math.round(data.ferryMinutes):0,
+          ferryMiles:typeof data.ferryMiles==='number'?Math.round(data.ferryMiles*10)/10:0,
+          routeParts:Array.isArray(data.routeParts)?data.routeParts:null,
+          ts:Date.now()};
         orsCacheSave(c);
         if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else if(TRIP.size){tripDrawCart(false);}
       }
@@ -150,6 +165,29 @@ function orsLegRoute(a,b){
   if(hit&&'route'in hit)return hit.route;
   orsEnsureLeg(key,a,b);
   return null;
+}
+/* GOLF-118: the ordered road/ferry pieces of a leg's route (see the
+   Worker's routeParts) — used by tripShowOrdered() to draw the ferry
+   crossing as one straight port-to-port line instead of ORS's long
+   coastal polyline. null when unknown or the leg has no ferry; callers
+   fall back to orsLegRoute()/a straight line, same convention as
+   everything else in this file. Never fires its own fetch — orsLegRoute()
+   / tripDayRealEstimate() already do for this same cache key. */
+function orsLegRouteParts(a,b){
+  if(!ORS_PROXY_URL)return null;
+  const hit=orsCacheLoad()[orsLegKey(a,b)];
+  return hit&&Array.isArray(hit.routeParts)?hit.routeParts:null;
+}
+/* GOLF-118: {hasFerry,ferryMinutes,ferryMiles} for a leg from cache, with
+   a hard no-ferry default for any leg not yet resolved or resolved before
+   ferry data existed. Read-only — no fetch (its callers already trigger
+   one via the drive-time / route helpers). */
+function legFerryInfo(a,b){
+  const none={hasFerry:false,ferryMinutes:0,ferryMiles:0};
+  if(!ORS_PROXY_URL||!a||!b)return none;
+  const hit=orsCacheLoad()[orsLegKey(a,b)];
+  if(!hit||!hit.hasFerry)return none;
+  return{hasFerry:true,ferryMinutes:hit.ferryMinutes||0,ferryMiles:hit.ferryMiles||0};
 }
 /* GOLF-56: place search (start/free/end day locations) via the same
    Worker's geocode mode. In-memory only (no localStorage cache — search

@@ -145,7 +145,11 @@ async function handleRoute(body, env) {
         Authorization: env.ORS_API_KEY,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ coordinates: [origin, destination] }),
+      // GOLF-118: extra_info:["waytypes"] makes ORS return a per-segment
+      // way-type breakdown (extras.waytypes) so we can spot a ferry
+      // crossing folded into a driving-car route. No extra request, no
+      // cost change — just a richer response body.
+      body: JSON.stringify({ coordinates: [origin, destination], extra_info: ['waytypes'] }),
     });
   } catch (e) {
     return json({ error: 'could not reach OpenRouteService' }, 502);
@@ -174,13 +178,135 @@ async function handleRoute(body, env) {
   }
 
   const coords = feature.geometry && feature.geometry.type === 'LineString' ? feature.geometry.coordinates : null;
+  // GeoJSON is [lng, lat]; flip to [lat, lng] so the client feeds it
+  // straight to Leaflet without any conversion.
+  const latlng = coords ? coords.map((c) => [c[1], c[0]]) : null;
+
+  const minutes = summary.duration / 60;
+  const ferry = extractFerry(feature, latlng, minutes);
+
   return json({
-    minutes: summary.duration / 60,
+    minutes,
     miles: summary.distance / 1609.344,
-    // [lat, lng] pairs (flipped from GeoJSON's [lng, lat]) so the client
-    // can feed this straight to Leaflet without any conversion.
-    route: coords ? simplifyRoute(coords.map((c) => [c[1], c[0]])) : null,
+    route: latlng ? simplifyRoute(latlng) : null,
+    // GOLF-118 — all four fields absent-safe: an older client ignores
+    // them, and this Worker returns hasFerry:false for a pure-road leg or
+    // any response whose extras don't parse.
+    hasFerry: ferry.hasFerry,
+    ferryMinutes: ferry.ferryMinutes,
+    ferryMiles: ferry.ferryMiles,
+    // Ordered road/ferry pieces of the route. Road pieces carry the real
+    // ORS geometry (simplified); each ferry piece is just its two port
+    // endpoints, so the client can draw the crossing as one straight line
+    // between ports instead of ORS's long over-water/near-shore polyline.
+    // null when the leg has no ferry — the client falls back to `route`.
+    routeParts: ferry.routeParts,
   });
+}
+
+// GOLF-118 — way-type code 9 is "Ferry" in the ORS way-type enum.
+const WAYTYPE_FERRY = 9;
+// CalMac vehicle-ferry service speed sits around 15–20 mph; 18 is the
+// midpoint. Only used for the ferryMinutes fallback (see below).
+const FERRY_FALLBACK_MPH = 18;
+
+// Pulls the ferry picture out of an ORS directions feature. Fully
+// defensive: any missing/malformed piece yields
+// {hasFerry:false, ferryMinutes:0, ferryMiles:0, routeParts:null}.
+function extractFerry(feature, latlng, minutes) {
+  const none = { hasFerry: false, ferryMinutes: 0, ferryMiles: 0, routeParts: null };
+  const props = feature && feature.properties;
+  const wt = props && props.extras && props.extras.waytypes;
+  const values = wt && Array.isArray(wt.values) ? wt.values : null;
+  if (!values || !latlng || latlng.length < 2) return none;
+
+  // [fromIdx, toIdx] index ranges (into the coordinate array) that are
+  // ferry, in route order, adjacent ranges merged.
+  const ranges = [];
+  values
+    .filter((v) => Array.isArray(v) && v.length >= 3 && v[2] === WAYTYPE_FERRY)
+    .map((v) => [v[0], v[1]])
+    .sort((a, b) => a[0] - b[0])
+    .forEach(([f, t]) => {
+      const last = ranges[ranges.length - 1];
+      if (last && f <= last[1] + 1) last[1] = Math.max(last[1], t);
+      else ranges.push([f, t]);
+    });
+  if (!ranges.length) return none;
+
+  // ferryMiles from the way-type summary when present (its distances are
+  // authoritative), else summed from the geometry of each ferry range.
+  const summary = wt.summary && Array.isArray(wt.summary) ? wt.summary : null;
+  const ferrySummary = summary && summary.find((s) => s && s.value === WAYTYPE_FERRY);
+  let ferryMiles =
+    ferrySummary && typeof ferrySummary.distance === 'number'
+      ? ferrySummary.distance / 1609.344
+      : ranges.reduce((mi, [f, t]) => mi + rangeMiles(latlng, f, t), 0);
+  ferryMiles = Math.round(ferryMiles * 10) / 10;
+
+  // ferryMinutes: preferred path maps the ferry index ranges onto ORS's
+  // per-step durations and sums the overlap. Fallback (flagged in the PR):
+  // ferryMiles ÷ an assumed ferry speed. Either way, clamp below `minutes`
+  // so the drive remainder can't go negative.
+  let ferryMinutes = stepDurationMinutes(props, ranges);
+  if (ferryMinutes == null) ferryMinutes = (ferryMiles / FERRY_FALLBACK_MPH) * 60;
+  ferryMinutes = Math.min(Math.round(ferryMinutes), Math.max(0, Math.floor(minutes) - 1));
+
+  // Split the whole coordinate array into ordered road / ferry pieces.
+  const parts = [];
+  let cursor = 0;
+  const lastIdx = latlng.length - 1;
+  ranges.forEach(([f, t]) => {
+    const from = Math.max(0, Math.min(f, lastIdx));
+    const to = Math.max(0, Math.min(t, lastIdx));
+    if (from > cursor) parts.push({ ferry: false, pts: simplifyRoute(latlng.slice(cursor, from + 1)) });
+    parts.push({ ferry: true, pts: [latlng[from], latlng[to]] });
+    cursor = to;
+  });
+  if (cursor < lastIdx) parts.push({ ferry: false, pts: simplifyRoute(latlng.slice(cursor)) });
+
+  return { hasFerry: true, ferryMinutes, ferryMiles, routeParts: parts };
+}
+
+function rangeMiles(latlng, from, to) {
+  let m = 0;
+  for (let i = Math.max(1, from + 1); i <= to && i < latlng.length; i++) {
+    m += haversineMiles(latlng[i - 1], latlng[i]);
+  }
+  return m;
+}
+
+function haversineMiles(a, b) {
+  const R = 3958.7613;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(b[0] - a[0]);
+  const dLng = toRad(b[1] - a[1]);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a[0])) * Math.cos(toRad(b[0])) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+// Sum ORS step durations whose way-point index range overlaps a ferry
+// range. Returns null (→ caller uses the distance fallback) if the
+// segment/step shape isn't what we expect.
+function stepDurationMinutes(props, ferryRanges) {
+  const segments = props && Array.isArray(props.segments) ? props.segments : null;
+  if (!segments) return null;
+  let seconds = 0;
+  let sawStep = false;
+  for (const seg of segments) {
+    const steps = seg && Array.isArray(seg.steps) ? seg.steps : [];
+    for (const st of steps) {
+      const wp = st && Array.isArray(st.way_points) ? st.way_points : null;
+      if (!wp || wp.length < 2 || typeof st.duration !== 'number') continue;
+      sawStep = true;
+      const overlaps = ferryRanges.some(([f, t]) => wp[0] < t && wp[1] > f);
+      if (overlaps) seconds += st.duration;
+    }
+  }
+  if (!sawStep) return null;
+  return seconds / 60;
 }
 
 function simplifyRoute(points) {

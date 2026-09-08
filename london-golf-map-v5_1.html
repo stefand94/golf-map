@@ -338,6 +338,10 @@
     padding:var(--sp-1) var(--sp-3) 0 44px;font:600 var(--fs-micro) var(--font-sans);
     letter-spacing:.02em;color:var(--stone);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .tb-drive-cap .tb-drive-real{color:#1a7a3e}
+  /* GOLF-118: a ferry leg's caption carries an extra tag and a longer
+     "drive + ferry" string — let it wrap instead of ellipsing it away. */
+  .tb-drive-cap.has-ferry{white-space:normal}
+  .tb-ferry-tag{background:#E1EAF4;color:#1B2A4A}
 
   /* Day footer: the two add actions, sized as real targets. */
   .tb-day-add{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3) var(--sp-3);flex-wrap:wrap}
