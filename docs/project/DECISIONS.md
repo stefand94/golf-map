@@ -4,6 +4,28 @@ _Stable IDs `DEC-nnn`. Record: decision · context · alternatives · reason ·
 date · affected features. Newest first. Full rationale for older calls lives
 in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 
+## DEC-009 — Course coverage is "enough"; further national bulk pulls paused
+
+- **Decision:** stop expanding course coverage for now. GOLF-121b (UK &
+  Ireland curation strategy) and GOLF-121c+ (per-nation bulk pulls) are
+  POSTPONED; GOLF-119 (DotGolf coverage audit) is ON HOLD. South Africa's
+  map view is ringfenced to a ~107-course ranked set (GOLF-121d). The
+  Australia top-100 pull run 2026-09-09 is for owner review only and does
+  **not** go into the app yet.
+- **Context:** at 879 courses the map is too dense; the owner's judgement
+  is that GB & Ireland ranked coverage (England ~120, Scotland 100,
+  Ireland 83, Wales 38) is already sufficient for the product's purpose (a
+  trip planner, not a course directory). No reported "missing course"
+  gaps.
+- **Alternatives:** keep pulling nation by nation (more data, worse map
+  density, more maintenance); add show-all toggles per nation now
+  (deferred — data stays in the files, gated by `courseShownOnMap()`).
+- **Reason:** density/clarity and maintainability beat raw completeness
+  pre-go-live. Reversible — the data is retained, only the map gate and
+  the roadmap sequencing change.
+- **Date:** 2026-09-09 · **Affects:** GOLF-119, GOLF-121b/c/d, future
+  expansion; `courseShownOnMap()`.
+
 ## DEC-008 — Nearest-railway-station feature hidden (dormant, not removed)
 
 - **Decision:** the rail-line / station / nearest-station-link feature is
