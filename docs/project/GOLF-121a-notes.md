@@ -1,6 +1,6 @@
 # GOLF-121a — South Africa full DotGolf pass (result notes)
 
-**Branch:** `golf-121a-sa-full` · **Date:** 2026-09-09 · **Status:** done, pending owner review of the escalation lists below.
+**Branch:** `golf-121a-sa-full` (merged to `main` `6bc2fd8`) · **Date:** 2026-09-09 · **Status:** COMPLETE. Open follow-up items (real hole counts, ~14 manual coord checks, 6 clubs not in OSM) are tracked in "Still open" at the bottom — none block completion.
 
 ## Outcome
 
