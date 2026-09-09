@@ -6,7 +6,14 @@ verified._
 
 ## GOLF-98 — Real green-fee data entry (ongoing data job)
 
-**Status:** IN PROGRESS · **Priority:** P2
+**Status:** PAUSED pending GOLF-120 v2 schema sign-off · **Priority:** P2
+
+> 2026-09-10: `fee` v1 continuation is on hold. GOLF-120 Phase 1 proposal
+> (`docs/project/GOLF-120-schema-v2-proposal.md`) + a 126-course batch-1
+> research pass (`GOLF-120-fees-batch1.json`) are done and awaiting owner
+> sign-off. Once the `feeV2` shape is locked, GOLF-98 resumes *as* the v2
+> re-research programme (Top 100 included). Everything below describes the
+> superseded v1 flow.
 
 Migrate course green fees from legacy free-text `wd`/`we` strings to the
 structured `fee:{weekday,weekend,weekendTwilight?,confidence,lastVerified}`

@@ -1,0 +1,5146 @@
+[
+ {
+  "n": "Royal St George's",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.royalstgeorges.com/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Visitors Tue/Wed only; lunch included in all fees; handicap index 18.4 or lower required",
+   "seasons": [
+    {
+     "name": "peak",
+     "months": [
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 400
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      10,
+      11,
+      12
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 215
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Sunningdale (Old)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.sunningdale.com/",
+   "lastVerified": "2026-09-10",
+   "confidence": "poa",
+   "notes": "2026 season fully booked; 2027 booking opens November 2026",
+   "seasons": []
+  }
+ },
+ {
+  "n": "Sunningdale (New)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.sunningdale.com/",
+   "lastVerified": "2026-09-10",
+   "confidence": "poa",
+   "notes": "2026 season fully booked; 2027 booking opens November 2026",
+   "seasons": []
+  }
+ },
+ {
+  "n": "Royal Birkdale",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.golfmonthly.com/news/royal-birkdale-green-fees-how-much",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Closed Nov-Feb; visitors Mon/Thu only; 2026 Open Championship venue",
+   "seasons": [
+    {
+     "name": "peak",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 495
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      3,
+      4
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 450
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Royal Lytham & St Annes",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.royallytham.org/golf/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Closed to visitors Nov 1 2026 - Feb 28 2027; weekday rates shown; England Golf members £800 (Apr-Oct only)",
+   "seasons": [
+    {
+     "name": "spring",
+     "months": [
+      3
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 245
+      }
+     ]
+    },
+    {
+     "name": "peak",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 400
+      }
+     ]
+    },
+    {
+     "name": "autumn",
+     "months": [
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 280
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Woodhall Spa (Hotchkin)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.woodhallspagolf.com/visitors/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "England Golf members £170; iGolf subscribers £205; £20 deposit per golfer at booking",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 245
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Royal Cinque Ports",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.royalcinqueports.com/visit/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Mon/Thu 3-4 ball only; Tue/Wed 2-ball only; 50% junior discount; 50% professional discount available",
+   "seasons": [
+    {
+     "name": "spring",
+     "months": [
+      3
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 185
+      }
+     ]
+    },
+    {
+     "name": "peak",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 285
+      }
+     ]
+    },
+    {
+     "name": "winter",
+     "months": [
+      11,
+      12
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 150
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Swinley Forest",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.swinleyfgc.co.uk/visitors/",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Visitor access restricted; contact Secretary required; data from 2023, subject to confirmation",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 220
+      }
+     ]
+    },
+    {
+     "name": "winter",
+     "months": [
+      11,
+      12,
+      1,
+      2
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 135
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Royal West Norfolk",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.rwngc.org/visitors/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "2-ball or foursome play only; no 3-4 ball play; visitors inaccessible August; check tide times",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 185
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 235
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Ganton",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.gantongolfclub.com/visitors/request-a-tee-time/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "County Card Rate £235 Mon-Fri & Sun 1:30pm; Twilight from 4pm £50; WHS Handicap Index required",
+   "seasons": [
+    {
+     "name": "peak",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 235
+      },
+      {
+       "day": "any",
+       "timeBand": "twilight",
+       "bandStart": "16:00",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 50
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Royal Liverpool",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.royal-liverpool-golf.com/Visitor-Tee-Booking",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Visitors Mon/Tue/Fri only; Nov 2025-Feb 2026 unavailable; Golf & Lunch option Tue £450 (Apr-Sept)",
+   "seasons": [
+    {
+     "name": "spring",
+     "months": [
+      3
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 300
+      }
+     ]
+    },
+    {
+     "name": "peak",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 400
+      }
+     ]
+    },
+    {
+     "name": "autumn",
+     "months": [
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 350
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Formby",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.formbygolfclub.co.uk/birkdale-2026/visitors/",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Highly restricted visitor access; reciprocal arrangements only; letter of introduction required; 2024 data",
+   "seasons": [
+    {
+     "name": "peak",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 250
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 280
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Alwoodley",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://alwoodleygolfclub.com/visitor-information/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "MacKenzie design; March has maintenance discounts; international rate £270; 36-hole rate £295",
+   "seasons": [
+    {
+     "name": "winter",
+     "months": [
+      3
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 120
+      }
+     ]
+    },
+    {
+     "name": "spring",
+     "months": [
+      4
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 165
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      5
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 185
+      }
+     ]
+    },
+    {
+     "name": "peak",
+     "months": [
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 230
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Saunton (East)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.sauntongolf.co.uk/green_fees_and_information",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Multiple-day packages available; £20/person non-refundable deposit at booking; twilight from £75 (Mar-Oct)",
+   "seasons": [
+    {
+     "name": "low",
+     "months": [
+      11,
+      12,
+      1,
+      2
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 125
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      4,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 150
+      }
+     ]
+    },
+    {
+     "name": "peak",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 175
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "St George's Hill",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.stgeorgeshillgolfclub.co.uk/visit/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Aug 2026-Apr 2027: RED Course under renovation; 18-hole rounds use GREEN & BLUE; 2-ball Mon-Thu afternoons, 3-4 ball Mon-Thu & Fri mornings (limited)",
+   "seasons": [
+    {
+     "name": "autumn",
+     "months": [
+      8,
+      9,
+      10,
+      11,
+      12
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 200
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Rye",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.ryegolfclub.co.uk/visitors",
+   "lastVerified": "2026-09-10",
+   "confidence": "poa",
+   "notes": "Private club, very limited visitor access without member introduction; invitations at Secretary's discretion; 2-ball foursomes only",
+   "seasons": []
+  }
+ },
+ {
+  "n": "Burnham & Berrow",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.burnhamandberrowgolfclub.co.uk/visitors/",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "2023 data; contact club for current 2026 rates; off-peak discounts available",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 130
+      },
+      {
+       "day": "friday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 145
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 155
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Notts (Hollinwell)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "http://www.nottsgolfclub.co.uk",
+   "lastVerified": "2026-09-10",
+   "confidence": "poa",
+   "notes": "Website certificate expired; unable to verify current rates. Legacy data shows £175 weekday/weekend.",
+   "seasons": []
+  }
+ },
+ {
+  "n": "St Enodoc (Church)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.st-enodoc.co.uk/visitors/green-fees-visitor-information/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "seasons": [
+    {
+     "name": "peak-premium",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "adult",
+       "amount": 225
+      },
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "junior",
+       "amount": 115
+      }
+     ]
+    },
+    {
+     "name": "shoulder-premium",
+     "months": [
+      3,
+      4,
+      11
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "adult",
+       "amount": 185
+      },
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "junior",
+       "amount": 95
+      }
+     ]
+    },
+    {
+     "name": "peak",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "adult",
+       "amount": 175
+      },
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "junior",
+       "amount": 90
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      3,
+      4,
+      11
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "adult",
+       "amount": 135
+      },
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "junior",
+       "amount": 70
+      }
+     ]
+    },
+    {
+     "name": "off-peak",
+     "months": [
+      1,
+      2,
+      12
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "adult",
+       "amount": 105
+      },
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "junior",
+       "amount": 55
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Hankley Common",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://hankley.co.uk/visit/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Data from third-party aggregator (August 2023). Verify directly with club at 01252 797717 for current rates.",
+   "seasons": [
+    {
+     "name": "summer",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 145
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 160
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Hillside",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.hillside-golfclub.co.uk/visitors/visitors-golf/",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Official site returns 403 Forbidden. Rates from third-party sources indicate £115-150 range with seasonal variation.",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 115
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 150
+      }
+     ]
+    },
+    {
+     "name": "low",
+     "months": [
+      1,
+      2,
+      3,
+      11,
+      12
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 60
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Silloth-on-Solway",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "http://www.sillothgolfclub.co.uk/green_fees",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "cart": {
+    "status": "extra",
+    "amount": 35,
+    "per": "cart"
+   },
+   "seasons": [
+    {
+     "name": "summer",
+     "months": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 120
+      }
+     ]
+    },
+    {
+     "name": "winter",
+     "months": [
+      1,
+      2,
+      11,
+      12
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 70
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "The Berkshire (Red)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "http://www.theberkshire.co.uk/green_fees",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "seasons": [
+    {
+     "name": "low-season",
+     "months": [
+      11,
+      12,
+      1,
+      2,
+      3,
+      4
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 170
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 240
+      }
+     ]
+    },
+    {
+     "name": "high-season",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 275
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 380
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "West Lancs",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.westlancashiregolf.co.uk/visitors/visitors-green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "cart": {
+    "status": "extra",
+    "amount": 45,
+    "per": "cart"
+   },
+   "seasons": [
+    {
+     "name": "may-september",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 250
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 295
+      }
+     ]
+    },
+    {
+     "name": "october",
+     "months": [
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 200
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 225
+      }
+     ]
+    },
+    {
+     "name": "november-february",
+     "months": [
+      11,
+      12,
+      1,
+      2
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 120
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 480
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "West Sussex (Pulborough)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://westsussexgolf.co.uk/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "2-ball course with advance booking required. Subject to availability.",
+   "seasons": [
+    {
+     "name": "high-season",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 175
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 200
+      }
+     ]
+    },
+    {
+     "name": "low-season",
+     "months": [
+      1,
+      2,
+      3,
+      11,
+      12
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 135
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 150
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Hunstanton",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.hunstantongolfclub.com/visitors/visitors-and-green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Two-ball course with specific visitor access windows by day. Foursomes available at reduced rates.",
+   "seasons": [
+    {
+     "name": "summer",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 175
+      }
+     ]
+    },
+    {
+     "name": "winter",
+     "months": [
+      1,
+      2,
+      3,
+      11,
+      12
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 120
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Woking",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://wokinggolfclub.co.uk/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Mon/Wed/Thu 2-ball and foursomes play only. Tue/Fri 4-ball play only. Max 6 visitor tee times per day on Tue/Fri.",
+   "seasons": [
+    {
+     "name": "high-season",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 235
+      },
+      {
+       "day": "friday",
+       "holes": 18,
+       "amount": 235
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Southport & Ainsdale",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.sandagolfclub.co.uk/visitors/green-fees-offers/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Green fee includes clubhouse meal (soup, sandwiches or similar). 60 days advance payment required; 50% non-refundable deposit.",
+   "seasons": [
+    {
+     "name": "year-round",
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 175
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 190
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Prince's (Shore/Dunes/Himalayas)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.princesgolfclub.co.uk/play/green-fees",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Data from 2023 sources. Handicap certificate required; advance booking essential. Visit official site for current 2026 rates.",
+   "seasons": [
+    {
+     "name": "high-season",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 135
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 155
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "The Berkshire (Blue)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "http://www.theberkshire.co.uk/green_fees",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Blue course rates identical to Red course. Please verify with club for course-specific pricing.",
+   "seasons": [
+    {
+     "name": "low-season",
+     "months": [
+      11,
+      12,
+      1,
+      2,
+      3,
+      4
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 170
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 240
+      }
+     ]
+    },
+    {
+     "name": "high-season",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 275
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 380
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Sherwood Forest",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.sherwoodforestgolfclub.co.uk/visitors/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "poa",
+   "notes": "Website access restricted (403 Forbidden). No specific rates published online. Contact club at 01623 626689 or info@sherwoodforestgolfclub.co.uk for current pricing.",
+   "seasons": []
+  }
+ },
+ {
+  "n": "Liphook",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.liphookgolfclub.com/green_fees",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Summer season only (1 March – 31 October, excluding August). No winter visitor bookings accepted (1 Nov – 28 Feb). Sundays after 2pm only during season.",
+   "seasons": [
+    {
+     "name": "summer",
+     "months": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 180
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 210
+      },
+      {
+       "timeBand": "twilight",
+       "day": "weekday",
+       "bandStart": "16:00",
+       "holes": 18,
+       "amount": 135
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Worplesdon",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://worplesdongc.co.uk/visitors/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Weekdays only (Mon-Thu). No outside visitors on weekends (Fri-Sun). Maximum handicap: men 20, women & juniors 30.",
+   "seasons": [
+    {
+     "name": "summer",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 160
+      },
+      {
+       "day": "any",
+       "holes": "day",
+       "amount": 300
+      }
+     ]
+    },
+    {
+     "name": "winter",
+     "months": [
+      1,
+      2,
+      3,
+      11,
+      12
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 100
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Parkstone",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.parkstonegolfclub.com/bookings",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Premium rates vary by time slot and day. All visitors require £30 non-refundable deposit per person.",
+   "seasons": [
+    {
+     "name": "year-round",
+     "rates": [
+      {
+       "timeBand": "morning",
+       "bandStart": "09:30",
+       "day": "weekday",
+       "holes": 18,
+       "amount": 30
+      },
+      {
+       "timeBand": "morning",
+       "bandStart": "09:30",
+       "day": "weekend",
+       "holes": 18,
+       "amount": 32
+      },
+      {
+       "timeBand": "afternoon",
+       "bandStart": "11:30",
+       "day": "weekday",
+       "holes": 18,
+       "amount": 30
+      },
+      {
+       "timeBand": "afternoon",
+       "bandStart": "11:30",
+       "day": "weekend",
+       "holes": 18,
+       "amount": 32
+      },
+      {
+       "timeBand": "twilight",
+       "bandStart": "14:30",
+       "day": "weekday",
+       "holes": 18,
+       "amount": 20
+      },
+      {
+       "timeBand": "twilight",
+       "bandStart": "14:30",
+       "day": "weekend",
+       "holes": 18,
+       "amount": 22
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "St Andrews (Old)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.standrews.com/",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "2026 rates ~£355 standard; lottery scheme with £45 discounted rounds for Scottish residents",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 355
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 355
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Turnberry (Ailsa)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.trumpgolfclub.com/turnberry/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Four-figure fee designed to protect tee times for hotel residents; prices vary significantly by time of day and season",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "timeBand": "morning",
+       "bandStart": "08:00",
+       "holes": 18,
+       "amount": 1000
+      },
+      {
+       "day": "any",
+       "timeBand": "afternoon",
+       "bandStart": "13:00",
+       "holes": 18,
+       "amount": 545
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      4,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 315
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Royal Dornoch",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://royaldornoch.com/visitor-information/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Two courses available; twilight rates require pre-booking and advance payment",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "timeBand": "anytime",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 360
+      },
+      {
+       "day": "any",
+       "timeBand": "twilight",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 215
+      }
+     ]
+    },
+    {
+     "name": "winter",
+     "months": [
+      11,
+      12,
+      1,
+      2,
+      3
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 200
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Muirfield",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "http://www.muirfield.org.uk",
+   "lastVerified": "2026-09-10",
+   "confidence": "poa",
+   "notes": "Application required; does not publish standard visitor rates online",
+   "seasons": []
+  }
+ },
+ {
+  "n": "North Berwick (West Links)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.northberwickgolfclub.com/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 220
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 220
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Kingsbarns",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.kingsbarns.com/reservations",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Replay rates available within 7 days",
+   "seasons": [
+    {
+     "name": "shoulder",
+     "months": [
+      3,
+      4
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 399
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 486
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Carnoustie (Championship)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.carnoustiegolflinks.com/visitors/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "25% green fee increase to £450 announced for 2026 reflecting operational costs and investment",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 450
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Cruden Bay",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://crudenbaygolfclub.co.uk/visitors/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Weekend access restricted to Saturday afternoon and Sunday early afternoon; 9-hole ticket on St Olaf included in shoulder rounds",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 205
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 220
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      4,
+      11
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 140
+      }
+     ]
+    },
+    {
+     "name": "winter",
+     "months": [
+      12,
+      1,
+      2,
+      3
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 110
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Royal Troon (Old)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.royaltroon.co.uk/visit/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Visitor season mid-April to October; tee times limited to Mon/Tue/Thu; handicap requirement men <20, women <30; two-course day ticket available",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amountMax": 365,
+       "amount": 250
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Castle Stuart",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://cabot.com/highlands/rates/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Single round price; group rates available from £610-£905 depending on season and group size; advance booking required",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 385
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Trump International (Old)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.trumpgolfscotland.com/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Peak-time rates cross £500 threshold; open April through November; Scottish resident discount available",
+   "seasons": [
+    {
+     "name": "shoulder",
+     "months": [
+      4
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 300
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 560
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 395
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Prestwick",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.prestwickgc.co.uk/visitors/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Birthplace of The Open Championship",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 170
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 380
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      4,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 240
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Loch Lomond",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.lochlomond.com/",
+   "lastVerified": "2026-09-10",
+   "confidence": "poa",
+   "notes": "Fully private members-only club; no standard visitor rates published; access only through corporate events, charity days, or member introduction",
+   "seasons": []
+  }
+ },
+ {
+  "n": "Royal Aberdeen (Balgownie)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://royalaberdeengolf.com/visitor-information-and-green-fees",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Visitor access on weekdays only; handicap 24 or under recommended; weekday play throughout year",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 265
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      4,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 190
+      }
+     ]
+    },
+    {
+     "name": "winter",
+     "months": [
+      11,
+      12,
+      1,
+      2,
+      3
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 115
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Gleneagles (King's)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://gleneagles.com/golf/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Price range varies by season and demand; all visitor golf requires payment at booking; two-round minimum per day for non-hotel guests",
+   "seasons": [
+    {
+     "name": "winter",
+     "months": [
+      12,
+      1,
+      2
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 95
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      3,
+      4,
+      10,
+      11
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 260
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 325,
+       "amountMax": 405
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Machrihanish",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.machgolf.com/greenfees",
+   "lastVerified": "2026-09-10",
+   "confidence": "poa",
+   "notes": "Seasonal pricing structure confirmed (Low/Mid/High) but specific amounts displayed only in images not text-accessible. Contact pro shop +44 (0)1586 810213 for current rates.",
+   "seasons": []
+  }
+ },
+ {
+  "n": "Western Gailes",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.nationalclubgolfer.com/travel/how-much-are-the-green-fees-to-play-top-100-courses-in-britain-and-ireland-in-summer-2026/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "seasons": [
+    {
+     "name": "winter",
+     "months": [
+      11,
+      12,
+      1,
+      2,
+      3
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 95
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 335
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "The Machrie, Islay",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://another.place/the-machrie/golf/green-fees",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "No weekday/weekend distinction; rates uniform all days. Fees include Wee course, Hebrides putting course, practice area. Juniors 17 and under free with paying adult.",
+   "seasons": [
+    {
+     "name": "winter",
+     "months": [
+      1,
+      2,
+      11,
+      12
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 74
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      3,
+      4,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 148
+      },
+      {
+       "day": "any",
+       "holes": "day",
+       "playerType": "visitor",
+       "amount": 232
+      }
+     ]
+    },
+    {
+     "name": "summer",
+     "months": [
+      5,
+      6,
+      7,
+      8
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 185
+      },
+      {
+       "day": "any",
+       "holes": "day",
+       "playerType": "visitor",
+       "amount": 278
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Nairn",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://nairngolfclub.co.uk/visitors/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Championship Course primary. Buggy hire requires contacting pro shop. Cameron Course offers separate day-ticket rates. UK afternoon rate (£195) available Apr-Oct.",
+   "seasons": [
+    {
+     "name": "winter",
+     "months": [
+      12,
+      1,
+      2
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 100
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      3,
+      11
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 125
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 350
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Gullane (No.1)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://gullanegolfclub.com/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "No.1 is the championship course. Combination ticket available for all three courses.",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 285
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 325
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Dumbarnie Links",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.dumbarnielinks.com/fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "No weekday/weekend distinction. Replay round (second round same day) at 50% discount. Push trolley complimentary, buggy £40 with medical certificate, club rental £45.",
+   "cart": {
+    "status": "included",
+    "amount": 0,
+    "per": "cart"
+   },
+   "seasons": [
+    {
+     "name": "low",
+     "months": [
+      4
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 256
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 350
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Elie (Golf House Club)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.golfhouseclub.co.uk/visitor-information/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Low season mid-Oct to mid-March. High season remaining months. Peak season Jul-Aug (members only). Junior rates 12-17 available.",
+   "seasons": [
+    {
+     "name": "low",
+     "months": [
+      10,
+      11,
+      12,
+      1,
+      2,
+      3
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 60
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 75
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 165
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 180
+      }
+     ]
+    },
+    {
+     "name": "peak",
+     "months": [
+      7,
+      8
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 200,
+       "notes": "Members and invited guests only Jul 14-Aug 15"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Brora",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.broragolfclub.co.uk/green_fees_and_booking",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "No weekday/weekend distinction. Full rates through 14:50 tee time; twilight from 15:00. UK club members £120 peak. Buggy availability limited; caddies, electric/manual trolleys available. Booking 182 days in advance.",
+   "seasons": [
+    {
+     "name": "shoulder",
+     "months": [
+      4
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "timeBand": "anytime",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 160
+      },
+      {
+       "day": "any",
+       "timeBand": "twilight",
+       "bandStart": "15:00",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 90
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "timeBand": "anytime",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 180
+      },
+      {
+       "day": "any",
+       "timeBand": "twilight",
+       "bandStart": "15:00",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 90
+      }
+     ]
+    },
+    {
+     "name": "off-peak",
+     "months": [
+      10,
+      11
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 90,
+       "amountMax": 160
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "St Andrews (New)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.newgolfclubstandrews.co.uk/green_fees",
+   "lastVerified": "2026-09-10",
+   "confidence": "poa",
+   "notes": "Annual season ticket or temporary competition ticket available. Specific green fee rates for walk-on play not published on website. Contact St Andrews Links Trust for day-rate pricing via www.standrews.org.uk or +44 (0)1334 473426.",
+   "seasons": []
+  }
+ },
+ {
+  "n": "The Renaissance Club",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://trcaa.com/",
+   "lastVerified": "2026-09-10",
+   "confidence": "poa",
+   "notes": "No visitor green fees published. Application-only access. Contact +44 (0) 1620 850 901 for membership or visitor access inquiries.",
+   "seasons": []
+  }
+ },
+ {
+  "n": "Southerness",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://southernessgolfclub.com/the-course/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Time-band pricing in summer. Twilight rates available from 16:00 Apr-Oct. Junior rates (year-round) £30. No weekday/weekend distinction stated. Group bookings 12+ available.",
+   "seasons": [
+    {
+     "name": "winter",
+     "months": [
+      1,
+      2,
+      12
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 65
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      3,
+      11
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 80
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "timeBand": "10:30-12:30",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 115
+      },
+      {
+       "day": "any",
+       "timeBand": "12:30-14:00",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 105
+      },
+      {
+       "day": "any",
+       "timeBand": "14:00-16:00",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 95
+      },
+      {
+       "day": "any",
+       "timeBand": "anytime",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 150
+      },
+      {
+       "day": "any",
+       "timeBand": "twilight",
+       "bandStart": "16:00",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 80
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Dunbar",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "http://www.dunbargolfclub.com/green_fees",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Friday priced between weekday and weekend. No visitor tee times Thursday. Day tickets (two rounds) available select weekdays.",
+   "seasons": [
+    {
+     "name": "shoulder",
+     "months": [
+      3
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 120
+      },
+      {
+       "day": "friday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 135
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 145
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 175
+      },
+      {
+       "day": "friday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 195
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 225
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Panmure",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.panmuregolfclub.co.uk/green-fees---information",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Visitors welcome Apr-Oct only. Restricted visitor times: Mon/Thu/Fri 10:00-12:00 & 14:00-16:00; Tue 11:00-12:00 & 14:00-16:00; Wed/Sat 14:00-16:00; Sun 11:00-13:00. Rates vary; one source states £85-£110, another £85-£195.",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 85,
+       "amountMax": 195
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "St Andrews (Castle)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://linksgolfstandrews.com/courses/the-castle-course-st-andrews/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Seasonal operation Mar 1-Nov 2. Designed by David McLay Kidd, opened 2008. Spectacular views of St Andrews Bay.",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 180
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Murcar Links",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://murcarlinks.com/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Visitors welcome seven days a week. Handicap required. Booking in advance required. No refund if cancelled within 7 days. Winter rates (Nov 2026-Mar 2027) available at reduced cost.",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 130
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "playerType": "visitor",
+       "amount": 150
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Royal Portrush (Dunluce)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.royalportrushgolfclub.com/visitors/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Single rate April-October, no weekday/weekend split. Caddie available upon request.",
+   "seasons": [
+    {
+     "name": "all",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 420
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Royal County Down",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.royalcountydown.org/green_fees",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Published rate £450 for 2026. One caddie required as part of rate. Tee times restricted to select days.",
+   "seasons": [
+    {
+     "name": "all",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 450
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Portmarnock",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://www.portmarnockgolfclub.ie/visitors",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Championship course. 2027 rate is €530. Booking required; tee times Mon-Sun with restricted hours. Available April-September (limited October availability).",
+   "seasons": [
+    {
+     "name": "all",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 500
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Lahinch (Old)",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://lahinchgolf.com/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Old Course only (Castle Course €60). Single rate, no weekday/weekend split. Mandatory caddie for Old Course. Walking only, no buggies.",
+   "seasons": [
+    {
+     "name": "all",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 450
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Ballybunion (Old)",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://www.ballybuniongolfclub.com/visitors/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Seasonal pricing: Mid-season (13-30 Apr): €400; High season (1 May - 2 Oct): €450. Morning tee times Mon-Fri (excl. Bank Holidays). Caddie and club hire available.",
+   "seasons": [
+    {
+     "name": "shoulder",
+     "months": [
+      4
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 400
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 450
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "County Louth (Baltray)",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://countylouthgolfclub.com/visitors/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Single rate per player (not per group). April-October availability. Championship links par 72.",
+   "seasons": [
+    {
+     "name": "all",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 365
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Waterville",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://www.watervillegolflinks.ie/golf/",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "High season (April-October) rate €425. Advance booking essential (may require 1+ year). Handicap required. Spectacular links setting.",
+   "seasons": [
+    {
+     "name": "all",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 425
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Adare Manor",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://www.adaremanor.com/golf/our-course/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "poa",
+   "notes": "Resort guests and members only. Not available to general visitors. Premium world-class course. Mandatory elite caddie program.",
+   "seasons": []
+  }
+ },
+ {
+  "n": "The Island",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://www.theislandgolfclub.com/visitor-fees.html",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "2026 rates shown; 2027 rates increase to €375 flat. Weekday/weekend split in effect.",
+   "seasons": [
+    {
+     "name": "all",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 270
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 295
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Tralee",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://traleegolfclub.com/fees-charges.html",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "High season (13 Apr - 9 Oct). Visitor tee times Mon-Tue, Thu-Fri 8am-3pm. Caddie and buggy (medical only) available. Walking course.",
+   "seasons": [
+    {
+     "name": "all",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 450
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Rosapenna (St Patrick's Links)",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://rosapenna.ie/golf-rates/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Day visitor rate 1 April - 18 October 2026. Resort guest rate €300. Irish resident discounts available.",
+   "seasons": [
+    {
+     "name": "all",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 350
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Rosapenna (Sandy Hills Links)",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://rosapenna.ie/golf-rates/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Day visitor rate 1 April - 18 October 2026. Resort guest rate €190. Part of Three Links Ticket option (€640 for all 3 courses, 21% saving).",
+   "seasons": [
+    {
+     "name": "all",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 240
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Rosapenna (Old Tom Morris Links)",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://rosapenna.ie/golf-rates/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Day visitor rate 1 April - 18 October 2026. Resort guest rate €150. Part of Three Links Ticket option.",
+   "seasons": [
+    {
+     "name": "all",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 200
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Carne (Belmullet)",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "http://www.carnegolflinks.com/green_fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Multiple sources show conflicting rates (€90-€140 range). Official site contact recommended for current rates.",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 110
+      },
+      {
+       "day": "weekend",
+       "amount": 110
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "County Sligo (Rosses Point)",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://countysligogolfclub.ie/visitor-green-fee-rates/",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Green Fees page exists but recent rates not accessible. 2023 data showed €230-€250 range for high season.",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 180
+      },
+      {
+       "day": "weekend",
+       "amount": 180
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "The K Club (Palmer North)",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://www.kclub.ie/palmer-north.html",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "seasons": [
+    {
+     "name": "low",
+     "months": [
+      1,
+      2,
+      3
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "amount": 140
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "amount": 260
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "The K Club (Palmer South)",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://www.kclub.ie/palmer-south.html",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "seasons": [
+    {
+     "name": "low",
+     "months": [
+      1,
+      2,
+      3
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "amount": 65
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "amount": 130
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Enniscrone",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://enniscronegolf.com/visitors/",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Recent sources indicate €175-€195 range for high season. Exact current rates require contacting club.",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "any",
+       "amount": 185
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Doonbeg",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://www.trumphotels.com/ireland/golf",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Trump International Golf Links. 2023 rates were €250 Mon-Thu and €300 Fri-Sun (May-Oct). Course closed Aug 24-Sep 15 for Irish Open prep.",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 250
+      },
+      {
+       "day": "weekend",
+       "amount": 300
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Portstewart (Strand)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.portstewartgc.co.uk/booking-and-rates/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Mats in use November-March. Visitor access restricted to specific timeframes.",
+   "seasons": [
+    {
+     "name": "shoulder",
+     "months": [
+      4,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "amount": 195
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "amount": 335
+      }
+     ]
+    },
+    {
+     "name": "winter",
+     "months": [
+      11,
+      12,
+      1,
+      2,
+      3
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "amount": 70
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Ballyliffin (Glashedy)",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://ballyliffingolfclub.com/plan-your-visit/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "any",
+       "amount": 330
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Ballyliffin (Old Links)",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://ballyliffingolfclub.com/plan-your-visit/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "any",
+       "amount": 300
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Royal Dublin",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://www.theroyaldublingolfclub.com/green_fees",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Recent sources indicate €205 current or €125-€175 range (2023). Seasonal variation likely; contact club for exact rates.",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "any",
+       "amount": 165
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Portsalon",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://www.portsalongolfclub.ie/visitors.html",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "2023 rates: €125 weekday / €150 weekend (Apr-Oct). Recent current rates require club contact.",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 125
+      },
+      {
+       "day": "weekend",
+       "amount": 150
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Dooks",
+  "feeV2": {
+   "currency": "EUR",
+   "source": "https://www.dooks.com/visitors/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Oct 20-Dec 31 members only. Visitor tee times restricted to specific windows.",
+   "seasons": [
+    {
+     "name": "shoulder",
+     "months": [
+      4
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 200
+      },
+      {
+       "day": "weekend",
+       "amount": 200
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 260
+      },
+      {
+       "day": "weekend",
+       "amount": 280
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Royal Porthcawl",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.royalporthcawl.com/course/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Weekday rates include complimentary Welsh breakfast or lunch (8am-3pm). Best visitor availability Tue/Thu/Sun. Premium course with limited weekend access.",
+   "seasons": [
+    {
+     "name": "winter",
+     "months": [
+      11,
+      12,
+      1,
+      2
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 138,
+       "holes": 18
+      }
+     ]
+    },
+    {
+     "name": "spring",
+     "months": [
+      3
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "amount": 165,
+       "holes": 18
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      4,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 250,
+       "holes": 18
+      },
+      {
+       "day": "weekend",
+       "timeBand": "twilight",
+       "bandStart": "15:00",
+       "amount": 195,
+       "holes": 18
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 275,
+       "holes": 18
+      },
+      {
+       "day": "weekend",
+       "timeBand": "twilight",
+       "bandStart": "15:00",
+       "amount": 195,
+       "holes": 18
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Pennard",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.pennardgolfclub.com/golf/visitors-green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Official website returns 403. Rates inferred from 2023 data and golf course listings showing £125. Current rates may differ.",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 110,
+       "holes": 18
+      },
+      {
+       "day": "friday",
+       "amount": 125,
+       "holes": 18
+      },
+      {
+       "day": "weekend",
+       "amount": 125,
+       "holes": 18
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Royal St David's",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.royalstdavids.co.uk/visitors/visitor-information/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "No weekday/weekend split published. Single-rate structure. Twilight rate (after 3pm) available at £100 (2026).",
+   "seasons": [
+    {
+     "name": "winter",
+     "months": [
+      11,
+      12,
+      1,
+      2,
+      3
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "amount": 80,
+       "holes": 18
+      }
+     ]
+    },
+    {
+     "name": "summer",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "amount": 145,
+       "holes": 18
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Aberdovey",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.aberdoveygolf.co.uk/visitors/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Winter protection mats in use Dec-Feb. Afternoon rates (after 3pm) available at reduced rates.",
+   "seasons": [
+    {
+     "name": "winter",
+     "months": [
+      12,
+      1,
+      2
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 75,
+       "holes": 18
+      },
+      {
+       "day": "weekend",
+       "amount": 85,
+       "holes": 18
+      }
+     ]
+    },
+    {
+     "name": "spring",
+     "months": [
+      3
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 100,
+       "holes": 18
+      },
+      {
+       "day": "weekend",
+       "amount": 110,
+       "holes": 18
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 125,
+       "timeBand": "anytime",
+       "holes": 18
+      },
+      {
+       "day": "weekend",
+       "amount": 135,
+       "timeBand": "anytime",
+       "holes": 18
+      },
+      {
+       "day": "weekday",
+       "timeBand": "afternoon",
+       "bandStart": "15:00",
+       "amount": 85,
+       "holes": 18
+      },
+      {
+       "day": "weekend",
+       "timeBand": "afternoon",
+       "bandStart": "15:00",
+       "amount": 95,
+       "holes": 18
+      }
+     ]
+    },
+    {
+     "name": "autumn",
+     "months": [
+      10,
+      11
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 95,
+       "holes": 18
+      },
+      {
+       "day": "weekend",
+       "amount": 105,
+       "holes": 18
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Conwy (Caernarvonshire)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "http://www.conwygolfclub.com/visitors/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Saturday play not available on standard rates (reciprocal/county card rates available). £20 deposit required per person. Afternoon rates (after 2pm) available seasonally.",
+   "seasons": [
+    {
+     "name": "winter",
+     "months": [
+      11,
+      12,
+      1,
+      2,
+      3
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 75,
+       "holes": 18
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      4,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 100,
+       "holes": 18
+      },
+      {
+       "day": "weekday",
+       "timeBand": "afternoon",
+       "bandStart": "14:00",
+       "amount": 80,
+       "holes": 18
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 125,
+       "holes": 18
+      },
+      {
+       "day": "weekday",
+       "timeBand": "afternoon",
+       "bandStart": "14:00",
+       "amount": 90,
+       "holes": 18
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Southerndown",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.southerndowngolfclub.com/golf-visitors-wales/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Junior and group discounts available. Contact for member's guest rates.",
+   "seasons": [
+    {
+     "name": "winter",
+     "months": [
+      1,
+      2,
+      3
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 89,
+       "holes": 18
+      },
+      {
+       "day": "weekend",
+       "amount": 120,
+       "holes": 18
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 95,
+       "holes": 18
+      },
+      {
+       "day": "weekend",
+       "amount": 125,
+       "holes": 18
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Tenby",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://tenbygolf.co.uk/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "High season Apr-Oct. Winter rates available Dec-Feb. Must book in advance; handicap required.",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 85,
+       "holes": 18
+      },
+      {
+       "day": "weekend",
+       "amount": 90,
+       "holes": 18
+      }
+     ]
+    },
+    {
+     "name": "winter",
+     "months": [
+      12,
+      1,
+      2,
+      3
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "amount": 50,
+       "holes": 18,
+       "isFrom": true
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Pyle & Kenfig",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.pandkgolfclub.co.uk/visitors/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Summer rates Apr 1 - Oct 31. Day tickets available weekdays £165, Friday £190. No weekend day tickets.",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 110,
+       "holes": 18
+      },
+      {
+       "day": "weekend",
+       "amount": 130,
+       "holes": 18
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Celtic Manor (Twenty Ten)",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.celtic-manor.com/home/golf/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "No membership or handicap required. Resort guests get tee-time priority. Rates are 'from' prices and vary by date/time. Includes complimentary locker, bag drop, club cleaning.",
+   "seasons": [
+    {
+     "name": "shoulder",
+     "months": [
+      10,
+      11
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 82,
+       "holes": 18,
+       "isFrom": true
+      },
+      {
+       "day": "weekend",
+       "amount": 107,
+       "holes": 18,
+       "isFrom": true
+      }
+     ]
+    },
+    {
+     "name": "winter",
+     "months": [
+      12
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 102,
+       "holes": 18,
+       "isFrom": true
+      },
+      {
+       "day": "weekend",
+       "amount": 112,
+       "holes": 18,
+       "isFrom": true
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 98,
+       "holes": 18,
+       "isFrom": true
+      },
+      {
+       "day": "weekend",
+       "amount": 159,
+       "holes": 18,
+       "isFrom": true
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Bull Bay",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "http://bullbaygc.co.uk/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Summer 2026 rates. Afternoon rates (after 3pm) available. Under 18s £20 any time. Member guest rate 50% of applicable fee.",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 60,
+       "holes": 18
+      },
+      {
+       "day": "weekend",
+       "amount": 70,
+       "holes": 18
+      },
+      {
+       "day": "weekday",
+       "timeBand": "afternoon",
+       "bandStart": "15:00",
+       "amount": 40,
+       "holes": 18
+      },
+      {
+       "day": "weekend",
+       "timeBand": "afternoon",
+       "bandStart": "15:00",
+       "amount": 45,
+       "holes": 18
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Nefyn & District",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://nefyn-golf-club.co.uk/green-fees/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Rates are 'from' prices. 9-hole Point course included free when available. Afternoon discounts 20-25% off available Nov-Sep.",
+   "seasons": [
+    {
+     "name": "winter",
+     "months": [
+      11,
+      12,
+      1,
+      2,
+      3
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "amount": 40,
+       "holes": 18,
+       "isFrom": true
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      4,
+      8,
+      10
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 69,
+       "holes": 18,
+       "isFrom": true
+      },
+      {
+       "day": "weekend",
+       "amount": 79,
+       "holes": 18,
+       "isFrom": true
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      5,
+      6,
+      7,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 79,
+       "holes": 18,
+       "isFrom": true
+      },
+      {
+       "day": "friday",
+       "amount": 89,
+       "holes": 18,
+       "isFrom": true
+      },
+      {
+       "day": "weekend",
+       "amount": 99,
+       "holes": 18,
+       "isFrom": true
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Cardigan",
+  "feeV2": {
+   "currency": "GBP",
+   "source": "https://www.cardigangolfclub.co.uk",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Official pricing page not accessible. Rates estimated from input data and golf booking aggregators showing £16-£30 range. Contact club for current exact rates: 01239 621775 or cgc@btconnect.com",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 55,
+       "holes": 18
+      },
+      {
+       "day": "weekend",
+       "amount": 70,
+       "holes": 18
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Fancourt (The Links)",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.leadingcourses.com/clubs/africa+south-africa+western-cape/fancourt---the-links",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Hotel guests only; limited tee times available",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 5000
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Fancourt (Montagu)",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.leadingcourses.com/clubs/africa+south-africa+western-cape/fancourt-golf-estate-montagu-outeniqua",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 1325
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Fancourt (Outeniqua)",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.leadingcourses.com/clubs/africa+south-africa+western-cape/fancourt-golf-estate-montagu-outeniqua",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 1325
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Leopard Creek Country Club",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.leopardcreek.co.za/visitors",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Includes golf cart; lodge stay required; available Mon/Wed/Thu/Sun PM only",
+   "cart": {
+    "status": "included",
+    "amount": 1850,
+    "per": "set"
+   },
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 8500
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Durban Country Club",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://durbancountryclub.co.za/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 480
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 600
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "St Francis Links",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.stfrancislinks.com",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Lodge/resort guest rates found; day visitor rates not clearly published",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 1100,
+       "isFrom": true
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Royal Johannesburg & Kensington (East)",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.royaljk.co.za",
+   "lastVerified": "2026-09-10",
+   "confidence": "poa",
+   "notes": "Website has guest green fees section but rates not publicly displayed; contact club directly",
+   "seasons": []
+  }
+ },
+ {
+  "n": "Royal Cape Golf Club",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.royalcapegolf.co.za/green-fees",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "cart": {
+    "status": "extra",
+    "amount": 420,
+    "per": "person"
+   },
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      10,
+      11,
+      12,
+      1,
+      2,
+      3,
+      4
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 950
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 800
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Pearl Valley Golf Club",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.leadingcourses.com/clubs/africa+south-africa+western-cape/pearl-valley-golf-estate",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "cart": {
+    "status": "included"
+   },
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      10,
+      11,
+      12,
+      1,
+      2,
+      3,
+      4
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 2595
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Arabella Golf Club",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://arabellacountryestate.co.za/arabella-country-estate-and-golf-course/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "cart": {
+    "status": "extra",
+    "amount": 495,
+    "per": "cart"
+   },
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 1595
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Gary Player Country Club (Sun City)",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.suninternational.com/sun-city/activities/golf/gary-player-golf-course/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Resort guests pay R830; non-residents R980; includes halfway house and water",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 980
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Lost City Golf Course (Sun City)",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.suninternational.com/sun-city/activities/the-lost-city-golf-course",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Resort guests pay R830; non-residents R980; includes golf cart and halfway house",
+   "cart": {
+    "status": "included"
+   },
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 980
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Glendower Golf Club",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.golfshake.com/course/view/22991/Glendower_Golf_Club.html",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Walking rates; cart rental R450; rates from 2022 source",
+   "cart": {
+    "status": "extra",
+    "amount": 450,
+    "per": "person"
+   },
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "weekday",
+       "amount": 375
+      },
+      {
+       "day": "friday",
+       "amount": 465
+      },
+      {
+       "day": "weekend",
+       "amount": 750
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Humewood Golf Club",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.where2golf.com/south-africa/humewood-golf-club/",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Wide variation in published rates across sources; club website does not display rates online",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 700
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 700
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Erinvale Golf Club",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.where2golf.com/south-africa/erinvale-golf-club/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      1,
+      2,
+      3,
+      4
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 1125,
+       "playerType": "visitor-sa"
+      },
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 1710,
+       "playerType": "visitor-international"
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 1125,
+       "playerType": "visitor-sa"
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 1710,
+       "playerType": "visitor-international"
+      }
+     ]
+    },
+    {
+     "name": "shoulder",
+     "months": [
+      11,
+      12
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 805,
+       "playerType": "visitor-sa"
+      },
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 1280,
+       "playerType": "visitor-international"
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 805,
+       "playerType": "visitor-sa"
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 1280,
+       "playerType": "visitor-international"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Zimbali Country Club",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.golfshake.com/course/view/23149/Zimbali_Country_Club.html",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Multiple conflicting rates; member-required booking adds complexity; day visitor rate (R1,570 with cart) may differ from standard 18-hole",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 440
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 500
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Simola Golf & Country Estate",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.leadingcourses.com/clubs/africa+south-africa+western-cape/simola-golf-country-estate",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Cart and halfway house meal included in fee",
+   "cart": {
+    "status": "included"
+   },
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      10,
+      11,
+      12,
+      1,
+      2,
+      3,
+      4,
+      5
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 1050,
+       "playerType": "visitor-sa"
+      },
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 1450,
+       "playerType": "visitor"
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 1050,
+       "playerType": "visitor-sa"
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 1450,
+       "playerType": "visitor"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Oubaai Golf Club",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.where2golf.com/south-africa/oubaai-golf-club/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Cart hire available for R490 (not included)",
+   "cart": {
+    "status": "extra",
+    "amount": 490,
+    "per": "round"
+   },
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      11,
+      12,
+      1,
+      2,
+      3
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 750
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 750
+      }
+     ]
+    },
+    {
+     "name": "low",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 450
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 450
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Pinnacle Point Golf Club",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.where2golf.com/south-africa/pinnacle-point-beach-golf-resort/",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Peak season rate (R2,950) significantly higher than published aggregator rates; official rate page returns 403 Forbidden",
+   "seasons": [
+    {
+     "name": "high",
+     "months": [
+      10,
+      11,
+      12,
+      1,
+      2,
+      3
+     ],
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 2200
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "George Golf Club",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.where2golf.com/south-africa/george-golf-club/",
+   "lastVerified": "2026-09-10",
+   "confidence": "published-rates",
+   "notes": "Visitors welcome daily except Wed/Sat afternoons (member times)",
+   "seasons": [
+    {
+     "name": "peak",
+     "months": [
+      12
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 695
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 695
+      }
+     ]
+    },
+    {
+     "name": "high",
+     "months": [
+      10,
+      11,
+      1,
+      2,
+      3,
+      4
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 665
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 665
+      }
+     ]
+    },
+    {
+     "name": "low",
+     "months": [
+      5,
+      6,
+      7,
+      8,
+      9
+     ],
+     "rates": [
+      {
+       "day": "weekday",
+       "holes": 18,
+       "amount": 565
+      },
+      {
+       "day": "weekend",
+       "holes": 18,
+       "amount": 565
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Mount Edgecombe (The Woods)",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.leadingcourses.com/clubs/africa+south-africa+kwazulu-natal/mount-edgecombe-country-club",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Single rate published; significantly below legacy rates; verify with club",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 260
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Mount Edgecombe (The Lakes)",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.leadingcourses.com/clubs/africa+south-africa+kwazulu-natal/mount-edgecombe-country-club",
+   "lastVerified": "2026-09-10",
+   "confidence": "estimated",
+   "notes": "Single rate published; significantly below legacy rates; verify with club",
+   "seasons": [
+    {
+     "name": "all",
+     "rates": [
+      {
+       "day": "any",
+       "holes": 18,
+       "amount": 260
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "n": "Houghton Golf Club",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://www.houghton.co.za/golf",
+   "lastVerified": "2026-09-10",
+   "confidence": "poa",
+   "notes": "Green fees not published online; contact club directly. Visitors welcome Mon-Fri.",
+   "seasons": []
+  }
+ },
+ {
+  "n": "Randpark (Firethorn)",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://randpark.co.za/visitor-information/",
+   "lastVerified": "2026-09-10",
+   "confidence": "poa",
+   "notes": "Green fees not published online despite visitor information page; R10 capital development fund charged with all fees",
+   "seasons": []
+  }
+ },
+ {
+  "n": "Randpark (Bushwillow)",
+  "feeV2": {
+   "currency": "ZAR",
+   "source": "https://randpark.co.za/visitor-information/",
+   "lastVerified": "2026-09-10",
+   "confidence": "poa",
+   "notes": "Green fees not published online despite visitor information page; R10 capital development fund charged with all fees",
+   "seasons": []
+  }
+ }
+]
