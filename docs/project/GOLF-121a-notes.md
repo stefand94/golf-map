@@ -6,8 +6,11 @@
 
 | | before | after |
 | --- | --- | --- |
-| `C_SOUTHAFRICA` entries | 99 | **420** (+321) |
-| `C.length` (all nations) | 557 | 878 |
+| `C_SOUTHAFRICA` entries | 99 | **421** (+322 net) |
+| `C.length` (all nations) | 557 | 879 |
+
+*(after-figures include the follow-up Overpass / spec / course-level pass — see
+"Follow-up pass" at the bottom. The initial merge landed at 420 / 878.)*
 
 Source: full `--all` pull of Handicap Network Africa's DotGolf club-finder
 (`scripts/fetch_south_africa_golf_clubs.py --all`) — 449 clubs from
@@ -90,9 +93,92 @@ same as the 2026-08-30 audit did for Fancourt / Mount Edgecombe / Sun City.
 
 ## Verification done
 
-- `node scripts/test_data.js` → OK, 878 courses
+- `node scripts/test_data.js` → OK, 879 courses
 - `node scripts/check_js.js` → OK
 - In-browser (`golf-map-preview`): South Africa nation pill + all 9 regions
   (incl. the 3 new) filter correctly, course lists populate, pins/clusters
   render, bulk-entry popup clean (no `undefined`/`NaN`), no new console
   errors. Test `localStorage` cleared.
+
+---
+
+## Follow-up pass (2026-09-09, same branch)
+
+Owner asked for four things after reviewing the initial merge.
+
+### 1. Overpass coordinate correction
+
+New script `scripts/fetch_sa_golf_overpass.py` pulls every golf course OSM
+knows in South Africa (`leisure=golf_course` / `golf=course`, area 3600087565)
+→ `scripts/output/sa_golf_overpass.json` (292 named courses; **0** carry a
+`holes` tag).
+
+Bulk entries were matched to OSM by normalised name and, where a match was
+found, their `lat`/`lng` snapped to the OSM course centroid:
+
+- **80** coordinate snaps. Most were sub-kilometre precision bumps (HNA gives
+  a clubhouse/town point). Auto-apply was capped to moves of **0.4–25 km** to
+  avoid the ambiguous-place-name trap (two towns called Richmond / Walmer).
+- **2** larger relocations applied via a hand-checked allow-list:
+  `Vryheid Golf Club` (had Wild Coast Sun coords) and `Maritzburg Golf Club`
+  (had Margate coords).
+- Moves **>25 km** from an exact-name match were **not** applied — left for
+  manual review. Still needing a manual coordinate check: `Richmond`,
+  `Walmer Country Club`, `Kranspoort`, `Fynbos`, plus ~10 municipal /
+  society clubs with no distinct OSM course.
+
+### 2. The "15 dropped real courses"
+
+They were never lost from the app — 4 were already present as curated
+entries (Steyn City, Olivewood, Kingswood, Richmond). Of the remaining 11
+that HNA gave `0,0`:
+
+- **5 recovered** from OSM and re-added (`conf:"est"`, region hand-set):
+  Zwartkops Country Club, Akasia Golf Club (Gauteng); Felixton Country Club
+  (KwaZulu-Natal); Sedge Links, Hazendal Golf Club (Western Cape & Garden
+  Route).
+- **6 not in OSM either** — still absent, need a manual source:
+  Sardinia Bay, Ethekwini, Heron Banks, Coastal Green, Zwartberg,
+  Burgundy Mupine.
+
+### 3. Hole count → `spec:"Unknown"`
+
+`NoOfHoles` was `0` for the entire pull and OSM has no `holes` tag on any SA
+course, so the assumed `spec:"18"` was never real data. **396** bulk entries
+changed `spec:"18"` → `spec:"Unknown"` (renders as "Course Unknown" in the
+popup). Owner will supply a real hole-count list later. The only bulk
+entries that keep `spec:"18"` are the two Randpark courses below (both
+independently confirmed full 18s).
+
+### 4. Course-level pass (multi-course estates)
+
+Cross-checked every SA club with known sibling courses against club sites /
+Top100GolfCourses. Already fully covered: Royal Johannesburg (East/West),
+Fancourt (×3), Zimbali (CC/Lakes), Mount Edgecombe (Woods/Lakes), Sun City
+(Gary Player/Lost City).
+
+- **Randpark** was the one genuine gap — one entry for a 36-hole club.
+  Split into `Randpark (Firethorn)` (Sid Brews, 1971; Joburg Open host) and
+  new `Randpark (Bushwillow)` (Bob Grimsdell remodel, 1952 / rebranded
+  2013). The Creek 9 nine-holer was not added.
+- **Serengeti** checked and left as one entry — its second course
+  (Whistling Thorn) is an 18-hole par-3 course, not a championship course.
+- **−5 redundant society-club aliases removed**: `Chatsworth GC`,
+  `Durban GC`, `Midlands GC`, `Mount Edgecombe GC`, `Tanglewood GC` — all
+  "… - Windsor Park" / "… - Papwa Sewgolum" municipal-course societies with
+  no distinct course (Durban GC / Mount Edgecombe GC also duplicated curated
+  entries). Kept `Windsor Park GC`, `Riverside GC Kzn`, `Atlantis GC`.
+
+### Net effect
+
+99 → **421** SA entries: +321 DotGolf, +5 OSM re-adds, −5 society aliases,
++1 Randpark split. `C.length` 557 → **879**.
+
+### Still open
+
+- Real hole counts for the ~396 `spec:"Unknown"` entries (owner to source).
+- Manual coordinate check: Richmond, Walmer Country Club, Kranspoort,
+  Fynbos, ~10 society clubs.
+- 6 clubs still missing entirely (not in OSM): Sardinia Bay, Ethekwini,
+  Heron Banks, Coastal Green, Zwartberg, Burgundy Mupine.
+- Curated entries still not re-regioned (Zebula etc.).

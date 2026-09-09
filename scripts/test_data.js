@@ -48,7 +48,7 @@ if (!Array.isArray(C) || !Array.isArray(C_TOP100) || !Array.isArray(C_SCOTLAND) 
   console.error('FAIL: C, C_TOP100, C_SCOTLAND, or C_WALES is not an array — data files did not populate expected globals');
   process.exit(1);
 }
-const EXPECTED_TOTAL = 878; // 2026-09-09: 557 + 321 GOLF-121a South Africa bulk DotGolf pull (99 -> 420)
+const EXPECTED_TOTAL = 879; // 2026-09-09 GOLF-121a: 557 + 322 net SA (99->421: +321 DotGolf, +5 OSM re-adds, -5 society aliases, +Randpark Bushwillow)
 if (C.length !== EXPECTED_TOTAL) {
   fail(`C.length is ${C.length}, expected ${EXPECTED_TOTAL} — update EXPECTED_TOTAL in this script if a course was deliberately added/removed`);
 }
