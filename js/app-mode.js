@@ -58,8 +58,12 @@ function setAppMode(mode,opts){
   document.body.classList.add('trip-mode');
   if(opts.seedAnchor!=null)tbAnchor=opts.seedAnchor;
   if(enteringBuild)tripAutoScheduleUnscheduled();
-  renderTripBuilder();
-  tbDrawMap();
+  /* GOLF-108: render() (not just renderTripBuilder()+tbDrawMap()) so the
+     main course-pin layer is recomputed for the mode we're entering —
+     Discover shows the full filtered layer even with a trip present, the
+     Build tabs don't. render() runs the same renderTripBuilder()+tbDrawMap()
+     via its tripBuilderOn hook. */
+  render();
   /* GOLF-41: a real, shareable/bookmarkable URL per mode — pushState (not a
      plain location.hash= assignment) so a mode change doesn't clobber a
      legitimate earlier back-stack entry, and the popstate listener below

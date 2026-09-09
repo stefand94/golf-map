@@ -315,7 +315,7 @@ function tbEffectiveAnchor(){
    picking "Ireland" up top and then seeing GB courses in "Nearby" would be
    incoherent. Applied as a final filter so each scope's own logic
    (region/anchor/place ranking) is untouched. */
-function tbNationFilter(i){return!state.nation||courseNation(i)===state.nation;}
+function tbNationFilter(i){return(!state.nation||courseNation(i)===state.nation)&&courseShownOnMap(i);}
 /* GOLF-91: "Near a place" and "Nearby" were two tabs doing the exact same
    "nearest 5 bookable courses to a point" query, differing only in where
    the point came from (a searched place vs. the last course added) — a
@@ -348,6 +348,32 @@ function tbDiscover(){
   // filtered out below.
   return nearestCoursesToPoint(pt.lat,pt.lng,5+TRIP.size).filter(({i})=>!TRIP.has(i)&&tbNationFilter(i)).slice(0,5);
 }
+/* GOLF-108: the Itinerary tab's map shows other bookable courses near the
+   trip, gated by the "Nearby courses" toggle (tbShowNearby, default ON).
+   This is the MAP only — the Discover sidebar list is untouched (still 5).
+   Wider than Discover's 5: nearest TB_NEARBY_MAX courses within
+   TB_NEARBY_RADIUS_MI of ANY trip course, respecting the nation pill.
+   Cheap — one synchronous pass over C, no network. */
+const TB_NEARBY_RADIUS_MI=60,TB_NEARBY_MAX=24;
+function tbItinNearbyAnchorPts(){
+  const pts=tripSeq.filter(i=>C[i]).map(i=>({lat:C[i].lat,lng:C[i].lng}));
+  if(!pts.length){const p=tbNearbyAnchorPoint();if(p)pts.push({lat:p.lat,lng:p.lng});}
+  return pts;
+}
+function tbItinNearbyCourses(){
+  const anchors=tbItinNearbyAnchorPts();
+  if(!anchors.length)return[];
+  const out=[];
+  C.forEach((c,i)=>{
+    if(TRIP.has(i)||!bookable(i)||!tbNationFilter(i))return;
+    let d=Infinity;
+    for(const a of anchors){const m=haversineMiles(a.lat,a.lng,c.lat,c.lng);if(m<d)d=m;}
+    if(d<=TB_NEARBY_RADIUS_MI)out.push({i,d});
+  });
+  out.sort((a,b)=>a.d-b.d);
+  return out.slice(0,TB_NEARBY_MAX).map(({i})=>({i,border:false}));
+}
+
 /* GOLF-71: the empty state used to restate whatever the scope line
    directly above it had just said ("Add a course to see what's nearby." /
    "Add a course to seed nearby suggestions." rendered one under the
@@ -596,10 +622,12 @@ function tbDrawTripItems(){
 function tbDrawMap(){
   tripClear();
   const order=tripDayOrder();
-  const pts1=tripShowOrdered(order,false,false);
   /* GOLF-57: discovery candidates only clutter the map while the Discover
      tab is actually the one showing them — other tabs (Itinerary/Day/
-     Costs/Add) just show the confirmed trip route. */
+     Costs/Add) just show the confirmed trip route, plus (GOLF-108) the
+     Itinerary tab's optional nearby-course set.
+     Draw order: candidates FIRST so the trip route + numbered stops,
+     drawn last below, stay visually on top (GOLF-107 req 4). */
   let pts2=[];
   if(appMode==='plan'){
     // GOLF-91: the merged Nearby scope's anchor can be a place (no course
@@ -610,10 +638,14 @@ function tbDrawMap(){
     const courseAnchor=(tbDiscoveryTab==='anchor'&&!tbPlaceAnchor)?tbEffectiveAnchor():null;
     pts2=tripShow(tbDiscover(),courseAnchor,false,false);
     if(tbDiscoveryTab==='anchor'&&tbPlaceAnchor)pts2=[...pts2,[tbPlaceAnchor.lat,tbPlaceAnchor.lng]];
+  }else if(appMode==='build'&&tbBuildTab==='itin'&&tbShowNearby){
+    // GOLF-108: nearby bookable courses in the Itinerary tab (map only).
+    pts2=tripShow(tbItinNearbyCourses(),null,false,false);
   }
   tbDrawHeritage();
-  tbDrawTripItems();
   tbDrawHotelCandidates();
+  const pts1=tripShowOrdered(order,false,false);
+  tbDrawTripItems();
   const pts=[...pts1,...pts2];
   if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
 }

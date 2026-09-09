@@ -93,25 +93,30 @@ function tripShow(items,anchor,clear=true,fit=true){
   if(clear)tripClear();
   const pts=[];
   items.forEach(({i,border})=>{
-    L.marker([C[i].lat,C[i].lng],{icon:pinFor(i),opacity:border?0.5:1,title:C[i].n})
+    // GOLF-109: reuse the main layer's de-stacked coords so coincident
+    // courses (Turnberry's two, Sunningdale Old/New, etc.) each get their
+    // own candidate pin instead of stacking into one.
+    const ll=courseLatLng(i);
+    L.marker(ll,{icon:pinFor(i),opacity:border?0.5:1,title:C[i].n})
       .bindPopup(popupHTML(i),{maxWidth:340})
       .bindTooltip(courseTooltipHTML(i),{direction:'top',className:'course-tt'})
       .on('click',()=>{highlight(i);drawLink(i)})
       .addTo(tripLayer);
-    pts.push([C[i].lat,C[i].lng]);
+    pts.push(ll);
   });
   if(anchor!=null){
     // A gold ring behind the anchor's flag pin keeps "this is the course
     // everything else is measured from" legible now that the pin itself is
     // the same shape as every other candidate.
-    L.circleMarker([C[anchor].lat,C[anchor].lng],{radius:15,color:'#E6B400',weight:3,fill:false,opacity:.9})
+    const all=courseLatLng(anchor);
+    L.circleMarker(all,{radius:15,color:'#E6B400',weight:3,fill:false,opacity:.9})
       .addTo(tripLayer);
-    L.marker([C[anchor].lat,C[anchor].lng],{icon:pinFor(anchor),title:C[anchor].n})
+    L.marker(all,{icon:pinFor(anchor),title:C[anchor].n})
       .bindPopup(popupHTML(anchor),{maxWidth:340})
       .bindTooltip(courseTooltipHTML(anchor),{direction:'top',className:'course-tt'})
       .on('click',()=>{highlight(anchor);drawLink(anchor)})
       .addTo(tripLayer);
-    pts.push([C[anchor].lat,C[anchor].lng]);
+    pts.push(all);
   }
   if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
   return pts;

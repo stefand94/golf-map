@@ -19,6 +19,15 @@
 const startView=restoredView||{center:[54.3,-4.2],zoom:5};
 map=L.map('map',{scrollWheelZoom:true,zoomControl:false}).setView(startView.center,startView.zoom);
 L.control.zoom({position:'bottomright'}).addTo(map);
+/* GOLF-108: the clustered "all courses" pin layer lives in its own pane
+   below the overlay (route polylines, z400) and marker (trip stops, z600)
+   panes. When it's shown behind an open trip — Discover always, Itinerary
+   when the "Nearby courses" toggle is on — the trip route and numbered
+   stop markers therefore stay clearly on top and never get buried. This
+   preserves the 2026-09-01 declutter intent by z-order rather than by
+   hiding the layer outright. */
+map.createPane('bgCoursePins');
+map.getPane('bgCoursePins').style.zIndex=350;
 /* GOLF: basemap went CartoDB Light -> OpenTopoMap -> CartoDB Voyager.
    OpenTopoMap's contour lines/terrain shading looked great on coastal
    links courses but were too busy at the country-wide "show all results"
@@ -168,8 +177,16 @@ const layer=L.markerClusterGroup({
   iconCreateFunction(cluster){
     const n=cluster.getChildCount(),tier=n<10?'sm':n<50?'md':'lg',size=n<10?30:n<50?36:42;
     return L.divIcon({className:'',html:`<div class="mcluster mcluster-${tier}">${n}</div>`,iconSize:[size,size],iconAnchor:[size/2,size/2]});
-  }
+  },
+  clusterPane:'bgCoursePins',
 }).addTo(map),markers=new Map();
+/* GOLF-108/109: the de-stacked coords jitteredLatLng() computes for the
+   main layer, captured once so the trip-builder's candidate/route pins
+   (js/trip-geo.js) can reuse them. jitteredLatLng() mutates a per-key
+   counter on every call, so it must not be re-run per redraw — read from
+   here instead. */
+const courseJitterLL=new Map();
+function courseLatLng(i){return courseJitterLL.get(i)||[C[i].lat,C[i].lng];}
 const HC_TEES={};
 function ranked(i){const t=C[i].t100;return t&&(typeof t.gl==='number'||t.gbi||typeof t.eng==='number'||typeof t.sco==='number'||typeof t.wal==='number')}
 /* GOLF-111: the tee colour is the map's in-trip / played / want signal.
@@ -277,7 +294,8 @@ function jitteredLatLng(c){
 }
 C.forEach((c,i)=>{
   const[lat,lng]=jitteredLatLng(c);
-  const m=L.marker([lat,lng],{icon:pinFor(i),title:c.n});
+  courseJitterLL.set(i,[lat,lng]);
+  const m=L.marker([lat,lng],{icon:pinFor(i),title:c.n,pane:'bgCoursePins'});
   /* Leaflet's function form: the content is built the first time the
      popup/tooltip is actually opened, not here. Building all 557 popups
      (each one a large HTML string including calcHTML()) plus all 557
