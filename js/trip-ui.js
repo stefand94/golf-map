@@ -431,6 +431,12 @@ function tbCostsTabHTML(){
    Build mode's editable itinerary — the day cards from the sketch.
    ════════════════════════════════════════════════════════════════════ */
 let tbBuildTab='itin',tbItinFilter='all',tbDriveToggle=true,tbDayShown=null;
+/* GOLF-108: "Show nearby courses" on the Itinerary tab map. Owner decision
+   2026-09-07 — default ON; flip TB_SHOW_NEARBY_DEFAULT to change it, no
+   other code change needed. Not persisted (matches tbDriveToggle /
+   tbItinFilter — a sensible default each session). */
+const TB_SHOW_NEARBY_DEFAULT=true;
+let tbShowNearby=TB_SHOW_NEARBY_DEFAULT;
 
 /* One day card. Structure follows the sketch exactly: bold day title with
    a right-aligned running total in the header, a thin divider, then the
@@ -722,6 +728,7 @@ function renderTripBuilder(){
           <button type="button" class="tb-menu-item" id="tb-drive-toggle">${tbDriveToggle?'✓':'&nbsp;&nbsp;'} 🚗 Drive times</button>
         </div>
       </details>`:''}
+      ${showItinFilters?`<button type="button" class="tb-btn${tbShowNearby?' is-active':''}" id="tb-nearby-toggle" aria-pressed="${tbShowNearby}" title="Show other bookable courses near your trip on the map. Doesn't change your itinerary.">${tbShowNearby?'✓ ':''}Nearby courses</button>`:''}
       <button class="tb-btn is-danger" id="tb-clear-trip" title="Empties this trip. Your other trips are untouched — to delete every trip use Start fresh in the trip menu.">Clear trip</button>
       <button class="tb-btn" id="tb-share-trip" title="Copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">${SHARE_ICON_SVG} Share trip</button>
     </div>
@@ -767,13 +774,15 @@ function renderTripBuilder(){
     if(k==='discover'){setAppMode('plan');return;}
     tbBuildTab=k;
     if(appMode!=='build')setAppMode('build');
-    else{renderTripBuilder();tbDrawMap();}
+    else{render();} // GOLF-108: render() so the course-pin layer tracks the tab (Costs/Itinerary hide it, Discover shows it)
   }));
   const filterDrop=document.getElementById('tb-filter-drop');
   if(filterDrop){
     filterDrop.querySelectorAll('[data-itin-filter]').forEach(btn=>btn.addEventListener('click',()=>{tbItinFilter=btn.dataset.itinFilter;renderTripBuilder();}));
     document.getElementById('tb-drive-toggle').addEventListener('click',()=>{tbDriveToggle=!tbDriveToggle;renderTripBuilder();});
   }
+  const nearbyToggle=document.getElementById('tb-nearby-toggle');
+  if(nearbyToggle)nearbyToggle.addEventListener('click',()=>{tbShowNearby=!tbShowNearby;render();});
   tbBindDropdownDismiss();
 
   /* ── The one search bar. Course hits and place hits share its results

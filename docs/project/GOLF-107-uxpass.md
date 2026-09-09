@@ -9,7 +9,7 @@ reproduce on the local server (`./scripts/serve.sh`).
 
 ---
 
-## GOLF-108 — Course pins suppressed once a trip exists (map visibility) · Blocker: YES · M
+## GOLF-108 — Course pins suppressed once a trip exists (map visibility) · Blocker: YES · M · STATUS: DONE ✅
 
 **Symptoms (owner items 1 + 11):**
 - Selecting a country on load does not show that country's course pins on
@@ -50,9 +50,24 @@ later without code change).
 - [ ] Removing the last course from a trip does not blank the map
       (existing 2026-09-01 fix still holds).
 
+**DONE / CLOSED (2026-09-09, branch `golf-108-109-course-pin-visibility`):**
+the `render()` early-return is now `tripBuilderOn && appMode!=='plan' &&
+tripLayer.getLayers().length` — Discover (Plan mode) always paints the full
+filtered course layer, trip or no trip; Build mode keeps the 2026-09-01
+declutter. The Itinerary tab instead draws a **bounded** nearby set
+(`tbItinNearbyCourses()` — nearest 24 bookable courses within 60 mi of any
+trip course, on `tripLayer`) gated by a new **"Nearby courses"** toolbar
+toggle (`tbShowNearby`, default `TB_SHOW_NEARBY_DEFAULT=true`, session-only
+like `tbDriveToggle`). A dedicated low `bgCoursePins` Leaflet pane (z-index
+350) keeps the route polyline and numbered stop markers on top. Mode/tab
+navigation and the toggle now call `render()` (not just
+`renderTripBuilder()+tbDrawMap()`) so the layer tracks the active tab.
+All acceptance criteria verified in-browser. Closes RISKS.md R-9 (nearby =
+toggle, default ON).
+
 ---
 
-## GOLF-109 — Multi-course venues: all courses show on the map · Blocker: YES · S–M
+## GOLF-109 — Multi-course venues: all courses show on the map · Blocker: YES · S–M · STATUS: DONE ✅
 
 **Symptom (owner item 9):** Turnberry lists both Ailsa and King Robert the
 Bruce in the sidebar, but only one shows on the map in Discover.
@@ -75,6 +90,16 @@ filters), including the 2nd/3rd course of a shared venue.
       pins; both open independently.
 - [ ] Spot-check 2 other shared venues (e.g. Sunningdale Old/New, a
       36-hole club) — all constituent courses pinned.
+
+**DONE / CLOSED (2026-09-09, branch `golf-108-109-course-pin-visibility`):**
+was purely a symptom of the GOLF-108 early-return — with the full course
+layer now shown in Discover, both Turnberry courses (Ailsa + King Robert
+the Bruce) get their own `jitteredLatLng()`-de-stacked pins, as do
+Sunningdale Old/New, Saunton E/W, The Berkshire, Enville, Woburn's three
+and Wentworth (spot-checked). `passes` needed no change. The trip-builder
+candidate/route pins (`tripShow()`) were also switched from raw
+`C[i].lat/lng` to the shared `courseLatLng(i)` lookup so coincident
+courses no longer stack there either.
 
 ---
 
@@ -399,8 +424,8 @@ this repo, with a proposed follow-up ticket if worthwhile.
 
 ## Recommended go-live blocker set
 
-**Block go-live:** GOLF-108, GOLF-109, GOLF-113, GOLF-114, GOLF-115,
-GOLF-116 (+ GOLF-100 per-person if owner wants it in v1).
+**Block go-live:** ~~GOLF-108~~ ✅, ~~GOLF-109~~ ✅, GOLF-113, GOLF-114,
+GOLF-115, GOLF-116 (+ GOLF-100 per-person if owner wants it in v1).
 
 **Ship when ready, not blocking:** GOLF-110 (recommend doing it anyway —
 cheap, big declutter), GOLF-111 (needs asset), GOLF-112.

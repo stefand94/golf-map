@@ -452,7 +452,14 @@ function render(){
      actually put something on tripLayer to declutter for; an empty trip
      falls through and shows the normal filtered course layer instead of
      nothing. */
-  if(tripBuilderOn&&tripLayer.getLayers().length)return;
+  /* GOLF-108: Discover (Plan mode) always shows the full filtered course
+     layer, trip or no trip — the "what golf is near here" value must not
+     vanish the moment a trip exists. Build mode keeps the 2026-09-01
+     declutter: the Itinerary tab draws only a bounded "nearby" set on
+     tripLayer (tbDrawMap(), gated by the "Nearby courses" toggle) and the
+     Costs tab draws just the route. The bgCoursePins pane (js/map.js)
+     keeps the route/stop markers on top in Discover. */
+  if(tripBuilderOn&&appMode!=='plan'&&tripLayer.getLayers().length)return;
   let shown=C.map((c,i)=>i).filter(passes);
   const S_={region:(a,b)=>REGIONS.indexOf(C[a].r)-REGIONS.indexOf(C[b].r)||feeNum(a)-feeNum(b),
     fee:(a,b)=>feeNum(a)-feeNum(b),rank:(a,b)=>rankNum(a)-rankNum(b),
