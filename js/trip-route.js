@@ -315,7 +315,7 @@ function tbEffectiveAnchor(){
    picking "Ireland" up top and then seeing GB courses in "Nearby" would be
    incoherent. Applied as a final filter so each scope's own logic
    (region/anchor/place ranking) is untouched. */
-function tbNationFilter(i){return!state.nation||courseNation(i)===state.nation;}
+function tbNationFilter(i){return(!state.nation||courseNation(i)===state.nation)&&courseShownOnMap(i);}
 /* GOLF-91: "Near a place" and "Nearby" were two tabs doing the exact same
    "nearest 5 bookable courses to a point" query, differing only in where
    the point came from (a searched place vs. the last course added) — a

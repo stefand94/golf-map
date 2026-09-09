@@ -21,6 +21,13 @@ buildChips('f-flag',[['ranked','Top 100 ranked'],['top100','England Top 100 only
    every course without either flag is Great Britain (England/Scotland/
    Wales, which already share one map and one set of regions). */
 function courseNation(i){const c=C[i];return c.topIreland?'ie':c.topSouthAfrica?'za':'gb'}
+/* GOLF-121d: the South Africa map is ringfenced to the top-100 (the union
+   of satop100courses.com's "Top 100 by ranking" and Top100GolfCourses.com's
+   South Africa list). GOLF-121a's bulk pull left ~320 extra SA clubs in
+   data/courses-southafrica.js — they stay in the file (recoverable, and
+   ready for a future "show all" toggle) but only entries carrying
+   `zaRanked:1` surface on the map. Non-ZA nations are unaffected. */
+function courseShownOnMap(i){return!(courseNation(i)==='za'&&!C[i].zaRanked);}
 const NATIONS=[['gb','Great Britain'],['ie','Ireland'],['za','South Africa']];
 function renderNationPills(){
   document.getElementById('nation-pills').innerHTML=NATIONS.map(([k,l])=>
@@ -294,6 +301,7 @@ function passes(i){const c=C[i];
   // GOLF-81: nothing passes — map and list both stay empty — until a
   // country pill has been picked.
   if(!state.nation||courseNation(i)!==state.nation)return false;
+  if(!courseShownOnMap(i))return false; // GOLF-121d: SA ringfenced to the top-100
   if(state.access.size&&!state.access.has(V(i,'a')))return false;
   /* GOLF-69 (item 2): the four fixed BANDS chips became a real min/max
      range. A course whose weekday fee doesn't parse to a number (feeNum
