@@ -38,6 +38,14 @@ Usage:
         --names-file scripts/output/southafrica_names.json \\
         --out scripts/output/south_africa_golf_clubs.json
 
+GOLF-121a: pass --all (no --names-file) to iterate every club from
+GetClubHierarchies instead of matching a names list. Resumable — a re-run
+skips ClubIDs already resolved in --out, so a crash mid-run just
+continues. Output shape is identical (ClubID as the key).
+
+    python3 scripts/fetch_south_africa_golf_clubs.py --all \\
+        --out scripts/output/south_africa_golf_clubs_all.json
+
 Refresh cadence: manual/on-demand only. No fee/access/architect/note
 data exists in this API at all (unlike the DotGolf sites, which are also
 silent on those fields for the UK/Ireland nations) — that content is
@@ -89,12 +97,83 @@ def get_club_details(club_id):
         return None
 
 
+def run_all(args):
+    """GOLF-121a: skip the names file, iterate EVERY club from
+    GetClubHierarchies and FindClubs each one. Resumable — a re-run
+    skips ClubIDs already present in the out file, so a crash/timeout
+    partway through just continues. Output shape is identical to
+    --names-file mode ({clubs: {key: {...}}}) with ClubID as the key,
+    so the merge step needs no changes."""
+    print("Fetching national club hierarchy (one call, ~450 clubs)...")
+    hierarchy = [c for c in get_hierarchy() if c.get("ClubID") and c.get("ClubName")]
+    print(f"  got {len(hierarchy)} clubs nationally")
+
+    existing = {}
+    if os.path.exists(args.out):
+        with open(args.out) as f:
+            existing = json.load(f).get("clubs", {})
+        print(f"  resuming: {len(existing)} clubs already in {args.out}")
+
+    results = dict(existing)
+    manual_review = []
+    total = len(hierarchy)
+    for i, club in enumerate(hierarchy, 1):
+        club_id = club.get("ClubID")
+        key = str(club_id)
+        if key in results and results[key].get("details"):
+            continue
+        name = club.get("ClubName")
+        print(f"[{i}/{total}] {key} -> '{name}'")
+        details = get_club_details(club_id)
+        time.sleep(args.delay)
+        results[key] = {
+            "query": name,
+            "club_id": club_id,
+            "matched_name": name,
+            "region_hint": club.get("RegionName"),
+            "candidates_found": total,
+            "details": details,
+        }
+        if not details:
+            manual_review.append(key)
+        if i % 25 == 0:
+            _write_out(args.out, results, manual_review, total)
+
+    _write_out(args.out, results, manual_review, total)
+    print(f"\nWrote {len(results)} entries to {args.out}")
+    if manual_review:
+        print(f"{len(manual_review)} had no FindClubs detail: {manual_review}")
+
+
+def _write_out(path, results, manual_review, requested):
+    out = {
+        "fetched_at": datetime.date.today().isoformat(),
+        "source": f"{BASE} (Handicap Network Africa Find and Play, undocumented public API)",
+        "requested": requested,
+        "resolved": len([r for r in results.values() if r.get("details")]),
+        "manual_review_needed": manual_review,
+        "clubs": results,
+    }
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(out, f, indent=2, sort_keys=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--names-file", required=True, help="JSON file: {key: 'club name to search'}")
+    parser.add_argument("--names-file", help="JSON file: {key: 'club name to search'}")
+    parser.add_argument("--all", action="store_true",
+                        help="GOLF-121a: ignore --names-file, pull every club from GetClubHierarchies (resumable)")
     parser.add_argument("--out", default="scripts/output/south_africa_golf_clubs.json")
-    parser.add_argument("--delay", type=float, default=0.2, help="Seconds between FindClubs requests")
+    parser.add_argument("--delay", type=float, default=0.3, help="Seconds between FindClubs requests")
     args = parser.parse_args()
+
+    if args.all:
+        run_all(args)
+        return
+
+    if not args.names_file:
+        parser.error("--names-file is required unless --all is given")
 
     with open(args.names_file) as f:
         names = json.load(f)

@@ -112,6 +112,23 @@ fetch needed, better than expected).
 python3 scripts/fetch_south_africa_golf_clubs.py --names-file scripts/output/southafrica_names.json --out scripts/output/south_africa_golf_clubs.json
 ```
 
+GOLF-121a added an `--all` mode that skips the names file and pulls
+**every** club from `GetClubHierarchies` (calling `FindClubs` per club):
+
+```bash
+python3 scripts/fetch_south_africa_golf_clubs.py --all --out scripts/output/south_africa_golf_clubs_all.json
+```
+
+It is resumable (a re-run skips `ClubID`s already resolved in the out
+file), throttles at 0.3 s between `FindClubs` calls, and flushes the out
+file every 25 clubs. The `--names-file` mode is unchanged. Gotchas hit
+on the first full run (449 clubs, 447 resolved): ~32 clubs come back with
+`0,0`/absent coordinates (dropped), one club (`Kotarana`) had a New
+Zealand coordinate, and a dozen-plus entries are society clubs sharing a
+municipal course (name like `X GC - Windsor Park GC`) — always run the
+coordinate spot-check and de-dup pass before merging, same lesson as the
+other nations.
+
 Output JSON shape matches every other nation's script, so
 `merge_club_details.py`/`merge_club_images.py` need no changes. No
 fee/architect/note fields exist in HNA's response at all (`Website`,
