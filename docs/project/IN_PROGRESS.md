@@ -11,8 +11,12 @@ verified._
 > 2026-09-10: GOLF-120 Phase 2 is on `main` — the `feeV2` reader/derivation
 > (`js/trip-geo.js`), the display wiring (popup / tooltip / Explore / Costs /
 > itinerary), and the 126-course batch-1 merge into all five `data/*.js`
-> files. GOLF-98 now *is* the ongoing `feeV2` re-research: fill in the rest,
-> same fetch-once → JSON → scripted-merge pattern, targeting `feeV2`.
+> files. The popup fee-display redesign (single/two-box, prominent amount,
+> "Confirmed"/"Estimate" sub-label) also shipped 2026-09-10 — DONE, in
+> BACKLOG.md. GOLF-98 now *is* the ongoing `feeV2` re-research: fill in the
+> rest (data + number verification), same fetch-once → JSON → scripted-merge
+> pattern, targeting `feeV2`. **The remaining GOLF-120 work is entirely
+> data/number accuracy — no more code is planned.**
 
 Remaining passes, in order:
 
