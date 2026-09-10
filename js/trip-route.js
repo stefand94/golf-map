@@ -637,7 +637,12 @@ function tbDrawMap(){
     // a place anchor just contributes its point to the fit-bounds list,
     // same as the old 'place' tab did.
     const courseAnchor=(tbDiscoveryTab==='anchor'&&!tbPlaceAnchor)?tbEffectiveAnchor():null;
-    pts2=tripShow(tbDiscover(),courseAnchor,false,false);
+    /* GOLF-126: if the anchor course is also an itinerary stop, tripShowOrdered()
+       below draws its numbered trip-stop marker — don't also draw the plain flag
+       pin here (the "duplicate pin when wishlisting a course" report); keep just
+       the gold anchor ring. */
+    const anchorIsStop=courseAnchor!=null&&order.some(s=>s.type==='course'&&s.i===courseAnchor);
+    pts2=tripShow(tbDiscover(),courseAnchor,false,false,anchorIsStop);
     if(tbDiscoveryTab==='anchor'&&tbPlaceAnchor)pts2=[...pts2,[tbPlaceAnchor.lat,tbPlaceAnchor.lng]];
   }else if(appMode==='build'&&tbBuildTab==='itin'&&tbShowNearby){
     // GOLF-108: nearby bookable courses in the Itinerary tab (map only).

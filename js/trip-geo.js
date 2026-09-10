@@ -95,7 +95,12 @@ function tripClear(){tripLayer.clearLayers();tripDrawnCourses=new Set()}
    dot the moment the trip became non-empty. A candidate outside the
    "nearest N" promise (border:true) is just faded rather than given a
    different shape. */
-function tripShow(items,anchor,clear=true,fit=true){
+/* GOLF-126: `anchorRingOnly` — draw the anchor's gold ring but NOT its flag
+   pin. Used when the anchor course is also an itinerary stop: tripShowOrdered()
+   already draws a numbered trip-stop marker at the same spot, and stacking a
+   plain flag pin under it is the "duplicate / old pin" the bug report is about.
+   The ring alone still marks it as the course everything is measured from. */
+function tripShow(items,anchor,clear=true,fit=true,anchorRingOnly=false){
   if(clear)tripClear();
   const pts=[];
   items.forEach(({i,border})=>{
@@ -119,11 +124,13 @@ function tripShow(items,anchor,clear=true,fit=true){
     tripDrawnCourses.add(anchor);
     L.circleMarker(all,{radius:15,color:'#E6B400',weight:3,fill:false,opacity:.9})
       .addTo(tripLayer);
-    L.marker(all,{icon:pinFor(anchor),title:C[anchor].n})
-      .bindPopup(popupHTML(anchor),{maxWidth:340})
-      .bindTooltip(courseTooltipHTML(anchor),{direction:'top',className:'course-tt'})
-      .on('click',()=>{highlight(anchor);drawLink(anchor)})
-      .addTo(tripLayer);
+    if(!anchorRingOnly){
+      L.marker(all,{icon:pinFor(anchor),title:C[anchor].n})
+        .bindPopup(popupHTML(anchor),{maxWidth:340})
+        .bindTooltip(courseTooltipHTML(anchor),{direction:'top',className:'course-tt'})
+        .on('click',()=>{highlight(anchor);drawLink(anchor)})
+        .addTo(tripLayer);
+    }
     pts.push(all);
   }
   if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
