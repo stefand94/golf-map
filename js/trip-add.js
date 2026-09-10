@@ -284,7 +284,7 @@ function tripDayItemRowHTML(d,it){
      region for golf, and the stop kind for everything else. */
   const main=it.type==='golf'
     ?`<a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${it.i})">${esc(tripItemName(it))}</a>
-       <div class="cart-region">${esc(C[it.i]?C[it.i].r:'')}</div>`
+       <div class="cart-region">${esc(C[it.i]?C[it.i].r:'')}${((typeof feeCartFor==='function')&&feeCartFor(it.i)||{}).status==='mandatory'?' · <span class="wt">buggy compulsory</span>':''}</div>`
     :`<span class="tb-item-name">${esc(tripItemName(it))}</span>
        <div class="cart-region">${it.type==='hotel'?'Stay':'Stop'}${noGeo?' · <span title="No location picked, so no drive time can be calculated to this stop">no location</span>':''}</div>`;
   /* Merge (GOLF-71 + GOLF-73): GOLF-73 shipped Edit as a second inline button

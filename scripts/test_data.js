@@ -124,6 +124,46 @@ C.forEach((c, i) => {
       });
     });
   }
+  // GOLF-120: granular green-fee schema v2 — additive, optional. See
+  // docs/project/GOLF-120-schema-v2-proposal.md §2 for the full shape.
+  if (c.feeV2) {
+    const fv = c.feeV2;
+    const CUR = ['GBP', 'EUR', 'ZAR', 'USD'];
+    const CONF = ['published-rates', 'published-from-only', 'estimated', 'poa'];
+    const DAY = ['weekday', 'weekend', 'friday', 'any'];
+    const BAND = ['anytime', 'morning', 'afternoon', 'twilight', 'super-twilight'];
+    const CART = ['included', 'mandatory', 'extra'];
+    if (!CUR.includes(fv.currency)) fail(`${label}: feeV2.currency "${fv.currency}" not one of ${CUR.join(', ')}`);
+    if (!CONF.includes(fv.confidence)) fail(`${label}: feeV2.confidence "${fv.confidence}" not one of ${CONF.join(', ')}`);
+    if (fv.lastVerified !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(fv.lastVerified)) {
+      fail(`${label}: feeV2.lastVerified "${fv.lastVerified}" is not an ISO date`);
+    }
+    if (!Array.isArray(fv.seasons)) fail(`${label}: feeV2.seasons is not an array`);
+    else if (fv.confidence === 'poa' && fv.seasons.length) fail(`${label}: feeV2 is 'poa' but carries ${fv.seasons.length} season(s) — expected []`);
+    else {
+      fv.seasons.forEach((s, si) => {
+        if (!s || typeof s !== 'object') { fail(`${label}: feeV2.seasons[${si}] not an object`); return; }
+        if (typeof s.name !== 'string') fail(`${label}: feeV2.seasons[${si}].name missing`);
+        if (s.months !== undefined && (!Array.isArray(s.months) || s.months.some(m => !(m >= 1 && m <= 12)))) {
+          fail(`${label}: feeV2.seasons[${si}].months must be 1–12 integers`);
+        }
+        if (!Array.isArray(s.rates) || !s.rates.length) { fail(`${label}: feeV2.seasons[${si}].rates missing/empty`); return; }
+        s.rates.forEach((r, ri) => {
+          const at = `feeV2.seasons[${si}].rates[${ri}]`;
+          if (typeof r.amount !== 'number') fail(`${label}: ${at}.amount is not numeric`);
+          if (r.amountMax !== undefined && typeof r.amountMax !== 'number') fail(`${label}: ${at}.amountMax is not numeric`);
+          if (!DAY.includes(r.day)) fail(`${label}: ${at}.day "${r.day}" not one of ${DAY.join(', ')}`);
+          if (r.timeBand !== undefined && !BAND.includes(r.timeBand)) fail(`${label}: ${at}.timeBand "${r.timeBand}" invalid`);
+          if (r.bandStart !== undefined && !/^\d{1,2}:\d{2}$/.test(r.bandStart)) fail(`${label}: ${at}.bandStart "${r.bandStart}" not HH:MM`);
+          if (r.holes !== undefined && ![18, 9, 'day'].includes(r.holes)) fail(`${label}: ${at}.holes "${r.holes}" invalid`);
+        });
+      });
+    }
+    if (fv.cart !== undefined) {
+      if (!fv.cart || !CART.includes(fv.cart.status)) fail(`${label}: feeV2.cart.status "${fv.cart && fv.cart.status}" not one of ${CART.join(', ')}`);
+      if (fv.cart && fv.cart.amount !== undefined && typeof fv.cart.amount !== 'number') fail(`${label}: feeV2.cart.amount is not numeric`);
+    }
+  }
 });
 
 // ---- duplicate detection (name+coords) ----

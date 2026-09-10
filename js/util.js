@@ -180,7 +180,18 @@ function toggleWant(i){if(WANT.has(i))WANT.delete(i);else{WANT.add(i);PLAYED.del
    (js/explore.js) calls feeNum() from a top-level IIFE, and the "distance"
    sort calls distOut(). They are pure functions of C/EDITS/HOME, so they
    belong here, ahead of every reader. Unchanged otherwise. */
-function feeNum(i){const m=String(V(i,'wd')).match(/\d+(\.\d+)?/);return m?parseFloat(m[0]):9999}
+/* GOLF-120: prefer the structured feeV2 weekday figure (its low end — the
+   "from" number a visitor sorts/filters on) when the course carries one;
+   fall back to the first number in the legacy wd string. feeRangeFor is
+   defined later (js/trip-geo.js) but every feeNum() call fires at
+   render/interaction time, well after all modules have loaded. */
+function feeNum(i){
+  if(typeof feeRangeFor==='function'&&C[i]&&C[i].feeV2){
+    const r=feeRangeFor(i,'wd');
+    if(r&&r.min!=null)return r.min;
+  }
+  const m=String(V(i,'wd')).match(/\d+(\.\d+)?/);return m?parseFloat(m[0]):9999;
+}
 /* distOut() is in degrees — only used internally to rank courses by
    straight-line distance from HOME for the "distance" sort. GOLF-123
    removed the user-facing "X mi from home, as the crow flies" row from the

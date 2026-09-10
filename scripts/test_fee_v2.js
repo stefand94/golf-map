@@ -30,7 +30,7 @@ function grab(name) {
 
 const NEEDED = [
   'extractFee', 'feeFieldForDate', 'feeV2HM', 'feeV2Candidates', 'feeV2Pick',
-  'feeCartFor', 'feeRangeForLegacy', 'feeRangeForCtx', 'feeRangeFor',
+  'feeCartFor', 'feeLabelFrom', 'feeRangeForLegacy', 'feeRangeForCtx', 'feeRangeFor',
   'feeNumberFor', 'feeNumberForDate', 'feeRangeForDate',
 ];
 
@@ -40,7 +40,7 @@ sandbox.V = (i, f) => sandbox.C[i][f];
 vm.createContext(sandbox);
 vm.runInContext(NEEDED.map(grab).join('\n'), sandbox, { filename: 'trip-geo-fee-slice' });
 
-const { feeRangeFor, feeNumberFor, feeNumberForDate, feeRangeForDate, feeCartFor } = sandbox;
+const { feeRangeFor, feeNumberFor, feeNumberForDate, feeRangeForDate, feeCartFor, feeLabelFrom } = sandbox;
 
 let pass = 0, fail = 0;
 function ok(label, cond, got) {
@@ -92,6 +92,15 @@ sandbox.C = [
         { name: 'all', rates: [
           { day: 'weekday', amount: 150, amountMax: 195 },
           { day: 'weekend', amount: 175, amountMax: 225 } ] } ] } },
+  // 8 — every rate is a "from" floor across seasons (Celtic Manor shape)
+  { n: 'FromRange', wd: '£82', we: '£107', feeV2: {
+      currency: 'GBP', confidence: 'published-rates', seasons: [
+        { name: 'shoulder', months: [10,11], rates: [
+          { day: 'weekday', amount: 82, isFrom: true },
+          { day: 'weekend', amount: 107, isFrom: true } ] },
+        { name: 'winter', months: [12], rates: [
+          { day: 'weekday', amount: 102, isFrom: true },
+          { day: 'weekend', amount: 112, isFrom: true } ] } ] } },
 ];
 
 /* ---- rule A (no date) --------------------------------------------------- */
@@ -120,6 +129,14 @@ ok('v1 fee we = 160..200', r && r.min === 160 && r.max === 200 && r.confidence =
 
 r = feeRangeFor(7, 'wd');
 ok('single published range 150..195, one rate -> not upTo', r && r.min === 150 && r.max === 195 && r.upTo === false, r);
+
+r = feeRangeFor(8, 'wd');
+ok('from-range keeps isFrom (min 82), not upTo', r && r.min === 82 && r.isFrom === true && r.upTo === false, r);
+ok('from-range label = "from £82"', feeLabelFrom(feeRangeFor(8, 'wd'), '£') === 'from £82', feeLabelFrom(feeRangeFor(8, 'wd'), '£'));
+ok('seasonal ceiling label = "Up to £260"', feeLabelFrom(feeRangeFor(1, 'wd'), '£') === 'Up to £260', feeLabelFrom(feeRangeFor(1, 'wd'), '£'));
+ok('poa label = "POA"', feeLabelFrom(feeRangeFor(4, 'wd'), '£') === 'POA', feeLabelFrom(feeRangeFor(4, 'wd'), '£'));
+ok('flat label = "£95"', feeLabelFrom(feeRangeFor(0, 'wd'), '£') === '£95', feeLabelFrom(feeRangeFor(0, 'wd'), '£'));
+ok('published range label = "£150–£195"', feeLabelFrom(feeRangeFor(7, 'wd'), '£') === '£150–£195', feeLabelFrom(feeRangeFor(7, 'wd'), '£'));
 
 /* ---- rule B (specific date) ------------------------------------------ */
 // July Saturday -> high season weekend peak = 300

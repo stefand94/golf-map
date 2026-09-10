@@ -237,6 +237,42 @@ function feeV2Pick(i,opts){
    (owner decision Q6 — a compulsory buggy is its own line item, never
    folded into the green fee). null for any course without feeV2.cart. */
 function feeCartFor(i){const fv=C[i]&&C[i].feeV2;return fv&&fv.cart?fv.cart:null;}
+/* Canonical confidence → short human label. Shared by the popup pill
+   (js/map.js) and the Costs-tab tag (FEE_CONF_TAG in js/trip-ui.js).
+   'published-range' is the frozen GOLF-97 v1 value, kept as an alias so a
+   not-yet-re-researched v1 course still tags "researched". */
+const FEE_CONF_LABEL={
+  'published-rates':'researched',
+  'published-range':'researched',
+  'published-from-only':'from-only',
+  'estimated':'estimated',
+  'poa':'POA'
+};
+/* GOLF-120 owner decision Q5: turn a resolver result ({min,max,isFrom,
+   upTo,confidence} from feeRangeFor / feeRangeForCtx) into the display
+   headline — 'from £X' for a club "from" price, 'Up to £X' for a derived
+   in-season ceiling, a plain '£X' for a lone published rate, '£X–£Y' for
+   an explicitly published band, 'POA' for members-only. Returns '' when
+   there is nothing structured to show, so the caller falls back to the
+   raw wd/we string. `sym` is the course currency symbol. */
+function feeLabelFrom(r,sym){
+  if(!r)return'';
+  if(r.min==null)return r.confidence==='poa'?'POA':'';
+  const n=v=>sym+Math.round(v);
+  // isFrom: every candidate rate is itself a floor ("from £X"), so even a
+  // multi-season spread is honestly a single "from £min" — a £min–£max
+  // range would imply a ceiling the club never quoted (owner Q5).
+  if(r.isFrom)return'from '+n(r.min);
+  if(r.min!==r.max)return r.upTo?'Up to '+n(r.max):n(r.min)+'–'+n(r.max);
+  return n(r.min);
+}
+/* The one-field display headline for a course, honouring an optional
+   {date,time} context. '' when the course has no feeV2 (caller keeps the
+   legacy wd/we text). */
+function feeV2Label(i,field,ctx){
+  if(!(C[i]&&C[i].feeV2))return'';
+  return feeLabelFrom(feeRangeForCtx(i,field==='we'?'we':'wd',ctx||null),courseCurrency(i));
+}
 /* Tier 2+3: the pre-GOLF-120 resolution, unchanged. */
 function feeRangeForLegacy(i,field){
   const fee=C[i]&&C[i].fee;
