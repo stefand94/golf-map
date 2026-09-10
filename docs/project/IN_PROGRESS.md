@@ -52,6 +52,22 @@ Fancourt (raw vs derived mismatch), Notts / Sherwood Forest (403 → poa).
 
 **Status:** REVIEW (app code shipped) · **Priority:** P2
 
-App side done. **Blocked on:** manual redeploy of the Cloudflare Worker's
-`hotels` mode via the Cloudflare dashboard before it works live. Verify with
-a direct `curl` against the Worker.
+App side done. The repo's `scripts/cloudflare-worker/ors-proxy.js` already
+contains `handleHotels` (committed `5d0a1f3`, 2026-09-05) — the deployed
+Worker is just running an older copy. **Blocked on:** owner re-pasting the
+current file into the Cloudflare dashboard editor for the
+`geofftheworker.stefand94.workers.dev` Worker and hitting Deploy. No
+secret/URL change (`ORS_API_KEY` + URL stay).
+
+Verify (response changes old → new):
+
+```
+curl -s -X POST https://geofftheworker.stefand94.workers.dev/ \
+  -H 'Content-Type: application/json' \
+  -d '{"mode":"hotels","point":[-2.99,56.34],"radius":3000}'
+```
+
+- Old (pre-deploy): `{"error":"origin and destination must both be [lng, lat] number pairs"}`
+- New (success): `{"pois":[{"name":...,"category":"Hotel",...}, …]}`
+
+Once it returns `pois`, move GOLF-96 → COMPLETE and close RISKS R-2.
