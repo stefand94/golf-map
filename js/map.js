@@ -224,6 +224,19 @@ function rankChips(i){const t=C[i].t100;if(!t)return'';const p=[];
   if(typeof t.gl==='string')p.push(t.gl);if(t.kent)p.push(t.kent);
   return `<p class="ranks">${p.map(x=>`<span>${x}</span>`).join('')}</p>`}
 
+/* GOLF-120: one Weekday/Weekend fee cell. A course with structured feeV2
+   data shows its derived headline (£X / from £X / Up to £X / POA) plus a
+   confidence pill, keeping the raw wd/we string as the hover title; a
+   course with no feeV2 renders exactly as before — the plain string. */
+function feeBoxSpan(i,field){
+  const raw=esc(V(i,field));
+  const lab=(typeof feeV2Label==='function')?feeV2Label(i,field):'';
+  if(!lab)return`<span>${raw}</span>`;
+  const r=feeRangeFor(i,field==='we'?'we':'wd');
+  const conf=r&&r.confidence?FEE_CONF_LABEL[r.confidence]||r.confidence:'';
+  const pill=conf?` <span class="fee-pill">${esc(conf)}</span>`:'';
+  return`<span title="${raw}">${esc(lab)}${pill}</span>`;
+}
 function popupHTML(i){
   const c=C[i],a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')],near=c.nearStation;
   const travel=stn?`<b style="color:${LINES[stn.l].c}">${esc(stn.n)}</b> · ${esc(LINES[stn.l].n)}${nrBadge(stn.l)} — ${esc(V(i,'walk'))}`
@@ -242,8 +255,9 @@ function popupHTML(i){
   const photoBlock=c.photo?`<div style="width:100%;border-radius:8px;margin-bottom:8px;overflow:hidden"><img src="${esc(escUrl(c.photo.src))}" alt="${esc(V(i,'n'))}" loading="lazy" style="width:100%;height:140px;object-fit:cover;display:block"><div style="font-size:10.5px;color:var(--stone);padding:3px 2px 0">Photo: <a href="${esc(escUrl(c.photo.sourceUrl))}" target="_blank" rel="noopener">${esc(c.photo.photographer)}</a> · ${esc(c.photo.license)}</div></div>`:'';
   return `<div class="pop">${photoBlock}${c.logo?`<div style="width:100%;height:100px;background:var(--paper);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${esc(escUrl(c.logo))}" alt="${esc(V(i,'n'))} club logo" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"></div>`:''}<h3>${esc(V(i,'n'))} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want to play</span>':''}${TRIP.has(i)?' <span class="wt">in trip</span>':''}</h3>
     <p class="sub">${esc(c.r)} · ${esc(a.label)}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
-    <div class="fees"><div class="fee-box"><b>Weekday</b><span>${esc(V(i,'wd'))}</span></div>
-    <div class="fee-box"><b>Weekend</b><span>${esc(V(i,'we'))}</span></div></div>
+    <div class="fees"><div class="fee-box"><b>Weekday</b>${feeBoxSpan(i,'wd')}</div>
+    <div class="fee-box"><b>Weekend</b>${feeBoxSpan(i,'we')}</div></div>
+    ${(()=>{const ct=(typeof feeCartFor==='function')&&feeCartFor(i);return ct&&ct.status==='mandatory'?`<p class="note" style="color:var(--stone)">Buggy compulsory${ct.amount!=null?` — ${esc(courseCurrency(i)+Math.round(ct.amount))}${ct.per==='person'?' per person':' per cart'}`:''}, billed separately.</p>`:'';})()}
     <dl><dt>Course</dt><dd>${esc(V(i,'spec'))}</dd><dt>Design</dt><dd>${esc(V(i,'arch'))}</dd>${(!RAIL_FEATURE||c.topSouthAfrica)?'':`<dt>By rail</dt><dd>${travel}</dd>`}${club&&club.phone?`<dt>Phone</dt><dd>${esc(club.phone)}</dd>`:''}</dl>
     <p class="note">${esc(V(i,'note'))}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${esc(club.blurb)}</span>`:''}</p>
     ${calcHTML(i)}
@@ -271,7 +285,8 @@ function courseTooltipHTML(i){
     else if(t.sco)ranks.push('Scotland #'+t.sco);
     else if(t.wal)ranks.push('Wales #'+t.wal);
   }
-  return`<div class="course-tt-name">${esc(V(i,'n'))}</div><div class="course-tt-meta">${esc(V(i,'wd'))}${ranks.length?' · '+ranks[0]:''}</div>`;
+  const fee=((typeof feeV2Label==='function')&&feeV2Label(i,'wd'))||V(i,'wd');
+  return`<div class="course-tt-name">${esc(V(i,'n'))}</div><div class="course-tt-meta">${esc(fee)}${ranks.length?' · '+ranks[0]:''}</div>`;
 }
 /* GOLF: a handful of clubs (Sunningdale Old/New, Saunton East/West,
    Woburn's three courses, etc.) share one clubhouse and so share the exact

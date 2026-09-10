@@ -295,9 +295,16 @@ function tripCostLineItems(){
   // its real range ("£65–£90") and a confidence tag instead of the old
   // single blended figure — a legacy wd/we-only course (feeRange.confidence
   // null, or feeRange.min===feeRange.max) still renders exactly as before.
-  const feeRangeLabel=fr=>(fr&&fr.confidence&&fr.min!=null&&fr.max!=null&&fr.min!==fr.max)
-    ?` (${fr.min===fr.max?'':`${tbMoney(fr.min,'')}–`}${tbMoney(fr.max,'')})`:'';
-  const FEE_CONF_TAG={'published-range':'researched','published-from-only':'from-only','estimated':'estimated','poa':'POA'};
+  // GOLF-120: also renders the owner-Q5 label variants — "from £X" for a
+  // club "from" price, "up to £Y" for a derived in-season ceiling.
+  const feeRangeLabel=fr=>{
+    if(!fr||!fr.confidence||fr.min==null||fr.max==null)return'';
+    if(fr.isFrom)return` (from ${tbMoney(fr.min,'')})`;
+    if(fr.upTo&&fr.min!==fr.max)return` (up to ${tbMoney(fr.max,'')})`;
+    if(fr.min!==fr.max)return` (${tbMoney(fr.min,'')}–${tbMoney(fr.max,'')})`;
+    return'';
+  };
+  const FEE_CONF_TAG=FEE_CONF_LABEL; // GOLF-120: canonical map lives in js/trip-geo.js
   // GOLF-116: a hotel booked for N nights is stored as N separate night-items
   // sharing one stayId (older trips: no stayId, so fall back to hotel name +
   // rounded coordinates). The Costs breakdown groups them into ONE line —
@@ -342,6 +349,7 @@ function tripCostLineItems(){
       tag=tag?`${tag} · ${confTag}`:confTag;
     }
     items.push({label,cat:CAT[it.type]||'Stop',amount:det.total,day:idx+1,cur:det.cur,tag});
+    if(it.type==='golf')pushMandatoryBuggy(it.i,idx+1);
   }));
   tripUnscheduled().forEach(i=>{
     const fee=feeNumberFor(i,'wd');
@@ -354,8 +362,25 @@ function tripCostLineItems(){
       tag=tag?`${tag} · ${confTag}`:confTag;
     }
     items.push({label,cat:'Golf',amount:fee==null?null:fee*gs,day:null,cur:courseCurrency(i),tag});
+    pushMandatoryBuggy(i,null);
   });
   return items;
+  // GOLF-120 owner Q6: a course whose feeV2 marks the buggy mandatory gets
+  // its OWN "Compulsory buggy" line, in the same currency/day bucket as the
+  // round, never folded into the green fee. per:'person' scales by group
+  // size; per:'cart' (the default) is one charge for the round.
+  function pushMandatoryBuggy(ci,day){
+    const ct=(typeof feeCartFor==='function')&&feeCartFor(ci);
+    if(!ct||ct.status!=='mandatory'||ct.amount==null)return;
+    const perPerson=ct.per==='person';
+    items.push({
+      label:'Compulsory buggy — '+V(ci,'n'),
+      cat:'Golf',
+      amount:ct.amount*(perPerson?gs:1),
+      day,cur:courseCurrency(ci),
+      tag:perPerson&&gs>1?`× ${gs} · mandatory`:'mandatory'
+    });
+  }
 }
 function tripCostBreakdown(){
   const items=tripCostLineItems();
