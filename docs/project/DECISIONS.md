@@ -34,6 +34,15 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   a keyed raster tier, or vector (GOLF-106). Note Apple MapKit JS is its
   own map engine, not Leaflet raster tiles, so adopting it is a
   GOLF-106-sized engine port, not a URL swap.
+- **As shipped (2026-09-10, `main` `8490f33`):** scope locked to **two**
+  raster layers, not three — **Default = Esri World Street Map** (not Light
+  Gray Canvas; owner's call at scope-lock, reads more like the old OSM
+  street style) and **Satellite = Imagery Hybrid**. Toggle labels are
+  literally "Default" / "Satellite". Owner also asked for a true OSM-*style*
+  default — Esri only offers that as a **vector** basemap (needs MapLibre),
+  so it was declined here and folded into GOLF-106; the raster Default
+  stays World Street Map. World Topo stays rejected (too busy). Light Gray
+  Canvas remains a one-line future add.
 - **Date:** 2026-09-10 · **Affects:** GOLF-105, GOLF-106, R-8,
   `js/map.js`, `js/trip-share.js`.
 
