@@ -1,6 +1,9 @@
 # GOLF-120 — Green-fee schema v2 proposal
 
-**Status:** Phase 1 proposal + first research batch (draft, awaiting owner sign-off)
+**Status:** Phase 1 complete — schema locked, all §5 questions answered by owner
+2026-09-10. Next: a separate handover for the Phase 2 code (`js/trip-geo.js`
+helpers + `SCHEMA.md`) + the per-nation merge. England batch 2 reminder set for
+Tue 2026-09-16.
 **Date:** 2026-09-10
 **Author:** coding/research agent session
 **Supersedes:** the GOLF-97 `fee:{weekday,weekend,weekendTwilight?,confidence,lastVerified}` shape (v1)
@@ -236,9 +239,14 @@ Keep a `rate` as a candidate iff **all** hold:
 5. Its `day` matches the requested field (see below).
 
 The figure for a candidate is `amountMax ?? amount`.
-**Highest applicable = max(figure) over all candidates.** If the winning
-candidate has `isFrom:true` and no `amountMax`, the UI renders it as
-"from £X".
+**Highest applicable = max(figure) over all candidates.**
+
+Display label (owner decision Q5):
+- Winning candidate has `isFrom:true`, no `amountMax` → **"from £X"**.
+- Winning figure is a *derived ceiling* — i.e. it's the max across more than
+  one candidate rate (multiple seasons/time-bands/etc.) rather than a single
+  published number → **"Up to £X"**.
+- Winning figure is a single published rate that stands alone → plain **"£X"**.
 
 ### A. No date context (browsing / discover list / pin popup)
 
@@ -255,9 +263,10 @@ candidate has `isFrom:true` and no `amountMax`, the UI renders it as
 
 - Season: the one whose `months` contains the date's month; else the
   `name:"all"` season; else (no match) fall back to context A.
-- `day`: `weekend` if the date is Sat/Sun or a GB/IE/ZA bank holiday for that
-  course's country, else `weekday`. If it's a Friday and a `day:"friday"` rate
-  exists, use that instead of `weekday`.
+- `day`: `weekend` if the date is Sat/Sun, else `weekday` (bank holidays are
+  **not** special-cased for now — owner decision Q4; a per-country BH list is a
+  later calendar-API-hook refinement). If it's a Friday and a `day:"friday"`
+  rate exists, use that instead of `weekday`.
 - Candidates as above with `timeBand ∈ {anytime, absent}`.
 - Highest applicable = max(figure). This is what `feeNumberForDate()` should
   return on a weekend (it already returns `.max` for weekends — v2 keeps that).
@@ -287,9 +296,14 @@ candidate has `isFrom:true` and no `amountMax`, the UI renders it as
 - `feeRangeForDate(i, dateStr)` — same, for the Costs tab's range/confidence
   context; carry `isFrom` through so the UI can print "from".
 - `feeFieldForDate(dateStr)` — unchanged.
-- `popupHTML()` / discover card — read via the helpers only, as today. Add a
-  small "from" / "in-season peak" affordance where `isFrom` / seasonal spread
-  is set.
+- `popupHTML()` / discover card — read via the helpers only, as today. Render
+  the label per Q5: `"£X"` / `"from £X"` / `"Up to £X"` (the helper returns
+  which case applies).
+- **Costs tab** — when a scheduled course's `feeV2.cart.status === "mandatory"`,
+  add a **separate line item** to that day's breakdown (`"Compulsory buggy —
+  <cur><amount>"`, ×`per`), never folded into the green-fee figure (owner
+  decision Q6). The itinerary drive/day row also shows a small "buggy
+  compulsory" tag.
 
 No behaviour changes for any course without a `feeV2` object.
 
@@ -344,34 +358,34 @@ background Haiku batch agents return JSON, never edit data files (CLAUDE.md +
 
 ## 5. Open questions for the owner
 
-> **Owner steer 2026-09-10:** "hold as detailed, granular data as possible."
-> This decides **Q2 (store season months exactly as researched) and Q3
-> (capture time-band rates in the same pass — do not defer)** in favour of
-> full granularity. The §6 "if effort has to come down" cuts are therefore
-> **not** being taken. Q1 and Q4–Q7 still need an owner call — pending.
-
-1. **Re-research the England Top 100?** Recommendation: yes (v1 ceilings are
-   fabricated). Confirm, or accept the lossy auto-map stopgear for now.
-2. **Season month ranges** — store per-course as researched (flexible, more
-   work), or snap to 2 canonical bands per hemisphere (summer/winter) to cut
-   research time? Recommendation: store as researched; it's a copy from the
-   card, not a judgement call.
-3. **Time bands** — worth the ×2–3 research burden on ~half the courses now,
-   or defer time-band rates to a later pass and ship season+day first?
-   Recommendation: capture them opportunistically this pass (the researcher is
-   already on the page) but don't block a course on them.
-4. **Bank-holiday calendar** — do we want a real per-country BH list in the
-   data, or treat "weekend" as Sat/Sun only for derivation? Recommendation:
-   Sat/Sun only for v1 of the code; BH list is a later refinement.
-5. **Displayed peak** — confirm the UI should show the **in-season peak** as
-   the headline when browsing with no date (rule A). This makes premium
-   courses look more expensive than v1 did — which is the point, but it's a
-   visible change.
-6. **`cart.status:"mandatory"`** — should the Costs tab *add* a mandatory
-   buggy to the round cost automatically? (Affects several SA courses.)
-7. **Society/group-only courses** — when the only published number is a
-   society rate, store it as `playerType:"society"` and show it, or treat as
-   `poa`? Recommendation: store + show, with a "society rate" tag.
+> **Owner decisions — 2026-09-10 (all questions now answered):**
+>
+> - **Q1 — England Top 100 re-research:** don't spend the tokens on the full
+>   England pass now; batch 1 (top ~34) is a good enough sample for schema
+>   sign-off. The remaining ~80 (ranks 35–114) run as a later "batch 2".
+>   A one-time reminder routine (`trig_01KjZDrrJ3wYrk8EQ3nf26Z9`) fires
+>   **Tue 2026-09-16 22:00 Europe/London** — deliberately just before the
+>   weekly usage-limit reset (Wed 03:00) so the token-heavy pass runs on a
+>   fresh allowance.
+> - **Q2 — season months:** store exactly as each club publishes (max
+>   granularity).
+> - **Q3 — time bands:** capture in the same research pass, don't defer.
+> - **Q4 — bank holidays:** ignore for now. `"weekend"` = Sat/Sun only in the
+>   derivation. A per-country BH list is an easy later add via a calendar-API
+>   hook — not in scope for v2.
+> - **Q5 — displayed peak:** yes, show the in-season peak as the headline
+>   (rule A), **but label a derived ceiling as "Up to £X"** (not a bare
+>   figure) so it reads as a maximum, not a quote.
+> - **Q6 — mandatory buggy:** yes, factor it into the trip cost, **as its own
+>   line item** in the Costs-tab breakdown (e.g. "Compulsory buggy — R650"),
+>   never silently folded into the green fee. Flag it in the itinerary too.
+> - **Q7 — society/group-only courses:** a club that publishes *only* a
+>   group-outing price (e.g. "£45pp, minimum 12 players") and no individual
+>   walk-up green fee. A lone visitor can't actually book that rate →
+>   **treat as `poa`**. Optionally keep the society figure in `notes` for
+>   context, but it does not drive any displayed number.
+>
+> The §6 "if effort has to come down" cuts are **not** being taken (Q2/Q3).
 
 ---
 
