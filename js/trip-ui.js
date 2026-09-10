@@ -775,7 +775,16 @@ function renderTripBuilder(){
     /* GOLF-113: drop a now-invalid region filter so switching nation
        doesn't leave a stale By-region selection filtering the results. */
     if(tbRegion&&state.nation&&!tbRegionsForNation(state.nation).includes(tbRegion))tbRegion='';
-    saveState();renderTripBuilder();tbDrawMap();
+    /* Match the legacy js/explore.js pill: opening a nation orders its
+       list by ranking. */
+    if(state.nation)state.sort='rank';
+    /* GOLF-125: must be render(), not renderTripBuilder()+tbDrawMap(). Only
+       render() rebuilds the background course-pin layer for the new
+       nation filter (it calls renderTripBuilder()+tbDrawMap() itself).
+       With the lighter pair, picking Ireland / South Africa from these
+       pane pills moved the camera but left the map showing the previous
+       nation's pins (or none) — the "country selected, no pins" bug. */
+    saveState();render();
     /* GOLF-98: this pane's own pill click never actually moved the map —
        js/explore.js's now-unreachable Explore-mode pills had this, the
        pane's pills never picked it up. Fly to the picked nation's course
