@@ -28,6 +28,12 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   keyless endpoints are covered by a usage policy rather than a contract
   and could change — acceptable at this scale, with GOLF-106 as the
   long-term answer.
+- **Revisit trigger:** when the project starts commercialising (paired
+  with the GOLF-104 backend/accounts work and the GOLF-103 hotel
+  direction), re-evaluate paying for a premium basemap — Apple MapKit JS,
+  a keyed raster tier, or vector (GOLF-106). Note Apple MapKit JS is its
+  own map engine, not Leaflet raster tiles, so adopting it is a
+  GOLF-106-sized engine port, not a URL swap.
 - **Date:** 2026-09-10 · **Affects:** GOLF-105, GOLF-106, R-8,
   `js/map.js`, `js/trip-share.js`.
 
