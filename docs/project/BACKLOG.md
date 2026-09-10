@@ -56,7 +56,7 @@ _Minor defects / visual regressions live in `BUGS.md` (GOLF-123+)._
 - GOLF-113 — "Discover by Region" list now scoped to the selected nation
 - GOLF-115 — long trip names no longer clipped (ellipsis + title; shared view shows full name)
 - GOLF-97 — banded green-fee schema (`fee:{…}`) — live
-- GOLF-96 — "Add a stay" map hotel picker — app live, Worker redeploy pending
+- GOLF-96 — "Add a stay" map hotel picker — COMPLETE: Worker `handleHotels` deployed & verified live (returns `pois`), 2026-09-10
 - GOLF-95 — prompt-based reorder suggestion (no silent reorder)
 - GOLF-94 — nation pills moved to top; auto 1-day-per-course scheduling
 - GOLF-83/83b/83c — heritage POIs wiki-first + wineries

@@ -105,8 +105,5 @@ the exhaustive one for anything not covered by the two scripts above.
   issue, not code) — place search degrades to a "temporarily unavailable"
   message rather than looking broken. Confirm live before troubleshooting
   place-search bugs.
-- Cloudflare Worker's `hotels` mode (GOLF-96) needs a manual redeploy via
-  the Cloudflare dashboard before it's live — check with a direct `curl`
-  against the Worker if hotel search seems to be doing nothing.
 - GOLF-98 (real green-fee data entry) is an ongoing, incremental job —
   check `docs/project/IN_PROGRESS.md` for exactly how far it's got.
