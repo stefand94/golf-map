@@ -46,8 +46,16 @@ document.getElementById('nation-pills').addEventListener('click',e=>{
   document.getElementById('sort').value=state.sort;
   saveState();render();
   if(state.nation){
+    /* GOLF-122: on mobile the map is display:none until showMobileMap()
+       (list<->map toggle). Picking a country used to fitBounds() + add
+       markers to that hidden zero-size map, so the pins only appeared
+       once a later place/course search happened to reveal it. Reveal the
+       map here so the pins land where the camera just flew; desktop
+       (>900px) ignores showMobileMap() entirely. fitBounds is deferred so
+       it runs after showMobileMap()'s invalidateSize(). */
+    if(typeof showMobileMap==='function')showMobileMap();
     const pts=C.map((c,i)=>i).filter(i=>courseNation(i)===state.nation).map(i=>[C[i].lat,C[i].lng]);
-    if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[28,28]});
+    if(pts.length)setTimeout(()=>map.fitBounds(L.latLngBounds(pts),{padding:[28,28]}),0);
   }
 });
 function updateFilterBadges(){
@@ -477,7 +485,14 @@ function render(){
   // so it is regenerated from current state on every open — there is
   // nothing to pre-set here. The icon still has to be refreshed: pinFor()
   // depends on the filter/ranking state this render just recomputed.
-  shown.forEach(i=>{markers.get(i).setIcon(pinFor(i));layer.addLayer(markers.get(i))});
+  shown.forEach(i=>{
+    /* GOLF-122: a course tbDrawMap() already drew on tripLayer (trip stop,
+       discovery candidate or anchor) must not also be added to the
+       background cluster layer — that's the "two pins, one course"
+       report. tripDrawnCourses is rebuilt by the tbDrawMap() call above. */
+    if(tripBuilderOn&&typeof tripDrawnCourses!=='undefined'&&tripDrawnCourses.has(i))return;
+    markers.get(i).setIcon(pinFor(i));layer.addLayer(markers.get(i));
+  });
   /* One exception to the above: an *already open* popup does need a nudge.
      togglePlayed()/toggleWant()/toggleTrip() and saveEdit() are all
      reachable from inside an open popup and all call render(), and the
