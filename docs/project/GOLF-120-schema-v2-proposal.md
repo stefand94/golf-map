@@ -344,6 +344,12 @@ background Haiku batch agents return JSON, never edit data files (CLAUDE.md +
 
 ## 5. Open questions for the owner
 
+> **Owner steer 2026-09-10:** "hold as detailed, granular data as possible."
+> This decides **Q2 (store season months exactly as researched) and Q3
+> (capture time-band rates in the same pass — do not defer)** in favour of
+> full granularity. The §6 "if effort has to come down" cuts are therefore
+> **not** being taken. Q1 and Q4–Q7 still need an owner call — pending.
+
 1. **Re-research the England Top 100?** Recommendation: yes (v1 ceilings are
    fabricated). Confirm, or accept the lossy auto-map stopgear for now.
 2. **Season month ranges** — store per-course as researched (flexible, more
