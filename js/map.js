@@ -17,7 +17,7 @@
    to a GB+Ireland-wide view instead; South Africa stays reachable via
    its own nation pill (js/trip-ui.js), which flies the map there. */
 const startView=restoredView||{center:[54.3,-4.2],zoom:5};
-map=L.map('map',{scrollWheelZoom:true,zoomControl:false}).setView(startView.center,startView.zoom);
+map=L.map('map',{scrollWheelZoom:true,zoomControl:false,maxZoom:19}).setView(startView.center,startView.zoom);
 L.control.zoom({position:'bottomright'}).addTo(map);
 /* GOLF-108: the clustered "all courses" pin layer lives in its own pane
    below the overlay (route polylines, z400) and marker (trip stops, z600)
@@ -28,16 +28,46 @@ L.control.zoom({position:'bottomright'}).addTo(map);
    hiding the layer outright. */
 map.createPane('bgCoursePins');
 map.getPane('bgCoursePins').style.zIndex=350;
-/* GOLF: basemap went CartoDB Light -> OpenTopoMap -> CartoDB Voyager.
-   OpenTopoMap's contour lines/terrain shading looked great on coastal
+/* GOLF: basemap went CartoDB Light -> OpenTopoMap -> CartoDB Voyager ->
+   OSM. OpenTopoMap's contour lines/terrain shading looked great on coastal
    links courses but were too busy at the country-wide "show all results"
    view, and Esri World Topo (compared side by side) was even busier —
    more place-name labels and a relief tint competing with the pins.
-   Switched from CARTO's Voyager tiles to the standard OSM tile server —
-   CARTO started gating rastertiles behind a "API key required" watermark
-   for unauthenticated/high-volume traffic; the plain OSM tile server needs
-   no key at all and has no such gate. */
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',maxZoom:19}).addTo(map);
+   CARTO started gating rastertiles behind an "API key required" watermark,
+   so we moved to the plain OSM tile server — but that server's usage
+   policy forbids production/heavy app use (R-8).
+   GOLF-105 (DEC-010): moved to Esri's keyless arcgisonline tiles — World
+   Street Map as the default (no relief tint, reads like the old OSM street
+   style; World Topo stays rejected as too busy) — plus an Imagery Hybrid
+   satellite toggle, switchable via a Leaflet layer control. See
+   esriBaseLayers() below. Still a usage policy not a signed contract, but
+   far more permissive about app use; a fully-contracted basemap is GOLF-106. */
+
+/* esriBaseLayers() — shared factory used by this map and the shared-trip
+   map in js/trip-share.js. Returns a fresh {name: layer} object each call
+   (a Leaflet layer can't live on two map instances). These are Esri's
+   long-standing keyless arcgisonline endpoints (the ones esri-leaflet
+   defaults to); no account, token or domain-locking on this path, none
+   required. Note the {z}/{y}/{x} tile order. A tile 4xx degrades to blank
+   tiles, never a JS error — there is no second fallback provider. */
+function esriBaseLayers(){
+  const esriTile=(service,attribution)=>L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/'+service+'/MapServer/tile/{z}/{y}/{x}',
+    {attribution,maxNativeZoom:19,maxZoom:19,detectRetina:true});
+  const streetAttr='Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS user community';
+  const imageryAttr='Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community';
+  return {
+    'Street':esriTile('World_Street_Map',streetAttr),
+    'Imagery Hybrid':L.layerGroup([
+      esriTile('World_Imagery',imageryAttr),
+      esriTile('Reference/World_Boundaries_and_Places',imageryAttr),
+      esriTile('Reference/World_Transportation',imageryAttr)
+    ])
+  };
+}
+const esriBases=esriBaseLayers();
+esriBases['Street'].addTo(map);
+L.control.layers(esriBases,null,{position:'topright'}).addTo(map);
 
 /* GOLF-110 (DEC-008): the rail/station map layer is a legacy of the
    original London-only concept. Hidden behind this single flag until
