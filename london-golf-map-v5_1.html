@@ -21,7 +21,7 @@
   /* Design refresh v2: dropped the separate monospace font entirely —
      --font-mono now just aliases --font-sans, with tabular-nums applied
      directly to the few number-bearing classes (.cart-fee, .cart-total-amount,
-     .cfee, .fee-box span, #hc-out) so figures stay aligned without reading
+     .cfee, .fee-box .amt, #hc-out) so figures stay aligned without reading
      as code. Palette moved from the warm teal to "Links navy": --stone
      #5C6672 clears WCAG AA against both --paper (5.41:1) and --paper-2
      (5.31:1); --ink #1B2733 clears 14.07:1 against --paper (near-AAA);
@@ -709,10 +709,12 @@
   .ranks{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 9px}
   .ranks span{font-family:var(--font-mono);font-size:9.5px;background:var(--accent-soft);color:var(--accent-dark);padding:3px 6px;border-radius:3px}
   .fees{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 9px}
-  .fee-box{background:var(--paper);border-radius:6px;padding:8px 10px}
-  .fee-box b{display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone);font-weight:500;margin-bottom:2px}
-  .fee-box span{font-variant-numeric:tabular-nums;font-size:14px;font-weight:600}
-  .fee-pill{display:inline-block;font-family:var(--font-mono);font-size:8.5px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;vertical-align:middle;background:var(--accent-soft);color:var(--accent-dark);padding:1px 4px;border-radius:3px;margin-left:4px}
+  .fees.one{grid-template-columns:1fr}
+  .fee-box{background:var(--paper);border-radius:6px;padding:9px 11px}
+  .fee-box b{display:block;font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--stone);font-weight:500;margin-bottom:3px}
+  .fee-box .amt{display:block;font-variant-numeric:tabular-nums;font-size:20px;font-weight:700;line-height:1.15;letter-spacing:-.01em}
+  .fee-box .fee-note{display:block;margin-top:4px;font-family:var(--font-sans);font-size:10px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--stone)}
+  .fee-box .fee-note.est{font-style:italic}
   .pop dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:12px}
   .pop dt{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--stone);padding-top:2px}
   .pop dd{margin:0}

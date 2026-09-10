@@ -36,6 +36,14 @@ Remaining passes, in order:
 object that passes `test_data.js`; no popup renders `undefined`; sampled
 figures match a real published rate with `lastVerified` set.
 
+**Number-verification plan:** `docs/project/GOLF-120-fee-testing-plan.md`
+— sampling order (estimated GB → estimated IE → known-suspect list →
+10 % of published → poa), per-course procedure, regression checks, and
+the standing >12-month re-verification rule. Known-suspect entries to
+fix first: Royal Porthcawl / Nefyn / Celtic Manor (weekend < weekday),
+Mount Edgecombe (R260 low), St Enodoc / Erinvale (null headline),
+Fancourt (raw vs derived mismatch), Notts / Sherwood Forest (403 → poa).
+
 ## GOLF-96 — Map-based hotel picker ("Add a stay")
 
 **Status:** REVIEW (app code shipped) · **Priority:** P2
