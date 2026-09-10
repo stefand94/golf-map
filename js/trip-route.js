@@ -91,6 +91,7 @@ function tripShowOrdered(order,clear=true,fit=true){
          nothing, same "doesn't expand" complaint as tripShow()'s discovery
          dots above. Bind the real course popup/tooltip and the same
          highlight/drawLink click behaviour as the main flag markers. */
+      tripDrawnCourses.add(stop.i);
       L.marker([stop.lat,stop.lng],{icon:tripGolfMarkerIcon(fill,label)})
         .bindPopup(popupHTML(stop.i),{maxWidth:340})
         .on('click',()=>{highlight(stop.i);drawLink(stop.i)})

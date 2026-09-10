@@ -71,7 +71,13 @@ function nearestCoursesToPoint(lat,lng,limit){
     .map(i=>({i,border:false}));
 }
 const tripLayer=L.layerGroup().addTo(map);
-function tripClear(){tripLayer.clearLayers()}
+/* GOLF-122: the course indices currently drawn on tripLayer (trip stops +
+   discovery candidates + anchor). render() (js/explore.js) skips these
+   when populating the background cluster layer so a wishlisted / nearby
+   course isn't drawn twice — once as its bg pin and once as the trip
+   marker. Rebuilt on every tripClear() -> tbDrawMap() cycle. */
+let tripDrawnCourses=new Set();
+function tripClear(){tripLayer.clearLayers();tripDrawnCourses=new Set()}
 /* Bug fix (2026-09-01): these discovery-candidate/anchor dots used to be
    plain L.circleMarker()s with no popup or click handler at all — visually
    a "white circle with a yellow border" (exactly what the stakeholder
@@ -97,6 +103,7 @@ function tripShow(items,anchor,clear=true,fit=true){
     // courses (Turnberry's two, Sunningdale Old/New, etc.) each get their
     // own candidate pin instead of stacking into one.
     const ll=courseLatLng(i);
+    tripDrawnCourses.add(i);
     L.marker(ll,{icon:pinFor(i),opacity:border?0.5:1,title:C[i].n})
       .bindPopup(popupHTML(i),{maxWidth:340})
       .bindTooltip(courseTooltipHTML(i),{direction:'top',className:'course-tt'})
@@ -109,6 +116,7 @@ function tripShow(items,anchor,clear=true,fit=true){
     // everything else is measured from" legible now that the pin itself is
     // the same shape as every other candidate.
     const all=courseLatLng(anchor);
+    tripDrawnCourses.add(anchor);
     L.circleMarker(all,{radius:15,color:'#E6B400',weight:3,fill:false,opacity:.9})
       .addTo(tripLayer);
     L.marker(all,{icon:pinFor(anchor),title:C[anchor].n})
