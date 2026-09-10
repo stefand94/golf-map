@@ -37,9 +37,11 @@ map.getPane('bgCoursePins').style.zIndex=350;
    so we moved to the plain OSM tile server — but that server's usage
    policy forbids production/heavy app use (R-8).
    GOLF-105 (DEC-010): moved to Esri's keyless arcgisonline tiles — World
-   Street Map as the default (no relief tint, reads like the old OSM street
-   style; World Topo stays rejected as too busy) — plus an Imagery Hybrid
-   satellite toggle, switchable via a Leaflet layer control. See
+   Street Map as the "Default" layer (no relief tint, reads like the old
+   OSM street style; World Topo stays rejected as too busy) — plus a
+   "Satellite" (Imagery Hybrid) toggle, switchable via a Leaflet layer
+   control. Esri's true OSM-style basemap is vector-only (needs MapLibre) —
+   that's GOLF-106, not this ticket. See
    esriBaseLayers() below. Still a usage policy not a signed contract, but
    far more permissive about app use; a fully-contracted basemap is GOLF-106. */
 
@@ -57,8 +59,8 @@ function esriBaseLayers(){
   const streetAttr='Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS user community';
   const imageryAttr='Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community';
   return {
-    'Street':esriTile('World_Street_Map',streetAttr),
-    'Imagery Hybrid':L.layerGroup([
+    'Default':esriTile('World_Street_Map',streetAttr),
+    'Satellite':L.layerGroup([
       esriTile('World_Imagery',imageryAttr),
       esriTile('Reference/World_Boundaries_and_Places',imageryAttr),
       esriTile('Reference/World_Transportation',imageryAttr)
@@ -66,7 +68,7 @@ function esriBaseLayers(){
   };
 }
 const esriBases=esriBaseLayers();
-esriBases['Street'].addTo(map);
+esriBases['Default'].addTo(map);
 L.control.layers(esriBases,null,{position:'topright'}).addTo(map);
 
 /* GOLF-110 (DEC-008): the rail/station map layer is a legacy of the

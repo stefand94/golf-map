@@ -211,12 +211,12 @@ function renderSharedMap(){
   if(!el||typeof L==='undefined')return;
   if(sharedMapInstance){sharedMapInstance.remove();sharedMapInstance=null;}
   const m=L.map(el,{zoomControl:true,scrollWheelZoom:false,maxZoom:19});
-  /* GOLF-105: same Esri keyless basemap + Street/Imagery Hybrid toggle as
-     the main map. esriBaseLayers() is a global from js/map.js (loaded
-     first); a fresh set per call since these layers can't be shared with
-     the main map instance. */
+  /* GOLF-105: same Esri keyless basemap + Default/Satellite toggle as the
+     main map. esriBaseLayers() is a global from js/map.js (loaded first);
+     a fresh set per call since these layers can't be shared with the main
+     map instance. */
   const sharedBases=esriBaseLayers();
-  sharedBases['Street'].addTo(m);
+  sharedBases['Default'].addTo(m);
   L.control.layers(sharedBases,null,{position:'topright'}).addTo(m);
   const order=tripDayOrder();
   const pts=[];
