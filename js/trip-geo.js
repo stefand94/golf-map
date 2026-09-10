@@ -133,15 +133,112 @@ function extractFee(s){
   if(!nums.length)return null;
   return nums.length>1?(nums[0]+nums[1])/2:nums[0];
 }
-/* GOLF-97: banded green-fee schema. A course optionally carries a
-   structured C[i].fee object ({weekday:{min,max}, weekend:{min,max},
-   weekendTwilight?, confidence, lastVerified}) alongside the legacy
-   free-text wd/we fields (untouched, never removed — see SCHEMA.md).
-   feeRangeFor() is the one place that decides between the two: real fee
-   data wins when present, the old regex-on-text extractFee() is the
-   fallback for every course not yet hand-researched (GOLF-98). field is
-   'wd'|'we', matching every existing caller's vocabulary. */
-function feeRangeFor(i,field){
+/* ── Green-fee resolution chain ──────────────────────────────────────────
+   Three tiers, tried in order by feeRangeForCtx():
+     1. GOLF-120 feeV2 — the granular shape ({currency, confidence, source,
+        seasons:[{name,months,rates:[{day,timeBand,bandStart,holes,
+        playerType,amount,amountMax,isFrom}]}], cart}). See SCHEMA.md and
+        docs/project/GOLF-120-schema-v2-proposal.md (§3 = the derivation
+        rule implemented in feeV2Pick / feeV2Candidates below).
+     2. GOLF-97 v1 `fee` object ({weekday:{min,max}, weekend:{min,max},
+        weekendTwilight?, confidence, lastVerified}) — legacy/frozen, no new
+        ones written, kept as a fallback for the England Top 100 until
+        re-researched to feeV2.
+     3. legacy free-text wd/we via extractFee() — the ultimate fallback for
+        every course with neither structured object.
+   `field` is 'wd'|'we', matching every existing caller's vocabulary. A
+   course with no feeV2 key behaves exactly as it did pre-GOLF-120. */
+function feeV2HM(s){const m=/^(\d{1,2}):(\d{2})/.exec(String(s||''));return m?(+m[1])*60+(+m[2]):null;}
+/* The candidate rates for one context, after the §3 filter:
+   visitor (or unspecified) player, 18 holes (or unspecified), matching
+   day, and — unless a specific time is given — timeBand anytime/absent.
+   With a date, the season is narrowed first (in-season → name:"all" →
+   fall back to every season); with a date+time, rule C picks the
+   latest-starting time band whose bandStart is on/before the tee time. */
+function feeV2Candidates(fv,field,dateStr,timeStr){
+  let seasons=(fv.seasons||[]).filter(s=>s&&Array.isArray(s.rates));
+  if(dateStr){
+    const d=new Date(dateStr+'T00:00:00');
+    if(!isNaN(d.getTime())){
+      const mo=d.getMonth()+1;
+      const inSeason=seasons.filter(s=>Array.isArray(s.months)&&s.months.length&&s.months.includes(mo));
+      if(inSeason.length)seasons=inSeason;
+      else{
+        const allS=seasons.filter(s=>s.name==='all'||!Array.isArray(s.months)||!s.months.length);
+        if(allS.length)seasons=allS;
+        /* no month match and no name:"all" season → keep every season
+           (rule A "consider all seasons" fallback). */
+      }
+    }
+  }
+  const isFri=dateStr?(()=>{const d=new Date(dateStr+'T00:00:00');return !isNaN(d.getTime())&&d.getDay()===5;})():false;
+  const dayOk=d=>{
+    if(d==='any')return true;
+    if(field==='we')return d==='weekend'||d==='friday';
+    if(isFri)return d==='weekday'||d==='friday';   // rule B: prefer a Friday-specific rate on a Friday
+    return d==='weekday';
+  };
+  const wantTime=!!(dateStr&&timeStr);
+  let rates=[];
+  seasons.forEach(s=>s.rates.forEach(r=>{
+    if(!r||typeof r.amount!=='number')return;
+    if(r.playerType&&r.playerType!=='visitor')return;
+    if(r.holes!=null&&r.holes!==18)return;
+    if(!dayOk(r.day))return;
+    if(!wantTime&&r.timeBand&&r.timeBand!=='anytime')return;
+    rates.push(r);
+  }));
+  if(wantTime&&rates.length){
+    const mins=feeV2HM(timeStr);
+    const banded=rates.filter(r=>r.timeBand&&r.timeBand!=='anytime'&&feeV2HM(r.bandStart)!=null&&feeV2HM(r.bandStart)<=mins);
+    if(banded.length){
+      const latest=Math.max.apply(null,banded.map(r=>feeV2HM(r.bandStart)));
+      rates=banded.filter(r=>feeV2HM(r.bandStart)===latest);
+    }else{
+      rates=rates.filter(r=>!r.timeBand||r.timeBand==='anytime');
+    }
+  }
+  return rates;
+}
+/* Collapse feeV2 to the {min,max}+label the rest of the app speaks.
+   Returns null when there is no feeV2 (so feeRangeForCtx falls through);
+   a {min:null,max:null,confidence:'poa'} sentinel for a members-only /
+   no-visitor-rate course (callers that show a tag can, the number
+   helpers guard on min==null). `upTo` marks a derived ceiling (max taken
+   across >1 candidate rate) → the UI prefixes "Up to"; `isFrom` marks a
+   club "from £X" headline → the UI prefixes "from". */
+function feeV2Pick(i,opts){
+  const fv=C[i]&&C[i].feeV2;
+  if(!fv)return null;
+  opts=opts||{};
+  const field=opts.field==='we'?'we':'wd';
+  if(fv.confidence==='poa'||!Array.isArray(fv.seasons)||!fv.seasons.length)
+    return{min:null,max:null,confidence:'poa',isFrom:false,upTo:false,cart:fv.cart||null};
+  let rates=feeV2Candidates(fv,field,opts.date||null,opts.time||null);
+  /* feeV2 silent on the weekend but priced for weekdays → a one-price
+     club; reuse the weekday rates rather than dropping to a stale v1
+     number. */
+  if(!rates.length&&field==='we')rates=feeV2Candidates(fv,'wd',opts.date||null,opts.time||null);
+  if(!rates.length)return null;
+  let hi=-Infinity,lo=Infinity,hiFrom=false;
+  rates.forEach(r=>{
+    const top=r.amountMax!=null?r.amountMax:r.amount;
+    if(top>hi){hi=top;hiFrom=!!r.isFrom&&r.amountMax==null;}
+    if(r.amount<lo)lo=r.amount;
+  });
+  return{
+    min:lo,max:hi,confidence:fv.confidence||null,
+    isFrom:hiFrom,
+    upTo:!hiFrom&&rates.length>1&&hi!==lo,
+    cart:fv.cart||null
+  };
+}
+/* The GOLF-120 mandatory/extra-buggy side-channel, for the Costs tab
+   (owner decision Q6 — a compulsory buggy is its own line item, never
+   folded into the green fee). null for any course without feeV2.cart. */
+function feeCartFor(i){const fv=C[i]&&C[i].feeV2;return fv&&fv.cart?fv.cart:null;}
+/* Tier 2+3: the pre-GOLF-120 resolution, unchanged. */
+function feeRangeForLegacy(i,field){
   const fee=C[i]&&C[i].fee;
   const key=field==='we'?'weekend':'weekday';
   if(fee&&fee[key]&&(fee[key].min!=null||fee[key].max!=null)){
@@ -152,43 +249,56 @@ function feeRangeFor(i,field){
   if(legacy==null)return null;
   return{min:legacy,max:legacy,confidence:null};
 }
+/* The one entry point. ctx is optional {date, time} — feeV2 honours it
+   (§3 rules B/C); the legacy tiers are date-agnostic as they always were. */
+function feeRangeForCtx(i,field,ctx){
+  const v2=feeV2Pick(i,{field,date:ctx&&ctx.date,time:ctx&&ctx.time});
+  if(v2){
+    return v2.min==null
+      ?{min:null,max:null,confidence:v2.confidence,isFrom:false,upTo:false}
+      :{min:v2.min,max:v2.max,confidence:v2.confidence,isFrom:!!v2.isFrom,upTo:!!v2.upTo};
+  }
+  return feeRangeForLegacy(i,field);
+}
+function feeRangeFor(i,field){return feeRangeForCtx(i,field,null);}
 /* A single blended figure — the pre-GOLF-97 behaviour, still needed
    wherever the UI/cost math only wants one number (e.g. summing a day's
-   total). Legacy courses get exactly today's midpoint; a real fee range
-   is also averaged here — feeNumberForDate() below is where a real
-   weekend range gets to show its true peak instead. */
+   total). Legacy courses get exactly today's midpoint. A poa sentinel
+   (min==null) has no number — return null, same as an unparseable fee. */
 function feeNumberFor(i,field){
   const r=feeRangeFor(i,field);
-  return r?(r.min+r.max)/2:null;
-}
-/* GOLF-48 + GOLF-97: the date-aware single-figure cost for a scheduled
-   round. On a real Saturday/Sunday with hand-researched fee data present,
-   this deliberately returns the true peak (fee.weekend.max) rather than a
-   midpoint — the whole point of GOLF-97 was that a "from £60" figure was
-   silently hiding a real £90 Saturday rate. A legacy wd/we-only course
-   (no fee object) keeps exactly the old midpoint behaviour, unchanged. */
-function feeNumberForDate(i,dateStr){
-  const field=feeFieldForDate(dateStr);
-  const r=feeRangeFor(i,field);
-  if(!r)return null;
-  if(field==='we'&&C[i]&&C[i].fee)return r.max;
+  if(!r||r.min==null||r.max==null)return null;
   return(r.min+r.max)/2;
 }
-/* GOLF-97 Costs-tab support: the range/confidence context behind a golf
-   item's single £ figure, for wherever the UI wants to show the real spread
-   rather than just the blended number feeNumberForDate() returns. `used`
-   records which of min/max/mid the price actually reflects, matching
-   feeNumberForDate()'s own logic exactly (so the two never disagree). A
-   legacy wd/we-only course reports confidence:null and min===max===used —
-   its "range" is degenerate, which is exactly why it renders as a plain
-   figure rather than a range in the UI (see tripCostLineItems()). */
+/* GOLF-48 + GOLF-97 + GOLF-120: the date-aware single-figure cost for a
+   scheduled round. On a real Saturday/Sunday with structured fee data
+   (feeV2 or v1), this returns the true peak rather than a midpoint — the
+   point of both GOLF-97 and GOLF-120 was that a "from £60" figure hid a
+   real £90 Saturday rate. feeV2 additionally narrows to the in-season
+   rate for the day (rule B). A legacy wd/we-only course keeps exactly the
+   old midpoint behaviour. */
+function feeNumberForDate(i,dateStr){
+  const field=feeFieldForDate(dateStr);
+  const r=feeRangeForCtx(i,field,{date:dateStr});
+  if(!r||r.min==null||r.max==null)return null;
+  const hasStructured=!!(C[i]&&(C[i].feeV2||C[i].fee));
+  if(field==='we'&&hasStructured)return r.max;
+  return(r.min+r.max)/2;
+}
+/* Costs-tab support: the range/confidence context behind a golf item's
+   single figure, for wherever the UI wants the real spread rather than
+   the blended number. `used` records which of min/max/mid the price
+   reflects, matching feeNumberForDate() exactly. `isFrom`/`upTo` carry
+   the GOLF-120 display label hint through. A legacy wd/we-only course
+   reports confidence:null and min===max===used — a degenerate "range",
+   which is why it renders as a plain figure (see tripCostLineItems()). */
 function feeRangeForDate(i,dateStr){
   const field=feeFieldForDate(dateStr);
-  const r=feeRangeFor(i,field);
-  if(!r)return null;
-  const hasFee=!!(C[i]&&C[i].fee);
-  const used=(field==='we'&&hasFee)?r.max:(r.min+r.max)/2;
-  return{min:r.min,max:r.max,confidence:r.confidence,used};
+  const r=feeRangeForCtx(i,field,{date:dateStr});
+  if(!r||r.min==null||r.max==null)return null;
+  const hasStructured=!!(C[i]&&(C[i].feeV2||C[i].fee));
+  const used=(field==='we'&&hasStructured)?r.max:(r.min+r.max)/2;
+  return{min:r.min,max:r.max,confidence:r.confidence,used,isFrom:!!r.isFrom,upTo:!!r.upTo};
 }
 /* Currency correctness: a trip can mix nations (a UK/NI course priced in £,
    a Republic of Ireland course in €, a South African course in R), so a
