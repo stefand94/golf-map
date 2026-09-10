@@ -1,181 +1,191 @@
-# Implementation Task — GOLF-105
+# Implementation Task — GOLF-105 (rescoped 2026-09-10)
 
-**Feature:** GOLF-105 — Basemap tile upgrade (raster style swap, keep Leaflet)
+**Feature:** GOLF-105 — Basemap upgrade: Esri tiles + street/satellite layer toggle (keep Leaflet, no API key)
+
+## Why this was rescoped
+
+The original ticket was a MapTiler-vs-Stadia raster swap. Owner reviewed
+both and was not impressed enough to sign up for either. New direction
+(owner, 2026-09-10):
+
+- Use **Esri's keyless ArcGIS Online tile services** — no new account, no
+  API token of any kind.
+- Add a **base-layer toggle**: a muted street style as the default, plus
+  **Esri "Imagery Hybrid"** (satellite + place/road labels) as an
+  opt-in layer. A third street style is optional, owner picks on preview.
+- If for any reason a keyless Esri basemap can't be made to work, **stop**
+  and report back — the fallback plan is to evaluate vector maps
+  (GOLF-106) and defer/cancel this, not to reach for another keyed raster
+  provider.
 
 ## Objective
 
-Replace the plain OpenStreetMap raster basemap with a cleaner, muted,
-pin-friendly raster style from a proper tile provider (MapTiler or Stadia),
-without changing the map engine. The map is a backdrop for course pins,
-drive routes and POIs — the new style must be quieter than raw OSM, not
-busier.
-
-This also retires a latent risk (R-8): the app currently uses OSM's public
-tile server, which is not licensed for production/high-volume use.
+Replace the single OSM raster basemap on both Leaflet maps with an Esri
+tile layer, and give the user a Leaflet layer control to switch between a
+quiet street basemap (default) and a satellite/hybrid view.
 
 ## Context
 
-- **Map engine:** Leaflet 1.9.4 + `leaflet.markercluster` 1.5.3, loaded as
-  plain `<script>` from cdnjs (`london-golf-map-v5_1.html` ~lines 14–15,
-  867–868). **Not changing.**
-- **Main map + basemap:** `js/map.js` — `L.map('map', …)` ~line 20, the
-  `L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', …)`
-  ~line 31. The comment block above it (lines 22–30) records the style
-  history (CARTO Light → OpenTopoMap → CARTO Voyager → OSM) and why it left
-  CARTO (raster tiles started requiring a key). Update that comment.
-- **Second map:** `js/trip-share.js` ~line 211–212 — a separate Leaflet
-  instance for the read-only shared-trip view, its own
-  `L.tileLayer(...OSM...)`. Must get the same new basemap.
-- No other map-rendering changes. Do **not** touch markers, clustering,
-  rail-line geometry, popups, bounds-fitting, or the mobile list/map
-  toggle.
+- **Map engine:** Leaflet 1.9.4 + `leaflet.markercluster` 1.5.3, plain
+  `<script>` from cdnjs. **Not changing.**
+- **Main map:** `js/map.js` — `L.map('map', …)` ~line 20; the current
+  `L.tileLayer('https://{s}.tile.openstreetmap.org/...')` is ~line 39,
+  under a comment block (~lines 31–38) recording the style history
+  (CARTO Light → OpenTopoMap → CARTO Voyager → OSM, and that Esri World
+  Topo was rejected once as **too busy** — see "style choice" below).
+  Update that comment.
+- **Second map:** `js/trip-share.js` — `renderSharedMap()` ~line 210, its
+  own `L.map(el, {zoomControl:true, scrollWheelZoom:false})` and its own
+  `L.tileLayer(...OSM...)` ~line 213. Preserve its options; only the
+  tiles + layer control change.
+- Globals are shared across the ordered `<script>` files (no modules), so
+  a basemap helper defined in `js/map.js` is callable from
+  `js/trip-share.js`. Prefer one shared factory function over copy-paste.
+- Do **not** touch markers, clustering, rail-line geometry, popups,
+  bounds-fitting, the `bgCoursePins` pane, or the mobile list/map toggle.
 
-## Open decision — provider bake-off (resolve first)
+## Esri endpoints (all keyless, `{z}/{y}/{x}` order — note y before x)
 
-Wire up **both** and show them on a branch preview URL for the product
-owner to choose:
+Base: `https://server.arcgisonline.com/ArcGIS/rest/services/<SERVICE>/MapServer/tile/{z}/{y}/{x}`
 
-| Provider | Suggested style | Endpoint shape |
+| Layer in the toggle | Esri service(s) — stack in a `L.layerGroup` where 2 are listed | maxNativeZoom |
 | --- | --- | --- |
-| **MapTiler** | `dataviz` / `basic-v2` / `bright-v2` (muted) | `https://api.maptiler.com/maps/{style}/{z}/{x}/{y}.png?key=KEY` (`@2x` variant for retina) |
-| **Stadia Maps** | `alidade_smooth` (very clean) / `outdoors` | `https://tiles.stadiamaps.com/tiles/{style}/{z}/{x}/{y}{r}.png?api_key=KEY` (`{r}` = `@2x` on retina) |
+| **Light Gray Canvas** (default) | `Canvas/World_Light_Gray_Base` + `Canvas/World_Light_Gray_Reference` | 16 |
+| **Imagery Hybrid** (the "satellite" option) | `World_Imagery` + `Reference/World_Boundaries_and_Places` + `Reference/World_Transportation` | 19 (imagery), 13 (ref labels) |
+| **World Topographic** *(optional 3rd — build it, default off, owner decides on preview)* | `World_Topo_Map` | 19 |
 
-Recommended default if the owner is indifferent: **Stadia `alidade_smooth`**
-— it is the quietest "map as background" option. MapTiler `dataviz` is the
-close second.
+- The `Base`/`Reference` split is how Esri does "hybrid": imagery (or grey
+  canvas) on the bottom, transparent labels/boundaries on top. Bundle each
+  pair as one `L.layerGroup` so the layer control shows one entry.
+- Set the map `maxZoom` to `19` and give each tile layer its own
+  `maxNativeZoom` (table above) so a quieter style overzooms cleanly
+  instead of going blank.
 
-Both need a free account and an API key (product-owner tasks O1–O2). The
-key is **client-side and public by design** — it is locked to the site's
-domains in the provider dashboard, not kept secret. This is a different
-risk class from the ORS key; do not build a Worker proxy for tiles.
+## Style choice (default street layer)
+
+The old code note says Esri **World Topo** was compared once and rejected
+as too busy (relief tint + dense labels competing with pins). That is why
+the default here is **Light Gray Canvas**, which is the opposite — almost
+no colour, minimal labels, designed by Esri as a data-overlay backdrop. It
+is the best "map as quiet background" Esri ship. World Topo is only offered
+as an optional third choice for the owner to look at, not the default.
 
 ## Requirements
 
-1. Both maps (`js/map.js`, `js/trip-share.js`) use the chosen provider's
-   raster tiles via `L.tileLayer`.
-2. Correct attribution in the `attribution` option — OSM data credit **plus**
-   the provider credit, per the provider's terms (e.g.
-   `© MapTiler © OpenStreetMap contributors` /
-   `© Stadia Maps © OpenMapTiles © OpenStreetMap`).
-3. Retina/HiDPI: use the provider's `@2x` tiles with
-   `detectRetina: true` (or the `{r}` token), so labels are sharp on
-   high-density screens.
-4. `maxZoom` set to what the chosen style actually supports (typically
-   20). Keep the existing `setView` / default view logic untouched.
-5. The API key lives inline in the client (there is no build step to inject
-   it). Put it in **one** clearly-commented `const` near the top of
-   `js/map.js` and reference it from both files (globals are shared — see
-   the file header), with a comment stating it is domain-restricted and
-   safe to be public, unlike `ORS_API_KEY`.
-6. Update the `js/map.js` basemap history comment to record this change and
-   why (R-8: OSM public tile server not production-licensed).
-7. If a Content-Security-Policy exists (`<meta http-equiv>` in the HTML, or
-   a `_headers` CSP added by GOLF-35), add the tile host (and any font host
-   the style needs) to `img-src` / `connect-src`.
+1. Both maps render Esri tiles via `L.tileLayer`, no `{s}` subdomain token
+   (Esri `server.arcgisonline.com` doesn't use it).
+2. A `L.control.layers(baseLayers, null, {position:'topright'})` (or
+   bottom-left if it collides with existing controls) on **both** maps,
+   with: Light Gray Canvas (added to the map by default), Imagery Hybrid,
+   and World Topographic. Radio-style base layers (not checkboxes).
+3. Per-layer `attribution` set on each tile layer so Leaflet swaps the
+   credit automatically when the user switches:
+   - Light Gray / Topo: `Tiles &copy; Esri — Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS user community`
+   - Imagery: `Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community`
+4. `detectRetina: true` on the tile layers (Esri arcgisonline has no clean
+   `@2x` token; `detectRetina` requests a higher zoom level, which is the
+   accepted approach).
+5. **No API key anywhere.** Add a short comment where the tiles are built:
+   these are Esri's long-standing keyless `arcgisonline` endpoints, widely
+   used with `esri-leaflet`; domain-locking / tokens are not available on
+   this path and not required. Same *class* of "covered by a usage policy,
+   not a signed contract" as the OSM server we're leaving — but far more
+   permissive about app use. A fully-contracted basemap remains a
+   later-if-ever call, tracked under GOLF-106.
+6. Update the `js/map.js` basemap-history comment: OSM public tile server
+   is not production-licensed (R-8) → moved to Esri keyless tiles + added
+   a satellite toggle; note World Topo stays non-default because it was
+   previously judged too busy.
+7. Shared view (`js/trip-share.js`): same three layers, same default,
+   same control. Keep `scrollWheelZoom:false` and everything else in
+   `renderSharedMap()`.
+8. If a CSP exists (`<meta http-equiv>` in the HTML, or a `_headers` file
+   from GOLF-35), add `server.arcgisonline.com` to `img-src`.
 
 ## Acceptance Criteria
 
-- [ ] Given the main map on a preview deploy, when it loads, then tiles
-      render from the chosen provider with no "API key required" watermark
-      and no console 401/403.
-- [ ] Given the shared-trip view (`#share=…`), when it loads, then it shows
-      the same new basemap.
-- [ ] Given a HiDPI screen, when the map loads, then labels/lines are sharp
-      (retina tiles served).
-- [ ] Given the country-wide default view, when pins are shown, then the
-      basemap reads as a quiet background — labels/roads do not compete
-      with the pins (product-owner visual sign-off on the preview URL).
-- [ ] Attribution control shows the required OSM + provider credits.
-- [ ] `node scripts/check_js.js` passes; no new console errors;
-      `TESTING.md` map checks pass (pins, clusters, routes, rail layers,
-      popups, mobile toggle all unchanged).
-- [ ] The tile key present in client source is confirmed domain-restricted
-      in the provider dashboard (product-owner task O1/O2).
+- [ ] Main map loads with **Light Gray Canvas** tiles, no watermark, no
+      console 4xx from `arcgisonline.com`.
+- [ ] The layer control switches cleanly between Light Gray Canvas,
+      Imagery Hybrid and World Topographic; Imagery Hybrid shows aerial
+      imagery **with** place-name + road labels on top.
+- [ ] Attribution text changes to match whichever base layer is active.
+- [ ] Shared-trip view (`#share=…`) has the same three layers and the same
+      Light Gray Canvas default.
+- [ ] Switching to Imagery Hybrid, zooming to a single course, shows
+      recognisable aerial detail of the course (imagery goes to z19).
+- [ ] Course pins, clusters, drive routes, rail layer (if flag on),
+      popups, bounds-fit and the mobile map/list toggle all behave exactly
+      as before on every base layer.
+- [ ] `node scripts/check_js.js` passes; `node scripts/test_data.js`
+      passes; `TESTING.md` map checks pass.
+- [ ] No API key / token string is present in the diff.
 
 ## Edge Cases
 
-- Do not add tile hosts to the service-worker precache list in `sw.js` —
-  tiles are runtime assets. If the SW already runtime-caches map tiles,
-  keep that behaviour; do not start caching them if it does not.
-- Provider outage / quota exceeded → tiles 4xx. Optional low-cost
-  resilience: a second `L.tileLayer` as a fallback is **out of scope** for
-  v1; just make sure a tile failure degrades to blank tiles, not a JS
-  error.
-- Keep the `{s}` subdomain token out of the new URL — MapTiler/Stadia do
-  not use it.
-- The `trip-share.js` map passed `scrollWheelZoom:false` and its own
-  options — preserve them; only the tile layer changes.
+- Do not add tile hosts to the `sw.js` precache list — tiles are runtime
+  assets. Leave any existing runtime-cache behaviour as-is; don't add new
+  tile caching.
+- A tile 4xx (Esri hiccup / quota) must degrade to blank tiles, never a JS
+  error. No second fallback provider in v1.
+- `Reference/World_Transportation` and `World_Boundaries_and_Places` stop
+  at ~z13; that's expected — imagery keeps going underneath, labels just
+  don't get denser. Acceptable.
+- Layer control must not overlap the bottom-right zoom control
+  (`L.control.zoom({position:'bottomright'})` in `js/map.js`) or the
+  mobile map/list toggle — pick a corner that's clear on a 360px screen.
 
 ## Dependencies
 
-- None blocking. Independent of GOLF-35, but if GOLF-35 adds a CSP, this
-  must update it (req. 7).
+- None blocking. If GOLF-35 adds a CSP, this updates it (req. 8).
 
 ## Out of Scope
 
-- Vector tiles / MapLibre GL / continuous zoom / rotation — that is
-  **GOLF-106**, a separate post-go-live epic.
-- Custom-designed map styles (using a provider's style editor) — ship a
-  stock style first; a bespoke style can be a later tweak.
-- Dark-mode basemap variant — only if the app gains a dark mode (it has
-  none today).
-- Offline map tiles.
+- Vector tiles / MapLibre GL / continuous zoom / rotation — GOLF-106.
+- Any keyed provider (MapTiler, Stadia, Mapbox, Apple) — explicitly
+  rejected by the owner for this ticket.
+- A bespoke Esri style via ArcGIS style editor (that needs an account).
+- Dark-mode basemap; offline tiles; per-layer remembering the user's last
+  choice across sessions (nice-to-have, not v1).
 
 ## Constraints
 
-- No build step, no framework change, Leaflet stays.
-- Two files change (`js/map.js`, `js/trip-share.js`) plus possibly the HTML
+- No build step, no framework change, Leaflet stays. No new accounts, no
+  tokens.
+- Files that change: `js/map.js`, `js/trip-share.js`, possibly the HTML
   (CSP / attribution). Nothing else.
 - Follow the existing terse comment style in `js/map.js`.
 
 ## Implementation Guidance
 
-- `L.tileLayer(url, { attribution, maxZoom, detectRetina })` is the whole
-  change on the Leaflet side — this is deliberately small.
+- One shared factory, e.g. `esriBaseLayers()` in `js/map.js` returning
+  `{ "Light Gray Canvas": L.layerGroup([...]), "Imagery Hybrid": L.layerGroup([...]), "World Topographic": L.tileLayer(...) }`,
+  used by both maps. Add the default group to the map, then
+  `L.control.layers(groups).addTo(map)`.
+- `L.tileLayer(url, { attribution, maxNativeZoom, maxZoom: 19, detectRetina: true })`.
 
 > The coding agent should inspect the existing codebase and follow
 > established project patterns before introducing new architecture.
 
----
+## Product-owner tasks
 
-## Product-owner tasks (ELI5)
-
-### O1 — Get a MapTiler key
-
-1. Go to **maptiler.com** → sign up (free).
-2. **Account → API keys** → copy the key that is already there.
-3. On that key's settings, find **"Allowed origins"** (or "HTTP referrers")
-   and add your live domain and your preview domain
-   (`*.<project>.pages.dev` — the agent will tell you the exact one).
-   This stops anyone else using your key.
-4. Send the key to the coding agent.
-
-### O2 — Get a Stadia Maps key
-
-1. Go to **stadiamaps.com** → sign up (free).
-2. **Dashboard → Authentication** → create a "Property", add your live +
-   preview domains as allowed domains, copy the **API key**.
-3. Send it to the coding agent.
-
-*(You need both only so you can compare the two maps side by side. After
-you pick one, the other account can just sit unused or be deleted.)*
-
-### O3 — Pick the look
-
-The agent will deploy a branch with a toggle or two preview links. Open it,
-look at the map with the course pins on it, and tell the agent which one
-you prefer.
-
-### O4 — After launch: set a spend cap / alert
-
-In whichever provider you chose, set a monthly usage alert (and a hard cap
-if offered) so a traffic spike can never produce a surprise bill. The free
-tiers are generous; this is just a seatbelt.
+- **O1 — Pick the look.** The agent ships a branch + Cloudflare preview
+  URL. Open it with course pins visible, try all three base layers, and
+  tell the agent: (a) keep Light Gray Canvas as default? (b) keep World
+  Topographic as the third option or drop it? (c) is Imagery Hybrid the
+  right "satellite" (vs plain imagery with no labels)?
+- **O2 — After go-live:** nothing to configure (no account, no key, no
+  spend cap). Just be aware Esri could change the keyless endpoints one
+  day; if the map ever goes blank in future, that's the first suspect and
+  the answer is likely GOLF-106 (vector).
 
 ## Definition of Done
 
-- Both maps use the chosen provider; attribution correct; retina sharp.
-- Owner has signed off the look on a preview URL.
-- Key is domain-restricted.
-- `check_js.js` passes; no map regressions per `TESTING.md`.
-- R-8 marked resolved in `RISKS.md`.
+- Both maps use Esri tiles with the 3-way base-layer toggle; Light Gray
+  Canvas default; attribution swaps per layer.
+- Owner has signed off the look on the preview URL (O1).
+- No API key in the source.
+- `check_js.js` + `test_data.js` pass; no map regressions per `TESTING.md`.
+- R-8 **downgraded** in `RISKS.md` (OSM production-ban risk removed; a
+  residual "keyless Esri is a usage policy, not a contract" note remains,
+  pointing at GOLF-106).

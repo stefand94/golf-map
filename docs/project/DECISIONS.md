@@ -4,6 +4,33 @@ _Stable IDs `DEC-nnn`. Record: decision · context · alternatives · reason ·
 date · affected features. Newest first. Full rationale for older calls lives
 in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 
+## DEC-010 — Basemap: Esri keyless tiles + street/satellite toggle, no new provider account
+
+- **Decision:** GOLF-105 is rescoped. Instead of adopting a keyed raster
+  provider (MapTiler / Stadia), both Leaflet maps move to **Esri's
+  keyless ArcGIS Online tile services** and gain a base-layer toggle:
+  Light Gray Canvas (default), Imagery Hybrid (satellite + labels), and
+  optionally World Topographic. No account, no API token. If a keyless
+  Esri basemap can't be made to work, the ticket is deferred/cancelled
+  pending a vector-map (GOLF-106) evaluation — not moved to another keyed
+  provider.
+- **Context:** owner trialled MapTiler and Stadia and judged neither a
+  meaningful visual improvement over the current OSM tiles, and did not
+  want another signup / key to manage. Owner does want a **satellite
+  view**, which no keyless OSM-based source can provide. Owner rates
+  Apple's basemaps highest but not worth the $99/yr developer fee.
+- **Alternatives:** keyed raster provider (rejected — not impressed, extra
+  account); stay on the OSM public server (rejected — R-8, production ban);
+  Apple MapKit JS (rejected — cost); do nothing / defer (fallback if Esri
+  keyless proves unworkable).
+- **Reason:** removes the R-8 production-ban risk, adds a genuinely useful
+  aerial course view, and costs zero setup/maintenance. Trade-off: Esri's
+  keyless endpoints are covered by a usage policy rather than a contract
+  and could change — acceptable at this scale, with GOLF-106 as the
+  long-term answer.
+- **Date:** 2026-09-10 · **Affects:** GOLF-105, GOLF-106, R-8,
+  `js/map.js`, `js/trip-share.js`.
+
 ## DEC-009 — Course coverage is "enough"; further national bulk pulls paused
 
 - **Decision:** stop expanding course coverage for now. GOLF-121b (UK &
