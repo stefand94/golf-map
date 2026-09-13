@@ -34,6 +34,7 @@ const failures = [];
 // derived from the HTML, so that a module reordered in the HTML by
 // accident is a visible diff in this file too.
 const ORDER = [
+  'app-version.js',
   'util.js',
   'trip-model.js',
   'state.js',

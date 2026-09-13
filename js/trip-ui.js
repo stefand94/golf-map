@@ -740,6 +740,7 @@ function tbBetaBadgeHTML(){
         <li>Green fees are confirmed for the highest-ranked ~130 courses; everywhere else is an estimate — check the "Confirmed" / "Estimate" label under the price.</li>
         <li>Hotel pins come from OpenStreetMap and prices are entered manually — coverage is patchy, especially outside towns.</li>
         <li>Trips are saved only in this browser (no account, no sync). Clearing browser data, or switching device, loses them.</li>
+        <li>An app update also resets saved trips — the next time you load the app after we ship a change, your trip starts fresh.</li>
       </ul>
       <button type="button" class="tb-btn is-sm" id="tb-beta-close">Close</button>
     </div>

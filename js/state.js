@@ -96,14 +96,42 @@ function validateTripEntry(t){
     tripDayNextId:Math.max(0,...tripDays.map(d=>d.id))+1
   };
 }
+/* GOLF-132/DEC-011: every deploy wipes every visitor's saved trip. Reuses
+   sw.js's own CACHE_NAME (a content hash of every precached file, stamped
+   here into APP_VERSION by scripts/update_sw_cache_version.py) as the
+   "has the deploy changed" signal, rather than inventing a second version
+   scheme. Returns true only when we can positively confirm the deploy
+   changed — any ambiguity (APP_VERSION missing, e.g. this script failed to
+   load) fails closed and leaves trips untouched, per the ticket's explicit
+   "losing data on a false positive is worse than occasionally missing a
+   real version change." */
+const DEPLOY_VERSION_KEY='golfmap:deployversion';
+function tbDeployVersionChanged(){
+  if(typeof APP_VERSION!=='string'||!APP_VERSION)return false;
+  let last;try{last=localStorage.getItem(DEPLOY_VERSION_KEY)}catch(e){return false}
+  if(last===APP_VERSION)return false;
+  try{localStorage.setItem(DEPLOY_VERSION_KEY,APP_VERSION)}catch(e){return false}
+  // No stored value (null) covers both a brand-new visitor (nothing to
+  // clear anyway) AND an existing visitor whose browser predates this
+  // feature shipping — the two are indistinguishable, and the ticket's
+  // acceptance criteria explicitly call the latter's one-time clear
+  // expected, not a bug. Treat both as changed.
+  return true;
+}
 function loadStoredState(){
+  const deployChanged=tbDeployVersionChanged();
   let raw;try{raw=localStorage.getItem(LS_KEY)}catch(e){return}
   if(!raw)return;
   let saved;try{saved=JSON.parse(raw)}catch(e){return}
   if(saved.edits)Object.assign(EDITS,saved.edits);
   (saved.played||[]).forEach(i=>PLAYED.add(i));
   (saved.want||[]).forEach(i=>WANT.add(i));
-  if(saved.trips&&typeof saved.trips==='object'&&Object.keys(saved.trips).length){
+  if(deployChanged){
+    // Leave `trips`/`activeTripId` at their already-initialised, empty
+    // defaults (same shape tripStartFresh() resets to) and persist that
+    // once below so the clear survives even if the visitor never edits
+    // anything this session.
+  }else if(saved.trips&&typeof saved.trips==='object'&&Object.keys(saved.trips).length){
     const nextTrips={};
     Object.entries(saved.trips).forEach(([id,t])=>{if(t&&typeof t==='object')nextTrips[id]=validateTripEntry(t)});
     if(Object.keys(nextTrips).length){
@@ -130,6 +158,12 @@ function loadStoredState(){
   // pill has been picked.
   if(saved.nation==='gb'||saved.nation==='ie'||saved.nation==='za')state.nation=saved.nation;
   if(saved.mapCenter&&saved.mapZoom)restoredView={center:saved.mapCenter,zoom:saved.mapZoom};
+  // GOLF-132: persist the cleared trip state immediately so it survives
+  // even if the visitor closes the tab without ever editing anything —
+  // otherwise the stale trips left in LS_KEY would still be there (and
+  // get loaded) on their next visit, since DEPLOY_VERSION_KEY already
+  // matches by then.
+  if(deployChanged)saveState();
 }
 function saveState(){
   let payload;
