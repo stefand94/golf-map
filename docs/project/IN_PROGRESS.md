@@ -25,9 +25,10 @@ Remaining passes, in order:
    before the weekly usage-limit reset), owner decides whether to run.
 2. Scotland / Ireland / Wales beyond the top ~30%.
 3. London catchment (`data/courses-london.js` — 0 done).
-4. **South Africa's remaining `zaRanked` courses — IN PROGRESS, handed to
-   dev 2026-09-13** (bundled on the same branch as GOLF-127/GOLF-132, see
-   below). Scope decided with the owner: of SA's 421 courses, 108 are
+4. **South Africa's remaining `zaRanked` courses — REVIEW, implemented on
+   branch `golf-127-132-sa-fees` 2026-09-13** (bundled with GOLF-127/
+   GOLF-132, see BACKLOG.md), pushed, not merged, awaiting owner test.
+   Scope decided with the owner: of SA's 421 courses, 108 are
    `zaRanked:1` (the only ones that ever show on the map today —
    `courseShownOnMap()`, GOLF-121d); 25 already have `feeV2` from batch-1;
    the remaining **82 `zaRanked` courses with no `feeV2`** are this pass.
@@ -36,6 +37,20 @@ Remaining passes, in order:
    confirmed 2026-09-13, invisible on the map until a future "show all"
    toggle ships, not worth researching today. Revisit passes 2 and this
    note if/when that toggle is built.
+   - **Done:** dev independently re-derived the live count (107 `zaRanked`,
+     25 with `feeV2` already → 82 needed — matched the estimate exactly),
+     ran 6 background Haiku agents (~14 courses each), merged additively
+     into `data/courses-southafrica.js` by course name (existing
+     `wd`/`we`/`fee` untouched). Thin-source courses marked `estimated`/
+     `poa` rather than guessed, same convention as batch-1. All 82 now
+     have real `feeV2`; `test_data.js` (879 courses) + `check_js.js` pass;
+     popup sweep clean.
+   - **Flagged for a human re-check** (owner, not urgent, doesn't block
+     testing): 4 courses had non-schema day values in the raw research
+     (specific weekdays / Saturday-only specials) folded into the
+     day/weekend/friday/any enum, nuance kept in `notes` —
+     **Killarney Country Club, Milnerton Golf Club, Wild Coast Sun
+     Country Club, Silver Lakes Golf & Wildlife Estate.**
 
 - Pattern: background Haiku agents each research a batch and return a JSON
   array of `{n, feeV2:{…}}` — they **never edit data files**. Merge with a
