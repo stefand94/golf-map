@@ -20,9 +20,31 @@ verified._
 
 Remaining passes, in order:
 
-1. **England Top 100 ranks 35–114** ("batch 2") — reminder routine
-   `trig_01KjZDrrJ3wYrk8EQ3nf26Z9` fires Tue 2026-09-16 22:00 London (just
-   before the weekly usage-limit reset), owner decides whether to run.
+1. **England Top 100, remaining 80 courses without `feeV2`** ("batch 2") —
+   **DONE, merged to `main` 2026-09-13.** All 114 England Top 100 courses
+   now have `feeV2` (34 from batch-1, 80 from this pass). 7 background
+   Haiku agents (~11-12 courses each) researched in parallel; merged
+   additively into `data/courses-top100.js` by exact course name (existing
+   `fee`/`wd`/`we` untouched). `test_data.js` (879 courses) + `check_js.js`
+   pass.
+   - Same aggregator-confidence QC as SA pass: any course whose only
+     source was a third-party aggregator (golfshake.com, litenews.co.uk)
+     had `confidence` downgraded from the agent's self-reported
+     `published-rates` to `estimated` (or `published-from-only` where all
+     rates were already `isFrom:true`) before merge, with a `notes` line
+     disclosing the secondary source. Woburn's three courses
+     (Marquess/Duke's/Duchess) currently share one club-wide aggregator
+     figure pending a per-course card — flagged in their `notes`.
+   - 4 schema-conformance fixes made during merge: West Hill and
+     Broadstone's Monday-specific rate folded into `day:"weekday"` (schema
+     has no Monday-specific enum value); Little Aston's separate
+     weekday/Sunday rates (identical amounts) collapsed to one
+     `day:"any"` entry; Bude & North Cornwall's non-standard 11-hole rate
+     dropped (schema's `holes` enum is only `18`/`9`/`"day"`), noted in
+     `notes` instead.
+   - Flagged private/members-only clubs correctly returned `poa` with no
+     invented rate: Centurion, Bearwood Lakes, Wentworth (both courses),
+     JCB, Berkhamsted, Prestbury.
 2. Scotland / Ireland / Wales beyond the top ~30%.
 3. London catchment (`data/courses-london.js` — 0 done).
 4. **South Africa's remaining `zaRanked` courses — DONE, merged to `main`
