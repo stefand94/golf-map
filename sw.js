@@ -75,7 +75,7 @@
    manifest and icons are unchanged — still cache-first, since they get
    a fresh CACHE_NAME whenever their content changes and that's what
    keeps repeat/offline loads instant. */
-const CACHE_NAME = 'golfmap-shell-v5-83623efe1c';
+const CACHE_NAME = 'golfmap-shell-v5-2542756981';
 
 const PRECACHE_URLS = [
   './',
