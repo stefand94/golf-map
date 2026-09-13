@@ -117,13 +117,16 @@ function tripShow(items,anchor,clear=true,fit=true,anchorRingOnly=false){
     pts.push(ll);
   });
   if(anchor!=null){
-    // A gold ring behind the anchor's flag pin keeps "this is the course
-    // everything else is measured from" legible now that the pin itself is
-    // the same shape as every other candidate.
+    // GOLF-127: the ring only earns its keep when the anchor's pin isn't
+    // already tinted (browsing a course before it's wishlisted) — once the
+    // pin itself is yellow (pinStateTint), the ring is a redundant second
+    // signal for the same state and the owner asked for it gone.
     const all=courseLatLng(anchor);
     tripDrawnCourses.add(anchor);
-    L.circleMarker(all,{radius:15,color:'#E6B400',weight:3,fill:false,opacity:.9})
-      .addTo(tripLayer);
+    if(!pinStateTint(anchor)){
+      L.circleMarker(all,{radius:15,color:'#E6B400',weight:3,fill:false,opacity:.9})
+        .addTo(tripLayer);
+    }
     if(!anchorRingOnly){
       L.marker(all,{icon:pinFor(anchor),title:C[anchor].n})
         .bindPopup(popupHTML(anchor),{maxWidth:340})

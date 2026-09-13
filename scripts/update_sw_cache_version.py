@@ -23,6 +23,16 @@ sw.js with a fresh hash when something did — which is exactly the trigger
 a browser needs to notice sw.js changed and install a fresh service worker,
 which is what actually forces the hard reset.
 
+GOLF-132: the same digest is also stamped into js/app-version.js's
+APP_VERSION constant, a tiny page-visible script the HTML loads before
+js/state.js. That lets the page itself detect "has the deploy changed
+since my last load" (to silently clear a visitor's saved trip, per
+DEC-011) by comparing APP_VERSION to what it last saw, with no runtime
+fetch and no second, independently-maintained version scheme. Like sw.js,
+js/app-version.js is excluded from the hash input itself (circular
+otherwise) but IS listed in PRECACHE_URLS so it's still cached/versioned
+like every other precached file.
+
 Usage:  python3 scripts/update_sw_cache_version.py
 Exits non-zero only on a real error (missing file, unreadable sw.js).
 """
@@ -33,6 +43,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SW_PATH = ROOT / 'sw.js'
+APP_VERSION_PATH = ROOT / 'js' / 'app-version.js'
+# Excluded from the hash input for the same reason sw.js itself is: this
+# script rewrites APP_VERSION into this file, so hashing its own content
+# would be circular.
+HASH_EXCLUDED_FILES = {'js/app-version.js'}
 
 # PRECACHE_URLS entries are relative URLs, not always literal filesystem
 # paths — map the two exceptions by hand, everything else is a direct
@@ -59,6 +74,8 @@ def main():
     missing = []
     for url in urls:
         rel = URL_TO_FILE.get(url, url[2:] if url.startswith('./') else url)
+        if rel in HASH_EXCLUDED_FILES:
+            continue
         fp = ROOT / rel
         if not fp.exists():
             missing.append((url, rel))
@@ -84,6 +101,20 @@ def main():
     updated = sw_text.replace(f"const CACHE_NAME = '{current}';", f"const CACHE_NAME = '{new_cache_name}';", 1)
     SW_PATH.write_text(updated, encoding='utf-8')
     print(f'sw.js CACHE_NAME updated: {current} -> {new_cache_name}')
+
+    # GOLF-132: keep js/app-version.js's APP_VERSION in lockstep with the
+    # same digest, so the page can detect this same deploy without a
+    # runtime fetch of sw.js.
+    if not APP_VERSION_PATH.exists():
+        raise SystemExit(f'FAIL: {APP_VERSION_PATH} does not exist')
+    av_text = APP_VERSION_PATH.read_text(encoding='utf-8')
+    av_m = re.search(r"const APP_VERSION='([^']*)';", av_text)
+    if not av_m:
+        raise SystemExit('FAIL: could not find APP_VERSION constant in js/app-version.js')
+    av_current = av_m.group(1)
+    av_updated = av_text.replace(f"const APP_VERSION='{av_current}';", f"const APP_VERSION='{new_cache_name}';", 1)
+    APP_VERSION_PATH.write_text(av_updated, encoding='utf-8')
+    print(f'js/app-version.js APP_VERSION updated: {av_current} -> {new_cache_name}')
 
 if __name__ == '__main__':
     main()
