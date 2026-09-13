@@ -23,9 +23,19 @@ Remaining passes, in order:
 1. **England Top 100 ranks 35–114** ("batch 2") — reminder routine
    `trig_01KjZDrrJ3wYrk8EQ3nf26Z9` fires Tue 2026-09-16 22:00 London (just
    before the weekly usage-limit reset), owner decides whether to run.
-2. Scotland / Ireland / Wales / South Africa beyond the top ~30%.
+2. Scotland / Ireland / Wales beyond the top ~30%.
 3. London catchment (`data/courses-london.js` — 0 done).
-4. The ~322 South Africa bulk placeholders.
+4. **South Africa's remaining `zaRanked` courses — IN PROGRESS, handed to
+   dev 2026-09-13** (bundled on the same branch as GOLF-127/GOLF-132, see
+   below). Scope decided with the owner: of SA's 421 courses, 108 are
+   `zaRanked:1` (the only ones that ever show on the map today —
+   `courseShownOnMap()`, GOLF-121d); 25 already have `feeV2` from batch-1;
+   the remaining **82 `zaRanked` courses with no `feeV2`** are this pass.
+   The other 314 non-ranked bulk-placeholder courses (from GOLF-121a's
+   full national pull) are explicitly **out of scope for now** — owner
+   confirmed 2026-09-13, invisible on the map until a future "show all"
+   toggle ships, not worth researching today. Revisit passes 2 and this
+   note if/when that toggle is built.
 
 - Pattern: background Haiku agents each research a batch and return a JSON
   array of `{n, feeV2:{…}}` — they **never edit data files**. Merge with a
