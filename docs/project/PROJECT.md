@@ -28,13 +28,22 @@ their own browser `localStorage` (`golfmap:v1`).
   server-side.
 - All course data is **pre-fetched offline** into `data/*.js` and hand-merged
   — zero runtime API calls for course data. 557 courses (114 England Top 100).
-- Hosted on GitHub Pages (canonical, auto-deploys from `main`) + Cloudflare
-  Pages (per-branch previews).
+- Hosted on **Cloudflare Pages** (canonical, auto-deploys from `main`;
+  per-branch previews) — GitHub Pages kept live in parallel, legacy, to be
+  retired once a custom domain is confirmed stable (DEC-006). See
+  `docs/deploying.md`.
+- Link-only for now: blanket `noindex`/`robots.txt` (GOLF-35 Phase A,
+  shipped 2026-09-13) — not search-indexed, but no password gate either
+  (owner decision: the small, directly-contacted beta tester group makes
+  that unnecessary for now).
 
 ## Current phase
 
-Incremental data-quality work (GOLF-98 real green-fee entry) plus small
-UX tickets. No large rewrite in flight. See `IN_PROGRESS.md` / `BACKLOG.md`.
+**Beta**, as of 2026-09-13 (GOLF-129) — the app is link-only-hosted and
+carries an in-app "Beta" badge/panel for testers; owner is now deciding
+who to send the (static) production URL to. Alongside that: incremental
+data-quality work (GOLF-98 real green-fee entry) plus small UX tickets.
+No large rewrite in flight. See `IN_PROGRESS.md` / `BACKLOG.md`.
 
 ## Reference
 
