@@ -221,14 +221,11 @@ const courseJitterLL=new Map();
 function courseLatLng(i){return courseJitterLL.get(i)||[C[i].lat,C[i].lng];}
 const HC_TEES={};
 function ranked(i){const t=C[i].t100;return t&&(typeof t.gl==='number'||t.gbi||typeof t.eng==='number'||typeof t.sco==='number'||typeof t.wal==='number')}
-/* GOLF-111: the tee colour is the map's in-trip / played / want signal.
-   Precedence matches the popup's always-on "in trip" badge winning over
-   the played/want pair. null => golfPinSVG()'s default red tee. */
+/* GOLF-130: collapsed from a 4-way tee colour to a single yellow/white
+   circle boolean — wishlisted, added to the trip, or played all read the
+   same (owner: "there are only 2 states"). */
 function pinStateTint(i){
-  if(TRIP.has(i))return'#2E5C8A';   // in trip — accent blue
-  if(PLAYED.has(i))return'#2E8B45'; // played — green
-  if(WANT.has(i))return'#B98900';   // want to play — amber
-  return null;
+  return TRIP.has(i)||PLAYED.has(i)||WANT.has(i);
 }
 function pinFor(i){const rk=ranked(i),size=rk?30:22,h=size*1.5;
   return L.divIcon({className:'',html:golfPinSVG(size,{ranked:rk,tint:pinStateTint(i)}),

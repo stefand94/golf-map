@@ -74,7 +74,9 @@ function tripShowOrdered(order,clear=true,fit=true){
     const fill=day!=null?TRIP_DAY_COLORS[(day-1)%TRIP_DAY_COLORS.length]:'#E6B400';
     const label=day!=null?`D${day}·${idx+1}`:String(idx+1);
     if(stop.type!=='course'){
-      /* Bug fix (2026-09-02): this used to only check stop.type==='place'
+      /* Non-course stops (place/hotel/poi) keep the hollow numbered ring
+         — only course markers move to the shared teardrop pin (GOLF-130).
+         Bug fix (2026-09-02): this used to only check stop.type==='place'
          (a day-level city field) — but a mid-route stop added via the
          "add hotel/POI" flow has type:'hotel'/'poi', which fell into the
          popupHTML(stop.i) branch below with stop.i undefined (only a
@@ -86,14 +88,15 @@ function tripShowOrdered(order,clear=true,fit=true){
       L.circleMarker([stop.lat,stop.lng],{radius:8,color:fill,weight:3,fillColor:'#fff',fillOpacity:1})
         .bindTooltip(label,{permanent:true,direction:'center',className:'trip-num'}).addTo(tripLayer);
     }else{
-      /* Bug fix (2026-09-01): a numbered cart/route stop used to be a plain
-         circleMarker with only a permanent number label — clicking it did
-         nothing, same "doesn't expand" complaint as tripShow()'s discovery
-         dots above. Bind the real course popup/tooltip and the same
-         highlight/drawLink click behaviour as the main flag markers. */
+      /* GOLF-130: a trip stop is now just the shared teardrop pin (yellow,
+         since it's in the trip) — no numbered badge. Sequence is still
+         readable from the Itinerary tab's list and the route-line order
+         below; only the on-pin number is gone. Popup/tooltip/click
+         behaviour (Bug fix 2026-09-01) is unchanged. */
       tripDrawnCourses.add(stop.i);
-      L.marker([stop.lat,stop.lng],{icon:tripGolfMarkerIcon(fill,label)})
+      L.marker([stop.lat,stop.lng],{icon:pinFor(stop.i)})
         .bindPopup(popupHTML(stop.i),{maxWidth:340})
+        .bindTooltip(courseTooltipHTML(stop.i),{direction:'top',className:'course-tt'})
         .on('click',()=>{highlight(stop.i);drawLink(stop.i)})
         .addTo(tripLayer);
     }
@@ -586,18 +589,6 @@ function tbDayFallbackPoint(idx){
 }
 function tbEmojiIcon(emoji){
   return L.divIcon({className:'tb-emoji-marker',html:`<span>${emoji}</span>`,iconSize:[24,24],iconAnchor:[12,20],popupAnchor:[0,-18]});
-}
-/* GOLF-91/item-4: a scheduled golf stop used to be a bare numbered
-   circleMarker on the trip route — no icon at all, unlike hotel/POI stops
-   (🏨/📍ANCHOR via tbEmojiIcon) which already carry the same glyph the
-   Trip Builder's own list rows use (⛳/🏨/📍, see tripDayItemRowHTML()).
-   This closes that gap: a day-coloured circular badge with the same ⛳
-   glyph, plus the existing "D{day}·{order}" label as a small corner pill
-   so the route order/day is still legible at a glance. */
-function tripGolfMarkerIcon(fill,label){
-  return L.divIcon({className:'trip-golf-marker',
-    html:`<div class="tgm-badge" style="background:${fill}"><span class="tgm-emoji">⛳</span></div><span class="tgm-num">${esc(label)}</span>`,
-    iconSize:[30,30],iconAnchor:[15,26],popupAnchor:[0,-24]});
 }
 function tbDrawTripItems(){
   tripDays.forEach((d,idx)=>{
