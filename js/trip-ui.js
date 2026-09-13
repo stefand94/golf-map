@@ -459,8 +459,12 @@ let tbBuildTab='itin',tbItinFilter='all',tbDriveToggle=true,tbDayShown=null;
 /* GOLF-108: "Show nearby courses" on the Itinerary tab map. Owner decision
    2026-09-07 — default ON; flip TB_SHOW_NEARBY_DEFAULT to change it, no
    other code change needed. Not persisted (matches tbDriveToggle /
-   tbItinFilter — a sensible default each session). */
-const TB_SHOW_NEARBY_DEFAULT=true;
+   tbItinFilter — a sensible default each session).
+   GOLF-131 (2026-09-13): flipped to default OFF — arriving in Itinerary
+   with every nearby bookable course already drawn was noisy; a tester now
+   opts in, and the set itself live-updates as the map is panned (see
+   tbItinNearbyAnchorPts()/tbDrawMap() in js/trip-route.js). */
+const TB_SHOW_NEARBY_DEFAULT=false;
 let tbShowNearby=TB_SHOW_NEARBY_DEFAULT;
 
 /* One day card. Structure follows the sketch exactly: bold day title with

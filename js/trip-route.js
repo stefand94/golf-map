@@ -350,15 +350,24 @@ function tbDiscover(){
   return nearestCoursesToPoint(pt.lat,pt.lng,5+TRIP.size).filter(({i})=>!TRIP.has(i)&&tbNationFilter(i)).slice(0,5);
 }
 /* GOLF-108: the Itinerary tab's map shows other bookable courses near the
-   trip, gated by the "Nearby courses" toggle (tbShowNearby, default ON).
-   This is the MAP only — the Discover sidebar list is untouched (still 5).
-   Wider than Discover's 5: nearest TB_NEARBY_MAX courses within
-   TB_NEARBY_RADIUS_MI of ANY trip course, respecting the nation pill.
-   Cheap — one synchronous pass over C, no network. */
+   trip, gated by the "Nearby courses" toggle (tbShowNearby, default OFF —
+   see GOLF-131). This is the MAP only — the Discover sidebar list is
+   untouched (still 5). Wider than Discover's 5: nearest TB_NEARBY_MAX
+   courses within TB_NEARBY_RADIUS_MI of ANY trip course OR the current map
+   view, respecting the nation pill. Cheap — one synchronous pass over C,
+   no network. */
 const TB_NEARBY_RADIUS_MI=60,TB_NEARBY_MAX=24;
+/* GOLF-131: anchoring on trip stops alone meant panning the map to an area
+   with no stop yet (e.g. scouting up the coast for the next one) never
+   surfaced what's bookable there without an unrelated search — the report
+   was "moved north wanting to add Royal Portrush, it didn't show up until
+   I searched for it." The current map centre is now always one of the
+   anchors too, so tbDrawMap()'s pan/zoom listener below can refresh the
+   nearby set to match whatever's on screen. */
 function tbItinNearbyAnchorPts(){
   const pts=tripSeq.filter(i=>C[i]).map(i=>({lat:C[i].lat,lng:C[i].lng}));
   if(!pts.length){const p=tbNearbyAnchorPoint();if(p)pts.push({lat:p.lat,lng:p.lng});}
+  if(map)pts.push(map.getCenter());
   return pts;
 }
 function tbItinNearbyCourses(){
@@ -620,7 +629,11 @@ function tbDrawTripItems(){
     });
   });
 }
-function tbDrawMap(){
+/* GOLF-131: `fit` defaults true (every existing caller wants the usual
+   fit-to-bounds redraw) — the pan/zoom listener below passes false so a
+   live nearby-course refresh doesn't fight the user's own pan by
+   re-centring the map back under them. */
+function tbDrawMap(fit=true){
   tripClear();
   const order=tripDayOrder();
   /* GOLF-57: discovery candidates only clutter the map while the Discover
@@ -653,5 +666,18 @@ function tbDrawMap(){
   const pts1=tripShowOrdered(order,false,false);
   tbDrawTripItems();
   const pts=[...pts1,...pts2];
-  if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
+  if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
 }
+/* GOLF-131: refresh the Itinerary tab's nearby-course set as the map is
+   panned/zoomed, so scouting an area you haven't added a stop to yet
+   (e.g. moving north from a southern-Ireland trip toward Royal Portrush)
+   surfaces what's bookable there without an unrelated search. Debounced
+   the same way GOLF-84's view-save listener is (js/explore.js) — a pan
+   fires moveend/zoomend in bursts. fit=false: this redraw must never
+   re-fitBounds, or it would immediately fight the pan that triggered it. */
+let _tbNearbyMoveTimer=null;
+map.on('moveend zoomend',()=>{
+  if(!(appMode==='build'&&tbBuildTab==='itin'&&tbShowNearby))return;
+  clearTimeout(_tbNearbyMoveTimer);
+  _tbNearbyMoveTimer=setTimeout(()=>tbDrawMap(false),300);
+});
