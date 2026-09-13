@@ -31,6 +31,50 @@ Branch names with characters Cloudflare doesn't allow in a subdomain
 literal branch name — check the deployment's own listing in the dashboard
 if a predicted URL 404s.
 
+## Dev-instance password gate (Preview only, GOLF-35 Phase A) — currently unused
+
+`functions/_middleware.js` gates every request behind HTTP Basic Auth
+(`dev` / the password) whenever `env.DEV_PASSWORD` is set — and does
+nothing at all when it isn't. This is a Cloudflare Pages **environment
+variable**, scoped per-environment:
+
+- Dashboard → Workers & Pages → **golf-map** project → **Settings** →
+  **Environment variables** ("Variables and Secrets").
+- Add `DEV_PASSWORD`, scoped to **Preview only** — do **not** tick
+  Production.
+
+Because the scoping is per-environment, this single middleware file is
+what makes every preview URL (`<branch>.golf-map.pages.dev`) require the
+password while the production URL (`main`'s deploy) never prompts for
+one. The password is never committed to the repo.
+
+**Decided 2026-09-13 (GOLF-129):** `DEV_PASSWORD` is deliberately left
+unset for the current beta — the tester group is small and contacted
+directly, so link-only + `noindex` (below) is judged sufficient without
+the extra friction of a password. Testers get the **production URL**
+(`https://golf-map.pages.dev`, or the custom domain once Phase B lands)
+directly — it's static, so there's no new link to send on every deploy.
+The gate code stays in the repo, harmless while dormant, for whenever a
+future preview/beta actually wants it.
+
+Both production and preview also carry a blanket `X-Robots-Tag:
+noindex, nofollow` (`_headers`) and `robots.txt` `Disallow: /` — the
+whole site is link-only, independent of whether the password gate is
+ever turned on.
+
+## Worker CORS allowlist (GOLF-102 Part 1)
+
+`scripts/cloudflare-worker/ors-proxy.js`'s `ALLOWED_ORIGINS` /
+`ALLOWED_ORIGIN_SUFFIX` constants (near the top of the file) list which
+origins the Worker will answer a browser request from:
+`golf-map.pages.dev`, any `*.golf-map.pages.dev` preview subdomain, and
+`localhost`/`127.0.0.1` for local dev. Anything else gets
+`Access-Control-Allow-Origin: null`. Adding the future custom domain
+(Phase B) is a one-line addition to `ALLOWED_ORIGINS`. Rate limiting
+(Phase B / GOLF-102 Part 2) is a separate, not-yet-built piece — CORS
+alone only stops *browser* calls from other pages, not a direct
+script/curl request (which carries no `Origin` header at all).
+
 ## The ORS proxy Worker (separate deployment)
 
 The OpenRouteService proxy (`scripts/cloudflare-worker/ors-proxy.js`) is a

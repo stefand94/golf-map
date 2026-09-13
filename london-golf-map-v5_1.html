@@ -175,6 +175,29 @@
   .tb-pill{font:700 var(--fs-caption) var(--font-sans);background:var(--accent-soft);color:var(--accent-deep);
     padding:var(--sp-1) var(--sp-3);border-radius:var(--radius-pill);font-variant-numeric:tabular-nums;white-space:nowrap}
 
+  /* GOLF-129: the "Beta" badge that opens the tester limitations panel.
+     Reuses the .tb-drop <details>/<summary> dropdown pattern (see
+     tb-navbar-right below and tbBindDropdownDismiss's outside-click
+     close), just styled as a small pill instead of a full toolbar
+     control — flex:0 so it sits at its own width in the navbar's flex
+     row rather than stretching like .tb-drop normally does. */
+  .tb-beta{flex:0 0 auto;position:relative}
+  .tb-beta>summary{list-style:none;cursor:pointer;min-height:0;
+    font:700 var(--fs-caption) var(--font-sans);color:var(--accent-deep);background:var(--accent-soft);
+    padding:var(--sp-1) var(--sp-3);border-radius:var(--radius-pill);white-space:nowrap;
+    border:1px solid transparent;transition:border-color var(--dur) var(--ease)}
+  .tb-beta>summary::-webkit-details-marker{display:none}
+  .tb-beta>summary::after{content:none}
+  .tb-beta[open]>summary{border-color:var(--accent)}
+  /* Higher-specificity selector (not just .tb-beta-body) so these
+     overrides win regardless of source order against the later
+     .tb-drop-body rule they build on. */
+  details.tb-beta div.tb-beta-body{right:0;left:auto;min-width:0;width:min(300px,85vw)}
+  .tb-beta-body h3{margin:0;font:700 var(--fs-body) var(--font-sans);color:var(--ink)}
+  .tb-beta-body ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:var(--sp-2);
+    font-size:var(--fs-small);color:var(--stone);line-height:1.4}
+  .tb-beta-body .tb-btn{align-self:flex-end}
+
   /* The single search bar for the whole pane — a full-width pill, per the
      sketch. One component, one look, four call sites (see tbSearchFieldHTML). */
   /* Sticky so the one search bar is always one tap away, however far the

@@ -714,9 +714,32 @@ function tbBindDropdownDismiss(){
   if(tbDismissBound)return;
   tbDismissBound=true;
   document.addEventListener('mousedown',e=>{
-    document.querySelectorAll('#tb-pane details[open].tb-drop,#tb-pane details[open].tb-rowmenu')
+    document.querySelectorAll('#tb-pane details[open].tb-drop,#tb-pane details[open].tb-rowmenu,#tb-pane details[open].tb-beta')
       .forEach(dd=>{if(!dd.contains(e.target))dd.removeAttribute('open');});
   });
+}
+/* GOLF-129: a small always-visible "Beta" badge (Plan/Build navbar only —
+   never rendered on the #share=… read-only view, since that view has its
+   own renderer in trip-share.js and never calls renderTripBuilder()) that
+   opens a short panel of known limitations for testers. A <details> like
+   every other dropdown in this pane (see tbBindDropdownDismiss for the
+   outside-click close); dismissing the panel only closes it — there is no
+   "don't show again", the badge itself always stays visible. Copy is
+   owner-approved verbatim (2026-09-13) — don't reword the four points. */
+function tbBetaBadgeHTML(){
+  return`<details class="tb-beta">
+    <summary title="What's still rough in this beta">Beta</summary>
+    <div class="tb-drop-body tb-beta-body">
+      <h3>You're testing a beta</h3>
+      <ul>
+        <li>Courses covered: Great Britain, Ireland, and South Africa only.</li>
+        <li>Green fees are confirmed for the highest-ranked ~130 courses; everywhere else is an estimate — check the "Confirmed" / "Estimate" label under the price.</li>
+        <li>Hotel pins come from OpenStreetMap and prices are entered manually — coverage is patchy, especially outside towns.</li>
+        <li>Trips are saved only in this browser (no account, no sync). Clearing browser data, or switching device, loses them.</li>
+      </ul>
+      <button type="button" class="tb-btn is-sm" id="tb-beta-close">Close</button>
+    </div>
+  </details>`;
 }
 function renderTripBuilder(){
   const pane=document.getElementById('tb-pane');
@@ -730,7 +753,10 @@ function renderTripBuilder(){
     ${tbNationPillsHTML()}
     <div class="tb-navbar">
       <span class="tb-wordmark">${isBuild?'Build your trip':'Plan a trip'}</span>
-      <span class="tb-navbar-right"><span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${tripPrimaryCurrency()}${total.toFixed(0)}</span></span>
+      <span class="tb-navbar-right">
+        ${tbBetaBadgeHTML()}
+        <span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${tripPrimaryCurrency()}${total.toFixed(0)}</span>
+      </span>
     </div>
     ${tbSearchFieldHTML({id:'tb-unified-search',variant:'bar',value:tbSearchQ,
       placeholder:'Search courses, towns and cities…',ariaLabel:'Search courses, towns and cities'})}
@@ -766,6 +792,10 @@ function renderTripBuilder(){
       :tbItineraryHTML()
     }</div>`;
 
+  document.getElementById('tb-beta-close').addEventListener('click',()=>{
+    const dd=document.querySelector('#tb-pane details.tb-beta[open]');
+    if(dd)dd.removeAttribute('open');
+  });
   document.getElementById('tb-clear-trip').addEventListener('click',()=>tripClearAll());
   const nationPills=document.getElementById('tb-nation-pills');
   if(nationPills)nationPills.addEventListener('click',e=>{

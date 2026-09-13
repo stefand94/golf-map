@@ -90,20 +90,48 @@ const OVERPASS_URLS = [
 // response (and what ends up cached in localStorage) stays small.
 const ROUTE_MAX_POINTS = 150;
 
+// GOLF-102 Part 1 / GOLF-35 Phase A3 — CORS allowlist. Kept as one
+// clearly-labelled const so adding the real custom domain in Phase B is a
+// one-line edit (see the marker below).
+const ALLOWED_ORIGINS = [
+  'https://golf-map.pages.dev',
+  'http://localhost',
+  'http://127.0.0.1',
+  // Phase B: add the real domain here, e.g. 'https://golftripplanner.com'
+];
+// Preview deployments get a per-branch subdomain of the same project —
+// *.golf-map.pages.dev — matched by suffix rather than enumerated.
+const ALLOWED_ORIGIN_SUFFIX = '.golf-map.pages.dev';
+
+// Known limitation: this only blocks browser calls from other web pages —
+// a direct script/curl request carries no Origin header at all and isn't
+// affected by CORS either way. That gap is what Phase B rate limiting
+// (GOLF-102 Part 2, once the Worker is on the custom domain) covers.
+function isAllowedOrigin(origin) {
+  if (!origin) return false;
+  if (ALLOWED_ORIGINS.some((o) => origin === o || origin.startsWith(o + ':'))) return true;
+  try {
+    const host = new URL(origin).hostname;
+    return host.endsWith(ALLOWED_ORIGIN_SUFFIX);
+  } catch (e) {
+    return false;
+  }
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders() });
+      return new Response(null, { headers: corsHeaders(request) });
     }
     if (request.method !== 'POST') {
-      return json({ error: 'POST only' }, 405);
+      return json({ error: 'POST only' }, 405, request);
     }
 
     let body;
     try {
       body = await request.json();
     } catch (e) {
-      return json({ error: 'invalid JSON body' }, 400);
+      return json({ error: 'invalid JSON body' }, 400, request);
     }
 
     if (body && body.mode === 'heritage-pois') {
@@ -111,30 +139,30 @@ export default {
       // this branch (and 'hotels' below) ahead of the ORS_API_KEY guard so
       // they keep working even when the ORS account/key is down, which has
       // happened for real more than once (see plan Phase 22/25/33).
-      return handleHeritagePois(body);
+      return handleHeritagePois(body, request);
     }
     if (body && body.mode === 'hotels') {
-      return handleHotels(body);
+      return handleHotels(body, request);
     }
 
     if (!env.ORS_API_KEY) {
-      return json({ error: 'ORS_API_KEY secret is not configured on this Worker' }, 500);
+      return json({ error: 'ORS_API_KEY secret is not configured on this Worker' }, 500, request);
     }
 
     if (body && body.mode === 'pois') {
-      return handlePois(body, env);
+      return handlePois(body, env, request);
     }
     if (body && body.mode === 'geocode') {
-      return handleGeocode(body, env);
+      return handleGeocode(body, env, request);
     }
-    return handleRoute(body, env);
+    return handleRoute(body, env, request);
   },
 };
 
-async function handleRoute(body, env) {
+async function handleRoute(body, env, request) {
   const { origin, destination } = body || {};
   if (!isCoord(origin) || !isCoord(destination)) {
-    return json({ error: 'origin and destination must both be [lng, lat] number pairs' }, 400);
+    return json({ error: 'origin and destination must both be [lng, lat] number pairs' }, 400, request);
   }
 
   let orsRes;
@@ -148,21 +176,21 @@ async function handleRoute(body, env) {
       body: JSON.stringify({ coordinates: [origin, destination] }),
     });
   } catch (e) {
-    return json({ error: 'could not reach OpenRouteService' }, 502);
+    return json({ error: 'could not reach OpenRouteService' }, 502, request);
   }
 
   if (!orsRes.ok) {
     // Common cases: 403 bad/expired key, 429 quota exceeded, 404 no
     // route found between the two points. Pass the status through
     // untranslated so the caller can decide how to fall back.
-    return json({ error: 'ORS request failed', status: orsRes.status }, 502);
+    return json({ error: 'ORS request failed', status: orsRes.status }, 502, request);
   }
 
   let data;
   try {
     data = await orsRes.json();
   } catch (e) {
-    return json({ error: 'ORS returned invalid JSON' }, 502);
+    return json({ error: 'ORS returned invalid JSON' }, 502, request);
   }
 
   // GOLF-50: the /geojson endpoint wraps the route in a FeatureCollection
@@ -170,7 +198,7 @@ async function handleRoute(body, env) {
   const feature = data && Array.isArray(data.features) && data.features[0];
   const summary = feature && feature.properties && feature.properties.summary;
   if (!summary) {
-    return json({ error: 'no route found' }, 502);
+    return json({ error: 'no route found' }, 502, request);
   }
 
   const coords = feature.geometry && feature.geometry.type === 'LineString' ? feature.geometry.coordinates : null;
@@ -180,7 +208,7 @@ async function handleRoute(body, env) {
     // [lat, lng] pairs (flipped from GeoJSON's [lng, lat]) so the client
     // can feed this straight to Leaflet without any conversion.
     route: coords ? simplifyRoute(coords.map((c) => [c[1], c[0]])) : null,
-  });
+  }, request);
 }
 
 function simplifyRoute(points) {
@@ -192,10 +220,10 @@ function simplifyRoute(points) {
   return out;
 }
 
-async function handlePois(body, env) {
+async function handlePois(body, env, request) {
   const { point } = body || {};
   if (!isCoord(point)) {
-    return json({ error: 'point must be a [lng, lat] number pair' }, 400);
+    return json({ error: 'point must be a [lng, lat] number pair' }, 400, request);
   }
   // Clamp the buffer so a bad client value can't turn into a huge/slow
   // ORS query — 200m to 5km, defaulting to 1.5km (a sensible "near this
@@ -229,18 +257,18 @@ async function handlePois(body, env) {
       body: JSON.stringify(orsBody),
     });
   } catch (e) {
-    return json({ error: 'could not reach OpenRouteService' }, 502);
+    return json({ error: 'could not reach OpenRouteService' }, 502, request);
   }
 
   if (!orsRes.ok) {
-    return json({ error: 'ORS request failed', status: orsRes.status }, 502);
+    return json({ error: 'ORS request failed', status: orsRes.status }, 502, request);
   }
 
   let data;
   try {
     data = await orsRes.json();
   } catch (e) {
-    return json({ error: 'ORS returned invalid JSON' }, 502);
+    return json({ error: 'ORS returned invalid JSON' }, 502, request);
   }
 
   const features = Array.isArray(data && data.features) ? data.features : [];
@@ -261,17 +289,17 @@ async function handlePois(body, env) {
     })
     .filter((p) => typeof p.lat === 'number' && typeof p.lng === 'number');
 
-  return json({ pois });
+  return json({ pois }, 200, request);
 }
 
 // GOLF-79: castles, distilleries, and a small curated set of other
 // historic/tourism points near a given spot — a thematic sibling of
 // handlePois() above (fuel/food/lodging), sourced from Overpass instead of
 // ORS since Overpass already tags exactly these things for free.
-async function handleHeritagePois(body) {
+async function handleHeritagePois(body, request) {
   const { point } = body || {};
   if (!isCoord(point)) {
-    return json({ error: 'point must be a [lng, lat] number pair' }, 400);
+    return json({ error: 'point must be a [lng, lat] number pair' }, 400, request);
   }
   // Same clamp policy as handlePois(): 200m to 5km, defaulting to 3km — a
   // castle or distillery is worth a slightly wider net than "food near
@@ -349,7 +377,7 @@ out center 80;
       lastError = { error: 'Overpass returned invalid JSON', status: 502 };
     }
   }
-  if (lastError) return json(lastError, 502);
+  if (lastError) return json(lastError, 502, request);
 
   // Best-effort friendly label, still derived from whatever historic/
   // tourism/craft/etc. tags a result happens to carry — the tag list is no
@@ -445,7 +473,7 @@ out center 80;
     .filter((p) => p.name && typeof p.lat === 'number' && typeof p.lng === 'number')
     .slice(0, 40);
 
-  return json({ pois });
+  return json({ pois }, 200, request);
 }
 
 // GOLF-96: nearby hotels/guest houses for the "Add a stay" picker — a
@@ -454,10 +482,10 @@ out center 80;
 // (no wiki-notability gate — a real, ungated hotel doesn't need a
 // Wikipedia page to be worth showing, same reasoning already applied to
 // craft=winery/distillery/brewery above).
-async function handleHotels(body) {
+async function handleHotels(body, request) {
   const { point } = body || {};
   if (!isCoord(point)) {
-    return json({ error: 'point must be a [lng, lat] number pair' }, 400);
+    return json({ error: 'point must be a [lng, lat] number pair' }, 400, request);
   }
   const rawRadius = typeof body.radius === 'number' ? body.radius : 3000;
   const radius = Math.min(5000, Math.max(200, rawRadius));
@@ -496,7 +524,7 @@ out center 60;
       lastError = { error: 'Overpass returned invalid JSON', status: 502 };
     }
   }
-  if (lastError) return json(lastError, 502);
+  if (lastError) return json(lastError, 502, request);
 
   const HOTEL_CATEGORY_LABELS = {
     hotel: 'Hotel',
@@ -522,7 +550,7 @@ out center 60;
     .filter((p) => p.name && typeof p.lat === 'number' && typeof p.lng === 'number')
     .slice(0, 40);
 
-  return json({ pois });
+  return json({ pois }, 200, request);
 }
 
 // GOLF-56: place search for start/free/end day locations. ORS's geocoder
@@ -543,10 +571,10 @@ const GEOCODE_COUNTRIES = 'GBR,IRL,ZAF';
 // upon Tyne while browsing South Africa. Anything not exactly one of the
 // three known codes falls back to the full unrestricted list rather than
 // risk silently scoping to an unrecognised/malformed value.
-async function handleGeocode(body, env) {
+async function handleGeocode(body, env, request) {
   const text = typeof body.text === 'string' ? body.text.trim() : '';
   if (!text) {
-    return json({ results: [] });
+    return json({ results: [] }, 200, request);
   }
   const requestedCountry = typeof body.country === 'string' ? body.country.trim().toUpperCase() : '';
   const boundaryCountry = GEOCODE_COUNTRIES.split(',').includes(requestedCountry)
@@ -563,18 +591,18 @@ async function handleGeocode(body, env) {
   try {
     orsRes = await fetch(url.toString());
   } catch (e) {
-    return json({ error: 'could not reach OpenRouteService' }, 502);
+    return json({ error: 'could not reach OpenRouteService' }, 502, request);
   }
 
   if (!orsRes.ok) {
-    return json({ error: 'ORS request failed', status: orsRes.status }, 502);
+    return json({ error: 'ORS request failed', status: orsRes.status }, 502, request);
   }
 
   let data;
   try {
     data = await orsRes.json();
   } catch (e) {
-    return json({ error: 'ORS returned invalid JSON' }, 502);
+    return json({ error: 'ORS returned invalid JSON' }, 502, request);
   }
 
   const features = Array.isArray(data && data.features) ? data.features : [];
@@ -590,27 +618,32 @@ async function handleGeocode(body, env) {
     })
     .filter((r) => typeof r.lat === 'number' && typeof r.lng === 'number');
 
-  return json({ results });
+  return json({ results }, 200, request);
 }
 
 function isCoord(v) {
   return Array.isArray(v) && v.length === 2 && typeof v[0] === 'number' && typeof v[1] === 'number';
 }
 
-function json(obj, status = 200) {
+function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+    headers: { 'Content-Type': 'application/json', ...corsHeaders(request) },
   });
 }
 
-function corsHeaders() {
+function corsHeaders(request) {
+  // GOLF-102 Part 1 / GOLF-35 Phase A3: reflect the caller's Origin back
+  // only if it's on ALLOWED_ORIGINS — an open '*' let any web page on the
+  // internet call this Worker (and burn its shared ORS quota) using a
+  // visitor's browser, no key required since the key never leaves the
+  // server anyway. `null` (not the omitted header) makes the denial
+  // explicit and matches what a browser actually enforces client-side.
+  const origin = request && request.headers.get('Origin');
   return {
-    // The app is a public static page with no login/session, so an open
-    // CORS policy here doesn't expose anything sensitive — the only thing
-    // this Worker guards is the ORS key, which never leaves the server.
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? origin : 'null',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin',
   };
 }

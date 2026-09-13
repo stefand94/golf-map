@@ -1,0 +1,13 @@
+# GOLF-35 Phase A2 — keep every deployment link-only (not search-indexed)
+# while the app is pre-launch. Cloudflare Pages headers format: a path
+# pattern followed by indented header lines.
+#
+# Intentionally blanket (applies to both production and preview) since
+# both are link-only right now. Once the site is ready to be publicly
+# discoverable, this needs to become per-environment (Pages headers has
+# no built-in env condition — the usual approach is a tiny addition to
+# functions/_middleware.js that sets this header only when a "prod but
+# still private" flag isn't set, or simply deleting this file once launch
+# is public).
+/*
+  X-Robots-Tag: noindex, nofollow
