@@ -4,6 +4,35 @@ _Stable IDs `DEC-nnn`. Record: decision · context · alternatives · reason ·
 date · affected features. Newest first. Full rationale for older calls lives
 in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 
+## DEC-011 — Every deploy wipes every visitor's saved trip data (no migration, no warning)
+
+- **Decision:** on every deploy to `main`, all `localStorage` trip state
+  (trips, itinerary days/items, wishlist, filters) is cleared for **every**
+  visitor on their next load — not just the owner's own browser. No
+  per-visitor opt-out, no "we've updated, here's what changed" notice, no
+  attempt to migrate old data forward — a version mismatch just means wipe.
+- **Context:** raised as a fix for a specific annoyance — a coding session
+  testing GOLF-130 against production left stray trip data in the owner's
+  own browser, and it kept reappearing on reopen. The owner asked for
+  deploys to auto-clear state generally, not just a one-off cleanup.
+- **Alternatives considered:** (a) scope the auto-clear to the owner's
+  browser only (a local debug flag), leaving testers' saved trips
+  untouched by deploys; (b) detect the version change and show a
+  non-destructive "app updated" notice instead of deleting data. Both
+  were raised and explicitly rejected — the owner confirmed (a) is not
+  what they want: **every** visitor, including real testers, should start
+  fresh after any deploy, deliberately, even though this means a tester
+  can silently lose in-progress itinerary work the moment any change
+  ships (a typo fix included, not only a schema-breaking one).
+- **Reason:** owner's explicit call after the trade-off (real tester data
+  loss on every deploy, not just risky ones) was raised directly — see
+  GOLF-132.
+- **Date:** 2026-09-13 · **Affects:** GOLF-132, `js/trip-ui.js` state
+  load, `sw.js`/deploy tooling (needs a stable per-deploy version
+  identifier to compare against), the Beta-notice copy from GOLF-129
+  ("Trips are saved only in this browser" — still true within a deploy,
+  now needs a caveat that a deploy resets it).
+
 ## DEC-010 — Basemap: Esri keyless tiles + street/satellite toggle, no new provider account
 
 - **Decision:** GOLF-105 is rescoped. Instead of adopting a keyed raster
