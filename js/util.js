@@ -27,38 +27,41 @@ function flagSVG(colour,pole,size,ring){
   </svg>`;
 }
 
-/* GOLF-111 (owner item 4, 2026-09-08): the on-map course marker is a
-   golf ball on a tee — a flat inline SVG (no raster asset, no baked-in
-   gradients so it scales and recolours cleanly), drawn to an owner-
-   supplied reference (white ball, red tee, dark outline). Replaces the
-   earlier blue map-pin badge, which itself replaced flagSVG().
+/* GOLF-130 (owner item, 2026-09-13): the on-map course marker is a
+   teardrop pin with a flag icon — a flat inline SVG (no raster asset, no
+   gradients), replacing GOLF-111's golf-ball-on-a-tee. The teardrop body
+   is always the same green; a large white/yellow circle fills most of its
+   interior (thin border), with a flag scaled to the circle's size.
 
-   State encoding the map carries, unchanged from before:
+   State encoding the map carries:
    - ranked vs unranked — size step (30 vs 22, see pinFor()) plus a gold
-     halo ring on ranked courses;
-   - in-trip / played / want — the tee colour, via the `tint` hook below
-     (pinStateTint() in js/map.js picks it). Default tee is the red from
-     the reference. Access tier stays uncoded on the pin (popup + filter
-     chips still carry it).
+     halo ring on ranked courses, unchanged from GOLF-111;
+   - trip association — collapsed to a single boolean (`filled` below,
+     picked by pinStateTint() in js/map.js): white circle = no association,
+     yellow = wishlisted, added as a trip stop, or played (no further
+     distinction — see GOLF-130).
 
-   Anchor is the base of the tee (bottom-centre) — set in pinFor(). */
+   Anchor is the teardrop's point (bottom-centre) — set in pinFor(). */
 function golfPinSVG(size,opts){
   if(opts===true||opts===false)opts={ranked:opts}; // back-compat: golfPinSVG(size, ranked)
   opts=opts||{};
   const ranked=!!opts.ranked;
-  const teeFill=opts.tint||'#D14A3A';
+  const filled=!!opts.tint;
   const w=size,h=size*1.5;
-  const cx=w*0.5,cy=w*0.40,r=w*0.40;
-  const outline='#23303A',ow=Math.max(1.1,size*0.05);
-  const cupY=cy+r*0.72,stemY=cy+r*1.18,tipY=h-ow*0.6;
-  const cupHalf=r*0.46,stemHalf=r*0.13;
-  const tee=`M${cx-cupHalf},${cupY} L${cx+cupHalf},${cupY} L${cx+stemHalf},${stemY} L${cx},${tipY} L${cx-stemHalf},${stemY} Z`;
-  const dot=(dx,dy,rr)=>`<circle cx="${(cx+dx).toFixed(1)}" cy="${(cy+dy).toFixed(1)}" r="${rr.toFixed(1)}" fill="#93A6B4"/>`;
+  const outline='#155C39',body='#1F7A4D',ow=Math.max(1.1,size*0.05);
+  const cx=w*0.5,R=w*0.5-ow*1.3,cy=R+ow*1.3,tipY=h-ow*0.6;
+  const pin=`M${cx},${tipY} C${(cx-R*1.2).toFixed(1)},${(cy+R*0.8).toFixed(1)} ${(cx-R).toFixed(1)},${(cy+R*0.2).toFixed(1)} ${(cx-R).toFixed(1)},${cy.toFixed(1)} A${R.toFixed(1)},${R.toFixed(1)} 0 1,1 ${(cx+R).toFixed(1)},${cy.toFixed(1)} C${(cx+R).toFixed(1)},${(cy+R*0.2).toFixed(1)} ${(cx+R*1.2).toFixed(1)},${(cy+R*0.8).toFixed(1)} ${cx},${tipY} Z`;
+  const innerR=R*0.78,circleFill=filled?'#F2C200':'#FFFFFF';
+  const s=innerR/11;
+  const flag=`<g transform="translate(${cx.toFixed(1)},${cy.toFixed(1)}) scale(${s.toFixed(3)})">
+    <line x1="-3" y1="8" x2="-3" y2="-8" stroke="${outline}" stroke-width="2" stroke-linecap="round"/>
+    <path d="M-3,-8 L7,-4 L-3,0 Z" fill="${outline}"/>
+  </g>`;
   return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.38))">
-    ${ranked?`<circle cx="${cx}" cy="${cy}" r="${(r+ow*1.7).toFixed(1)}" fill="none" stroke="#E6B400" stroke-width="${(ow*1.5).toFixed(1)}"/>`:''}
-    <path d="${tee}" fill="${teeFill}" stroke="${outline}" stroke-width="${ow}" stroke-linejoin="round"/>
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="#FFFFFF" stroke="${outline}" stroke-width="${ow}"/>
-    <g opacity="0.85">${dot(-r*0.32,-r*0.22,r*0.15)}${dot(r*0.08,-r*0.38,r*0.14)}${dot(r*0.36,-r*0.02,r*0.14)}${dot(-r*0.04,r*0.30,r*0.14)}${dot(-r*0.40,r*0.16,r*0.12)}${dot(r*0.24,r*0.30,r*0.12)}</g>
+    ${ranked?`<circle cx="${cx}" cy="${cy.toFixed(1)}" r="${(R+ow*1.7).toFixed(1)}" fill="none" stroke="#E6B400" stroke-width="${(ow*1.5).toFixed(1)}"/>`:''}
+    <path d="${pin}" fill="${body}" stroke="${outline}" stroke-width="${ow}" stroke-linejoin="round"/>
+    <circle cx="${cx}" cy="${cy.toFixed(1)}" r="${innerR.toFixed(1)}" fill="${circleFill}" stroke="${outline}" stroke-width="${(ow*0.6).toFixed(1)}"/>
+    ${flag}
   </svg>`;
 }
 
