@@ -4,6 +4,36 @@ _Stable IDs `DEC-nnn`. Record: decision · context · alternatives · reason ·
 date · affected features. Newest first. Full rationale for older calls lives
 in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 
+## DEC-013 — Cluster badge stays a plain numbered circle
+
+- **Decision:** GOLF-139 cancelled. The `.mcluster` marker cluster badge is
+  not restyled to echo the teardrop/circle pin shape introduced in
+  GOLF-130; it stays a plain numbered circle.
+- **Context:** GOLF-130 left this as an open call (its O1) rather than a
+  decided scope item; GOLF-133's UI review pass carried it forward as an
+  unresolved loose end instead of re-litigating it.
+- **Alternatives considered:** restyle the badge to match the teardrop pin
+  (rejected).
+- **Reason:** owner judged the plain badge fine as-is — not a visual
+  inconsistency worth fixing.
+- **Date:** 2026-09-13 · **Affects:** GOLF-139 (cancelled), GOLF-130.
+
+## DEC-012 — Wishlist-to-Day-1 auto-materialization stays as-is
+
+- **Decision:** GOLF-138 cancelled. No change to current behaviour — the
+  first course added via "+ Wishlist" to an otherwise-empty trip continues
+  to auto-materialize as a fully scheduled Day-1 itinerary stop (green fee
+  counted into Costs), rather than sitting in an unscheduled "wishlist
+  pool."
+- **Context:** raised as an open question in GOLF-133's UI review — the
+  "+ Wishlist" label implies "save this for later," but a single-course
+  trip already auto-schedules to Day 1.
+- **Alternatives considered:** keep a wishlisted course unscheduled until
+  explicitly dragged/added onto a day (rejected).
+- **Reason:** owner confirmed the existing behaviour is the intended
+  product model, not a defect.
+- **Date:** 2026-09-13 · **Affects:** GOLF-138 (cancelled), GOLF-133.
+
 ## DEC-011 — Every deploy wipes every visitor's saved trip data (no migration, no warning)
 
 - **Decision:** on every deploy to `main`, all `localStorage` trip state

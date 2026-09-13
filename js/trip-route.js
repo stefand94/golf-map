@@ -74,19 +74,25 @@ function tripShowOrdered(order,clear=true,fit=true){
     const fill=day!=null?TRIP_DAY_COLORS[(day-1)%TRIP_DAY_COLORS.length]:'#E6B400';
     const label=day!=null?`D${day}·${idx+1}`:String(idx+1);
     if(stop.type!=='course'){
-      /* Non-course stops (place/hotel/poi) keep the hollow numbered ring
-         — only course markers move to the shared teardrop pin (GOLF-130).
-         Bug fix (2026-09-02): this used to only check stop.type==='place'
-         (a day-level city field) — but a mid-route stop added via the
-         "add hotel/POI" flow has type:'hotel'/'poi', which fell into the
-         popupHTML(stop.i) branch below with stop.i undefined (only a
-         course stop carries .i), throwing and silently aborting the whole
-         route draw — the exact repro behind the "adding a stop along the
-         way breaks routing" report. Any non-course stop (place/hotel/poi)
-         gets the same hollow ring; only a real course stop gets the full
-         popup/click behaviour, since only it has a course index to bind. */
-      L.circleMarker([stop.lat,stop.lng],{radius:8,color:fill,weight:3,fillColor:'#fff',fillOpacity:1})
-        .bindTooltip(label,{permanent:true,direction:'center',className:'trip-num'}).addTo(tripLayer);
+      /* Bug fix (2026-09-02): this used to route EVERY non-course stop
+         (place/hotel/poi) into the popupHTML(stop.i) branch below, which
+         throws on a hotel/POI stop (only a course stop carries .i) and
+         silently aborts the whole route draw — the "adding a stop along
+         the way breaks routing" report. Routing all non-course types here
+         avoids that crash.
+         Bug fix (GOLF-141, 2026-09-13): drawing the hollow numbered ring
+         for EVERY non-course type, though, meant hotel/poi stops got both
+         this ring AND their own 🏨/📍 marker from tbDrawTripItems() —
+         two overlapping pins per stop, one a stray numbered circle that
+         had no reason to be there. Only a day's place-anchor (the
+         day-level city field, which has no marker of its own elsewhere)
+         still needs this ring; hotel/poi items are fully drawn by
+         tbDrawTripItems() and must skip it here. Point still lands in
+         `pts` below either way, so fitBounds/route-line are unaffected. */
+      if(stop.type==='place'){
+        L.circleMarker([stop.lat,stop.lng],{radius:8,color:fill,weight:3,fillColor:'#fff',fillOpacity:1})
+          .bindTooltip(label,{permanent:true,direction:'center',className:'trip-num'}).addTo(tripLayer);
+      }
     }else{
       /* GOLF-130: a trip stop is now just the shared teardrop pin (yellow,
          since it's in the trip) — no numbered badge. Sequence is still
