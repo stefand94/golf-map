@@ -75,11 +75,16 @@ function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'
 /* Anything interpolated into an href= goes through this first: a saved
    correction or an imported/shared payload can carry a `javascript:` (or
    `data:`) URL, which esc() alone does nothing about. Only http(s), mailto,
-   site-absolute and in-page URLs survive; everything else becomes '#'.
-   The result is still esc()'d by the caller for the attribute quoting. */
+   site-absolute, in-page, and bare same-origin relative paths (e.g.
+   data/*.js's photo.src/logo values, which never carry a leading slash)
+   survive; everything else becomes '#'. The relative-path pattern has no
+   ':' in it, so a disguised scheme like "javascript:alert(1)" still can't
+   sneak through. The result is still esc()'d by the caller for the
+   attribute quoting. */
 function escUrl(s){
   const v=String(s==null?'':s).trim();
-  return /^(https?:|mailto:|\/|#)/i.test(v)?v:'#';
+  if(/^(https?:|mailto:|\/|#)/i.test(v))return v;
+  return /^[\w.-]+(\/[\w.-]+)*$/.test(v)?v:'#';
 }
 
 const STN={},STN_LINES={};

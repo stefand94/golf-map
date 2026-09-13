@@ -103,6 +103,11 @@
     body.mob-map .panel{display:none}
     body.mob-list #map{display:none}
     .mob-toggle{display:block}
+    /* GOLF-136: the fixed .mob-toggle pill floats over whatever the panel
+       is currently scrolled to — without this, its last lines of text
+       (seen on the Costs tab's currency disclaimer) sit permanently
+       underneath the button with no way to scroll them clear. */
+    .tb-pane{padding-bottom:64px}
   }
   .panel{display:flex;flex-direction:column;background:var(--paper-2);border-right:1px solid var(--line);overflow:hidden;box-shadow:6px 0 24px -12px rgba(22,36,29,.25);position:relative;z-index:10}
 

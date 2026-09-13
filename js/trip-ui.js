@@ -693,7 +693,7 @@ function tbDiscoverTabHTML(){
       :`<div class="tb-day-settings-body" style="padding:0 0 var(--sp-3)">
         <select id="tb-region" aria-label="Region"><option value="">Choose a region…</option>${tbRegionOptionsHTML()}</select>
         <label style="display:inline-flex;align-items:center;gap:var(--sp-2);font-size:var(--fs-caption);color:var(--stone)"
-          title="Also include courses just outside the region, within this many miles of its edge">Border
+          title="Also include courses just outside the region, within this many miles of its edge">Border (mi)
           <input id="tb-border" type="number" value="${tbBorder}" min="0" max="50" style="width:70px"></label>
       </div>`}
     <div id="tb-results">${tbResultsHTML(tbDiscover())}</div>`;

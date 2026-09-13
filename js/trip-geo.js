@@ -136,7 +136,7 @@ function tripShow(items,anchor,clear=true,fit=true,anchorRingOnly=false){
     }
     pts.push(all);
   }
-  if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32]});
+  if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32],maxZoom:14});
   return pts;
 }
 
