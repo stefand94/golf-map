@@ -45,7 +45,40 @@ Remaining passes, in order:
    - Flagged private/members-only clubs correctly returned `poa` with no
      invented rate: Centurion, Bearwood Lakes, Wentworth (both courses),
      JCB, Berkhamsted, Prestbury.
-2. Scotland / Ireland / Wales beyond the top ~30%.
+2. **Scotland / Ireland / Wales beyond the top ~30% — DONE, merged to
+   `main` 2026-09-14 ("batch 3").** All 220 Scotland/Wales/Ireland
+   courses now have `feeV2` (69 Scotland, 26 Wales, 58 Ireland filled by
+   this pass; the rest already had it from batch-1). 13 background Haiku
+   agents (6 Scotland, 2 Wales, 5 Ireland, ~10-13 courses each) researched
+   in parallel; one relaunch round was needed mid-pass after a session-wide
+   API rate limit killed 12 of the first 13 agents (recovered cleanly once
+   quota reset — no data lost, just re-run with the same course lists).
+   Merged additively into `data/courses-{scotland,wales,ireland}.js` by
+   exact course name; `test_data.js` (879 courses) + `check_js.js` pass
+   clean, zero schema-conformance fixes needed this time (the day/holes
+   enum rules and aggregator-confidence self-downgrade were embedded
+   directly in every agent's prompt up front, based on the England
+   batch-2 lesson).
+   - Ireland batches were told up front which named clubs are Northern
+     Ireland (GBP) vs Republic of Ireland (EUR): Malone, Castlerock,
+     Ardglass, Belvoir Park, Clandeboye, Galgorm Castle, Lough Erne,
+     Moyola Park — all correctly priced in £.
+   - Flagged private/ultra-exclusive/no-published-rate clubs correctly
+     returned `poa` with no invented rate: Ardfin (Isle of Jura estate),
+     Spey Valley, The European Club (closed for redesign, renamed Brittas
+     Bay Club), Mullingar, Vale Resort (Wales National — dynamic pricing
+     only, no rate card found anywhere).
+   - Notably high-value estimated entries worth a future human
+     spot-check: Skibo Castle (Carnegie) £450 (aggregator-only, no direct
+     confirmation), Cabot Highlands Old Petty £695/£635 (36-hole combo
+     package, no standalone rate), Trump Turnberry (King Robert the
+     Bruce) £250 (press-sourced, no official rate card found), Narin &
+     Portnoo €300 summer (aggregator figure the researching agent itself
+     flagged as possibly stale/mis-scraped).
+   - The Duke's Course (St Andrews) was found to have been renamed "The
+     Craigtoun Course" under a new St Andrews Links Trust lease (Jan
+     2026) — kept under its existing data-file name for continuity, noted
+     in `notes`.
 3. London catchment (`data/courses-london.js` — 0 done).
 4. **South Africa's remaining `zaRanked` courses — DONE, merged to `main`
    `5f0878a` 2026-09-13** (bundled with GOLF-127/GOLF-132 on branch
