@@ -4,6 +4,46 @@ _Stable IDs `DEC-nnn`. Record: decision · context · alternatives · reason ·
 date · affected features. Newest first. Full rationale for older calls lives
 in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 
+## DEC-016 — GOLF-142 data source: Overpass, as a live per-viewport call (not a bulk cache)
+
+- **Decision:** GOLF-142 unblocked. Data source is **Overpass**
+  (OpenStreetMap), reusing/extending GOLF-96's existing Worker pattern.
+  Google Places and other candidates from DEC-015 are not chosen —
+  deferred, not ruled out permanently.
+- **Context:** DEC-015 left the data source open after Travelpayouts died.
+  Google was the obvious next candidate but has two real costs: (a) no
+  true hard spending cap exists on Google Maps Platform — budget alerts
+  only notify, they don't stop billing, so "just cap it" isn't actually
+  available as a safety net; (b) the caching-restriction problem already
+  noted in DEC-014 still applies. Owner also raised a concern about
+  "caching a lot of data" — clarified this was never actually the plan:
+  GOLF-142 was already spec'd (see `HANDOVER-GOLF-142.md`, "Debounced
+  viewport re-fetch") as a **live call on every pan/zoom**, matching the
+  GOLF-131 nearby-courses pattern, not a bulk fetch-once-and-ship-in-`data/
+  *.js` model like course data. That live-call architecture is unchanged
+  by this decision — only which backend the Worker calls changes.
+- **Alternatives considered:** Google Places (cost/ToS friction, see
+  above); other affiliate/hotel networks (Booking.com affiliate/XML API,
+  RateHawk/Ostrovok, Amadeus) — not evaluated, left as future options if
+  Overpass coverage proves too weak in practice.
+- **Reason:** Overpass has zero new signup, no cost, no caching
+  restriction (ODbL allows reuse with attribution), and the Worker
+  already has a working, deployed query against it (`handleHotels()`,
+  GOLF-96) returning the exact shape GOLF-142 needs — only the
+  point+radius query needs extending to a bounding-box/viewport query.
+  Coverage is the accepted known weakness (real gaps vs. real hotels not
+  mapped in OSM) — this was already flagged in GOLF-103's original
+  discovery and is being accepted for v1 rather than solved.
+- **New consideration flagged, not yet a blocker:** GOLF-96 fires
+  Overpass queries rarely (once per "add a stay" click). GOLF-142 as
+  spec'd fires on every debounced pan/zoom while the toggle is on — a
+  materially higher request volume. Public Overpass servers have a
+  fair-use policy (~10,000 requests/day, heavier throttling under load).
+  Fine at current small-beta traffic; worth monitoring if usage grows.
+- **Date:** 2026-09-17 · **Affects:** GOLF-142 (unblocked, data source =
+  Overpass), GOLF-103 (data-source question resolved for v1, revisit if
+  coverage proves inadequate), `HANDOVER-GOLF-142.md` (rewritten).
+
 ## DEC-015 — Travelpayouts/Hotellook is dead; GOLF-142 data source reopened
 
 - **Decision:** DEC-014 is superseded. Travelpayouts/Hotellook cannot be
