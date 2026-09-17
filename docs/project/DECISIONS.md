@@ -4,7 +4,59 @@ _Stable IDs `DEC-nnn`. Record: decision · context · alternatives · reason ·
 date · affected features. Newest first. Full rationale for older calls lives
 in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 
-## DEC-014 — Hotel-layer data source: Travelpayouts/Hotellook, no price shown in v1
+## DEC-015 — Travelpayouts/Hotellook is dead; GOLF-142 data source reopened
+
+- **Decision:** DEC-014 is superseded. Travelpayouts/Hotellook cannot be
+  used for GOLF-142 — the product no longer exists. GOLF-103/GOLF-142's
+  data-source question is **reopened**; no replacement chosen yet
+  (OPEN QUESTION).
+- **Context:** while signing up, the owner couldn't find an API-token
+  flow matching the plan and instead found only a "deeplink" generator
+  (an affiliate marketing link to a partner site, not an API
+  credential) — a sign the account's product surface had changed.
+  Investigated 2026-09-17: Hotellook (the brand, the widgets, and the
+  hotel-search API) was **shut down by Travelpayouts on 2026-10-20**
+  [sic — see note below on date]. Confirmed live, not just from
+  documentation: `engine.hotellook.com`'s static-data endpoint returns
+  **404** (domain decommissioned), and `travelpayouts.com`'s static
+  bulk hotel-data dump (`data/en/hotels.json`) returns **403 Access
+  Denied** (S3-style denial, consistent with the file being pulled).
+  Both the live search API and the static fallback are gone, not just
+  one of them.
+- **Note on the shutdown date:** Travelpayouts' own help-center article
+  states the closure happened 2025-10-20. Today's date in this project
+  is 2026-09-17, so — taking that article's date at face value — the
+  shutdown happened roughly 11 months before this decision, i.e. it was
+  already long gone when DEC-014 was made 2026-09-17 and this was
+  simply never checked before that decision was written. Worth the
+  owner independently confirming the exact date if it matters, since an
+  AI-summarized web search is the source, not a primary document read
+  directly.
+- **Impact:** GOLF-142 cannot proceed as scoped. `HANDOVER-GOLF-142.md`
+  is now stale (its Worker/data-source guidance assumes Travelpayouts)
+  and needs a rewrite once a new data source is chosen. The API token
+  the owner generated during this investigation should be treated as
+  exposed (shared in a chat transcript) and is moot anyway since the
+  product behind it doesn't work — no action needed to revoke it
+  specifically, but it should not be used.
+- **Remaining candidates, undecided:** (1) **Google Places** — works,
+  but reopens both the per-call cost profile and the caching-restriction
+  problem already documented in DEC-014's additional-reason note (still
+  valid, just no longer decisive on its own since the "simpler/free"
+  alternative it was being weighed against is gone); (2) **Overpass**
+  (already integrated for GOLF-96, free, no new signup) — coverage is
+  the known weakness, but re-check whether "coverage over a wide
+  toggleable area" is actually as gap-prone as the original GOLF-103
+  discovery assumed, now that the free alternative is off the table;
+  (3) other affiliate/hotel-data networks not yet evaluated (e.g.
+  Booking.com's own affiliate/XML API, RateHawk/Ostrovok, Amadeus).
+  None of these were evaluated in this pass — **next step is a fresh,
+  short options review before resuming GOLF-142's build**, not silently
+  defaulting to one.
+- **Date:** 2026-09-17 · **Affects:** GOLF-103 (reopened), GOLF-142
+  (blocked pending new data-source decision), DEC-014 (superseded).
+
+## DEC-014 — SUPERSEDED 2026-09-17, see DEC-015 — Hotel-layer data source: Travelpayouts/Hotellook, no price shown in v1
 
 - **Decision:** GOLF-142 (the "Show hotels" toggle layer) uses
   Travelpayouts/Hotellook as its data source, not Google Places or the

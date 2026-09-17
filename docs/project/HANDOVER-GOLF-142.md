@@ -1,5 +1,13 @@
 # Handover — GOLF-142: "Show hotels" toggle layer on the map
 
+> **⚠️ STALE — do not build from this yet (as of 2026-09-17).** The data
+> source section below (Travelpayouts/Hotellook) is confirmed
+> discontinued — see `DECISIONS.md` DEC-015. The toggle-layer UX spec
+> (requirements, acceptance criteria, zoom-gating, re-fetch-on-pan
+> pattern) still holds; only the "Owner action required" + data-source
+> parts of "Context"/"Requirement 4" need replacing once GOLF-103's
+> data-source question is re-decided. Check `BACKLOG.md` GOLF-103 first.
+
 **For:** a coding agent (fresh Claude Code session in this repo, not a BA/PM
 one).
 **Date:** 2026-09-17
