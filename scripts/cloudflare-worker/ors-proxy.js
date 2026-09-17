@@ -1,7 +1,8 @@
 /**
- * GOLF-45 / GOLF-46 / GOLF-50 / GOLF-55 / GOLF-56 — ORS driving-time +
- * route + POI + geocoding proxy, auto-deployed via Cloudflare's Git
- * integration (build root directory: scripts/cloudflare-worker).
+ * GOLF-45 / GOLF-46 / GOLF-50 / GOLF-55 / GOLF-56 / GOLF-142 — ORS
+ * driving-time + route + POI + geocoding + hotel proxy, auto-deployed via
+ * Cloudflare's Git integration (build root directory:
+ * scripts/cloudflare-worker).
  * ORS_API_KEY is set under the Build's own "Variables and secrets"
  * section and needs a fresh build to bind — it doesn't apply
  * retroactively to a running deployment.
