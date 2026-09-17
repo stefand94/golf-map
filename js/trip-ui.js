@@ -754,6 +754,10 @@ function renderTripBuilder(){
   const activeTab=isBuild?tbBuildTab:'discover';
   const TABS=[['discover','Discover'],['itin','Itinerary'],['cost','Costs']];
   const showItinFilters=isBuild&&tbBuildTab==='itin';
+  // GOLF-142: the "Show hotels" toggle belongs anywhere the map itself is
+  // the point — Discover (Plan mode) and the Itinerary tab — but not the
+  // Costs tab, which isn't about the map. Mirrors showItinFilters' shape.
+  const showMapTab=!isBuild||tbBuildTab==='itin';
   pane.innerHTML=`
     ${tbNationPillsHTML()}
     <div class="tb-navbar">
@@ -785,6 +789,7 @@ function renderTripBuilder(){
         </div>
       </details>`:''}
       ${showItinFilters?`<button type="button" class="tb-btn${tbShowNearby?' is-active':''}" id="tb-nearby-toggle" aria-pressed="${tbShowNearby}" title="Show other bookable courses near your trip on the map. Doesn't change your itinerary.">${tbShowNearby?'✓ ':''}Nearby courses</button>`:''}
+      ${showMapTab?`<button type="button" class="tb-btn${tbHotelLayerOn?' is-active':''}" id="tb-hotel-layer-toggle" aria-pressed="${tbHotelLayerOn}" title="Show nearby hotels on the map as you pan and zoom. Zoom in to see pins — no price data, just location.">${tbHotelLayerOn?'✓ ':''}Show hotels</button>`:''}
       <button class="tb-btn is-danger" id="tb-clear-trip" title="Empties this trip. Your other trips are untouched — to delete every trip use Start fresh in the trip menu.">Clear trip</button>
       <button class="tb-btn" id="tb-share-trip" title="Copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">${SHARE_ICON_SVG} Share trip</button>
     </div>
@@ -852,6 +857,12 @@ function renderTripBuilder(){
   }
   const nearbyToggle=document.getElementById('tb-nearby-toggle');
   if(nearbyToggle)nearbyToggle.addEventListener('click',()=>{tbShowNearby=!tbShowNearby;render();});
+  // GOLF-142: unlike tbShowNearby above, this toggle doesn't feed
+  // tbDrawMap()'s own redraw — it owns its own Leaflet layer group and
+  // moveend/zoomend listener (js/hotel-layer.js), so flipping it only
+  // needs a re-render for the button's own pressed/label state.
+  const hotelLayerToggle=document.getElementById('tb-hotel-layer-toggle');
+  if(hotelLayerToggle)hotelLayerToggle.addEventListener('click',()=>{tbToggleHotelLayer();renderTripBuilder();});
   tbBindDropdownDismiss();
 
   /* ── The one search bar. Course hits and place hits share its results

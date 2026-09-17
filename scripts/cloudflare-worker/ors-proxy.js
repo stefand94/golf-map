@@ -39,6 +39,12 @@
  *      POST {mode:'hotels', point:[lng,lat], radius?:metres}
  *      -> {pois:[{name, category, lat, lng}, ...]}
  *
+ *   6. Hotels within the current map viewport (GOLF-142 — ambient "Show
+ *      hotels" browsing layer, distinct from #5's point-based picker),
+ *      same Overpass source/shape, bbox instead of point+radius:
+ *      POST {mode:'hotelsViewport', bbox:[south,west,north,east]}
+ *      -> {pois:[{name, category, lat, lng}, ...]}
+ *
  * No database, no state, no logging of requests beyond Cloudflare's own
  * standard request logs — a pure pass-through either way.
  *
@@ -143,6 +149,12 @@ export default {
     }
     if (body && body.mode === 'hotels') {
       return handleHotels(body, request);
+    }
+    if (body && body.mode === 'hotelsViewport') {
+      // GOLF-142: viewport-bbox sibling of handleHotels() above, for the
+      // ambient "Show hotels" map layer (distinct from GOLF-96's
+      // point+radius "add a stay" picker, which is left untouched).
+      return handleHotelsViewport(body, request);
     }
 
     if (!env.ORS_API_KEY) {
@@ -549,6 +561,95 @@ out center 60;
     })
     .filter((p) => p.name && typeof p.lat === 'number' && typeof p.lng === 'number')
     .slice(0, 40);
+
+  return json({ pois }, 200, request);
+}
+
+// GOLF-142: hotels within the currently-visible map viewport, for the
+// ambient "Show hotels" layer. A direct sibling of handleHotels() above —
+// same Overpass mirrors, same response shape, same unconditional
+// accommodation-tag query — but bbox-based instead of point+radius, since
+// the client already has a Leaflet viewport rather than a single point.
+// Kept as its own mode/function (not an overload of 'hotels') so GOLF-96's
+// "add a stay" picker is guaranteed untouched.
+async function handleHotelsViewport(body, request) {
+  const bbox = body && body.bbox;
+  if (!Array.isArray(bbox) || bbox.length !== 4 || bbox.some((n) => typeof n !== 'number' || Number.isNaN(n))) {
+    return json({ error: 'bbox must be [south, west, north, east] numbers' }, 400, request);
+  }
+  let [south, west, north, east] = bbox;
+  if (south > north) [south, north] = [north, south];
+  if (west > east) [west, east] = [east, west];
+
+  // Fair-use guard (see CLAUDE.md / DEC-016 constraints): the client
+  // zoom-gates before ever calling this, but defensively cap the query
+  // area server-side too, so a stale/bad client can't ask Overpass for
+  // hotels across an entire country in one request. ~0.5 degrees of
+  // latitude is roughly a large metro area, well above what the client's
+  // zoom threshold should ever send.
+  const MAX_SPAN_DEG = 0.6;
+  if (north - south > MAX_SPAN_DEG || east - west > MAX_SPAN_DEG) {
+    return json({ error: 'viewport too large for a hotel query' }, 400, request);
+  }
+
+  const query = `
+[out:json][timeout:20];
+(
+  nwr(${south},${west},${north},${east})["tourism"~"^(hotel|guest_house|hostel|apartment|motel)$"];
+);
+out center 80;
+`.trim();
+
+  let data, lastError;
+  for (let i = 0; i < OVERPASS_URLS.length; i++) {
+    let opRes;
+    try {
+      opRes = await fetch(OVERPASS_URLS[i], {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(query),
+      });
+    } catch (e) {
+      lastError = { error: 'could not reach Overpass', status: 502 };
+      continue;
+    }
+    if (!opRes.ok) {
+      lastError = { error: 'Overpass request failed', status: opRes.status };
+      continue;
+    }
+    try {
+      data = await opRes.json();
+      lastError = null;
+      break;
+    } catch (e) {
+      lastError = { error: 'Overpass returned invalid JSON', status: 502 };
+    }
+  }
+  if (lastError) return json(lastError, 502, request);
+
+  const HOTEL_CATEGORY_LABELS = {
+    hotel: 'Hotel',
+    guest_house: 'Guest house',
+    hostel: 'Hostel',
+    apartment: 'Apartment',
+    motel: 'Motel',
+  };
+
+  const elements = Array.isArray(data && data.elements) ? data.elements : [];
+  const pois = elements
+    .map((el) => {
+      const tags = el.tags || {};
+      const elLat = typeof el.lat === 'number' ? el.lat : el.center && el.center.lat;
+      const elLng = typeof el.lon === 'number' ? el.lon : el.center && el.center.lon;
+      return {
+        name: tags.name || null,
+        category: HOTEL_CATEGORY_LABELS[tags.tourism] || 'Hotel',
+        lat: typeof elLat === 'number' ? elLat : null,
+        lng: typeof elLng === 'number' ? elLng : null,
+      };
+    })
+    .filter((p) => p.name && typeof p.lat === 'number' && typeof p.lng === 'number')
+    .slice(0, 80);
 
   return json({ pois }, 200, request);
 }

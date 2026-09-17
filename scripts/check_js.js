@@ -47,6 +47,7 @@ const ORDER = [
   'trip-route.js',
   'trip-add.js',
   'ors.js',
+  'hotel-layer.js',
   'trip-ui.js',
   'touch-dnd.js',
   'app-mode.js',
