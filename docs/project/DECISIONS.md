@@ -4,6 +4,32 @@ _Stable IDs `DEC-nnn`. Record: decision · context · alternatives · reason ·
 date · affected features. Newest first. Full rationale for older calls lives
 in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 
+## DEC-014 — Hotel-layer data source: Travelpayouts/Hotellook, no price shown in v1
+
+- **Decision:** GOLF-142 (the "Show hotels" toggle layer) uses
+  Travelpayouts/Hotellook as its data source, not Google Places or the
+  existing Overpass-based picker. v1 shows plain pins only — no price, no
+  booking link.
+- **Context:** GOLF-103 had this exact data-source/visual-treatment
+  question open in DISCOVERY since 2026-09-07 with three candidates never
+  decided between. Owner asked for a concrete "show hotels" button
+  2026-09-17, which forced the decision.
+- **Alternatives considered:** Google Places (best coverage + ratings/
+  photos, but no price data at all and requires a Google Cloud billing
+  account even for the free tier); running both sources at once
+  (rejected — needs de-duplication logic and roughly doubles the
+  integration work for no proven need); Amadeus (parked, needs
+  date-selection first, not revisited here).
+- **Reason:** Travelpayouts is the simpler build (free signup, no billing
+  card, one API token) and is the only candidate with both price data and
+  affiliate links, which fits the existing monetization direction
+  (DEC-007). Price display itself was still deferred to a future version
+  per the owner's standing "no map full of price stickers" preference —
+  the data source choice and the visual-treatment choice were separable,
+  and only the source needed deciding now.
+- **Date:** 2026-09-17 · **Affects:** GOLF-103 (data-source question now
+  resolved), GOLF-142 (new ticket, build spec).
+
 ## DEC-013 — Cluster badge stays a plain numbered circle
 
 - **Decision:** GOLF-139 cancelled. The `.mcluster` marker cluster badge is
