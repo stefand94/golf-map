@@ -21,8 +21,11 @@ archaeology, not for onboarding; grep it by ticket number).
 - All per-visitor state (trips, corrections, filters) lives in that
   browser's own `localStorage`. No accounts, no database, no server beyond
   the one stateless Worker.
-- Hosted on **GitHub Pages** (canonical/live) and **Cloudflare Pages**
-  (per-branch preview URLs) — see `docs/deploying.md`.
+- Hosted on **Cloudflare Pages** (production = `main` branch, deployed to
+  `golf-map.pages.dev` until a custom domain is bought; every other branch
+  gets its own automatic preview URL). GitHub Pages is not used — retired
+  per DEC-006, no workflow/CNAME for it exists in this repo. See
+  `docs/deploying.md`.
 
 ## App structure (3 modes, one pane)
 
