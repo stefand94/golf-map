@@ -1,7 +1,7 @@
 /* ============================================================
    js/explore.js — the Explore page: filter chips, the fee-range
    control, place + course search, sorting/filtering/fuzzy matching,
-   the nearest-to-trip list, render(), and the map legend.
+   the nearest-to-trip list, and render().
 
    Loaded as a plain <script> (not a module) in the fixed order
    listed in london-golf-map-v5_1.html — top-level declarations
@@ -531,27 +531,3 @@ function render(){
     const i=+el.dataset.i;showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
     markers.get(i).openPopup();highlight(i);drawLink(i)}));
 }
-
-const legend=L.control({position:'topright'});
-legend.onAdd=()=>{const d=L.DomUtil.create('div','legend');
-  const head=L.DomUtil.create('button','legend-head',d);
-  head.type='button';head.textContent='Legend';head.setAttribute('aria-expanded','false');
-  const bodyId='legend-body-'+Math.random().toString(36).slice(2,8);
-  head.setAttribute('aria-controls',bodyId);
-  const body=L.DomUtil.create('div','legend-body',d);body.id=bodyId;
-  head.addEventListener('click',()=>{
-    const open=d.classList.toggle('open');
-    head.setAttribute('aria-expanded',String(open));
-  });
-  body.innerHTML='<b>Flag colour = who can play</b>'+
-    Object.values(ACCESS).map(a=>`<div class="lr">${flagSVG(a.colour,a.pole,15,false)}<span>${a.label}</span></div>`).join('')+
-    '<div style="margin-top:4px;color:var(--stone);font-size:10.5px">Bigger flag + gold ring = Top 100 ranked</div><hr>'+
-    '<b>Stations</b>'+
-    '<div class="lr"><svg width="14" height="14"><circle cx="7" cy="7" r="3" fill="#9B0056" stroke="#9B0056"/></svg><span>Ordinary stop</span></div>'+
-    '<div class="lr"><svg width="14" height="14"><circle cx="7" cy="7" r="4.4" fill="#fff" stroke="#1B2733" stroke-width="1.6"/></svg><span>Interchange</span></div><hr>'+
-    '<b>Rail — colour + dash</b>'+
-    Object.values(LINES).map(l=>`<div class="lr"><svg width="24" height="5"><line x1="0" y1="2.5" x2="24" y2="2.5" stroke="${l.c}" stroke-width="2" ${l.d?`stroke-dasharray="${l.d}"`:''}/></svg><span>${l.n}</span></div>`).join('')+
-    '<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Zone 1 omitted. Station positions are from TfL and National Rail open data; curves still run point-to-point through stations, not along the real track. "Sweep find" tags mark courses added from geographic search rather than the original topic search — verify details before relying on them. England Top 100 pins (national, black-flag clubs included) are from a published 2026 price list cross-checked against England Golf’s club directory for name and coordinates — most sit outside the London rail network drawn on this map, so instead they show the nearest station <i>nationally</i> as a straight-line (as-the-crow-flies) distance, not a walking route or real travel time. Scotland and Wales pins are a curated set of notable courses (not a full national directory), sourced the same way from Scottish Golf and Wales Golf’s club directories; fee/access/architect details for these are indicative and unverified (marked "est") pending direct confirmation from each club.</div>'+
-    `<div style="margin-top:5px;color:var(--stone);font-size:10.5px">Data last refreshed — stations: ${DATA_REFRESHED.stations}, England Top 100: ${DATA_REFRESHED.top100}, Scotland &amp; Wales: ${DATA_REFRESHED.scotlandWales}, nearest-station lookups: ${DATA_REFRESHED.nearStation}, Ireland: ${DATA_REFRESHED.ireland}, South Africa: ${DATA_REFRESHED.southAfrica}. All fetched once and stored statically; the page makes no live API calls.</div>`;
-  L.DomEvent.disableClickPropagation(d);L.DomEvent.disableScrollPropagation(d);return d};
-legend.addTo(map);
