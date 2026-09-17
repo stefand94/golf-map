@@ -27,6 +27,19 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   per the owner's standing "no map full of price stickers" preference —
   the data source choice and the visual-treatment choice were separable,
   and only the source needed deciding now.
+- **Additional reason found 2026-09-17 (independent of cost):** Google's
+  Places API terms forbid caching/storing most place content at all —
+  only the place ID may be stored indefinitely, and coordinates for at
+  most 30 days; name, address, rating, and photos have no caching
+  exception and must be fetched live from Google on every render. That's
+  structurally incompatible with this project's fetch-once →
+  cache/store → ship pattern used for every other data source
+  (`data/*.js`, the Overpass/ORS Worker pattern). Cost aside, Google
+  would force a live-fetch-every-time architecture for hotel data that
+  doesn't fit how the rest of the app is built. Travelpayouts carries no
+  equivalent restriction. Sources: Google's Places API policies
+  (developers.google.com/maps/documentation/places/web-service/policies)
+  and Maps Platform Service Specific Terms (cloud.google.com/maps-platform/terms/maps-service-terms).
 - **Date:** 2026-09-17 · **Affects:** GOLF-103 (data-source question now
   resolved), GOLF-142 (new ticket, build spec).
 
