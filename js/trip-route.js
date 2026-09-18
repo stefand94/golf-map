@@ -72,7 +72,6 @@ function tripShowOrdered(order,clear=true,fit=true){
   order.forEach((stop,idx)=>{
     const day=stop.day;
     const fill=day!=null?TRIP_DAY_COLORS[(day-1)%TRIP_DAY_COLORS.length]:'#E6B400';
-    const label=day!=null?`D${day}·${idx+1}`:String(idx+1);
     if(stop.type!=='course'){
       /* Bug fix (2026-09-02): this used to route EVERY non-course stop
          (place/hotel/poi) into the popupHTML(stop.i) branch below, which
@@ -88,10 +87,15 @@ function tripShowOrdered(order,clear=true,fit=true){
          day-level city field, which has no marker of its own elsewhere)
          still needs this ring; hotel/poi items are fully drawn by
          tbDrawTripItems() and must skip it here. Point still lands in
-         `pts` below either way, so fitBounds/route-line are unaffected. */
+         `pts` below either way, so fitBounds/route-line are unaffected.
+         Bug fix (owner report, 2026-09-18): the ring's permanent "D1·1"
+         tooltip label was left in place when GOLF-130 dropped the same
+         numbered badge for course stops — towns/cities added to an
+         itinerary still showed it. Dropped here too, so a place-anchor
+         is just the ring with no label, consistent with GOLF-130. */
       if(stop.type==='place'){
         L.circleMarker([stop.lat,stop.lng],{radius:8,color:fill,weight:3,fillColor:'#fff',fillOpacity:1})
-          .bindTooltip(label,{permanent:true,direction:'center',className:'trip-num'}).addTo(tripLayer);
+          .bindTooltip(esc(stop.name||''),{direction:'top'}).addTo(tripLayer);
       }
     }else{
       /* GOLF-130: a trip stop is now just the shared teardrop pin (yellow,
