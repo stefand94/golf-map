@@ -451,6 +451,7 @@ function render(){
   const tripBadgeEl=document.getElementById('trip-badge');
   if(tripBadgeEl)tripBadgeEl.textContent=TRIP.size?String(TRIP.size):'';
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
+  tbHotelLayerRefreshTint(); // GOLF-142: flip a hotel pin white<->yellow the instant trip membership changes
   layer.clearLayers();
   /* Map-clutter fix: with all 326 course markers still clustering
      underneath it, the Trip Builder route got lost in whichever dense

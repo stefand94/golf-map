@@ -43,6 +43,10 @@ const HOTEL_LAYER_DEBOUNCE_MS=300;
 
 const hotelLayerGroup=L.layerGroup();
 let _hotelLayerTimer=null;
+/* Last-rendered POI list, so tbHotelLayerRefreshTint() can redraw with an
+   up-to-date yellow/white circle the instant the trip changes, without
+   spending another Overpass call just to recheck colours. */
+let _hotelLayerLastPois=[];
 /* Bumped on every toggle-off and every fetch kick-off; a fetch whose
    token no longer matches when it resolves is stale (toggled off, or the
    viewport moved again before this one returned) and its response is
@@ -55,16 +59,45 @@ function tbHotelLayerClear(){
   if(map.hasLayer(hotelLayerGroup))map.removeLayer(hotelLayerGroup);
 }
 
+/* Matches a viewport POI against the current trip's already-added stays.
+   GOLF-96's picker (js/ors.js tbPickHotelCandidate()) writes a hotel
+   item's lat/lng straight from the Overpass node it was picked from, so
+   an exact (epsilon-guarded for float noise) match against that same
+   node's coordinates here is reliable — no separate id to carry through. */
+const HOTEL_MATCH_EPS=1e-5;
+function tbHotelInTrip(p){
+  return tripDays.some(d=>(d.items||[]).some(it=>
+    it.type==='hotel'&&typeof it.lat==='number'&&typeof it.lng==='number'&&
+    Math.abs(it.lat-p.lat)<HOTEL_MATCH_EPS&&Math.abs(it.lng-p.lng)<HOTEL_MATCH_EPS));
+}
+
+const HOTEL_LAYER_ICON_SIZE=22;
+function hotelLayerIcon(tint){
+  const size=HOTEL_LAYER_ICON_SIZE,h=size*1.5;
+  return L.divIcon({className:'',html:hotelPinSVG(size,{tint}),
+    iconSize:[size,h],iconAnchor:[size*0.5,h],popupAnchor:[0,-h+2],tooltipAnchor:[0,-h+2]});
+}
+
 function tbHotelLayerRender(pois){
+  _hotelLayerLastPois=pois;
   hotelLayerGroup.clearLayers();
   pois.forEach(p=>{
     // p.name/p.category come straight from Overpass — escape both, same
     // as tbDrawHeritage()/tbDrawHotelCandidates() already do.
-    L.circleMarker([p.lat,p.lng],{radius:6,color:'#0d47a1',weight:2,fillColor:'#fff',fillOpacity:.9})
+    L.marker([p.lat,p.lng],{icon:hotelLayerIcon(tbHotelInTrip(p))})
       .bindTooltip(p.category?`🏨 ${esc(p.name)} — ${esc(p.category)}`:`🏨 ${esc(p.name)}`,{direction:'top'})
       .addTo(hotelLayerGroup);
   });
   if(!map.hasLayer(hotelLayerGroup))hotelLayerGroup.addTo(map);
+}
+
+/* Called from render()'s single hook point (js/explore.js) on every trip
+   mutation, so a hotel's circle flips white<->yellow the instant it's
+   added to/removed from the trip, without waiting for the next pan/zoom
+   to re-fetch. Redraws from the cached last fetch — no network call. */
+function tbHotelLayerRefreshTint(){
+  if(!tbHotelLayerOn||!_hotelLayerLastPois.length)return;
+  tbHotelLayerRender(_hotelLayerLastPois);
 }
 
 function tbHotelLayerFetch(){

@@ -42,27 +42,51 @@ function flagSVG(colour,pole,size,ring){
      distinction — see GOLF-130).
 
    Anchor is the teardrop's point (bottom-centre) — set in pinFor(). */
-function golfPinSVG(size,opts){
-  if(opts===true||opts===false)opts={ranked:opts}; // back-compat: golfPinSVG(size, ranked)
-  opts=opts||{};
-  const ranked=!!opts.ranked;
-  const filled=!!opts.tint;
-  const w=size,h=size*1.5;
-  const outline='#155C39',body='#1F7A4D',ow=Math.max(1.1,size*0.05);
+/* Shared teardrop-pin-with-circle geometry behind golfPinSVG() and
+   hotelPinSVG() (GOLF-142 follow-up) — same shape, different body colour
+   and inner glyph. `inner(cx,cy,innerR)` returns the markup drawn centred
+   inside the white/yellow circle. */
+function pinShapeSVG(size,{bodyColor,outlineColor,ranked,filled,inner}){
+  const w=size,h=size*1.5,ow=Math.max(1.1,size*0.05);
   const cx=w*0.5,R=w*0.5-ow*1.3,cy=R+ow*1.3,tipY=h-ow*0.6;
   const pin=`M${cx},${tipY} C${(cx-R*1.2).toFixed(1)},${(cy+R*0.8).toFixed(1)} ${(cx-R).toFixed(1)},${(cy+R*0.2).toFixed(1)} ${(cx-R).toFixed(1)},${cy.toFixed(1)} A${R.toFixed(1)},${R.toFixed(1)} 0 1,1 ${(cx+R).toFixed(1)},${cy.toFixed(1)} C${(cx+R).toFixed(1)},${(cy+R*0.2).toFixed(1)} ${(cx+R*1.2).toFixed(1)},${(cy+R*0.8).toFixed(1)} ${cx},${tipY} Z`;
   const innerR=R*0.78,circleFill=filled?'#F2C200':'#FFFFFF';
-  const s=innerR/11;
-  const flag=`<g transform="translate(${cx.toFixed(1)},${cy.toFixed(1)}) scale(${s.toFixed(3)})">
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.38))">
+    ${ranked?`<circle cx="${cx}" cy="${cy.toFixed(1)}" r="${(R+ow*1.7).toFixed(1)}" fill="none" stroke="#E6B400" stroke-width="${(ow*1.5).toFixed(1)}"/>`:''}
+    <path d="${pin}" fill="${bodyColor}" stroke="${outlineColor}" stroke-width="${ow}" stroke-linejoin="round"/>
+    <circle cx="${cx}" cy="${cy.toFixed(1)}" r="${innerR.toFixed(1)}" fill="${circleFill}" stroke="${outlineColor}" stroke-width="${(ow*0.6).toFixed(1)}"/>
+    ${inner(cx,cy,innerR)}
+  </svg>`;
+}
+
+function golfPinSVG(size,opts){
+  if(opts===true||opts===false)opts={ranked:opts}; // back-compat: golfPinSVG(size, ranked)
+  opts=opts||{};
+  const outline='#155C39';
+  return pinShapeSVG(size,{
+    bodyColor:'#1F7A4D',outlineColor:outline,ranked:!!opts.ranked,filled:!!opts.tint,
+    inner:(cx,cy,innerR)=>{
+      const s=innerR/11;
+      return `<g transform="translate(${cx.toFixed(1)},${cy.toFixed(1)}) scale(${s.toFixed(3)})">
     <line x1="-3" y1="8" x2="-3" y2="-8" stroke="${outline}" stroke-width="2" stroke-linecap="round"/>
     <path d="M-3,-8 L7,-4 L-3,0 Z" fill="${outline}"/>
   </g>`;
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.38))">
-    ${ranked?`<circle cx="${cx}" cy="${cy.toFixed(1)}" r="${(R+ow*1.7).toFixed(1)}" fill="none" stroke="#E6B400" stroke-width="${(ow*1.5).toFixed(1)}"/>`:''}
-    <path d="${pin}" fill="${body}" stroke="${outline}" stroke-width="${ow}" stroke-linejoin="round"/>
-    <circle cx="${cx}" cy="${cy.toFixed(1)}" r="${innerR.toFixed(1)}" fill="${circleFill}" stroke="${outline}" stroke-width="${(ow*0.6).toFixed(1)}"/>
-    ${flag}
-  </svg>`;
+    },
+  });
+}
+
+/* GOLF-142 follow-up: the ambient "Show hotels" layer's pin — same
+   teardrop-with-circle shape as golfPinSVG(), coloured blue (as opposed
+   to golf's green) with a 🏨 glyph in place of the flag. The white/yellow
+   circle carries the same meaning as golf's: yellow once that hotel is
+   part of the current trip (tbHotelInTrip(), js/hotel-layer.js), white
+   otherwise. Never ranked — hotels have no ranked-course equivalent. */
+function hotelPinSVG(size,opts){
+  opts=opts||{};
+  return pinShapeSVG(size,{
+    bodyColor:'#1565C0',outlineColor:'#0D47A1',ranked:false,filled:!!opts.tint,
+    inner:(cx,cy,innerR)=>`<text x="${cx.toFixed(1)}" y="${(cy+innerR*0.35).toFixed(1)}" font-size="${(innerR*1.35).toFixed(1)}" text-anchor="middle">🏨</text>`,
+  });
 }
 
 /* HTML escaping. Lived in js/editor.js (the last module in load order)
