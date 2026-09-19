@@ -255,7 +255,7 @@ CATEGORY_RULES = [
 ]
 
 
-def _is_real_national_park(tags):
+def _is_real_national_park(tags, name=""):
     """Does this object claiming boundary=national_park actually look like one?
 
     boundary=national_park is applied loosely, and Northern Ireland is the
@@ -278,17 +278,28 @@ def _is_real_national_park(tags):
         return designation == "national_park"
     if tags.get("waterway"):
         return False
-    if tags.get("leisure") in ("nature_reserve", "park"):
-        return False   # a country park or reserve, whatever boundary says
-    # Plain boundary=national_park with nothing contradicting it. This is how
-    # Scotland and South Africa map their parks.
+    # When the tags are silent, the name is still evidence: Northern Ireland
+    # has no national parks at all, and its "Strangford AONB" and "Lecale
+    # AONB" say what they are in the only field that carries it.
+    low = name.lower()
+    if "aonb" in low.split() or "area of outstanding natural beauty" in low:
+        return False
+    # boundary=national_park, with no designation saying otherwise. This is how
+    # Scotland, Ireland and South Africa map their parks.
+    #
+    # Note there is deliberately NO leisure=nature_reserve exclusion here.
+    # Ireland tags all six of its national parks as boundary=national_park +
+    # leisure=nature_reserve + protect_class=2, so excluding on leisure threw
+    # away Burren, Glenveagh and Wild Nephin. boundary is the signal that
+    # separates them from the reserves and country parks that were the reason
+    # to filter at all: those carry boundary=protected_area, or none.
     return tags.get("boundary") == "national_park"
 
 
-def categorise(tags):
+def categorise(tags, name=""):
     for (k, v), label in CATEGORY_RULES:
         if tags.get(k) == v:
-            if label == "National park" and not _is_real_national_park(tags):
+            if label == "National park" and not _is_real_national_park(tags, name):
                 continue   # keep looking; nature_reserve often matches next
             return label
     if "historic" in tags:
@@ -567,7 +578,7 @@ def collect(data, group, region, found):
         # dedupe on the OSM id rather than trusting the queries not to overlap.
         found[key] = {
             "name": name,
-            "category": categorise(tags),
+            "category": categorise(tags, name),
             "lat": round(float(lat), 5),
             "lng": round(float(lng), 5),
             "region": region,

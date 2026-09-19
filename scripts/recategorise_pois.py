@@ -52,7 +52,7 @@ def main():
     changes = Counter()
     for p in pois:
         tags = p.get("tags") or {}
-        new = fp.categorise(tags)
+        new = fp.categorise(tags, p.get("name", ""))
         if new != p["category"]:
             changes[(p["category"], new)] += 1
             p["category"] = new
