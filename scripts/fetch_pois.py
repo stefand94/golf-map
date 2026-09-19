@@ -59,7 +59,15 @@ import urllib.request
 OVERPASS_URLS = [
     "https://overpass-api.de/api/interpreter",
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    # Tried last, and only when both of the above fail. Kumi is a large, well
+    # resourced instance; the small volunteer mirrors (private.coffee and
+    # friends) are deliberately NOT listed, because falling back to one would
+    # mean pointing a 250-tile run at someone who cannot absorb it — which is
+    # the same discourtesy that got this IP blocked by overpass-api.de.
+    "https://overpass.kumi.systems/api/interpreter",
 ]
+# Overpass fair use asks for a contactable identifier; overpass-api.de returns
+# 406 with no User-Agent at all.
 UA = "golf-map-dev-script (one-off static data fetch, see scripts/README.md)"
 WIKIDATA_API = "https://www.wikidata.org/w/api.php"
 OUT = "scripts/output/pois_raw.json"
@@ -365,6 +373,10 @@ def check_tag_coverage():
 # back. Holes in a pre-baked dataset are invisible at runtime (the map just
 # quietly has no castles in one county), so losing a tile must be loud and
 # retried rather than shrugged off.
+class AllMirrorsBlocked(RuntimeError):
+    """Every Overpass mirror is refusing connections from this IP."""
+
+
 MAX_ATTEMPTS = 5
 BACKOFF_BASE_S = 20
 # Pause between successful tiles. 2s provoked sustained 429s from
@@ -375,19 +387,68 @@ TILE_PAUSE_S = 6
 HOLES = []
 
 
+# Hosts that refused a TCP connection often enough to look blocked rather
+# than busy. See _note_refusal.
+_DEAD_HOSTS = {}
+REFUSALS_BEFORE_DEAD = 3
+
+
+def _note_refusal(host, exc):
+    """Track connection-level refusals and retire a host that is blocking us.
+
+    A refused TCP connection is not a busy server — an overloaded Overpass
+    instance answers with 429 or 504. Refusal at the socket means the far end
+    is not talking to this IP at all, which for Overpass means a fair-use
+    block (DEC-016), and that does not clear in the seconds an exponential
+    backoff waits.
+
+    Without this, a blocked host costs MAX_ATTEMPTS rounds of doubling
+    backoff on EVERY tile — about five minutes each to learn the same fact
+    again. One real run spent two hours that way, re-dialling a host that had
+    refused 76 consecutive connections. Retiring the host for the rest of the
+    run makes it fail fast and fall through to a mirror immediately, and it
+    stops us knocking on a door that is deliberately shut.
+    """
+    if not isinstance(exc, (ConnectionRefusedError, ConnectionResetError)):
+        _DEAD_HOSTS.pop(host, None)  # it answered, so any streak is over
+        return False
+    n = _DEAD_HOSTS.get(host, 0) + 1
+    _DEAD_HOSTS[host] = n
+    if n == REFUSALS_BEFORE_DEAD:
+        print(f"    {host} refused {n} connections in a row — treating it as "
+              f"blocking this IP and skipping it for the rest of this run.",
+              file=sys.stderr, flush=True)
+    return n >= REFUSALS_BEFORE_DEAD
+
+
 def overpass(query, attempt_label):
     """POST a query to each mirror, retrying with backoff. None if all fail."""
     body = urllib.parse.urlencode({"data": query}).encode()
     for attempt in range(MAX_ATTEMPTS):
-        for url in OVERPASS_URLS:
+        live = [u for u in OVERPASS_URLS
+                if _DEAD_HOSTS.get(u.split("/")[2], 0) < REFUSALS_BEFORE_DEAD]
+        if not live:
+            # Every mirror is refusing us. Retrying cannot fix that, and the
+            # run should stop rather than grind through every remaining tile.
+            print(f"    {attempt_label}: every Overpass mirror is refusing "
+                  f"connections — aborting.", file=sys.stderr, flush=True)
+            raise AllMirrorsBlocked(
+                "all Overpass mirrors refused connections: "
+                + ", ".join(sorted(_DEAD_HOSTS))
+            )
+        for url in live:
             host = url.split("/")[2]
             try:
                 req = urllib.request.Request(
                     url, data=body, headers={"User-Agent": UA}
                 )
                 with urllib.request.urlopen(req, timeout=600) as resp:
+                    _DEAD_HOSTS.pop(host, None)
                     return json.loads(resp.read())
             except urllib.error.HTTPError as exc:
+                # An HTTP status means the server is talking to us, however
+                # unhappily, so it is not blocking this IP.
+                _DEAD_HOSTS.pop(host, None)
                 retryable = exc.code in (429, 502, 503, 504)
                 print(f"    {attempt_label}: {host} HTTP {exc.code}"
                       f"{' (will retry)' if retryable else ''}",
@@ -397,6 +458,8 @@ def overpass(query, attempt_label):
             except Exception as exc:  # noqa: BLE001
                 print(f"    {attempt_label}: {host} failed ({exc})",
                       file=sys.stderr, flush=True)
+                if _note_refusal(host, exc):
+                    break  # host retired; re-evaluate the live list
         # Both mirrors refused this round — wait longer each time. 429 in
         # particular means "you are asking too fast", so the pause has to be
         # substantial rather than a token sleep.
@@ -575,7 +638,19 @@ def main():
     pois = []
     for region in regions:
         print(f"\n=== {region} ===", flush=True)
-        pois.extend(fetch_region(region, REGIONS[region], args.group))
+        try:
+            pois.extend(fetch_region(region, REGIONS[region], args.group))
+        except AllMirrorsBlocked as exc:
+            # Keep what was collected and stop. Continuing would dial a host
+            # that has stopped answering this IP once per tile for every
+            # remaining region, which is both futile and the behaviour that
+            # gets an IP blocked in the first place.
+            _dump(args.out, pois)
+            print(f"\n!! {exc}\n   Stopped during {region}. {len(pois)} POIs "
+                  f"kept in {args.out}; re-run later with --region to finish. "
+                  f"Do not retry immediately — a block clears on its own "
+                  f"schedule and retrying extends it.", file=sys.stderr)
+            return 2
         # Write after each region so a later failure never loses earlier work.
         _dump(args.out, pois)
 
