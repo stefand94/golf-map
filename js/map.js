@@ -53,15 +53,21 @@ map.getPane('bgCoursePins').style.zIndex=350;
    required. Note the {z}/{y}/{x} tile order. A tile 4xx degrades to blank
    tiles, never a JS error — there is no second fallback provider. */
 function esriBaseLayers(){
-  const esriTile=(service,attribution)=>L.tileLayer(
+  /* GOLF-151: detectRetina only on the imagery. Esri serves no @2x tiles,
+     so detectRetina just fetches the NEXT zoom level and draws it at half
+     size — which halves every place name with it. On a retina screen that
+     made town names unreadable, worst in rural areas where the name is the
+     only thing on the tile. Photography has no text and genuinely looks
+     sharper that way, so it keeps it; anything with labels does not. */
+  const esriTile=(service,attribution,retina)=>L.tileLayer(
     'https://server.arcgisonline.com/ArcGIS/rest/services/'+service+'/MapServer/tile/{z}/{y}/{x}',
-    {attribution,maxNativeZoom:19,maxZoom:19,detectRetina:true});
+    {attribution,maxNativeZoom:19,maxZoom:19,detectRetina:!!retina});
   const streetAttr='Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS user community';
   const imageryAttr='Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community';
   return {
     'Default':esriTile('World_Street_Map',streetAttr),
     'Satellite':L.layerGroup([
-      esriTile('World_Imagery',imageryAttr),
+      esriTile('World_Imagery',imageryAttr,true),
       esriTile('Reference/World_Boundaries_and_Places',imageryAttr),
       esriTile('Reference/World_Transportation',imageryAttr)
     ])
