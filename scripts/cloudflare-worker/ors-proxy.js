@@ -74,24 +74,41 @@ const ORS_DIRECTIONS_URL = 'https://api.openrouteservice.org/v2/directions/drivi
 const ORS_POIS_URL = 'https://api.openrouteservice.org/pois';
 const ORS_GEOCODE_URL = 'https://api.openrouteservice.org/geocode/autocomplete';
 // GOLF-79: Overpass, not ORS — a free, no-key OpenStreetMap query service.
-// overpass-api.de is the most widely used public instance, but every call
-// to it from *inside this Worker* consistently 521'd across two separate
-// redeploys (dozens of tries), while the identical request succeeded every
-// single time run directly from a plain machine — this looks like
-// overpass-api.de blocking/rejecting Cloudflare's shared Worker egress IP
-// ranges specifically, not a transient outage. overpass.osm.ch was tried
-// as a straight swap but returned an empty result for a real,
-// confirmed-present distillery and a malformed status timestamp — stale/
-// broken data, worse than unreachable. maps.mail.ru's Overpass mirror
-// tested with fresh, correct data matching overpass-api.de's own result
-// for the same query. Rather than gamble on one single mirror being
-// reachable from Workers, handleHeritagePois() below tries this ordered
-// list and falls through to the next entry on any failure — one redeploy
-// away from resilience instead of another round of guess-and-redeploy.
+//
+// GOLF-147 correction: this list used to be the other way round, on the
+// documented theory that overpass-api.de "blocks Cloudflare Worker egress
+// IPs" because every call from inside the Worker failed while the identical
+// call from a laptop succeeded. That diagnosis was wrong. The real cause is
+// the User-Agent: overpass-api.de answers 406 Not Acceptable to a request
+// that doesn't send one, and Workers' fetch() sends no User-Agent by
+// default — which is also why a plain `curl`/urllib call (equally
+// UA-less) reproduces the same 406 from an ordinary machine. It was never
+// about the IP. Sending OVERPASS_UA below fixes it outright.
+//
+// That matters because the two mirrors are not interchangeable on speed.
+// Measured 2026-09-19 over four real viewports (St Andrews, Edinburgh,
+// Sandwich, Cape Town):
+//
+//     overpass-api.de   median  2.85s   max  9.73s
+//     maps.mail.ru      median 13.38s   max 47.75s
+//
+// so the Worker had been pinned to the slow mirror for the whole life of
+// the feature. overpass-api.de is primary now, with maps.mail.ru kept as
+// fallback (it does return correct data, just slowly). overpass.osm.ch was
+// tried historically and returned stale/broken data — do not re-add it;
+// overpass.kumi.systems and overpass.private.coffee were tested here and
+// both timed out past 70s.
+//
+// Both mirrors still 504 under load, so overpassFetch() below hedges across
+// this list rather than walking it strictly serially.
 const OVERPASS_URLS = [
-  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
   'https://overpass-api.de/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ];
+// Overpass instances ask callers to identify themselves, and overpass-api.de
+// hard-rejects (406) anyone who doesn't. Contact URL included per the
+// OSM API usage-policy convention.
+const OVERPASS_UA = 'golf-map/1.0 (+https://golf-map.pages.dev; trip planner)';
 // A leg between two golf courses rarely needs more than a couple hundred
 // points to look like a real road at map zoom levels — cap it so the
 // response (and what ends up cached in localStorage) stays small.
@@ -213,6 +230,113 @@ async function withPoiCache(key, request, ctx, handler) {
     }
   }
   return res;
+}
+
+/* ── GOLF-147: one hedged Overpass call, shared by all three POI modes.
+
+   This replaces three byte-identical copies of a strictly serial retry
+   loop. That loop gave the first mirror *unlimited* time and only tried
+   the second once the first had failed outright — so it had no answer at
+   all to the case that actually dominates here, which isn't "mirror 1
+   failed" but "mirror 1 is simply very slow". Measured, the same query
+   against the same mirror ranged from 8s to a 50s gateway timeout; the
+   run-to-run variance is far larger than any difference between query
+   shapes, which is why this ticket doesn't touch the queries themselves.
+
+   So: fire the primary immediately, and if it hasn't answered within
+   OVERPASS_HEDGE_AFTER_MS, race the next mirror *alongside* it rather
+   than replacing it. First usable response wins and the losers are
+   aborted. A second request only ever goes out when the first is already
+   slow, so the steady state stays one-call-per-miss — DEC-016's fair-use
+   constraint makes "always race every mirror" the wrong default even
+   though it would shave a little more off the tail. */
+const OVERPASS_HEDGE_AFTER_MS = 4000;
+/* Hard ceiling per attempt. The queries carry [timeout:20] themselves, but
+   that governs Overpass's own execution budget, not a mirror that accepts
+   the connection and then never replies — which is exactly the 70s+ hang
+   two candidate mirrors exhibited during testing. */
+const OVERPASS_ATTEMPT_TIMEOUT_MS = 25000;
+
+/* Resolves to the first truthy value among `promises`, or null if they all
+   resolve falsy. (Promise.any is close but rejects-on-all and would need
+   every attempt to throw; these attempts deliberately never reject.) */
+function firstTruthy(promises) {
+  return new Promise((resolve) => {
+    let remaining = promises.length;
+    if (!remaining) return resolve(null);
+    let done = false;
+    for (const p of promises) {
+      p.then((v) => {
+        if (done) return;
+        if (v) { done = true; resolve(v); }
+        else if (--remaining === 0) { done = true; resolve(null); }
+      });
+    }
+  });
+}
+
+/* Returns { data } on success or { error: {error, status} } on failure —
+   never throws, so callers keep the same shape as the old loop's lastError. */
+async function overpassFetch(query) {
+  const payload = 'data=' + encodeURIComponent(query);
+  const controllers = [];
+  let lastError = { error: 'could not reach Overpass', status: 502 };
+
+  const attempt = (i) => {
+    const ctl = new AbortController();
+    controllers.push(ctl);
+    const timer = setTimeout(() => ctl.abort(), OVERPASS_ATTEMPT_TIMEOUT_MS);
+    return (async () => {
+      try {
+        const res = await fetch(OVERPASS_URLS[i], {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            // Non-negotiable: without this overpass-api.de 406s instantly.
+            'User-Agent': OVERPASS_UA,
+          },
+          body: payload,
+          signal: ctl.signal,
+        });
+        if (!res.ok) {
+          lastError = { error: 'Overpass request failed', status: res.status };
+          return null;
+        }
+        const data = await res.json();
+        // An Overpass-side timeout can come back 200 with a `remark` and no
+        // element list, so a missing elements array counts as a failure and
+        // lets the other mirror win rather than caching an empty answer.
+        if (!data || !Array.isArray(data.elements)) {
+          lastError = { error: 'Overpass returned no result set', status: 502 };
+          return null;
+        }
+        return data;
+      } catch (e) {
+        lastError = {
+          error: e && e.name === 'AbortError' ? 'Overpass timed out' : 'could not reach Overpass',
+          status: 502,
+        };
+        return null;
+      } finally {
+        clearTimeout(timer);
+      }
+    })();
+  };
+
+  const live = [attempt(0)];
+  let hedgeTimer = null;
+  const hedgeGate = new Promise((r) => { hedgeTimer = setTimeout(r, OVERPASS_HEDGE_AFTER_MS); });
+  // Settles early either way: on data (return it) or on a fast failure
+  // (falsy -> hedge immediately rather than sitting out the full delay).
+  const early = await Promise.race([live[0], hedgeGate.then(() => undefined)]);
+  clearTimeout(hedgeTimer);
+  if (early) return { data: early };
+
+  for (let i = 1; i < OVERPASS_URLS.length; i++) live.push(attempt(i));
+  const won = await firstTruthy(live);
+  // Free the losing sockets; the winner has already been fully read.
+  for (const c of controllers) { try { c.abort(); } catch (e) { /* already settled */ } }
+  return won ? { data: won } : { error: lastError };
 }
 
 export default {
@@ -482,40 +606,12 @@ async function handleHeritagePois(body, request) {
 out center 80;
 `.trim();
 
-  // Try each mirror in order, falling through to the next on any failure
-  // (network error, non-OK status, or invalid JSON) — only the last
-  // mirror's failure is actually reported back to the client.
-  let data, lastError;
-  for (let i = 0; i < OVERPASS_URLS.length; i++) {
-    let opRes;
-    try {
-      opRes = await fetch(OVERPASS_URLS[i], {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'data=' + encodeURIComponent(query),
-      });
-    } catch (e) {
-      lastError = { error: 'could not reach Overpass', status: 502 };
-      continue;
-    }
-    if (!opRes.ok) {
-      // Overpass rate-limits under load (429) — the client-side cache
-      // (GOLF-79 app code) is what keeps this on-demand rather than
-      // hammered, but a transient failure here just surfaces as "nothing
-      // found" to the visitor if every mirror is down, same as any other
-      // POI fetch failure.
-      lastError = { error: 'Overpass request failed', status: opRes.status };
-      continue;
-    }
-    try {
-      data = await opRes.json();
-      lastError = null;
-      break;
-    } catch (e) {
-      lastError = { error: 'Overpass returned invalid JSON', status: 502 };
-    }
-  }
-  if (lastError) return json(lastError, 502, request);
+  // Hedged across the mirror list — see overpassFetch(). A transient
+  // all-mirrors-down failure still surfaces as "nothing found" to the
+  // visitor, same as any other POI fetch failure.
+  const op = await overpassFetch(query);
+  if (op.error) return json(op.error, 502, request);
+  const data = op.data;
 
   // Best-effort friendly label, still derived from whatever historic/
   // tourism/craft/etc. tags a result happens to carry — the tag list is no
@@ -637,32 +733,9 @@ async function handleHotels(body, request) {
 out center 60;
 `.trim();
 
-  let data, lastError;
-  for (let i = 0; i < OVERPASS_URLS.length; i++) {
-    let opRes;
-    try {
-      opRes = await fetch(OVERPASS_URLS[i], {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'data=' + encodeURIComponent(query),
-      });
-    } catch (e) {
-      lastError = { error: 'could not reach Overpass', status: 502 };
-      continue;
-    }
-    if (!opRes.ok) {
-      lastError = { error: 'Overpass request failed', status: opRes.status };
-      continue;
-    }
-    try {
-      data = await opRes.json();
-      lastError = null;
-      break;
-    } catch (e) {
-      lastError = { error: 'Overpass returned invalid JSON', status: 502 };
-    }
-  }
-  if (lastError) return json(lastError, 502, request);
+  const op = await overpassFetch(query);
+  if (op.error) return json(op.error, 502, request);
+  const data = op.data;
 
   const HOTEL_CATEGORY_LABELS = {
     hotel: 'Hotel',
@@ -726,32 +799,9 @@ async function handleHotelsViewport(body, request) {
 out center 80;
 `.trim();
 
-  let data, lastError;
-  for (let i = 0; i < OVERPASS_URLS.length; i++) {
-    let opRes;
-    try {
-      opRes = await fetch(OVERPASS_URLS[i], {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'data=' + encodeURIComponent(query),
-      });
-    } catch (e) {
-      lastError = { error: 'could not reach Overpass', status: 502 };
-      continue;
-    }
-    if (!opRes.ok) {
-      lastError = { error: 'Overpass request failed', status: opRes.status };
-      continue;
-    }
-    try {
-      data = await opRes.json();
-      lastError = null;
-      break;
-    } catch (e) {
-      lastError = { error: 'Overpass returned invalid JSON', status: 502 };
-    }
-  }
-  if (lastError) return json(lastError, 502, request);
+  const op = await overpassFetch(query);
+  if (op.error) return json(op.error, 502, request);
+  const data = op.data;
 
   const HOTEL_CATEGORY_LABELS = {
     hotel: 'Hotel',

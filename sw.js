@@ -75,8 +75,17 @@
    manifest and icons are unchanged — still cache-first, since they get
    a fresh CACHE_NAME whenever their content changes and that's what
    keeps repeat/offline loads instant. */
-const CACHE_NAME = 'golfmap-shell-v5-a4f1d343ec';
+const CACHE_NAME = 'golfmap-shell-v5-bff9a3de66';
 
+/* GOLF-147: hotel-layer.js (GOLF-142) and trip-share.js were both added to the
+   page's <script> list without ever being added here, so the SW precached
+   neither — they were re-fetched from the network on every load and were
+   simply missing offline. Nothing intentional about the omission, just a list
+   that didn't get updated. scripts/check_js.js now asserts this array and the
+   HTML's script tags agree, so the next new module can't repeat it.
+
+   Keep entries as plain quoted strings with no inline comments:
+   scripts/update_sw_cache_version.py parses this array textually. */
 const PRECACHE_URLS = [
   './',
   './london-golf-map-v5_1',
@@ -92,8 +101,10 @@ const PRECACHE_URLS = [
   './js/trip-route.js',
   './js/trip-add.js',
   './js/ors.js',
+  './js/hotel-layer.js',
   './js/trip-ui.js',
   './js/app-mode.js',
+  './js/trip-share.js',
   './js/handicap.js',
   './js/explore.js',
   './js/editor.js',

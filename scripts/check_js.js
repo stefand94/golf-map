@@ -91,6 +91,24 @@ if (listed.length === ORDER.length && listed.join(',') !== ORDER.join(',')) {
   failures.push(`HTML load order differs from ORDER:\n  html: ${listed.join(' ')}\n  here: ${ORDER.join(' ')}`);
 }
 
+// 2b. GOLF-147: every module the page loads is also precached by the service
+// worker. hotel-layer.js and trip-share.js were both live for months without
+// an sw.js entry — the page worked, so nothing surfaced it, but they were
+// re-fetched on every load and absent offline. A missing entry is invisible
+// by nature, so assert it rather than rely on remembering.
+const SW = path.join(ROOT, 'sw.js');
+const swSrc = fs.readFileSync(SW, 'utf8');
+const swBlock = swSrc.match(/const PRECACHE_URLS = \[([\s\S]*?)\];/);
+if (!swBlock) {
+  failures.push('could not find PRECACHE_URLS in sw.js');
+} else {
+  const precached = [...swBlock[1].matchAll(/'\.\/js\/([^']+)'/g)].map(m => m[1]);
+  const unprecached = ORDER.filter(f => !precached.includes(f));
+  const staleInSw = precached.filter(f => !ORDER.includes(f));
+  if (unprecached.length) failures.push(`loaded by the HTML but not precached in sw.js: ${unprecached.join(', ')}`);
+  if (staleInSw.length) failures.push(`precached in sw.js but no longer a module: ${staleInSw.join(', ')}`);
+}
+
 // 3. the whole thing parses as one script, as the browser sees it
 const combined = ORDER.filter(f => sources[f]).map(f => sources[f]).join('\n');
 parses(combined, 'js/* (concatenated in load order)');

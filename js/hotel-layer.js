@@ -74,6 +74,75 @@ let _hotelLayerInflight=0;
    indistinguishable from the silent failure this ticket exists to remove. */
 const HOTEL_LAYER_TIMEOUT_MS=25000;
 
+/* ── GOLF-147: client-side viewport cache.
+
+   GOLF-146 put a cache at the edge, which removed the Overpass round trip
+   but still leaves every pan paying a full request to the Worker before a
+   single pin can be drawn. Panning back to a town you just looked at is the
+   single most common interaction in this layer and it should cost nothing
+   at all, so the browser keeps its own copy too.
+
+   The grid MUST stay in step with POI_CACHE_GRID in
+   scripts/cloudflare-worker/ors-proxy.js. Snapping here rather than sending
+   the raw viewport does double duty: it gives this cache a key that survives
+   sub-cell panning, and it means every client looking at the same town sends
+   the Worker a byte-identical bbox, so they all collide on one edge-cache
+   entry instead of each minting their own. Snapping outward (floor the
+   south/west corner, ceil the north/east) keeps the cached area a superset
+   of what was asked for, so a hit is never missing pins at the edges.
+
+   In-memory only, deliberately: this is browsing state, not trip data, and
+   CLAUDE.md reserves localStorage for the latter. A reload starting cold is
+   fine — the edge cache still makes that fast. */
+const HOTEL_CACHE_GRID=0.01;
+const HOTEL_CACHE_MAX=60; // ~60 viewports; bounded so a long pan can't grow forever
+const _hotelCache=new Map();
+
+function tbHotelSnapBbox(bb){
+  const g=HOTEL_CACHE_GRID;
+  return [Math.floor(bb[0]/g)*g,Math.floor(bb[1]/g)*g,
+          Math.ceil(bb[2]/g)*g,Math.ceil(bb[3]/g)*g].map(v=>Number(v.toFixed(4)));
+}
+
+function tbHotelCacheGet(key){
+  if(!_hotelCache.has(key))return null;
+  // Re-insert so the Map's insertion order doubles as LRU recency.
+  const v=_hotelCache.get(key);
+  _hotelCache.delete(key);_hotelCache.set(key,v);
+  return v;
+}
+
+/* Must match `out center N` in the Worker's handleHotelsViewport(). */
+const HOTEL_RESULT_CAP=80;
+
+/* A viewport that sits entirely inside one we've already fetched needs no
+   request of its own — zooming in, and any window/pane resize at the same
+   zoom, both land here. Extra pins outside the current view are harmless
+   (Leaflet simply draws them off-screen) and mean the next zoom-out is
+   instant too.
+
+   The truncation guard is the important part: Overpass caps the result set,
+   so a capped-out answer for a wide area may have dropped pins that a
+   query for a smaller area inside it would have returned. Reusing a
+   saturated entry would therefore silently show fewer hotels the further
+   you zoom in — exactly backwards. Those entries are skipped and re-fetched.
+
+   Linear scan, bounded by HOTEL_CACHE_MAX (60) and only on a miss. */
+function tbHotelCacheCovering(bbox){
+  for(const [k,v] of _hotelCache){
+    if(v.length>=HOTEL_RESULT_CAP)continue;
+    const c=k.split(',').map(Number);
+    if(c[0]<=bbox[0]&&c[1]<=bbox[1]&&c[2]>=bbox[2]&&c[3]>=bbox[3])return v;
+  }
+  return null;
+}
+
+function tbHotelCachePut(key,pois){
+  _hotelCache.delete(key);
+  _hotelCache.set(key,pois);
+  while(_hotelCache.size>HOTEL_CACHE_MAX)_hotelCache.delete(_hotelCache.keys().next().value);
+}
+
 function tbHotelLayerClear(){
   hotelLayerGroup.clearLayers();
   _hotelLayerLastPois=[];
@@ -221,7 +290,21 @@ function tbHotelLayerFetch(){
     return;
   }
   const reqBounds=map.getBounds();
-  const bbox=[reqBounds.getSouth(),reqBounds.getWest(),reqBounds.getNorth(),reqBounds.getEast()];
+  const bbox=tbHotelSnapBbox([reqBounds.getSouth(),reqBounds.getWest(),
+                              reqBounds.getNorth(),reqBounds.getEast()]);
+  const cacheKey=bbox.join(',');
+
+  /* Served from memory: no request, no spinner, no perceptible delay. Still
+     takes a sequence number and marks it drawn, so an older request that is
+     somehow still in flight can't come back and paint over this. */
+  const cached=tbHotelCacheGet(cacheKey)||tbHotelCacheCovering(bbox);
+  if(cached){
+    _hotelLayerDrawnSeq=++_hotelLayerSeq;
+    tbHotelLayerRender(cached);
+    tbHotelLayerStatus(cached.length?null:'info','No hotels found here');
+    return;
+  }
+
   const seq=++_hotelLayerSeq;
 
   _hotelLayerInflight++;
@@ -234,6 +317,12 @@ function tbHotelLayerFetch(){
     body:JSON.stringify({mode:'hotelsViewport',bbox}),signal:ctl.signal})
     .then(r=>r.ok?r.json():Promise.reject(new Error('proxy error '+r.status)))
     .then(data=>{
+      if(!data||!Array.isArray(data.pois))return;
+      /* Cached before the draw guards, not after: a response can be correct
+         for its cell and still not worth drawing right now (the user moved
+         on). Throwing it away would mean re-fetching it the moment they pan
+         back — which is exactly the case this cache exists for. */
+      tbHotelCachePut(cacheKey,data.pois);
       if(!tbHotelLayerOn)return;                 // switched off while in flight
       if(seq<=_hotelLayerDrawnSeq)return;        // a newer response already drew
       if(map.getZoom()<HOTEL_LAYER_MIN_ZOOM)return; // zoomed back out meanwhile
@@ -242,7 +331,6 @@ function tbHotelLayerFetch(){
          Overlap is the question that actually matters: if any part of the area
          we asked about is still on screen, these pins are worth drawing. */
       if(!map.getBounds().intersects(reqBounds))return;
-      if(!data||!Array.isArray(data.pois))return;
       _hotelLayerDrawnSeq=seq;
       tbHotelLayerRender(data.pois);
       tbHotelLayerStatus(data.pois.length?null:'info','No hotels found here');
