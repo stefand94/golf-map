@@ -61,7 +61,7 @@ const PERSON_ICON_SVG=`<svg width="15" height="15" viewBox="0 0 24 24" fill="non
    genuinely are no matches". Callers should treat undefined as a reason to
    show an explicit "search unavailable" message, not an empty result. */
 const tbGeoTimers={},tbGeoLatest={};
-function tbGeocodeDebounced(key,text,cb,ms,country){
+function tbGeocodeDebounced(key,text,cb,ms,country,layers){
   clearTimeout(tbGeoTimers[key]);
   tbGeoLatest[key]=text;
   if(!text||!text.trim()){cb(null);return;}
@@ -69,7 +69,7 @@ function tbGeocodeDebounced(key,text,cb,ms,country){
     orsGeocode(text,list=>{
       if(tbGeoLatest[key]!==text)return; // a newer keystroke has since fired
       cb(list===null?undefined:list);
-    },country);
+    },country,layers);
   },ms==null?300:ms);
 }
 /* The component's markup. `variant:'bar'` is the full-width pill at the
@@ -83,6 +83,7 @@ function tbSearchFieldHTML(o){
       role="combobox" aria-expanded="false" aria-autocomplete="list"
       ${o.title?`title="${esc(o.title)}"`:''} ${o.ariaLabel?`aria-label="${esc(o.ariaLabel)}"`:''}
       placeholder="${esc(o.placeholder||'')}" value="${esc(o.value==null?'':o.value)}">
+    ${bar?`<button type="button" class="tb-search-clear" aria-label="Clear search" title="Clear search"${o.value?'':' hidden'}>×</button>`:''}
     <div id="${o.id}-results" class="tb-place-results" role="listbox"></div>
   </span>`;
 }
@@ -119,6 +120,15 @@ function tbAttachSearch(id,opts){
     close();
     opts.onPick(r,input);
   };
+  /* GOLF-150 (S2): the bar variant gets a × to clear it (clearing on a
+     phone used to mean select-all + delete), and Escape clears it too. */
+  const clearBtn=input.parentElement.querySelector('.tb-search-clear');
+  const clearField=()=>{input.value='';input.dispatchEvent(new Event('input'));input.focus();};
+  if(clearBtn){
+    clearBtn.addEventListener('mousedown',e=>e.preventDefault()); // keep focus in the field
+    clearBtn.addEventListener('click',clearField);
+    input.addEventListener('input',()=>{clearBtn.hidden=!input.value;});
+  }
   input.addEventListener('input',()=>{
     const text=input.value;
     if(opts.onType)opts.onType(text);
@@ -127,7 +137,7 @@ function tbAttachSearch(id,opts){
       // Don't paint over a field the visitor has already left.
       if(document.activeElement!==input&&!opts.render)return;
       if(opts.render)opts.render(list,results);else paint(list);
-    },null,country);
+    },null,country,opts.layers);
   });
   input.addEventListener('keydown',e=>{
     const rs=rows();
@@ -139,7 +149,7 @@ function tbAttachSearch(id,opts){
       rs[active].scrollIntoView({block:'nearest'});
     }else if(e.key==='Enter'){
       if(active>=0&&rs[active]){e.preventDefault();pick(rs[active]);}
-    }else if(e.key==='Escape'){close();}
+    }else if(e.key==='Escape'){close();if(clearBtn&&input.value)clearField();}
   });
   results.addEventListener('mousedown',e=>{
     const row=e.target.closest('.tb-place-row');
@@ -204,6 +214,12 @@ function tbDriveCapHTML(l){
    hardcoded — GBP for GB/NI courses, EUR for Republic of Ireland, ZAR
    (shown as R) for South Africa. */
 const tbMoney=(v,cur='£')=>v!=null?`${cur}${v.toFixed(0)}`:'—';
+/* GOLF-150 I3: a row's own price when it's unknown reads "TBC" (muted)
+   rather than a bare "–" that sat beside the ⋯ menu looking like a
+   collapse control. Cost tables keep tbMoney()'s dash. */
+const tbPrice=(v,cur='£')=>v!=null?tbMoney(v,cur):'<span class="tb-price-tbc">TBC</span>';
+/* Day-header total: blank for a day with nothing priced. */
+const tbDaySumHTML=idx=>{const t=tripDayTotal(idx);return t?`<span class="tb-day-sum">${tbMoney(t,tripDayCurrency(tripDays[idx]))}</span>`:'';};
 /* GOLF-74/91: the £ figure as the visitor should read it. A hotel priced
    for more than one traveller shows its arithmetic ("£90 × 2 people = £180")
    rather than silently folding the multiplication into the trip total.
@@ -229,7 +245,7 @@ function itinLegRowHTML(l){
     <span class="tb-item-icon">${icon}</span>
     <div class="tb-item-main"><span class="tb-item-name">${esc(l.name)}</span>
       ${sharing?`<div class="cart-region">${cur}${l.detail.base.toFixed(0)} × ${l.detail.guests} people = ${cur}${l.detail.total.toFixed(0)}</div>`:''}</div>
-    <span class="tb-item-price">${tbMoney(l.price,cur)}</span>
+    <span class="tb-item-price">${tbPrice(l.price,cur)}</span>
   </div>`;
 }
 function tbItinAllHTML(){
@@ -241,8 +257,8 @@ function tbItinAllHTML(){
       <div class="tb-day-head">
         <span class="tb-day-title"><span class="tb-day-dot"></span>
           <span class="tb-day-title-text">Day ${idx+1}</span>
-          <span class="tb-day-place">${[dow,d.place?esc(d.place):''].filter(Boolean).join(' · ')}</span></span>
-        <span class="tb-day-sum">${tbMoney(tripDayTotal(idx)||null,tripDayCurrency(tripDays[idx]))}</span>
+          <span class="tb-day-place" title="${esc(d.place||'')}">${[dow,d.place?esc(tripShortPlace(d.place)):''].filter(Boolean).join(' · ')}</span></span>
+        ${tbDaySumHTML(idx)}
       </div>
       <div class="tb-day-rule"></div>
       ${legs.length?legs.map(itinLegRowHTML).join(''):`<p class="hint" style="margin:var(--sp-3)">${d.kind!=='golf'?TRIP_DAY_KINDS[d.kind]:'No stops yet.'}</p>`}
@@ -505,7 +521,8 @@ function tbDayCardHTML(d,idx){
     return tripDayItemRowHTML(d,it);
   }).join('');
   const dow=d.date?new Date(d.date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short'}):'';
-  const sub=[dow,d.place?esc(d.place):'',kind!=='golf'?TRIP_DAY_KINDS[kind]:''].filter(Boolean).join(' · ');
+  const sub=[dow,d.place?esc(tripShortPlace(d.place)):'',kind!=='golf'?TRIP_DAY_KINDS[kind]:''].filter(Boolean).join(' · ');
+  const town=tripDaySuggestedTown(d);
   const menu=tbRowMenuHTML(
     `<button type="button" class="tb-menu-item is-danger" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">🗑 Remove day ${idx+1}</button>`);
   return`
@@ -518,8 +535,8 @@ function tbDayCardHTML(d,idx){
         <span class="tb-drag-handle" title="Drag to move this whole day">⠿</span>
         <span class="tb-day-title"><span class="tb-day-dot"></span>
           <span class="tb-day-title-text">Day ${idx+1}</span>
-          ${sub?`<span class="tb-day-place">${sub}</span>`:''}</span>
-        <span class="tb-day-sum">${tbMoney(tripDayTotal(idx)||null,tripDayCurrency(tripDays[idx]))}</span>
+          ${sub?`<span class="tb-day-place" title="${esc(d.place||'')}">${sub}</span>`:''}</span>
+        ${tbDaySumHTML(idx)}
         ${menu}
       </div>
       <div class="tb-day-rule"></div>
@@ -528,7 +545,7 @@ function tbDayCardHTML(d,idx){
         ondragover="event.preventDefault();event.stopPropagation();event.dataTransfer.dropEffect='move';tbDropOver(this);"
         ondragleave="tbDropOut(this,event);"
         ondrop="event.preventDefault();event.stopPropagation();tbDropOut(this);tbDropInDay(${d.id},null);">↓ Put it last on Day ${idx+1}</div>
-      ${tripDaySuggestedTown(d)?`<div class="tb-day-town">Staying near <b>${esc(tripDaySuggestedTown(d))}</b>${tbPoiPoint(d)&&ORS_PROXY_URL?` · <a href="#" class="linkbtn" onclick="event.preventDefault();tbToggleHeritage(${d.id})">${tbHeritageOn.has(d.id)?'hide':'show'} POI's</a>`:''}</div>`:''}
+      ${town?`<div class="tb-day-town">Staying near <b>${esc(town)}</b>${tbPoiPoint(d)&&ORS_PROXY_URL?` · <a href="#" class="linkbtn" onclick="event.preventDefault();tbToggleHeritage(${d.id})">${tbHeritageOn.has(d.id)?'hide':'show'} POI's</a>`:''}</div>`:''}
       ${tbHeritageListHTML(d)}
       ${/* GOLF-96 follow-up: search bar on top, nearby candidates below —
            the form (tbAddStopFormHTML) now always opens together with the
@@ -536,9 +553,16 @@ function tbDayCardHTML(d,idx){
            order is what actually renders "search on top, options below". */''}
       ${tbAddStopFormHTML(d.id)}
       ${tbHotelPickerHTML(d)}
+      ${/* GOLF-150 I2: one quiet "+ Add" per day instead of two full-width
+           buttons (12 buttons on a 6-day trip). */''}
       <div class="tb-day-add">
-        <button class="tb-btn is-sm" onclick="tbOpenHotelPicker(${d.id})">🏨 Add stay</button>
-        <button class="tb-btn is-sm" onclick="tbPromptPoi(${d.id})">📍 Add stop</button>
+        <details class="tb-drop tb-add-drop">
+          <summary class="tb-btn is-sm is-quiet">＋ Add to Day ${idx+1}</summary>
+          <div class="tb-drop-body">
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbOpenHotelPicker(${d.id})">🏨 A place to stay</button>
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbPromptPoi(${d.id})">📍 A stop (sight, lunch…)</button>
+          </div>
+        </details>
       </div>
     </div>`;
 }
@@ -566,15 +590,22 @@ function tbReorderSuggestionHTML(){
         return`<span class="tb-reorder-stop${wasMoved?' is-moved':''}">${esc(n)}</span>`+(i<arr.length-1?'<span class="tb-reorder-arrow">→</span>':'');
       }).join('')}</span>
     </div>`;
-  return`<div class="tb-day tb-reorder-suggest" style="border-left-color:var(--accent)">
-    <p class="hint" style="margin:0 0 var(--sp-2)">This order looks inefficient — ${movedTxt}. Free/start/end days stay exactly where they are.</p>
-    ${rowHTML('Now',det.origLabels)}
-    ${rowHTML('Suggested',det.suggLabels)}
-    <div style="display:flex;gap:var(--sp-2);margin-top:var(--sp-2)">
-      <button class="tb-btn is-primary is-sm" onclick="tripApplySuggestedDayReorder();">Use suggested order</button>
-      <button class="tb-btn is-quiet is-sm" onclick="tbDismissSuggestedDayReorder('${esc(sug.sig)}');">Keep current order</button>
+  /* GOLF-150 I1: was ~15 lines, open by default, above Day 1. Now one
+     line with the payoff up front; the Now/Suggested detail expands. */
+  const mi=Math.round(det.savedMiles||0);
+  const headline=mi>=5?`Reordering could save ~${mi} miles`:'Reordering could shorten the route';
+  return`<details class="tb-reorder-suggest">
+    <summary><span class="tb-reorder-head">↻ ${headline}</span><span class="tb-reorder-review">Review</span></summary>
+    <div class="tb-reorder-body">
+      <p class="hint" style="margin:0 0 var(--sp-2)">${movedTxt[0].toUpperCase()+movedTxt.slice(1)}. Free/start/end days stay where they are. Miles are straight-line.</p>
+      ${rowHTML('Now',det.origLabels)}
+      ${rowHTML('Suggested',det.suggLabels)}
+      <div style="display:flex;gap:var(--sp-2);margin-top:var(--sp-2);flex-wrap:wrap">
+        <button class="tb-btn is-primary is-sm" onclick="tripApplySuggestedDayReorder();">Use suggested order</button>
+        <button class="tb-btn is-quiet is-sm" onclick="tbDismissSuggestedDayReorder('${esc(sug.sig)}');">Keep current order</button>
+      </div>
     </div>
-  </div>`;
+  </details>`;
 }
 function tripDayScheduleHTML(){
   if(!tripSeq.length&&!tripDays.length)
@@ -614,6 +645,12 @@ function tbWishlistHTML(){
   const unscheduled=state.nation?allUnscheduled.filter(i=>courseNation(i)===state.nation):allUnscheduled;
   const hidden=allUnscheduled.length-unscheduled.length;
   const hiddenNote=hidden?`<p class="hint" style="margin:0 0 var(--sp-2)">${hidden} more course${hidden===1?'':'s'} on your wishlist from other countries — clear the country filter above to see ${hidden===1?'it':'them'}.</p>`:'';
+  /* GOLF-150 W1: once every course is on a day, "Nothing on your wishlist
+     yet" read like the trip had been lost. Say where the courses went. */
+  const nSched=tripSeq.length-allUnscheduled.length;
+  if(!unscheduled.length&&!hiddenNote&&nSched>0)
+    return`<div class="tb-wish-moved"><span>✓ ${nSched} course${nSched===1?' is':'s are'} in your itinerary${tripDays.length?` across ${tripDays.length} day${tripDays.length===1?'':'s'}`:''}.</span>
+      <button class="tb-btn is-sm is-primary" onclick="enterBuildMode()">View itinerary →</button></div>`;
   if(!unscheduled.length)return hiddenNote||`<p class="hint">Nothing on your wishlist yet — add any course you fancy playing.</p>`;
   const rows=unscheduled.map(i=>{
     const fee=feeNumberFor(i,'wd');
@@ -621,14 +658,14 @@ function tbWishlistHTML(){
       <span class="tb-item-icon">⛳</span>
       <div class="tb-item-main"><a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         <div class="cart-region">${esc(C[i].r)}</div></div>
-      <span class="tb-item-price">${tbMoney(fee,courseCurrency(i))}</span>
+      <span class="tb-item-price">${tbPrice(fee,courseCurrency(i))}</span>
       <div class="tb-item-actions"><button class="tb-btn is-icon is-sm is-quiet" title="Remove from wishlist"
         onclick="toggleTrip(${i});renderTripBuilder();tbDrawMap();">✕</button></div>
     </div>`;}).join('');
   return`<div class="tb-day">
       <div class="tb-day-head"><span class="tb-day-title"><span class="tb-day-title-text">Wishlist</span>
         <span class="tb-day-place">${unscheduled.length} course${unscheduled.length===1?'':'s'}</span></span>
-        <button class="tb-btn is-primary is-sm" onclick="enterBuildMode()" title="Start scheduling these courses into days">Schedule →</button></div>
+        <button class="tb-btn is-primary is-sm" onclick="enterBuildMode()" title="Start scheduling these courses into days">Build itinerary →</button></div>
       <div class="tb-day-rule"></div>
       ${hiddenNote}
       ${rows}
@@ -724,7 +761,7 @@ function tbBindDropdownDismiss(){
   if(tbDismissBound)return;
   tbDismissBound=true;
   document.addEventListener('mousedown',e=>{
-    document.querySelectorAll('#tb-pane details[open].tb-drop,#tb-pane details[open].tb-rowmenu,#tb-pane details[open].tb-beta')
+    document.querySelectorAll('#tb-pane details[open].tb-drop,#tb-pane details[open].tb-rowmenu,.mast details[open].tb-beta')
       .forEach(dd=>{if(!dd.contains(e.target))dd.removeAttribute('open');});
   });
 }
@@ -752,6 +789,18 @@ function tbBetaBadgeHTML(){
     </div>
   </details>`;
 }
+/* GOLF-150 (C3): the Beta badge moved from the pane header into the
+   "Golf Tripper" masthead — one fewer thing competing with the trip's
+   name. Mounted once (the masthead isn't re-rendered with the pane). */
+function tbMountBetaBadge(){
+  const mast=document.querySelector('.panel>.mast');
+  if(!mast||mast.querySelector('.tb-beta'))return;
+  mast.insertAdjacentHTML('beforeend',tbBetaBadgeHTML());
+  document.getElementById('tb-beta-close').addEventListener('click',()=>{
+    const dd=mast.querySelector('details.tb-beta[open]');
+    if(dd)dd.removeAttribute('open');
+  });
+}
 function renderTripBuilder(){
   const pane=document.getElementById('tb-pane');
   if(tbDayShown==null||!tripDays.find(d=>d.id===tbDayShown))tbDayShown=tripDays.length?tripDays[0].id:null;
@@ -765,37 +814,30 @@ function renderTripBuilder(){
   // Costs tab, which isn't about the map. Mirrors showItinFilters' shape.
   const showMapTab=!isBuild||tbBuildTab==='itin';
   /* GOLF-150: chrome reorganised after owner feedback ("too many buttons,
-     things are overflowing"). The trip's name is the pane's headline, at
-     the very top; the trip-level actions (share, clear) sit beside it as
-     icons; the toolbar below keeps only the view controls. */
+     things are overflowing"), in two passes:
+       batch 1 — the trip's name is the headline at the very top, and the
+                 trip-level actions (share, clear) sit beside it as icons;
+       batch 2 (W2/C1) — the tabs are the pane's primary navigation, so
+                 they come straight after the header, and each tab only
+                 carries its own controls: Discover gets nations + search
+                 + hotels; Itinerary gets search + its view toggles; Costs
+                 gets nothing extra. Group size is a trip property, so it
+                 lives in the header next to the total it changes. */
   const filtered=tbItinFilter!=='all'||!tbDriveToggle;
-  pane.innerHTML=`
-    <header class="tb-head">
-      <div class="tb-head-main">
-        ${tbTripMenuHTML(isBuild)}
-        <div class="tb-head-meta">
-          <span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${tripPrimaryCurrency()}${total.toFixed(0)}</span>
-          ${tbBetaBadgeHTML()}
-        </div>
-      </div>
-      <div class="tb-head-actions">
-        <button type="button" class="tb-btn is-icon is-sm is-quiet" id="tb-share-trip" aria-label="Share trip" title="Share — copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">${SHARE_ICON_SVG}</button>
-        <button type="button" class="tb-btn is-icon is-sm is-quiet is-danger" id="tb-clear-trip" aria-label="Clear trip" title="Clear trip — empties this trip. Your other trips are untouched; to delete every trip use Start fresh in the trip menu."${TRIP.size||tripDays.length?'':' disabled'}>${TRASH_ICON_SVG}</button>
-      </div>
-    </header>
-    ${tbNationPillsHTML()}
-    ${tbSearchFieldHTML({id:'tb-unified-search',variant:'bar',value:tbSearchQ,
-      placeholder:'Search courses, towns and cities…',ariaLabel:'Search courses, towns and cities'})}
-    <div class="tb-section" id="tb-search-results" style="border-bottom:none;padding-top:0${tbSearchQ.trim()?'':';display:none'}">${tbSearchQ.trim()?tbUnifiedSearchResultsHTML():''}</div>
+  const isItin=isBuild&&tbBuildTab==='itin';
+  const searchHTML=`${tbSearchFieldHTML({id:'tb-unified-search',variant:'bar',value:tbSearchQ,
+      placeholder:isItin?'Add a course or town…':'Search courses, towns and cities…',ariaLabel:'Search courses, towns and cities'})}
+    <div class="tb-section" id="tb-search-results" style="border-bottom:none;padding-top:0${tbSearchQ.trim()?'':';display:none'}">${tbSearchQ.trim()?tbUnifiedSearchResultsHTML():''}</div>`;
+  const hotelsBtn=`<button type="button" class="tb-btn is-sm${tbHotelLayerOn?' is-active':''}" id="tb-hotel-layer-toggle" aria-pressed="${tbHotelLayerOn}" title="Show nearby hotels on the map as you pan and zoom. Zoom in to see pins — no price data, just location."><span>${tbHotelLayerOn?'✓ ':''}<span class="tb-lbl-long">Show hotels</span><span class="tb-lbl-short">Hotels</span></span></button>`;
+  let tabChrome='';
+  if(!isBuild){
+    tabChrome=`${tbNationPillsHTML()}${searchHTML}<div class="tb-toolbar">${hotelsBtn}</div>`;
+  }else if(isItin){
+    tabChrome=`${searchHTML}
     <div class="tb-toolbar">
-      <div class="tb-group" role="group" aria-label="Group size" title="How many golfers? Green fees and stop costs scale by this; hotels keep their own per-item sharing setting.">
-        <button type="button" class="tb-group-btn" id="tb-groupsize-dec" aria-label="One fewer golfer"${groupSize<=1?' disabled':''}>−</button>
-        <span class="tb-group-val" aria-live="polite">${PERSON_ICON_SVG}<b>${groupSize}</b><span class="tb-group-unit">${groupSize===1?'golfer':'golfers'}</span></span>
-        <button type="button" class="tb-group-btn" id="tb-groupsize-inc" aria-label="One more golfer">+</button>
-      </div>
-      ${showMapTab?`<button type="button" class="tb-btn is-sm${tbHotelLayerOn?' is-active':''}" id="tb-hotel-layer-toggle" aria-pressed="${tbHotelLayerOn}" title="Show nearby hotels on the map as you pan and zoom. Zoom in to see pins — no price data, just location."><span>${tbHotelLayerOn?'✓ ':''}<span class="tb-lbl-long">Show hotels</span><span class="tb-lbl-short">Hotels</span></span></button>`:''}
-      ${showItinFilters?`<button type="button" class="tb-btn is-sm${tbShowNearby?' is-active':''}" id="tb-nearby-toggle" aria-pressed="${tbShowNearby}" title="Show other bookable courses near your trip on the map. Doesn't change your itinerary."><span>${tbShowNearby?'✓ ':''}Nearby<span class="tb-lbl-long"> courses</span></span></button>`:''}
-      ${showItinFilters?`<details class="tb-drop tb-icon-drop${filtered?' is-on':''}" id="tb-filter-drop">
+      ${hotelsBtn}
+      <button type="button" class="tb-btn is-sm${tbShowNearby?' is-active':''}" id="tb-nearby-toggle" aria-pressed="${tbShowNearby}" title="Show other bookable courses near your trip on the map. Doesn't change your itinerary."><span>${tbShowNearby?'✓ ':''}Nearby<span class="tb-lbl-long"> courses</span></span></button>
+      <details class="tb-drop tb-icon-drop${filtered?' is-on':''}" id="tb-filter-drop">
         <summary aria-label="Filters" title="Filter what this itinerary shows">${FILTER_ICON_SVG}</summary>
         <div class="tb-drop-body is-right">
           <div class="tb-menu-label">Show</div>
@@ -804,10 +846,28 @@ function renderTripBuilder(){
           <div class="tb-menu-sep"></div>
           <button type="button" class="tb-menu-item" id="tb-drive-toggle">${tbDriveToggle?'✓':'&nbsp;&nbsp;'} 🚗 Drive times</button>
         </div>
-      </details>`:''}
-    </div>
+      </details>
+    </div>`;
+  }
+  pane.innerHTML=`
+    <header class="tb-head">
+      ${tbTripMenuHTML(isBuild)}
+      <div class="tb-head-actions">
+        <button type="button" class="tb-btn is-icon is-sm is-quiet" id="tb-share-trip" aria-label="Share trip" title="Share — copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">${SHARE_ICON_SVG}</button>
+        <button type="button" class="tb-btn is-icon is-sm is-quiet is-danger" id="tb-clear-trip" aria-label="Clear trip" title="Clear trip — empties this trip. Your other trips are untouched; to delete every trip use Start fresh in the trip menu."${TRIP.size||tripDays.length?'':' disabled'}>${TRASH_ICON_SVG}</button>
+      </div>
+      <div class="tb-head-meta">
+        <div class="tb-group" role="group" aria-label="Group size" title="How many golfers? Green fees and stop costs scale by this; hotels keep their own per-item sharing setting.">
+          <button type="button" class="tb-group-btn" id="tb-groupsize-dec" aria-label="One fewer golfer"${groupSize<=1?' disabled':''}>−</button>
+          <span class="tb-group-val" aria-live="polite">${PERSON_ICON_SVG}<b>${groupSize}</b><span class="tb-group-unit">${groupSize===1?'golfer':'golfers'}</span></span>
+          <button type="button" class="tb-group-btn" id="tb-groupsize-inc" aria-label="One more golfer">+</button>
+        </div>
+        <span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${tripPrimaryCurrency()}${total.toFixed(0)}</span>
+      </div>
+    </header>
     <div class="tb-tabs" role="tablist">${TABS.map(([k,label])=>
       `<button class="tb-tab-btn" role="tab" data-tab="${k}" aria-pressed="${activeTab===k}">${label}</button>`).join('')}</div>
+    ${tabChrome}
     <div class="tb-tab-content">${
       !isBuild?tbPlanHTML()
       :tbBuildTab==='cost'?tbCostsTabHTML()
@@ -815,10 +875,7 @@ function renderTripBuilder(){
       :tbItineraryHTML()
     }</div>`;
 
-  document.getElementById('tb-beta-close').addEventListener('click',()=>{
-    const dd=document.querySelector('#tb-pane details.tb-beta[open]');
-    if(dd)dd.removeAttribute('open');
-  });
+  tbMountBetaBadge();
   document.getElementById('tb-clear-trip').addEventListener('click',()=>tripClearAll());
   const nationPills=document.getElementById('tb-nation-pills');
   if(nationPills)nationPills.addEventListener('click',e=>{
@@ -882,8 +939,10 @@ function renderTripBuilder(){
      panel; the component owns the debounce/stale-guard/keyboard, and
      `render` takes over painting so places and courses can be mixed. ── */
   const searchResultsEl=document.getElementById('tb-search-results');
+  if(searchResultsEl){ // GOLF-150: the Costs tab has no search bar
   tbAttachSearch('tb-unified-search',{
     country:()=>tbTripCountryCode(null), // GOLF-92: trip's own nation first, Explore's pill as fallback
+    layers:'coarse', // GOLF-150 (S1): towns & regions, not schools/libraries/football clubs
     onType(text){
       tbSearchQ=text;
       const q=text.trim();
@@ -926,6 +985,7 @@ function renderTripBuilder(){
     e.preventDefault();
     tbAddPlaceToTrip(parseFloat(trip.dataset.lat),parseFloat(trip.dataset.lng),trip.dataset.label);
   });
+  }
 
   /* ── Call site 2: the open "add a stop" form's location field. ── */
   if(tbAddStop&&document.getElementById('tb-addstop-name')){

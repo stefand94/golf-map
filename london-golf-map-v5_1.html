@@ -107,7 +107,7 @@
        is currently scrolled to — without this, its last lines of text
        (seen on the Costs tab's currency disclaimer) sit permanently
        underneath the button with no way to scroll them clear. */
-    .tb-pane{padding-bottom:64px}
+    .tb-pane{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))} /* GOLF-150 C2: pill 42px + 18px offset + breathing room */
   }
   .panel{display:flex;flex-direction:column;background:var(--paper-2);border-right:1px solid var(--line);overflow:hidden;box-shadow:6px 0 24px -12px rgba(22,36,29,.25);position:relative;z-index:10}
 
@@ -216,6 +216,13 @@
   .tb-search-bar:focus{outline:none;border-color:var(--accent);box-shadow:var(--shadow-focus),var(--shadow-card)}
   .tb-search-bar-wrap::before{content:'';position:absolute;left:var(--sp-8);top:50%;transform:translateY(-50%);
     width:12px;height:12px;border:2px solid var(--stone);border-radius:50%;box-sizing:border-box;pointer-events:none}
+  /* GOLF-150 (S2): clear button inside the search pill. */
+  .tb-search-clear{position:absolute;right:calc(var(--sp-5) + 6px);top:50%;transform:translateY(-50%);
+    width:30px;height:30px;border:none;border-radius:50%;background:var(--paper);color:var(--stone);
+    font:500 18px/1 var(--font-sans);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .tb-search-clear:hover{background:var(--accent-soft);color:var(--accent-deep)}
+  .tb-search-clear[hidden]{display:none}
+  .tb-search-bar{padding-right:44px}
   .tb-search-bar-wrap::after{content:'';position:absolute;left:41px;top:50%;transform:translateY(3px) rotate(45deg);
     width:2px;height:7px;background:var(--stone);border-radius:1px;pointer-events:none}
 
@@ -230,11 +237,11 @@
 
   /* GOLF-150: pane header — the trip name as a real headline, trip-level
      actions as quiet icons beside it. */
-  .tb-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);
+  .tb-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:var(--sp-3);row-gap:var(--sp-3);
     padding:var(--sp-4) var(--sp-5) var(--sp-3)}
-  .tb-head-main{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:var(--sp-2)}
-  .tb-head-meta{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
-  .tb-head-actions{display:flex;align-items:center;gap:var(--sp-1);flex:0 0 auto;margin-top:-2px}
+  .tb-head-meta{grid-column:1/-1;display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+  .tb-head-actions{display:flex;align-items:center;gap:var(--sp-1)}
+  .mast .tb-beta{margin-left:auto}
   .tb-head-actions .tb-btn.is-icon{color:var(--ink-soft)}
   .tb-head-actions .tb-btn.is-icon:hover{background:var(--accent-soft);color:var(--accent-deep);border-color:transparent;box-shadow:none;transform:none}
   .tb-head-actions .tb-btn.is-danger:hover{background:#FBEEE7;color:#9A3412}
@@ -526,7 +533,35 @@
   .tb-reorder-stop{color:var(--ink)}
   .tb-reorder-stop.is-moved{font-weight:700;color:var(--accent-dark);background:var(--accent-soft);border-radius:var(--radius-xs);padding:1px 6px}
   .tb-reorder-arrow{color:var(--stone);opacity:.6}
-  .tb-day.tb-reorder-suggest{padding:var(--sp-4)} /* GOLF-150: text ran flush to the card edge */
+  /* GOLF-150 I1: reorder suggestion collapsed to a one-line banner. */
+  details.tb-reorder-suggest{margin:0 0 var(--sp-3);border:1px solid var(--accent-soft);border-left:3px solid var(--accent);
+    border-radius:var(--radius-sm);background:#fff}
+  details.tb-reorder-suggest>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:var(--sp-2);
+    min-height:44px;padding:var(--sp-2) var(--sp-3);font:600 var(--fs-small) var(--font-sans);color:var(--ink)}
+  details.tb-reorder-suggest>summary::-webkit-details-marker{display:none}
+  .tb-reorder-head{flex:1 1 auto;min-width:0}
+  .tb-reorder-review{flex:0 0 auto;color:var(--accent-dark);font-weight:700}
+  .tb-reorder-review::after{content:' ▾'}
+  details.tb-reorder-suggest[open] .tb-reorder-review::after{content:' ▴'}
+  .tb-reorder-body{padding:0 var(--sp-3) var(--sp-3)}
+  /* GOLF-150 I2/I3 */
+  .tb-day-add details.tb-add-drop{flex:0 0 auto}
+  .tb-day-add details.tb-add-drop>summary{list-style:none;color:var(--accent-dark)}
+  .tb-day-add details.tb-add-drop>summary::-webkit-details-marker{display:none}
+  /* GOLF-150 W3: undo toast */
+  .tb-toast{position:absolute;left:50%;bottom:24px;transform:translate(-50%,16px);z-index:1600;opacity:0;pointer-events:none;
+    display:flex;align-items:center;gap:var(--sp-3);width:max-content;max-width:calc(100% - 32px);padding:10px 10px 10px 16px;
+    background:var(--ink);color:var(--paper-2);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);
+    font:500 var(--fs-body) var(--font-sans);transition:opacity .18s,transform .18s}
+  .tb-toast.is-on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+  .tb-toast-msg{flex:1 1 auto;min-width:0}
+  .tb-toast-btn{flex:0 0 auto;min-height:36px;padding:0 12px;border:0;border-radius:var(--radius-sm);background:transparent;
+    color:#9CC3EA;font:700 var(--fs-body) var(--font-sans);cursor:pointer}
+  .tb-toast-btn:hover{background:rgba(255,255,255,.08)}
+  @media (max-width:900px){.tb-toast{bottom:calc(76px + env(safe-area-inset-bottom,0px))}}
+  .tb-wish-moved{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);flex-wrap:wrap;
+    padding:var(--sp-3) var(--sp-4);background:var(--accent-soft);border-radius:var(--radius-md);font:500 var(--fs-body) var(--font-sans);color:var(--ink)}
+  .tb-price-tbc{font-weight:500;color:var(--stone);opacity:.8;font-size:.85em}
   /* ── Itinerary filtered lists + Costs tab ───────────────────────── */
   .itin-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-card);margin-bottom:var(--sp-3);padding:var(--sp-3) var(--sp-4)}
   .itin-card-head{font:800 var(--fs-caption) var(--font-sans);letter-spacing:.06em;color:var(--accent-dark);margin-bottom:var(--sp-1)}

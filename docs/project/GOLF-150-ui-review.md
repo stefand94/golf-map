@@ -50,7 +50,44 @@ Found during the review (confirmed defects):
 10. **P2 — "This order looks inefficient" card had zero padding** — text
     ran flush against the card edge.
 
-## Not built — proposals for triage
+## Batch 2 — every proposal below, built on branch `golf-150-ui`
+
+Owner approved all of them on 2026-09-19. What each became:
+
+- **W1** — Discover's wishlist says "✓ N courses are in your itinerary
+  across N days · View itinerary →" once everything is scheduled; the
+  wishlist's CTA reads "Build itinerary →". The headline also shows the
+  trip's name in Plan mode once the trip has days.
+- **W2 / C1** — order is now header → tabs → tab-specific chrome.
+  Discover: nation pills, search, Hotels. Itinerary: search ("Add a course
+  or town…"), Hotels / Nearby / filters. Costs: nothing but the costs.
+  Nation pills don't filter course search in Build.
+- **W3** — the place button is secondary ("＋ Add as a day", with a
+  tooltip saying what it does), and adding one shows a toast "Added North
+  Berwick as Day 6 · Undo" (plus "Open" from Plan). Undo removes the day
+  and restores the Nearby anchor.
+- **I1** — reorder suggestion is a one-line banner "↻ Reordering could
+  save ~23 miles · Review" (straight-line miles); Now/Suggested + buttons
+  expand under it.
+- **I2** — one quiet "＋ Add to Day N ▾" per day → "A place to stay" /
+  "A stop (sight, lunch…)".
+- **I3** — a day with nothing priced shows no total; an unpriced row
+  shows a muted "TBC" instead of "–".
+- **I4** — `tripShortPlace()` (first comma segment) in day headers,
+  reorder labels, staying-near and place search results; full label kept
+  as a tooltip / region line.
+- **I5** — "Staying near" uses the day's own place, else the course name
+  without its layout ("Carnoustie (Championship)" → Carnoustie), else its
+  region. Station names are no longer used.
+- **S1** — unified search asks the geocoder for `layers=coarse`
+  (towns/regions only). **Needs the Worker redeployed by hand** — until
+  then the Worker ignores it and results stay noisy.
+- **S2** — × clear button in the search bar (Escape also clears).
+- **C2** — pane bottom padding 88px + safe area on mobile, so the last
+  card clears the "Show map" pill.
+- **C3** — Beta badge moved into the "Golf Tripper" masthead.
+
+## Proposals (original triage list — all built in batch 2 above)
 
 ### Workflow (the "clunky" feeling)
 

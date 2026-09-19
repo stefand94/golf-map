@@ -808,6 +808,9 @@ function tbTripMenuHTML(isBuild){
      (before there's an itinerary to name) it reads "Plan a trip" — the
      same menu underneath, so switching/creating trips is always one tap. */
   const activeName=active?active.name:'Trip';
+  /* Batch 2: "before there's an itinerary" is literal — once the trip has
+     days it's named in Plan mode too, not only in Build. */
+  isBuild=isBuild||tripDays.length>0;
   const label=isBuild?activeName:'Plan a trip';
   return`<details class="tb-drop tb-title-drop" id="tb-trip-drop">
     <summary title="${isBuild?esc(activeName)+' — trip menu':'Trip menu'}"><span class="tb-drop-label">${esc(label)}</span></summary>

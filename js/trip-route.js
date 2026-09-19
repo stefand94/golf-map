@@ -266,7 +266,23 @@ function tripSuggestedDayReorder(){
    off". */
 function tripReorderDayLabel(dayIdx){
   const s=tripDayFirstStop(dayIdx);
-  return s&&s.name?s.name:`Day ${dayIdx+1}`;
+  return s&&s.name?tripShortPlace(s.name):`Day ${dayIdx+1}`;
+}
+/* GOLF-150 I4: geocoder labels arrive as "Kingsbarns Golf Links, Fife,
+   Scotland, United Kingdom" — show the first segment wherever space is
+   tight; callers keep the full string for a title= tooltip. */
+function tripShortPlace(label){
+  const s=String(label||'').trim();
+  return(s.split(',')[0]||s).trim();
+}
+/* Straight-line miles along a sequence of day indices' anchor points. */
+function tripDaySeqMiles(idxs){
+  let m=0;
+  for(let k=1;k<idxs.length;k++){
+    const a=tripDayAnchorPoint(idxs[k-1]),b=tripDayAnchorPoint(idxs[k]);
+    if(a&&b)m+=haversineMiles(a.lat,a.lng,b.lat,b.lng);
+  }
+  return m;
 }
 /* Builds the "here's what would change" detail for the reorder banner:
    the current and suggested sequences as short labels (so the whole
@@ -280,7 +296,8 @@ function tripReorderDetail(sug){
     .map((i,pos)=>({i,from:pos,to:sug.suggestedIdxs.indexOf(i)}))
     .filter(m=>m.from!==m.to)
     .map(m=>tripReorderDayLabel(m.i));
-  return{origLabels,suggLabels,moved};
+  const savedMiles=Math.max(0,tripDaySeqMiles(sug.origIdxs)-tripDaySeqMiles(sug.suggestedIdxs));
+  return{origLabels,suggLabels,moved,savedMiles};
 }
 /* Applies a suggested reorder: walks the ORIGINAL tripDays array once,
    replacing only locatable slots with the next day off the nn-ordered

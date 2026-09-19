@@ -15,7 +15,10 @@ function tbSearchResults(){
   const q=tbSearchQ.trim().toLowerCase();
   if(!q)return[];
   return C.map((c,i)=>i).filter(i=>!TRIP.has(i)&&bookable(i)&&searchMatches(i,q)
-    &&(!state.nation||courseNation(i)===state.nation)).slice(0,20);
+    // GOLF-150 (C1): the nation pills only show on Discover now, so an
+    // invisible nation filter mustn't hide courses when searching from
+    // the Itinerary tab.
+    &&(appMode==='build'||!state.nation||courseNation(i)===state.nation)).slice(0,20);
 }
 /* GOLF-92: place search wasn't ringfenced to the trip a visitor is
    actually planning — a South Africa trip's "add a stop" location field
@@ -127,6 +130,7 @@ let tbUnifiedPlaceResults=null;
 let tbPlaceAddedNote=null;
 function tbAddPlaceToTrip(lat,lng,label){
   const fresh=tripDays.length===0;
+  const prevAnchor=tbPlaceAnchor,prevTab=tbDiscoveryTab;
   tripDayAdd();
   const d=tripDays[tripDays.length-1];
   if(!fresh)d.kind='free';
@@ -140,7 +144,29 @@ function tbAddPlaceToTrip(lat,lng,label){
   // GOLF-69a: don't yank a visitor who's mid-Build back to Plan/Discover.
   if(appMode!=='build')setAppMode('plan');
   else{renderTripBuilder();tbDrawMap();}
+  /* GOLF-150 W3: adding a place creates a whole itinerary day — a much
+     bigger consequence than "+ Wishlist" beside it — and the old
+     "Added X as Day N" note lived in search results that had just been
+     cleared, so it never showed. A toast confirms it and offers Undo. */
+  const dayId=d.id,n=tripDays.length;
+  tbToast(`Added <b>${esc(tripShortPlace(label))}</b> as Day ${n}`,[
+    {label:'Undo',fn:()=>{tripDayRemove(dayId);tbPlaceAnchor=prevAnchor;tbDiscoveryTab=prevTab;tbPlaceAddedNote=null;
+      saveState();renderTripBuilder();tbDrawMap();}},
+    ...(appMode!=='build'?[{label:'Open',fn:()=>enterBuildMode()}]:[])
+  ]);
 }
+/* GOLF-150: one transient toast (bottom of the list panel, above the mobile
+   "Show map" pill). A new toast replaces the old; actions dismiss it. */
+let tbToastTimer=null;
+function tbToast(html,actions=[],ms=6000){
+  let el=document.getElementById('tb-toast');
+  if(!el){el=document.createElement('div');el.id='tb-toast';el.className='tb-toast';el.setAttribute('role','status');(document.querySelector('.panel')||document.body).appendChild(el);}
+  el.innerHTML=`<span class="tb-toast-msg">${html}</span>`+actions.map((a,k)=>`<button type="button" class="tb-toast-btn" data-k="${k}">${esc(a.label)}</button>`).join('');
+  el.querySelectorAll('.tb-toast-btn').forEach(b=>b.onclick=()=>{tbToastHide();actions[+b.dataset.k].fn();});
+  el.classList.add('is-on');
+  clearTimeout(tbToastTimer);tbToastTimer=setTimeout(tbToastHide,ms);
+}
+function tbToastHide(){const el=document.getElementById('tb-toast');if(el)el.classList.remove('is-on');clearTimeout(tbToastTimer);}
 function tbUnifiedSearchResultsHTML(){
   const q=tbSearchQ.trim();
   if(!q)return'';
@@ -169,12 +195,12 @@ function tbUnifiedSearchResultsHTML(){
     html+=`<div class="tb-section-title">Towns &amp; cities</div>`+
       `<p class="hint" style="margin:0 0 var(--sp-2)">Tap a place to see it on the map — or add it to your trip.</p>`+
       places.map(p=>`<div class="tb-row">
-        <div><a href="#" class="linkbtn tb-unified-place-focus" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}">📍 ${esc(p.label)}</a></div>
+        <div><a href="#" class="linkbtn tb-unified-place-focus" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" title="${esc(p.label)}">📍 ${esc(tripShortPlace(p.label))}</a>
+          ${p.label.includes(',')?`<div class="cart-region">${esc(p.label.slice(p.label.indexOf(',')+1).trim())}</div>`:''}</div>
         <div style="display:flex;gap:var(--sp-2);flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
-          <button class="tb-btn is-sm is-primary tb-unified-place-trip" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}">${started?'＋ Add to trip':'Start a trip here'}</button>
+          <button class="tb-btn is-sm tb-unified-place-trip" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" title="Adds ${esc(p.label)} to your itinerary as its own day">${started?'＋ Add as a day':'Start a trip here'}</button>
         </div>
       </div>`).join('');
-    if(tbPlaceAddedNote)html+=`<p class="hint" style="margin:var(--sp-2) 0 0">Added <b>${esc(tbPlaceAddedNote.label)}</b> as Day ${tbPlaceAddedNote.day} — <a href="#" class="linkbtn" onclick="event.preventDefault();enterBuildMode()">open it</a>.</p>`;
   }
   const placeHtml=html;html='';
   if(!results.length){
@@ -259,7 +285,7 @@ function tripDayCourseRowHTML(i,dayId){
       <a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
       <div class="cart-region">${esc(C[i].r)}</div>
     </div>
-    <span class="tb-item-price">${fee!=null?`${courseCurrency(i)}${fee.toFixed(0)}`:'—'}</span>
+    <span class="tb-item-price">${tbPrice(fee,courseCurrency(i))}</span>
     <div class="tb-item-actions">${menu}</div>
   </div>`;
 }
@@ -317,7 +343,7 @@ function tripDayItemRowHTML(d,it){
          column with "£90 × 2 (sharing) = £180". The full worked label still
          renders in the Itinerary tab and the Costs breakdown, which have the
          width for it. */''}
-    <span class="tb-item-price"${det.sharing?` title="${esc(priceLabel.replace(/^ · /,''))}"`:''}>${price!=null?`${det.cur||'£'}${price.toFixed(0)}`:'—'}</span>
+    <span class="tb-item-price"${det.sharing?` title="${esc(priceLabel.replace(/^ · /,''))}"`:''}>${tbPrice(price,det.cur||'£')}</span>
     <div class="tb-item-actions">${menu}</div>
   </div>`;
 }

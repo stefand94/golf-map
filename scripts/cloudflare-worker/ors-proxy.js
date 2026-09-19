@@ -870,6 +870,12 @@ async function handleGeocode(body, env, request) {
   url.searchParams.set('text', text.slice(0, 200));
   url.searchParams.set('boundary.country', boundaryCountry);
   url.searchParams.set('size', '6');
+  // GOLF-150 (S1): the main search bar asks for towns/regions only
+  // (layers:'coarse') — without it, "Carnoustie" returned the town's high
+  // school, library and football club as "towns & cities". Opt-in, so the
+  // add-a-stop location box (where a venue IS the point) is unchanged.
+  // Allowlisted: anything else is ignored rather than forwarded.
+  if (body.layers === 'coarse') url.searchParams.set('layers', 'coarse');
 
   let orsRes;
   try {

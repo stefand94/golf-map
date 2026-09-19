@@ -166,13 +166,14 @@ const orsGeocodeCache=new Map();
    Newcastle upon Tyne. Omitted/falsy means "all nations", the pre-GOLF-84
    default. Folded into the cache key so a query typed under one nation
    filter never serves a stale cross-nation result under another. */
-function orsGeocode(text,cb,country){
+function orsGeocode(text,cb,country,layers){
   const q=text.trim();
-  const key=(country||'')+'|'+q;
+  const key=(country||'')+'|'+(layers||'')+'|'+q;
   if(!ORS_PROXY_URL||!q){cb([]);return;}
   if(orsGeocodeCache.has(key)){cb(orsGeocodeCache.get(key));return;}
   const body={mode:'geocode',text:q};
   if(country)body.country=country;
+  if(layers)body.layers=layers; // GOLF-150: 'coarse' = towns/regions only (Worker allowlists it)
   fetch(ORS_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body)})
     .then(r=>r.ok?r.json():Promise.reject(new Error('proxy error '+r.status)))
@@ -207,20 +208,20 @@ function fmtDriveMinutes(mins){
   return rem===0?`${h}h`:`${h}h ${rem}m`;
 }
 /* GOLF-34a: a plain suggested overnight place per day — no new data
-   source/API, just reuses whichever nearest-station name (stn/nearStation,
-   both already carry a real place name, often a town) the day's LAST
-   course already has, since that's roughly where the night starts.
-   Falls back to the course's region if no station data exists at all;
-   returns null (rendered as nothing) if neither is available. */
+   source/API. GOLF-150 I5: used to prefer the last course's nearest
+   railway station name (stn/nearStation), which surfaced hamlets like
+   "Golf Street" / "Leuchars" / "Drem" that read as mistakes. Now: the
+   day's own place if it has one (short form), else the last course's
+   name minus its layout parenthetical ("Carnoustie (Championship)" ->
+   "Carnoustie"), else its region; null (rendered as nothing) otherwise. */
 function tripDaySuggestedTown(day){
+  if(day.place&&String(day.place).trim())return tripShortPlace(day.place);
   const cs=tripDayCourses(day);
   if(cs.length){
     const i=cs[cs.length-1];
-    const stnObj=STN[V(i,'stn')],near=C[i].nearStation,s=stnObj||near;
-    if(s&&s.n)return s.n;
-    return C[i].r||null;
+    const n=String(V(i,'n')||'').replace(/\s*\([^)]*\)\s*/g,' ').trim();
+    return tripShortPlace(n)||C[i].r||null;
   }
-  if(day.place&&String(day.place).trim())return String(day.place).trim();
   return null;
 }
 /* GOLF-79 (renamed "Show POI's" — supersedes the old GOLF-46 practical
