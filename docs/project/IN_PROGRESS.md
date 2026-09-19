@@ -6,34 +6,61 @@ verified._
 
 ## GOLF-148 — Notable POIs along a route
 
-**Status:** ACTIVE — stage 1 of 3 (dataset) · **Priority:** P1
+**Status:** BLOCKED — stage 1 of 3 (dataset) · **Priority:** P1
 
 Full scope, rationale and the ranking design live in the GOLF-148 row in
 `BACKLOG.md`; this is only the "where did it get to" note.
 
-**Three stages. Only the first is underway.**
+**The UI is built and waiting on data.** Stage 3 shipped first (`d18a8df`),
+so `js/poi.js` is on `main` and inert: with no `data/pois-*.js` present it
+shows "Sights aren't available for this area yet". That is the expected state,
+not a regression.
 
-1. **Dataset (in progress).** `scripts/fetch_pois.py` → `scripts/output/pois_raw.json`.
-   Fetch-once → JSON intermediate, per CLAUDE.md; it never touches `data/*.js`.
-   Last observed 2026-09-19 18:30: England/notable complete at **7,714 POIs
-   kept**, mid-England/open, backing off through Overpass 429/504s. Five
-   regions still to go (Scotland, Wales, Ireland, N. Ireland, South Africa).
-   **`pois_raw.json` is gitignored** — it lives only on the owner's machine.
-   Re-running the script from scratch is safe and is the right move if the
-   run was interrupted: per-region dumps, exponential backoff, a two-pass
-   retry over failed tiles, and a loud `HOLES` report + exit 2 if any tile
-   never recovers. It is slow on purpose (Overpass fair use, DEC-016).
-2. **Merge (not started).** `pois_raw.json` → a lazy-loaded `data/pois-*.js`,
-   so first paint doesn't grow.
-3. **Runtime + UI (not started).** Point-to-polyline distance with a bbox
-   prefilter, top-5 by score, a **"Show more POIs"** button for the deeper
-   tier, and clickable pins that add to a trip day reusing GOLF-145's popup
-   pattern. **The owner has already noticed the button is missing — it was
-   never built, and that is expected at this stage, not a regression.**
+1. **Dataset (BLOCKED — see below).** `scripts/fetch_pois.py` →
+   `scripts/output/pois_raw.json`. Fetch-once → JSON intermediate, per
+   CLAUDE.md; it never touches `data/*.js`. **`pois_raw.json` is gitignored**
+   — it lives only on the owner's machine.
+2. **Merge (ready, untested on real data).** `scripts/build_poi_data.py`
+   emits the five `data/pois-*.js` files + `pois-categories.js` to the
+   contract in `docs/project/` and `js/poi.js`. Dry-run against the partial
+   dataset produced 373KB gzipped for GB + Ireland; it refuses to run on a
+   fetch that never reached its Wikidata pass.
+3. **Runtime + UI (done, `d18a8df`).** Per-day "Things to see", corridor
+   filtering, category chips, ties broken by distance from the route.
 
-Two product decisions are still open and should be settled before stage 3:
-**per-leg vs whole-trip suggestion scoping**, and **how many POIs the "show
-more" tier reveals**.
+### Why stage 1 is blocked (2026-09-19)
+
+**`overpass-api.de` is refusing TCP connections from this machine's IP.** A
+probe run while the main fetch was in flight put two clients on one IP, and
+the block was still in place hours later. General connectivity is fine and
+other hosts are reachable, so this is specific to that mirror. A block clears
+on its own schedule; **retrying aggressively extends it** (DEC-016).
+
+**What survived:** 24,135 records covering England, Scotland, Wales, Ireland
+and Northern Ireland, preserved at `scripts/output/pois_gb_ie_v1.json`.
+They are unscored — the run never reached its Wikidata pass — and they were
+collected with the pre-fix tag set, so they are a safety net, not shippable.
+
+**The re-run is not merely a resume**, because three fixes landed after that
+data was collected and all three change what gets fetched or how it is
+labelled:
+- waterfalls were queried as `natural=waterfall` (1 found in all of GB);
+- national parks were queried only as `boundary=national_park`, which is not
+  how the UK maps them (zero in England and Wales);
+- `historic=church` categorised as "Cathedral" — 511 cathedrals in a country
+  with about 60.
+
+`fetch_pois.py` now retires a mirror that refuses three connections in a row
+and aborts cleanly when all of them do, rather than spending 300s per tile
+rediscovering the same block. Records also now keep the tags `categorise()`
+reads, so `scripts/recategorise_pois.py` can fix a labelling mistake from the
+saved JSON instead of costing another fetch.
+
+**Next action:** wait for the block to clear, then a full clean re-run
+(all regions, both groups) → dedupe → build → push.
+
+Two product decisions remain open: **per-leg vs whole-trip suggestion
+scoping**, and **how many POIs the "show more" tier reveals**.
 
 ## GOLF-98 — Green-fee data entry, `feeV2` re-research programme
 
