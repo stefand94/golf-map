@@ -125,8 +125,98 @@ function isAllowedOrigin(origin) {
   }
 }
 
+/* ── GOLF-146: edge cache for the Overpass-backed modes.
+
+   Measured live on 2026-09-19, a single `hotelsViewport` query took 17.0s,
+   another timed out past 45s, and a third came back 502 (Overpass 521).
+   Nothing client-side can make that feel live (see GOLF-144), but almost
+   every real request is for somewhere already looked at — panning back over
+   a town, reopening a trip, a second visitor looking at the same course — so
+   the same Overpass answer gets paid for again and again.
+
+   Uses the Cache API (`caches.default`) rather than KV: it's free, it's
+   edge-local so a hit costs no round trip at all, and this data is pure
+   derived cache with no correctness requirement — a miss just means the
+   slow path, exactly as today. It also cuts call volume against Overpass,
+   which DEC-016's fair-use constraint makes a goal in its own right.
+
+   Two things this deliberately does NOT do: it doesn't cache ORS routing
+   or geocoding (those are keyed by exact coordinates, so hit rates would be
+   near zero and ORS's own terms are a separate question), and it never
+   caches a non-200 — an Overpass 521 must not be remembered for a day. */
+const POI_CACHE_TTL_S = 86400; // 24h — hotels/POIs move on a scale of years
+
+/* Cache API keys on a Request, and a POST body isn't part of that key, so
+   every mode builds a synthetic GET URL standing in for its parameters.
+   The hostname is never resolved — it exists only to make a valid URL. */
+function poiCacheKey(mode, parts) {
+  const u = new URL('https://poi-cache.invalid/' + encodeURIComponent(mode));
+  u.searchParams.set('k', parts.join(','));
+  return new Request(u.toString(), { method: 'GET' });
+}
+
+/* Snapping a viewport to a fixed grid is what makes this worth having: an
+   un-snapped bbox changes on every pixel of pan, so each request would be a
+   unique key and the hit rate would be ~0. Snapping *outward* (floor the
+   south/west corner, ceil the north/east) means the cached area always fully
+   covers the area asked for, so a hit is never missing pins at the edges —
+   and any pan within one grid cell is a guaranteed hit. GRID of 0.01° is
+   roughly 1.1km, comfortably finer than the ~5km viewport the client's zoom
+   gate allows, and adds at most 0.02° to a span (irrelevant against
+   handleHotelsViewport's 0.6° cap). */
+const POI_CACHE_GRID = 0.01;
+function snapBboxOut([south, west, north, east]) {
+  const g = POI_CACHE_GRID;
+  return [
+    Math.floor(south / g) * g,
+    Math.floor(west / g) * g,
+    Math.ceil(north / g) * g,
+    Math.ceil(east / g) * g,
+  ].map((n) => Number(n.toFixed(4)));
+}
+
+/* Wraps a handler that returns a Response. On a hit the stored body is
+   re-wrapped with *freshly computed* CORS headers — the cached entry is
+   stored without them on purpose, because Access-Control-Allow-Origin
+   reflects the calling origin and serving one visitor's origin to another
+   from cache would be a real bug. */
+async function withPoiCache(key, request, ctx, handler) {
+  const cache = caches.default;
+  let hit = null;
+  try {
+    hit = await cache.match(key);
+  } catch (e) {
+    hit = null; // cache unavailable is never fatal — fall through to the slow path
+  }
+  if (hit) {
+    return new Response(hit.body, {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'X-POI-Cache': 'HIT', ...corsHeaders(request) },
+    });
+  }
+  const res = await handler();
+  if (res.status === 200) {
+    try {
+      const body = await res.clone().text();
+      const store = new Response(body, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': `max-age=${POI_CACHE_TTL_S}`,
+        },
+      });
+      // waitUntil so the caller isn't held up by the write; falls back to
+      // awaiting it when no ctx is available (e.g. a unit test harness).
+      if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(cache.put(key, store));
+      else await cache.put(key, store);
+    } catch (e) {
+      /* a failed cache write must never fail the request */
+    }
+  }
+  return res;
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders(request) });
     }
@@ -141,21 +231,56 @@ export default {
       return json({ error: 'invalid JSON body' }, 400, request);
     }
 
+    /* GOLF-146: the three Overpass modes below go through withPoiCache().
+       Their cache keys round the anchor point to 3dp (~110m) — these are
+       anchored to a day's chosen place or a picker click, so they're already
+       effectively discrete and a fine grid still hits; the viewport mode
+       needs the coarser snapped grid instead (see snapBboxOut). */
     if (body && body.mode === 'heritage-pois') {
       // GOLF-96: Overpass-only modes need no ORS_API_KEY at all — moved
       // this branch (and 'hotels' below) ahead of the ORS_API_KEY guard so
       // they keep working even when the ORS account/key is down, which has
       // happened for real more than once (see plan Phase 22/25/33).
-      return handleHeritagePois(body, request);
+      if (isCoord(body.point)) {
+        const key = poiCacheKey('heritage-pois', [
+          body.point[0].toFixed(3), body.point[1].toFixed(3),
+          Math.round(typeof body.radius === 'number' ? body.radius : 3000),
+        ]);
+        return withPoiCache(key, request, ctx, () => handleHeritagePois(body, request));
+      }
+      return handleHeritagePois(body, request); // let the handler own the 400
     }
     if (body && body.mode === 'hotels') {
+      if (isCoord(body.point)) {
+        const key = poiCacheKey('hotels', [
+          body.point[0].toFixed(3), body.point[1].toFixed(3),
+          Math.round(typeof body.radius === 'number' ? body.radius : 3000),
+        ]);
+        return withPoiCache(key, request, ctx, () => handleHotels(body, request));
+      }
       return handleHotels(body, request);
     }
     if (body && body.mode === 'hotelsViewport') {
       // GOLF-142: viewport-bbox sibling of handleHotels() above, for the
       // ambient "Show hotels" map layer (distinct from GOLF-96's
       // point+radius "add a stay" picker, which is left untouched).
-      return handleHotelsViewport(body, request);
+      const bbox = body && body.bbox;
+      const validBbox = Array.isArray(bbox) && bbox.length === 4 &&
+        bbox.every((n) => typeof n === 'number' && !Number.isNaN(n));
+      if (validBbox) {
+        let [s, w, n, e] = bbox;
+        if (s > n) [s, n] = [n, s];
+        if (w > e) [w, e] = [e, w];
+        const snapped = snapBboxOut([s, w, n, e]);
+        // Overpass is asked for the *snapped* cell, not the raw viewport, so
+        // what lands in the cache genuinely covers every request that maps to
+        // this key — otherwise a later pan inside the cell would get a hit
+        // that's short a few pins along one edge.
+        const key = poiCacheKey('hotelsViewport', snapped.map((v) => v.toFixed(2)));
+        return withPoiCache(key, request, ctx, () =>
+          handleHotelsViewport({ ...body, bbox: snapped }, request));
+      }
+      return handleHotelsViewport(body, request); // let the handler own the 400
     }
 
     if (!env.ORS_API_KEY) {
