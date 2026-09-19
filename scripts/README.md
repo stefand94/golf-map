@@ -390,3 +390,47 @@ separate step needed. Safe to also run by hand any time:
 | `fetch_south_africa_golf_clubs.py` | 2026-08-30 | Sourced the 19 South Africa entries in `data/courses-southafrica.js` (GOLF-78) |
 | `compute_nearest_stations.py` + `merge_nearest_stations.py` | 2026-08-26 | Populated `nearStation` on all 41 Scotland + 22 Wales entries |
 | `fetch_course_stats.py` + `merge_course_stats.py` | 2026-08-25 | Populated `courseStats` on 66 of 221 entries (GOLF-12/13) — London 18-hole + England Top 30 scope, first of two monthly batches (free-tier quota) |
+
+### `fetch_pois.py`
+GOLF-148. Builds the notable-POI dataset — "things worth stopping for" along a
+golf trip: whisky distilleries, castles, national parks, beaches, museums,
+viewpoints, lighthouses.
+
+```bash
+python3 scripts/fetch_pois.py                  # all regions
+python3 scripts/fetch_pois.py --region scotland southafrica
+python3 scripts/fetch_pois.py --skip-wikidata  # Overpass only, no ranking
+```
+Writes `scripts/output/pois_raw.json` (re-written after each region, so a
+late failure never loses earlier work).
+
+Why this is a build-time script rather than a runtime query: hotels have to be
+live (dense, constantly changing, pannable anywhere), but notable POIs are
+sparse and stable and the product only ever shows the top handful along a
+route — so the whole useful dataset ships statically, exactly like the course
+data. That keeps Overpass off the runtime path entirely (no 8–50s latency, no
+504s, no fair-use exposure) and makes "show more POIs" a deeper slice of an
+in-memory array instead of a second slow request.
+
+**Ranking** is Wikidata sitelink count (how many language Wikipedias cover the
+thing — Edinburgh Castle ~60, a minor listed building 1) plus a per-category
+baseline in `CATEGORY_BASE`. The baseline exists because sitelinks alone would
+rank every city gallery above every national park; it's where the product
+opinion lives, and it's meant to be tuned.
+
+**Two tag sets.** `GATED_TAGS` are kept only with a wikipedia/wikidata tag —
+"museum", "attraction", "viewpoint" and "peak" are applied to enormous numbers
+of trivial objects. `OPEN_TAGS` are kept regardless, because the tag *is* the
+recommendation: a working distillery with no Wikipedia article is exactly what
+the feature should surface.
+
+Gotchas:
+- **Queries are tiled** (`TILE_DEG`, 2.5°) and filtered by both the tile bbox
+  and the region's OSM area, so tiles never bleed across a border. This isn't
+  optional: a whole-of-England heritage query 504s on overpass-api.de and then
+  hangs indefinitely on the fallback mirror.
+- Sends a **User-Agent**. overpass-api.de answers 406 without one (the same
+  trap that had the Cloudflare Worker pinned to the slow mirror — GOLF-147).
+- Dedupes on OSM id, so the same place mapped as two separate objects (e.g.
+  Penderyn Distillery) can still appear twice by name — worth a pass at merge
+  time.
