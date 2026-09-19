@@ -250,6 +250,20 @@ SCORING_TAGS = (
     "listed_status", "blue_flag", "website", "whc:criteria",
 )
 
+# Every key CATEGORY_RULES reads, kept alongside them so that a bad rule can
+# be corrected by re-running categorise() over the saved JSON instead of
+# re-fetching the whole dataset from Overpass.
+#
+# WHY: this has now cost two full re-fetches. `historic=church` was mapped to
+# "Cathedral", which gave ~450 parish churches a cathedral's baseline — Britain
+# has about 60 cathedrals and the first dataset had 511. The fix was one line,
+# but the records had kept only the scoring tags, so nothing on disk could say
+# which of the 511 were churches. Overpass had to be asked again for data it
+# had already sent. Derived from CATEGORY_RULES rather than hand-listed, so a
+# new rule cannot forget to add its key here.
+CATEGORY_TAGS = tuple(sorted({k for (k, _), _ in CATEGORY_RULES}))
+KEEP_TAGS = tuple(sorted(set(SCORING_TAGS) | set(CATEGORY_TAGS)))
+
 # How much each designation is worth on top of the category baseline.
 #
 # WHY THIS EXISTS: notability came only from Wikidata sitelinks, which works
@@ -461,7 +475,7 @@ def collect(data, group, region, found):
             # extra to collect — the first version downloaded them and threw
             # them away, which is why 30% of records ended up with no
             # tiebreaker at all. See tag_bonus().
-            "tags": {k: tags[k] for k in SCORING_TAGS if k in tags},
+            "tags": {k: tags[k] for k in KEEP_TAGS if k in tags},
         }
         kept += 1
     return kept
