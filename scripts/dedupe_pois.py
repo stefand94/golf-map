@@ -157,6 +157,42 @@ def better(a, b, base):
 GENERIC_NAME_MIN_USES = 5
 GENERIC_NAME_RADIUS_KM = 0.05
 
+# ...except when the repeated name belongs to a BOUNDARY. A large protected
+# area is often mapped as many separate ways, each carrying the area's name
+# and tags: "Strangford AONB" arrives as 107 records spread over ~25km. The
+# generic-name rule above reads 107 uses as "this is a label, not a name" and
+# tightens the radius to 50m, so the fragments survive as 107 near-identical
+# pins in a region that only has 541 POIs in total.
+#
+# A boundary tag is what separates the two cases. "Railway viaduct" is a node
+# or a short way with no boundary, repeated across the country because it is
+# a description; a named boundary is one area, however many ways OSM splits
+# it into. So same-name records that BOTH carry a boundary tag merge at a
+# radius big enough to span the whole area, and skip the generic-name rule.
+BOUNDARY_FRAGMENT_RADIUS_KM = 40.0
+
+# The same escape applies to an area with no boundary tag, which is commoner
+# than it sounds: "Risley, Holcroft and Chat Moss National Nature Reserve" is
+# 11 ways carrying nothing but leisure=nature_reserve, inside 9.7km.
+#
+# Two conditions together, because neither is safe alone. The name has to be
+# specific — a real name, not a description — and every record sharing it has
+# to sit in a small area. "Hut Circle" and "Crannog" are short descriptions;
+# "St Mary's Church" is specific but spread across the country, and those are
+# ten different churches. Only a long name in one place means one thing mapped
+# many times.
+FRAGMENT_EXTENT_KM = 15.0
+SPECIFIC_NAME_CHARS = 25
+SPECIFIC_NAME_WORDS = 4
+
+
+def is_boundary(p):
+    return bool((p.get("tags") or {}).get("boundary"))
+
+
+def specific(name):
+    return len(name) >= SPECIFIC_NAME_CHARS or len(name.split()) >= SPECIFIC_NAME_WORDS
+
 
 def dedupe(pois, base, verbose=True):
     # Bucket by a ~28km grid cell so we only ever compare near neighbours
@@ -169,6 +205,19 @@ def dedupe(pois, base, verbose=True):
         grid.setdefault(key, []).append(i)
         lk = light(p["name"])
         name_uses[lk] = name_uses.get(lk, 0) + 1
+
+    # How far apart the records sharing each name are, as a bbox diagonal.
+    # Cheap, and only used to tell one fragmented area from a repeated label.
+    spread = {}
+    for p in pois:
+        lk = light(p["name"])
+        b = spread.get(lk)
+        if b is None:
+            spread[lk] = [p["lat"], p["lat"], p["lng"], p["lng"]]
+        else:
+            b[0] = min(b[0], p["lat"]); b[1] = max(b[1], p["lat"])
+            b[2] = min(b[2], p["lng"]); b[3] = max(b[3], p["lng"])
+    extent = {k: km((b[0], b[2]), (b[1], b[3])) for k, b in spread.items()}
 
     merged_into = {}
     merges = []
@@ -185,8 +234,14 @@ def dedupe(pois, base, verbose=True):
                     q = pois[j]
                     d = km((p["lat"], p["lng"]), (q["lat"], q["lng"]))
                     limit = radius(p["category"], q["category"])
-                    if max(name_uses.get(pl, 0),
-                           name_uses.get(light(q["name"]), 0)) >= GENERIC_NAME_MIN_USES:
+                    same_name = pl == light(q["name"])
+                    if same_name and is_boundary(p) and is_boundary(q):
+                        limit = max(limit, BOUNDARY_FRAGMENT_RADIUS_KM)
+                    elif (same_name and specific(p["name"])
+                          and extent.get(pl, 0) <= FRAGMENT_EXTENT_KM):
+                        pass   # one area mapped as many pieces; category radius
+                    elif max(name_uses.get(pl, 0),
+                             name_uses.get(light(q["name"]), 0)) >= GENERIC_NAME_MIN_USES:
                         limit = min(limit, GENERIC_NAME_RADIUS_KM)
                     if d > limit:
                         continue
