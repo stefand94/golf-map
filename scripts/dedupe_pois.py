@@ -111,6 +111,11 @@ def light(name):
     """Case/accent/punctuation-insensitive key. Every word kept."""
     s = unicodedata.normalize("NFKD", name.lower())
     s = "".join(c for c in s if not unicodedata.combining(c))
+    # Apostrophes are deleted, not spaced out, so a possessive matches the
+    # spelling without one: "Dr Johnson's House" and "Dr. Johnsons House" are
+    # the same museum, but spacing the apostrophe leaves a stray "s" token and
+    # they never match.
+    s = re.sub(r"['‘’ʼ]", "", s)
     s = re.sub(r"[^a-z0-9\s]", " ", s)
     return re.sub(r"\s+", " ", s).strip()
 
@@ -154,6 +159,7 @@ def better(a, b, base):
 # A name that recurs across the dataset is a label, not a name — "Railway
 # viaduct", "Hut Circle", "Engine House". Two of those 200m apart are two
 # viaducts, not one mapped twice, so they have to almost coincide to merge.
+SAME_WIKIDATA_RADIUS_KM = 40.0
 GENERIC_NAME_MIN_USES = 5
 GENERIC_NAME_RADIUS_KM = 0.05
 
@@ -219,6 +225,30 @@ def dedupe(pois, base, verbose=True):
             b[2] = min(b[2], p["lng"]); b[3] = max(b[3], p["lng"])
     extent = {k: km((b[0], b[2]), (b[1], b[3])) for k, b in spread.items()}
 
+    # How many ids each Wikidata entity is claimed by, so the wide scan below
+    # is spent only on records that could actually use it.
+    id_uses = {}
+    for p in pois:
+        if p.get("wikidata"):
+            id_uses[p["wikidata"]] = id_uses.get(p["wikidata"], 0) + 1
+
+    # The grid silently caps every merge radius: ±1 cell of 0.25° reaches about
+    # 30km of longitude at Scottish latitudes, so the 40km boundary-fragment
+    # and same-id rules could never fire at their stated distance — the two
+    # records were never compared. Loch Lomond's three pieces span 28km and
+    # sat in cells two apart. Widen the scan to cover the largest radius, but
+    # only for the records that can reach it (a boundary, or a shared id);
+    # everything else keeps the cheap 3x3 and the old cost.
+    wide = max(BOUNDARY_FRAGMENT_RADIUS_KM, SAME_WIKIDATA_RADIUS_KM)
+
+    def spans(p, far):
+        if not far:
+            return 1, 1
+        sy = int(math.ceil(wide / (111.0 * cell)))
+        coslat = max(math.cos(math.radians(p["lat"])), 0.05)
+        sx = int(math.ceil(wide / (111.0 * coslat * cell)))
+        return sy, sx
+
     merged_into = {}
     merges = []
     for i, p in enumerate(pois):
@@ -226,8 +256,9 @@ def dedupe(pois, base, verbose=True):
             continue
         pl, ph = light(p["name"]), heavy(p["name"])
         gy, gx = int(p["lat"] / cell), int(p["lng"] / cell)
-        for dy in (-1, 0, 1):
-            for dx in (-1, 0, 1):
+        sy, sx = spans(p, is_boundary(p) or id_uses.get(p.get("wikidata"), 0) > 1)
+        for dy in range(-sy, sy + 1):
+            for dx in range(-sx, sx + 1):
                 for j in grid.get((gy + dy, gx + dx), ()):
                     if j <= i or j in merged_into:
                         continue
@@ -235,7 +266,17 @@ def dedupe(pois, base, verbose=True):
                     d = km((p["lat"], p["lng"]), (q["lat"], q["lng"]))
                     limit = radius(p["category"], q["category"])
                     same_name = pl == light(q["name"])
-                    if same_name and is_boundary(p) and is_boundary(q):
+                    same_id = (bool(p.get("wikidata"))
+                               and p.get("wikidata") == q.get("wikidata"))
+                    if same_name and same_id:
+                        # Same name and both pointing at the same Wikidata
+                        # entity: they are not two things that happen to share
+                        # a label, they are two mappings of one thing. Trust
+                        # that over the distance heuristics — this is what
+                        # rescues an entity OSM split into pieces with no
+                        # boundary tag to recognise it by.
+                        limit = max(limit, SAME_WIKIDATA_RADIUS_KM)
+                    elif same_name and is_boundary(p) and is_boundary(q):
                         limit = max(limit, BOUNDARY_FRAGMENT_RADIUS_KM)
                     elif (same_name and specific(p["name"])
                           and extent.get(pl, 0) <= FRAGMENT_EXTENT_KM):

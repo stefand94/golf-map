@@ -94,6 +94,43 @@ def load_module(path, name):
     return mod
 
 
+def discount_shared_wikidata(pois, base, verbose=True):
+    """Stop every piece of a collection inheriting the collection's fame.
+
+    OSM frequently tags each item on an art trail, or each cairn on a ridge,
+    with the Wikidata id of the trail or the group rather than one for the item
+    itself. The item then scores as though it were the whole collection: one
+    47-piece sculpture trail pushed 47 records up the ranking on a single id's
+    sitelink count, and 15 separate records named "Cairn" shared one more.
+
+    Records still sharing an id at this point are differently named by
+    construction — dedupe merges the same-named ones — so the id cannot be
+    describing all of them, and there is no way to tell which one (if any) it
+    belongs to. So none of them keeps the count: they fall back to category
+    baseline plus tag bonus, which is what an unidentified POI scores anyway.
+    """
+    by_id = {}
+    for p in pois:
+        if p.get("wikidata"):
+            by_id.setdefault(p["wikidata"], []).append(p)
+    shared = {q: v for q, v in by_id.items() if len(v) > 1}
+
+    demoted = 0
+    for q, group in shared.items():
+        for p in group:
+            if not p.get("sitelinks"):
+                continue
+            p["score"] = base.get(p["category"], 5) + p.get("bonus", 0)
+            p["sitelinks"] = 0
+            demoted += 1
+    if verbose and demoted:
+        worst = sorted(shared.items(), key=lambda kv: -len(kv[1]))[:3]
+        print(f"  {demoted} records on {len(shared)} shared Wikidata ids lost "
+              f"an inherited sitelink count "
+              f"(largest: {', '.join(f'{q} x{len(v)}' for q, v in worst)})")
+    return pois
+
+
 def main():
     if not os.path.exists(RAW):
         raise SystemExit(f"{RAW} not found — run fetch_pois.py first")
@@ -112,6 +149,7 @@ def main():
     fp = load_module(os.path.join(HERE, "fetch_pois.py"), "fp")
     dd = load_module(os.path.join(HERE, "dedupe_pois.py"), "dd")
     pois, _ = dd.dedupe(pois, fp.CATEGORY_BASE)
+    pois = discount_shared_wikidata(pois, fp.CATEGORY_BASE)
 
     cats = sorted({p["category"] for p in pois})
     missing = [c for c in cats if c not in CATEGORY_GROUP]
