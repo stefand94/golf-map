@@ -168,11 +168,15 @@ const orsGeocodeCache=new Map();
    filter never serves a stale cross-nation result under another. */
 function orsGeocode(text,cb,country,layers){
   const q=text.trim();
-  const key=(country||'')+'|'+(layers||'')+'|'+q;
+  const key=(country||'')+'|'+(layers||'')+'|v2|'+q;
   if(!ORS_PROXY_URL||!q){cb([]);return;}
   if(orsGeocodeCache.has(key)){cb(orsGeocodeCache.get(key));return;}
   const body={mode:'geocode',text:q};
   if(country)body.country=country;
+  /* Ireland = the whole island, Northern Ireland included (matches
+     courses-ireland.js and the nation pill). The Worker widens IRL to
+     IRL + NI when asked; an un-redeployed Worker ignores this. */
+  if(country==='IRL')body.island='ireland';
   if(layers)body.layers=layers; // GOLF-150: 'coarse' = towns/regions only (Worker allowlists it)
   fetch(ORS_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body)})

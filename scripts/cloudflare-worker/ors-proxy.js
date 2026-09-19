@@ -861,15 +861,31 @@ async function handleGeocode(body, env, request) {
     return json({ results: [] }, 200, request);
   }
   const requestedCountry = typeof body.country === 'string' ? body.country.trim().toUpperCase() : '';
-  const boundaryCountry = GEOCODE_COUNTRIES.split(',').includes(requestedCountry)
-    ? requestedCountry
-    : GEOCODE_COUNTRIES;
+  // "Ireland" in this app means the island (courses-ireland.js and the
+  // nation pill both include Northern Ireland), but ORS's IRL is the
+  // Republic only — so Belfast/Portrush/Newcastle Co. Down never came
+  // back. island:'ireland' widens to IRL+GBR inside a box round the island,
+  // then drops any GB result that isn't in Northern Ireland (the box
+  // clips the tip of Kintyre). An old client never sends it; an old
+  // Worker ignores it and stays Republic-only.
+  const island = body.island === 'ireland' && requestedCountry === 'IRL';
+  const boundaryCountry = island
+    ? 'IRL,GBR'
+    : GEOCODE_COUNTRIES.split(',').includes(requestedCountry)
+      ? requestedCountry
+      : GEOCODE_COUNTRIES;
 
   const url = new URL(ORS_GEOCODE_URL);
   url.searchParams.set('api_key', env.ORS_API_KEY);
   url.searchParams.set('text', text.slice(0, 200));
   url.searchParams.set('boundary.country', boundaryCountry);
-  url.searchParams.set('size', '6');
+  url.searchParams.set('size', island ? '10' : '6');
+  if (island) {
+    url.searchParams.set('boundary.rect.min_lat', '51.3');
+    url.searchParams.set('boundary.rect.max_lat', '55.5');
+    url.searchParams.set('boundary.rect.min_lon', '-10.8');
+    url.searchParams.set('boundary.rect.max_lon', '-5.3');
+  }
   // GOLF-150 (S1): the main search bar asks for towns/regions only
   // (layers:'coarse') — without it, "Carnoustie" returned the town's high
   // school, library and football club as "towns & cities". Opt-in, so the
@@ -906,7 +922,9 @@ async function handleGeocode(body, env, request) {
         lng: Array.isArray(coords) ? coords[0] : null,
       };
     })
-    .filter((r) => typeof r.lat === 'number' && typeof r.lng === 'number');
+    .filter((r) => typeof r.lat === 'number' && typeof r.lng === 'number')
+    .filter((r) => !island || !/United Kingdom$/.test(r.label) || /Northern Ireland/.test(r.label))
+    .slice(0, 6);
 
   return json({ results }, 200, request);
 }
