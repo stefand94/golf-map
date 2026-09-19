@@ -76,7 +76,7 @@
     --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:20px;--sp-6:24px;--sp-8:32px;
     /* Type scale. */
     --fs-micro:10px;--fs-caption:11.5px;--fs-small:12.5px;--fs-body:13.5px;
-    --fs-title:15px;--fs-lg:17px;--fs-xl:20px;--fs-hero:38px;
+    --fs-title:15px;--fs-lg:17px;--fs-xl:20px;--fs-hero:38px;--fs-trip-title:24px;
     /* Control sizing. --tap is the HIG minimum; --tap-sm is for controls
        that sit inside a ≥44px row and so are already comfortably hit. */
     --tap:44px;--tap-sm:36px;
@@ -115,7 +115,7 @@
      column (no .app layout change), following the same body-class toggle
      idiom already used for the mobile mob-list/mob-map split above. */
   .tb-pane{display:none;flex-direction:column;overflow-y:auto;flex:1}
-  body.trip-mode .filters,body.trip-mode .list{display:none}
+  body.trip-mode .filters,body.trip-mode .list,body.trip-mode .list-mode{display:none} /* GOLF-150: .list-mode is retired-Explore chrome that was leaking above the pane */
   body.trip-mode .tb-pane{display:flex}
   /* GOLF-41: #trip is a real, bookmarkable/shareable route — give the pane
      more room than the constrained list-panel width once it's the whole
@@ -220,30 +220,67 @@
     width:2px;height:7px;background:var(--stone);border-radius:1px;pointer-events:none}
 
   /* Row 2 of the sketch: two (here three) equal rounded controls. */
-  .tb-toolbar{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-1) var(--sp-5) var(--sp-2)}
-  .tb-toolbar>*{flex:1 1 0;min-width:0}
+  /* GOLF-150: the toolbar holds view controls only now (trip actions moved
+     up into .tb-head). Children size to their content and wrap, rather than
+     being forced into equal 1fr cells that ellipsised "My trip" to "M…"
+     and collided outright at 375px. The filter icon is pushed right. */
+  .tb-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);padding:var(--sp-1) var(--sp-5) var(--sp-3)}
+  .tb-toolbar>*{flex:0 0 auto}
+  .tb-toolbar>.tb-icon-drop{margin-left:auto}
+
+  /* GOLF-150: pane header — the trip name as a real headline, trip-level
+     actions as quiet icons beside it. */
+  .tb-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-3);
+    padding:var(--sp-4) var(--sp-5) var(--sp-3)}
+  .tb-head-main{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:var(--sp-2)}
+  .tb-head-meta{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+  .tb-head-actions{display:flex;align-items:center;gap:var(--sp-1);flex:0 0 auto;margin-top:-2px}
+  .tb-head-actions .tb-btn.is-icon{color:var(--ink-soft)}
+  .tb-head-actions .tb-btn.is-icon:hover{background:var(--accent-soft);color:var(--accent-deep);border-color:transparent;box-shadow:none;transform:none}
+  .tb-head-actions .tb-btn.is-danger:hover{background:#FBEEE7;color:#9A3412}
+  .tb-head-actions .tb-btn.is-icon.is-quiet{border-color:transparent}
+  details.tb-title-drop{flex:0 1 auto;align-self:flex-start;max-width:100%}
+  details.tb-title-drop>summary{min-height:0;padding:0;border:none;background:none;box-shadow:none;justify-content:flex-start;
+    font:700 var(--fs-trip-title) /1.15 var(--font-display);letter-spacing:-.02em;color:var(--ink);border-radius:var(--radius-sm)}
+  details.tb-title-drop>summary::after{width:8px;height:8px;border-width:0 2.5px 2.5px 0;margin-left:2px;transform:translateY(-4px) rotate(45deg)}
+  details.tb-title-drop>summary:hover{color:var(--accent-deep)}
+  details.tb-title-drop[open]>summary{border:none;box-shadow:none;color:var(--accent-deep)}
+  details.tb-title-drop[open]>summary::after{transform:translateY(1px) rotate(-135deg)}
+  details.tb-title-drop>summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+
+  /* Icon-only buttons carrying a transient bubble (share → "Link copied"). */
+  .tb-btn[data-tip]{position:relative;overflow:visible}
+  .tb-btn[data-tip]::after{content:attr(data-tip);position:absolute;top:calc(100% + 6px);right:0;z-index:50;
+    font:600 var(--fs-caption)/1 var(--font-sans);color:#fff;background:var(--ink);padding:7px 10px;border-radius:var(--radius-sm);
+    white-space:nowrap;box-shadow:var(--shadow-md);pointer-events:none;animation:tbTipIn var(--dur) var(--ease)}
+  @keyframes tbTipIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+
+  /* Icon-only dropdown trigger (Filters). A dot marks a non-default filter. */
+  details.tb-icon-drop{flex:0 0 auto}
+  details.tb-icon-drop>summary{width:var(--tap-sm);min-height:var(--tap-sm);height:var(--tap-sm);padding:0;color:var(--ink-soft);position:relative}
+  details.tb-icon-drop>summary::after{content:none}
+  details.tb-icon-drop.is-on>summary{color:var(--accent-deep);border-color:var(--accent);background:var(--accent-soft)}
+  details.tb-icon-drop.is-on>summary::before{content:'';position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px #fff}
+
+  /* Group size: one segmented control — [ − | 👤 2 golfers | + ] — instead
+     of an emoji plus two floating circle buttons. */
+  .tb-group{display:inline-flex;align-items:stretch;height:var(--tap-sm);background:#fff;border:1px solid var(--line);
+    border-radius:var(--radius-pill);box-shadow:var(--shadow-sm);overflow:hidden}
+  .tb-group-btn{width:34px;border:none;background:none;cursor:pointer;color:var(--ink-soft);font:500 17px/1 var(--font-sans);
+    transition:background var(--dur) var(--ease),color var(--dur) var(--ease)}
+  .tb-group-btn:hover:not(:disabled){background:var(--accent-soft);color:var(--accent-deep)}
+  .tb-group-btn:active:not(:disabled){background:#D5E3EE}
+  .tb-group-btn:disabled{opacity:.3;cursor:default}
+  .tb-group-btn:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .tb-group-val{display:inline-flex;align-items:center;gap:5px;padding:0 var(--sp-2);border-left:1px solid var(--line);border-right:1px solid var(--line);
+    font:600 var(--fs-small)/1 var(--font-sans);color:var(--ink-soft);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .tb-group-val svg{color:var(--stone)}
+  .tb-group-val b{font-weight:800;color:var(--ink);font-size:var(--fs-body)}
+  /* Phone width: drop the long halves of the toolbar labels so the whole
+     row fits on one line ("Show hotels" → "Hotels", "2 golfers" → "2"). */
+  .tb-lbl-short{display:none}
+  @media (max-width:480px){.tb-lbl-long,.tb-group-unit{display:none}.tb-lbl-short{display:inline}}
   .tb-drop{position:relative;flex:1 1 0;min-width:0}
-  /* GOLF-87/item-7: a compact group-size stepper. Previously a
-     --tap-sm-tall (36px), flat, --paper-tinted pill — visibly shorter and
-     flatter than every other pill beside it in the toolbar (My trip,
-     Filters, Clear trip, Share trip are all --tap/44px with --shadow-sm on
-     a white ground). Brought up to the same height/surface/shadow so it
-     reads as one of the toolbar's pills rather than a smaller, separate
-     control; flex:0 so it still doesn't stretch like the toolbar's other
-     1fr children. */
-  .tb-groupsize{display:flex;align-items:center;justify-content:center;gap:0;
-    flex:0 0 auto;background:#fff;border:1px solid var(--line);border-radius:var(--radius-pill);
-    padding:0 2px;height:var(--tap);box-shadow:var(--shadow-sm)}
-  .tb-groupsize-label{font-size:var(--fs-small);opacity:.6;padding:0 var(--sp-1) 0 var(--sp-3)}
-  .tb-groupsize-n{font:700 var(--fs-body) var(--font-sans);min-width:1.6em;text-align:center;
-    font-variant-numeric:tabular-nums;color:var(--ink)}
-  /* The +/- buttons were plain .is-quiet (no fill, no hover feedback at
-     all) — circular accent-tinted hover/press states give them the same
-     "this is tappable" affordance every other button in the pane has. */
-  .tb-groupsize-btn{border-radius:50%;color:var(--stone)}
-  .tb-groupsize-btn:hover{background:var(--accent-soft);color:var(--accent-deep);
-    border-color:transparent;box-shadow:none;transform:none}
-  .tb-groupsize-btn:active{background:var(--accent-soft);transform:scale(.92)}
   .tb-drop>summary{list-style:none;display:flex;align-items:center;justify-content:center;gap:var(--sp-2);
     min-height:var(--tap);padding:0 var(--sp-3);border:1px solid var(--line);border-radius:var(--radius-pill);
     background:#fff;box-shadow:var(--shadow-sm);cursor:pointer;
@@ -489,6 +526,7 @@
   .tb-reorder-stop{color:var(--ink)}
   .tb-reorder-stop.is-moved{font-weight:700;color:var(--accent-dark);background:var(--accent-soft);border-radius:var(--radius-xs);padding:1px 6px}
   .tb-reorder-arrow{color:var(--stone);opacity:.6}
+  .tb-day.tb-reorder-suggest{padding:var(--sp-4)} /* GOLF-150: text ran flush to the card edge */
   /* ── Itinerary filtered lists + Costs tab ───────────────────────── */
   .itin-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-card);margin-bottom:var(--sp-3);padding:var(--sp-3) var(--sp-4)}
   .itin-card-head{font:800 var(--fs-caption) var(--font-sans);letter-spacing:.06em;color:var(--accent-dark);margin-bottom:var(--sp-1)}
@@ -657,7 +695,7 @@
      with no CSS change. --sp-6 above it is the breathing room from the
      "Golf Tripper" masthead; --sp-5 sides match the navbar/toolbar gutter. */
   .nation-pills{display:grid;grid-template-columns:repeat(var(--nation-count,3),1fr);
-    gap:var(--sp-2);padding:var(--sp-6) var(--sp-5) var(--sp-2)}
+    gap:var(--sp-2);padding:var(--sp-1) var(--sp-5) var(--sp-2)} /* GOLF-150: top padding cut — the pane header now sits above */
   .nation-pill{display:flex;align-items:center;justify-content:center;text-align:center;
     min-height:var(--tap);min-width:0;padding:var(--sp-1) var(--sp-2);border:1px solid var(--line);border-radius:var(--radius-pill);
     background:#fff;color:var(--ink-soft);font:600 var(--fs-small)/1.15 var(--font-sans);cursor:pointer;

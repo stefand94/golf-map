@@ -15,7 +15,13 @@
    renders that exact glyph as an emoji, so it's a small inline SVG
    instead — currentColor so it always matches the button's own text
    colour (light/dark, hover, disabled) with no separate theming needed. */
-const SHARE_ICON_SVG=`<svg class="share-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>`;
+const SHARE_ICON_SVG=`<svg class="share-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>`;
+
+/* GOLF-150: the toolbar's text buttons ("Clear trip", "Filters") became
+   icon buttons, same inline-SVG/currentColor approach as SHARE_ICON_SVG. */
+const TRASH_ICON_SVG=`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4h6v3"/></svg>`;
+const FILTER_ICON_SVG=`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>`;
+const PERSON_ICON_SVG=`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>`;
 
 /* ════════════════════════════════════════════════════════════════════
    GOLF-71 workstream B — THE search component.
@@ -758,29 +764,40 @@ function renderTripBuilder(){
   // the point — Discover (Plan mode) and the Itinerary tab — but not the
   // Costs tab, which isn't about the map. Mirrors showItinFilters' shape.
   const showMapTab=!isBuild||tbBuildTab==='itin';
+  /* GOLF-150: chrome reorganised after owner feedback ("too many buttons,
+     things are overflowing"). The trip's name is the pane's headline, at
+     the very top; the trip-level actions (share, clear) sit beside it as
+     icons; the toolbar below keeps only the view controls. */
+  const filtered=tbItinFilter!=='all'||!tbDriveToggle;
   pane.innerHTML=`
+    <header class="tb-head">
+      <div class="tb-head-main">
+        ${tbTripMenuHTML(isBuild)}
+        <div class="tb-head-meta">
+          <span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${tripPrimaryCurrency()}${total.toFixed(0)}</span>
+          ${tbBetaBadgeHTML()}
+        </div>
+      </div>
+      <div class="tb-head-actions">
+        <button type="button" class="tb-btn is-icon is-sm is-quiet" id="tb-share-trip" aria-label="Share trip" title="Share — copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">${SHARE_ICON_SVG}</button>
+        <button type="button" class="tb-btn is-icon is-sm is-quiet is-danger" id="tb-clear-trip" aria-label="Clear trip" title="Clear trip — empties this trip. Your other trips are untouched; to delete every trip use Start fresh in the trip menu."${TRIP.size||tripDays.length?'':' disabled'}>${TRASH_ICON_SVG}</button>
+      </div>
+    </header>
     ${tbNationPillsHTML()}
-    <div class="tb-navbar">
-      <span class="tb-wordmark">${isBuild?'Build your trip':'Plan a trip'}</span>
-      <span class="tb-navbar-right">
-        ${tbBetaBadgeHTML()}
-        <span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${tripPrimaryCurrency()}${total.toFixed(0)}</span>
-      </span>
-    </div>
     ${tbSearchFieldHTML({id:'tb-unified-search',variant:'bar',value:tbSearchQ,
       placeholder:'Search courses, towns and cities…',ariaLabel:'Search courses, towns and cities'})}
     <div class="tb-section" id="tb-search-results" style="border-bottom:none;padding-top:0${tbSearchQ.trim()?'':';display:none'}">${tbSearchQ.trim()?tbUnifiedSearchResultsHTML():''}</div>
     <div class="tb-toolbar">
-      ${tbTripMenuHTML()}
-      <span class="tb-groupsize" title="How many people is this trip for? Green fees and stop costs scale by this; hotels keep their own per-item sharing setting.">
-        <span class="tb-groupsize-label">👥</span>
-        <button type="button" class="tb-btn is-icon is-sm is-quiet tb-groupsize-btn" id="tb-groupsize-dec" aria-label="Decrease group size">−</button>
-        <span class="tb-groupsize-n">${groupSize}</span>
-        <button type="button" class="tb-btn is-icon is-sm is-quiet tb-groupsize-btn" id="tb-groupsize-inc" aria-label="Increase group size">+</button>
-      </span>
-      ${showItinFilters?`<details class="tb-drop" id="tb-filter-drop">
-        <summary title="Filter what this itinerary shows">Filters${tbItinFilter!=='all'||!tbDriveToggle?' ·':''}</summary>
-        <div class="tb-drop-body">
+      <div class="tb-group" role="group" aria-label="Group size" title="How many golfers? Green fees and stop costs scale by this; hotels keep their own per-item sharing setting.">
+        <button type="button" class="tb-group-btn" id="tb-groupsize-dec" aria-label="One fewer golfer"${groupSize<=1?' disabled':''}>−</button>
+        <span class="tb-group-val" aria-live="polite">${PERSON_ICON_SVG}<b>${groupSize}</b><span class="tb-group-unit">${groupSize===1?'golfer':'golfers'}</span></span>
+        <button type="button" class="tb-group-btn" id="tb-groupsize-inc" aria-label="One more golfer">+</button>
+      </div>
+      ${showMapTab?`<button type="button" class="tb-btn is-sm${tbHotelLayerOn?' is-active':''}" id="tb-hotel-layer-toggle" aria-pressed="${tbHotelLayerOn}" title="Show nearby hotels on the map as you pan and zoom. Zoom in to see pins — no price data, just location."><span>${tbHotelLayerOn?'✓ ':''}<span class="tb-lbl-long">Show hotels</span><span class="tb-lbl-short">Hotels</span></span></button>`:''}
+      ${showItinFilters?`<button type="button" class="tb-btn is-sm${tbShowNearby?' is-active':''}" id="tb-nearby-toggle" aria-pressed="${tbShowNearby}" title="Show other bookable courses near your trip on the map. Doesn't change your itinerary."><span>${tbShowNearby?'✓ ':''}Nearby<span class="tb-lbl-long"> courses</span></span></button>`:''}
+      ${showItinFilters?`<details class="tb-drop tb-icon-drop${filtered?' is-on':''}" id="tb-filter-drop">
+        <summary aria-label="Filters" title="Filter what this itinerary shows">${FILTER_ICON_SVG}</summary>
+        <div class="tb-drop-body is-right">
           <div class="tb-menu-label">Show</div>
           ${[['all','Everything'],['golf','⛳ Golf only'],['hotel','🏨 Stays only'],['poi','📍 Stops only']].map(([k,label])=>
             `<button type="button" class="tb-menu-item" data-itin-filter="${k}">${tbItinFilter===k?'✓':'&nbsp;&nbsp;'} ${label}</button>`).join('')}
@@ -788,10 +805,6 @@ function renderTripBuilder(){
           <button type="button" class="tb-menu-item" id="tb-drive-toggle">${tbDriveToggle?'✓':'&nbsp;&nbsp;'} 🚗 Drive times</button>
         </div>
       </details>`:''}
-      ${showItinFilters?`<button type="button" class="tb-btn${tbShowNearby?' is-active':''}" id="tb-nearby-toggle" aria-pressed="${tbShowNearby}" title="Show other bookable courses near your trip on the map. Doesn't change your itinerary.">${tbShowNearby?'✓ ':''}Nearby courses</button>`:''}
-      ${showMapTab?`<button type="button" class="tb-btn${tbHotelLayerOn?' is-active':''}" id="tb-hotel-layer-toggle" aria-pressed="${tbHotelLayerOn}" title="Show nearby hotels on the map as you pan and zoom. Zoom in to see pins — no price data, just location.">${tbHotelLayerOn?'✓ ':''}Show hotels</button>`:''}
-      <button class="tb-btn is-danger" id="tb-clear-trip" title="Empties this trip. Your other trips are untouched — to delete every trip use Start fresh in the trip menu.">Clear trip</button>
-      <button class="tb-btn" id="tb-share-trip" title="Copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">${SHARE_ICON_SVG} Share trip</button>
     </div>
     <div class="tb-tabs" role="tablist">${TABS.map(([k,label])=>
       `<button class="tb-tab-btn" role="tab" data-tab="${k}" aria-pressed="${activeTab===k}">${label}</button>`).join('')}</div>

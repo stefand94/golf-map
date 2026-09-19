@@ -713,9 +713,13 @@ function tripSwitchTo(id){
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(true);}
   render();
 }
+/* GOLF-150: no name prompt up front — a trip doesn't need a name until
+   it has an itinerary. It starts as "New trip"; the Build-mode headline
+   is click-to-rename once there's something worth naming. */
 function tripCreateNew(){
-  const name=prompt('Name this trip:','New trip');
-  if(name==null)return;
+  const taken=new Set(Object.values(trips).map(t=>t.name));
+  let name='New trip',n=2;
+  while(taken.has(name))name=`New trip ${n++}`;
   tripSnapshotActive();
   const id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   trips[id]={name:name.trim()||'Untitled trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1,groupSize:2};
@@ -793,20 +797,24 @@ function tripStartFresh(){
    trip) is deliberately the last item inside the menu, styled destructive
    and worded so the difference is unmissable — they are different actions
    and both stay available, per the brief. */
-function tbTripMenuHTML(){
+function tbTripMenuHTML(isBuild){
   const list=tripListAll();
   const active=list.find(t=>t.id===activeTripId);
   const rows=list.map(t=>`<button type="button" class="tb-menu-item" onclick="tripSwitchTo('${t.id}')">${t.id===activeTripId?'✓':'&nbsp;&nbsp;'} ${esc(t.name)}</button>`).join('');
-  /* GOLF-115: a long trip name must stay fully readable. The label span
-     ellipsises inside the fixed toolbar cell (so the row never grows) and
-     carries the full name as a title/tooltip on hover. */
+  /* GOLF-115: a long trip name must stay fully readable — it ellipsises
+     and carries the full name as a tooltip.
+     GOLF-150: this menu is now the pane's HEADLINE rather than a toolbar
+     pill. In Build mode it reads as the trip's name, big; in Plan mode
+     (before there's an itinerary to name) it reads "Plan a trip" — the
+     same menu underneath, so switching/creating trips is always one tap. */
   const activeName=active?active.name:'Trip';
-  return`<details class="tb-drop" id="tb-trip-drop">
-    <summary title="${esc(activeName)}"><span class="tb-drop-label">${esc(activeName)}</span></summary>
+  const label=isBuild?activeName:'Plan a trip';
+  return`<details class="tb-drop tb-title-drop" id="tb-trip-drop">
+    <summary title="${isBuild?esc(activeName)+' — trip menu':'Trip menu'}"><span class="tb-drop-label">${esc(label)}</span></summary>
     <div class="tb-drop-body">
       ${list.length>1?`<div class="tb-menu-label">Your trips</div>${rows}<div class="tb-menu-sep"></div>`:''}
+      <button type="button" class="tb-menu-item" onclick="tripRename(activeTripId)">✎ Rename${isBuild?'':` “${esc(activeName)}”`}</button>
       <button type="button" class="tb-menu-item" onclick="tripCreateNew()">＋ New trip</button>
-      <button type="button" class="tb-menu-item" onclick="tripRename(activeTripId)">✎ Rename</button>
       <button type="button" class="tb-menu-item" onclick="tripDuplicate(activeTripId)">⧉ Duplicate</button>
       ${list.length>1?`<button type="button" class="tb-menu-item is-danger" onclick="tripDelete(activeTripId)">🗑 Delete this trip</button>`:''}
       <div class="tb-menu-sep"></div>
@@ -816,7 +824,7 @@ function tbTripMenuHTML(){
 }
 /* Kept as a thin alias: tripSwitcherHTML() is referenced from older code
    paths and the plan file's history. */
-function tripSwitcherHTML(){return tbTripMenuHTML();}
+function tripSwitcherHTML(){return tbTripMenuHTML(appMode==='build');}
 
 /* GOLF-31: Trip Builder pane state — a persistent left-pane mode (see
    .tb-pane/body.trip-mode in <style>), not a modal. tbAnchor seeds the

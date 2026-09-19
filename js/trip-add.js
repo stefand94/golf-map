@@ -147,6 +147,12 @@ function tbUnifiedSearchResultsHTML(){
   const results=tbSearchResults();
   const places=tbUnifiedPlaceResults;
   let html='';
+  /* GOLF-150: place results arrive ~1s after course results (async
+     geocode). They used to render ABOVE the courses, so the course list
+     jumped down just as you went to click "+ Wishlist" — and the click
+     landed on a place's "Add to trip", silently creating itinerary days.
+     Places now render BELOW courses, so a late arrival never moves
+     anything already on screen. */
   if(places===undefined){
     // Phase 22 fix: distinguishes "the geocode request failed" from "no
     // matches" — both used to render as an absent Towns & cities section,
@@ -170,8 +176,9 @@ function tbUnifiedSearchResultsHTML(){
       </div>`).join('');
     if(tbPlaceAddedNote)html+=`<p class="hint" style="margin:var(--sp-2) 0 0">Added <b>${esc(tbPlaceAddedNote.label)}</b> as Day ${tbPlaceAddedNote.day} — <a href="#" class="linkbtn" onclick="event.preventDefault();enterBuildMode()">open it</a>.</p>`;
   }
+  const placeHtml=html;html='';
   if(!results.length){
-    if(html)return html;
+    if(placeHtml)return placeHtml;
     return`<p class="hint">No places or bookable courses match "${esc(q)}".</p>`;
   }
   // GOLF-62: default action is "add to wishlist" (tripUnscheduled(), no
@@ -179,7 +186,7 @@ function tbUnifiedSearchResultsHTML(){
   // second, explicit "+ Add to Day N" button next to it — direct-to-day
   // stays available as a deliberate power path, just not the default.
   const day=(appMode==='build'&&tbBuildTab==='itin'&&tbDayShown!=null)?tripDays.find(d=>d.id===tbDayShown):null;
-  html+=`<div class="tb-section-title" style="margin-top:var(--sp-3)">Golf courses</div>`+
+  html+=`<div class="tb-section-title">Golf courses</div>`+
     results.map(i=>`<div class="tb-row">
       <div>⛳ <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         <div class="cart-region">${esc(C[i].r)} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
@@ -188,6 +195,7 @@ function tbUnifiedSearchResultsHTML(){
         ${day?`<button class="tb-btn is-sm" onclick="tbAddToDay(${i},${day.id})">＋ Day ${tripDays.indexOf(day)+1}</button>`:''}
       </div>
     </div>`).join('');
+  if(placeHtml)html+=`<div style="margin-top:var(--sp-3)">${placeHtml}</div>`;
   return html;
 }
 /* GOLF-33: day-by-day schedule view for the pane's cart section — a

@@ -45,14 +45,21 @@ function tripEncodeShareURL(){
 function tbShareTrip(btn){
   const url=tripEncodeShareURL();
   history.pushState({appMode},'',url);
-  // item-6: swap innerHTML, not textContent — the button carries the
-  // SHARE_ICON_SVG icon, and textContent would silently strip it out on
-  // restore (a real bug this fix caught: the icon never came back after
-  // the first "Copied!" round-trip).
-  const original=btn.innerHTML;
-  navigator.clipboard.writeText(url)
-    .then(()=>{btn.innerHTML='Copied!';setTimeout(()=>{btn.innerHTML=original;},1800);})
-    .catch(()=>{btn.innerHTML='Copy failed — select from address bar';setTimeout(()=>{btn.innerHTML=original;},2400);});
+  /* GOLF-150: the button is icon-only now, so "Copied!" can't replace its
+     label — it shows as a small bubble (the data-tip ::after in CSS).
+     On touch devices with a native share sheet (iPhone/iPad, most
+     phones) that's opened instead, matching the Apple-style share glyph;
+     desktop keeps the one-click copy. */
+  const tip=(msg,ms)=>{btn.dataset.tip=msg;clearTimeout(btn._tipT);btn._tipT=setTimeout(()=>{delete btn.dataset.tip;},ms);};
+  const copy=()=>navigator.clipboard.writeText(url)
+    .then(()=>tip('Link copied',1800))
+    .catch(()=>tip('Copy failed — copy from the address bar',2600));
+  if(navigator.share&&matchMedia('(pointer:coarse)').matches){
+    navigator.share({title:(trips[activeTripId]&&trips[activeTripId].name)||'Golf trip',url})
+      .catch(e=>{if(e&&e.name!=='AbortError')copy();});
+    return;
+  }
+  copy();
 }
 
 /* ── Decode: a #share= hash → a plain payload object, or null on any
