@@ -470,7 +470,14 @@ async function handleRoute(body, env, request) {
     // [lat, lng] pairs (flipped from GeoJSON's [lng, lat]) so the client
     // can feed this straight to Leaflet without any conversion.
     route: coords ? simplifyRoute(coords.map((c) => [c[1], c[0]])) : null,
-  }, request);
+    // GOLF-149: the 200 is NOT optional here. json()'s signature is
+    // (obj, status, request), and GOLF-129 added `request` to this call in
+    // the *status* position — so every successful route tried to build a
+    // Response with a Request object as its status and threw, surfacing as
+    // a Cloudflare 1101. Only the error paths above (which pass a status)
+    // still worked, which is why routing failed silently and completely
+    // while every other mode looked healthy.
+  }, 200, request);
 }
 
 function simplifyRoute(points) {

@@ -29,7 +29,14 @@ let lastHeaders = null;
    { 'overpass-api.de': { delayMs: 9000, status: 504 } }. Empty = all fast. */
 let mirrorBehaviour = {};
 
+/* GOLF-149: when set, fetch returns an ORS directions response instead of an
+   Overpass one, so the routing path can be exercised in the same harness. */
+let orsRouteStub = null;
+
 globalThis.fetch = async (url, opts) => {
+  if (orsRouteStub) return new Response(JSON.stringify(orsRouteStub), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+  });
   overpassCalls++;
   calledUrls.push(String(url));
   lastHeaders = opts?.headers || null;
@@ -199,6 +206,45 @@ mirrorBehaviour = { 'overpass': { status: 504 } };
 r = await call({ mode: 'hotelsViewport', bbox: [50.40, -4.20, 50.45, -4.14] });
 check('all mirrors failing returns 502', r.status === 502, `status=${r.status}`);
 mirrorBehaviour = {};
+
+/* ── GOLF-149: the routing success path.
+
+   This is the regression that motivated the test. json()'s signature is
+   (obj, status, request), and GOLF-129 passed `request` in the status slot
+   on handleRoute's *success* return — so every route that ORS actually
+   answered threw while building the Response, surfacing as a Cloudflare
+   1101. The error paths all passed a status, so they kept working, and the
+   Worker looked healthy on every other mode. Routing was dead in production
+   until GOLF-149 and nothing caught it, so it gets a test. */
+orsRouteStub = {
+  type: 'FeatureCollection',
+  features: [{
+    type: 'Feature',
+    properties: { summary: { duration: 3600, distance: 70000 } },
+    geometry: {
+      type: 'LineString',
+      // Deliberately over ROUTE_MAX_POINTS so simplifyRoute() runs too.
+      coordinates: Array.from({ length: 5000 }, (_, i) => [-3.18 - i * 0.0002, 55.95 - i * 0.00002]),
+    },
+  }],
+};
+r = await worker.fetch(new Request('https://w.test', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', Origin: 'https://golf-map.pages.dev' },
+  body: JSON.stringify({ origin: [-3.1883, 55.9533], destination: [-4.2518, 55.8642] }),
+}), { ORS_API_KEY: 'test-key' }, ctx);
+j = await r.clone().json();
+check('a successful route returns 200 (not a 1101 crash)', r.status === 200, `status=${r.status}`);
+check('route carries duration and distance',
+  Math.round(j.minutes) === 60 && Math.round(j.miles) === 43,
+  `minutes=${j.minutes} miles=${j.miles}`);
+check('route geometry is simplified and [lat,lng]',
+  Array.isArray(j.route) && j.route.length <= 151 && j.route[0][0] === 55.95,
+  `n=${j.route?.length} first=${JSON.stringify(j.route?.[0])}`);
+check('route response still carries CORS',
+  r.headers.get('Access-Control-Allow-Origin') === 'https://golf-map.pages.dev',
+  `acao=${r.headers.get('Access-Control-Allow-Origin')}`);
+orsRouteStub = null;
 
 let failed = 0;
 for (const t of results) {
