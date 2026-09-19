@@ -212,7 +212,6 @@ CATEGORY_RULES = [
     # checked by _is_real_national_park().
     (("boundary", "national_park"), "National park"),
     (("designation", "national_park"), "National park"),
-    (("protect_class", "2"), "National park"),
     (("craft", "distillery"), "Distillery"),
     (("industrial", "distillery"), "Distillery"),
     (("craft", "winery"), "Winery"),
@@ -230,6 +229,12 @@ CATEGORY_RULES = [
     (("building", "cathedral"), "Cathedral"),
     (("historic", "church"), "Church"),
     (("leisure", "nature_reserve"), "Nature reserve"),
+    # IUCN category II. Worth stating plainly because it is counter-intuitive:
+    # this does NOT mean national park in Britain. Every English national park
+    # is protect_class=5 (category V, protected landscape), while 2 is what
+    # National Nature Reserves carry — so reading 2 as "national park" quietly
+    # promoted NNRs, bird observatories and country parks above real parks.
+    (("protect_class", "2"), "Nature reserve"),
     (("waterway", "waterfall"), "Waterfall"),
     (("natural", "cave_entrance"), "Cave"),
     (("natural", "arch"), "Arch"),
@@ -265,13 +270,19 @@ def _is_real_national_park(tags):
     river, whatever boundary happens to be drawn along it).
     """
     designation = tags.get("designation")
-    if designation == "national_park" or tags.get("protect_class") == "2":
-        return True
     if designation:
-        return False   # it states what it is, and it is not a national park
+        # Checked FIRST, and exactly: designation is the authoritative
+        # statement of what a protected area is. Values can be multi-valued
+        # ("common;site_of_special_scientific_interest;national_nature_reserve"),
+        # which is not a national park either, so compare rather than search.
+        return designation == "national_park"
     if tags.get("waterway"):
         return False
-    return True
+    if tags.get("leisure") in ("nature_reserve", "park"):
+        return False   # a country park or reserve, whatever boundary says
+    # Plain boundary=national_park with nothing contradicting it. This is how
+    # Scotland and South Africa map their parks.
+    return tags.get("boundary") == "national_park"
 
 
 def categorise(tags):
