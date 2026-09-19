@@ -736,6 +736,19 @@
     animation:hotel-spin .7s linear infinite}
   @keyframes hotel-spin{to{transform:rotate(360deg)}}
   @media (prefers-reduced-motion:reduce){.hotel-status .spin{animation:none}}
+  /* GOLF-145: "add this hotel to a day" popup on an ambient hotel pin.
+     Narrower than the course popup (.leaflet-popup-content is forced to
+     300px for those), so it overrides the width for this one case only. */
+  .leaflet-popup-content:has(.hotel-pop){width:auto !important;margin:12px 14px}
+  .hotel-pop{display:flex;flex-direction:column;gap:var(--sp-2);min-width:184px}
+  .hotel-pop-name{font-family:var(--font-display);font-weight:600;font-size:15px;line-height:1.2}
+  .hotel-pop-cat{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--stone);margin-top:-4px}
+  .hotel-pop-note{margin:0;font-size:12.5px;color:var(--stone);line-height:1.45}
+  .hotel-pop-row{display:flex;align-items:center;gap:var(--sp-2);font-size:12.5px;color:var(--stone)}
+  .hotel-pop-select{flex:1;min-width:0;font:inherit;font-size:12.5px;color:var(--ink);
+    padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  .hotel-pop-add{width:100%}
   .leaflet-container{font-family:var(--font-sans)}
   .leaflet-popup-content-wrapper{border-radius:12px;box-shadow:var(--shadow-lg)}
   .leaflet-popup-content{margin:14px 16px;width:300px !important}

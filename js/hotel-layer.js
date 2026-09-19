@@ -132,14 +132,67 @@ function hotelLayerIcon(tint){
     iconSize:[size,h],iconAnchor:[size*0.5,h],popupAnchor:[0,-h+2],tooltipAnchor:[0,-h+2]});
 }
 
+/* ── GOLF-145: popup that turns a browsed pin into an itinerary stay.
+
+   GOLF-96's picker starts from a day ("add a stay" on day N, then choose
+   from nearby hotels), so its dayId is implied by where you clicked. This
+   layer is the other direction — you're browsing the map and find somewhere
+   you like — so the day has to be chosen here. Hence the <select>: it's the
+   one fact the pin itself can't supply, and guessing it (first empty day,
+   say) silently attaches stays to the wrong day when days are filled out of
+   order. Nights default to 1 and price is left blank; both are editable on
+   the itinerary row afterward via tripDayUpdateStop(), so the popup stays a
+   one-click action rather than a second form. */
+function tbHotelPopupHTML(idx){
+  const p=_hotelLayerLastPois[idx];
+  if(!p)return'';
+  const head=`<div class="hotel-pop-name">🏨 ${esc(p.name)}</div>`+
+    (p.category?`<div class="hotel-pop-cat">${esc(p.category)}</div>`:'');
+  if(tbHotelInTrip(p))
+    return `<div class="hotel-pop">${head}<p class="hotel-pop-note">✓ Already in your trip</p></div>`;
+  if(!tripDays.length)
+    return `<div class="hotel-pop">${head}<p class="hotel-pop-note">Add a day to your trip first, then pick a hotel.</p></div>`;
+  const opts=tripDays.map((d,i)=>{
+    const place=d.place?' — '+esc(d.place):'';
+    return `<option value="${d.id}">Day ${i+1}${place}</option>`;
+  }).join('');
+  return `<div class="hotel-pop">${head}
+    <label class="hotel-pop-row"><span>Add to</span>
+      <select id="hotel-pop-day" class="hotel-pop-select">${opts}</select></label>
+    <button type="button" class="tb-btn is-primary is-sm hotel-pop-add"
+      onclick="tbHotelLayerAddToDay(${idx})">＋ Add to trip</button></div>`;
+}
+
+/* Commits straight to the day rather than prefilling tbAddStop the way
+   tbPickHotelCandidate() does: the popup has already collected the only
+   thing that form would ask for that the pin doesn't know (the day), so a
+   confirm step here would be a second click for no extra information. The
+   pin flipping white->yellow via render()'s tbHotelLayerRefreshTint() hook
+   is the confirmation. */
+function tbHotelLayerAddToDay(idx){
+  const p=_hotelLayerLastPois[idx];
+  if(!p)return;
+  const sel=document.getElementById('hotel-pop-day');
+  const dayId=sel?Number(sel.value):NaN;
+  if(!isFinite(dayId))return;
+  if(!tripDayAddStop(dayId,'hotel',p.name,null,p.lat,p.lng,1))return;
+  map.closePopup();
+  render(); // repaints the itinerary and re-tints this pin yellow
+}
+
 function tbHotelLayerRender(pois){
   _hotelLayerLastPois=pois;
   hotelLayerGroup.clearLayers();
-  pois.forEach(p=>{
+  pois.forEach((p,idx)=>{
     // p.name/p.category come straight from Overpass — escape both, same
     // as tbDrawHeritage()/tbDrawHotelCandidates() already do.
     L.marker([p.lat,p.lng],{icon:hotelLayerIcon(tbHotelInTrip(p))})
       .bindTooltip(p.category?`🏨 ${esc(p.name)} — ${esc(p.category)}`:`🏨 ${esc(p.name)}`,{direction:'top'})
+      /* Built on open, not up front: the day list and the already-in-trip
+         state both go stale as soon as the trip changes, and rebuilding 37
+         popups on every render would be wasted work when at most one is
+         ever on screen. */
+      .bindPopup(()=>tbHotelPopupHTML(idx),{minWidth:210,closeButton:true})
       .addTo(hotelLayerGroup);
   });
   if(!map.hasLayer(hotelLayerGroup))hotelLayerGroup.addTo(map);
