@@ -121,7 +121,25 @@ OPEN_TAGS = [
     '["craft"="distillery"]', '["craft"="brewery"]',
     '["craft"="winery"]', '["industrial"="distillery"]',
     # nature
-    '["boundary"="national_park"]', '["leisure"="nature_reserve"]',
+    #
+    # boundary=national_park alone finds almost nothing in the UK. The first
+    # version queried only that and came back with zero national parks in
+    # England and Wales, and Loch Lomond but not the Cairngorms in Scotland —
+    # which reads like "OSM is missing the Lake District" and is really a
+    # tagging-convention mismatch. UK parks are mapped as
+    # boundary=protected_area carrying designation=national_park, and the 31
+    # boundary=national_park objects in England are mostly unnamed fragments.
+    # Both spellings are queried; dedupe_pois.py collapses parks that carry
+    # both (National park has a 25km merge radius for exactly this reason).
+    #
+    # The protected_area clauses are deliberately qualified by designation or
+    # protect_class. Bare boundary=protected_area would pull in every SSSI and
+    # local nature reserve in Britain — tens of thousands of records that are
+    # legal designations, not places you would drive to.
+    '["boundary"="national_park"]',
+    '["boundary"="protected_area"]["designation"="national_park"]',
+    '["boundary"="protected_area"]["protect_class"="2"]',
+    '["leisure"="nature_reserve"]',
     # waterfalls are waterway=waterfall, NOT natural=waterfall. The first
     # version queried the latter and collected exactly one waterfall from
     # England, Scotland and Wales combined — which is the kind of wrong that
@@ -173,7 +191,12 @@ CATEGORY_BASE = {
 # First match wins, so order matters: a castle that is also an attraction
 # should read as a castle.
 CATEGORY_RULES = [
+    # All three spellings of "this is a national park" are tested first, and
+    # ahead of leisure=nature_reserve: a park boundary often carries the
+    # reserve tag too, and the first matching rule wins.
     (("boundary", "national_park"), "National park"),
+    (("designation", "national_park"), "National park"),
+    (("protect_class", "2"), "National park"),
     (("craft", "distillery"), "Distillery"),
     (("industrial", "distillery"), "Distillery"),
     (("craft", "winery"), "Winery"),
