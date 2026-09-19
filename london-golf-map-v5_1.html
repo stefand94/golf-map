@@ -718,6 +718,24 @@
   .empty{padding:28px 10px;color:var(--stone);font-size:13px;line-height:1.6}
 
   #map{height:100%;width:100%;background:var(--paper)}
+  /* GOLF-144: status pill for the ambient hotel layer (js/hotel-layer.js).
+     The layer can legitimately show nothing — zoomed out past its min zoom,
+     an Overpass round-trip still in flight, or an upstream failure — and
+     silence for any of those reads as "the toggle is broken". Sits above
+     Leaflet's own panes (z-index 400) but below its controls (z-index 800),
+     so it never covers the zoom buttons. */
+  .hotel-status{position:absolute;top:12px;left:50%;transform:translateX(-50%);
+    z-index:450;display:flex;align-items:center;gap:var(--sp-2);
+    background:#fff;border:1px solid var(--line);border-radius:999px;
+    padding:7px 14px;font-size:12.5px;color:var(--ink);
+    box-shadow:var(--shadow-md);pointer-events:none;max-width:calc(100% - 24px)}
+  .hotel-status[hidden]{display:none}
+  .hotel-status.is-error{border-color:#E5C7B5;color:#9A3412;background:#FBEEE7}
+  .hotel-status .spin{width:12px;height:12px;flex:none;border-radius:50%;
+    border:2px solid var(--line);border-top-color:var(--accent);
+    animation:hotel-spin .7s linear infinite}
+  @keyframes hotel-spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.hotel-status .spin{animation:none}}
   .leaflet-container{font-family:var(--font-sans)}
   .leaflet-popup-content-wrapper{border-radius:12px;box-shadow:var(--shadow-lg)}
   .leaflet-popup-content{margin:14px 16px;width:300px !important}

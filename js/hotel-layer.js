@@ -47,16 +47,70 @@ let _hotelLayerTimer=null;
    up-to-date yellow/white circle the instant the trip changes, without
    spending another Overpass call just to recheck colours. */
 let _hotelLayerLastPois=[];
-/* Bumped on every toggle-off and every fetch kick-off; a fetch whose
-   token no longer matches when it resolves is stale (toggled off, or the
-   viewport moved again before this one returned) and its response is
-   dropped rather than drawn — covers the "switch off mid-fetch must not
-   render pins afterward" edge case from the handover doc. */
-let _hotelLayerToken=0;
+/* GOLF-144: monotonic sequence stamped on each fetch. Two guards use it:
+
+   _hotelLayerSeq       — id of the most recently *started* fetch.
+   _hotelLayerDrawnSeq  — id of the most recently *rendered* response.
+
+   The original GOLF-142 rule was strict equality (drop anything whose token
+   isn't the current one), which is correct but far too eager against a slow
+   upstream: measured live, an Overpass viewport query takes ~17s, so any pan
+   during those 17s threw the result away and restarted the wait. In practice
+   the race was never won and pins never appeared. Now a late response is
+   still drawn as long as (a) nothing newer has already been drawn, and
+   (b) the area it covers still overlaps what the user is looking at — see
+   tbHotelLayerFetch(). Ordering is preserved without discarding useful work.
+   The "toggled off mid-fetch must not render afterward" case from the
+   handover doc is covered explicitly by the tbHotelLayerOn check instead. */
+let _hotelLayerSeq=0;
+let _hotelLayerDrawnSeq=0;
+/* How many requests are currently in flight, so the spinner stays up while
+   any of them could still deliver, and only clears when none can. */
+let _hotelLayerInflight=0;
+
+/* Hard ceiling on a single Overpass round-trip. Above this we stop waiting
+   and say so rather than spinning forever — the upstream returned a 521 on
+   one of three live attempts during GOLF-144 triage, and a hung fetch is
+   indistinguishable from the silent failure this ticket exists to remove. */
+const HOTEL_LAYER_TIMEOUT_MS=25000;
 
 function tbHotelLayerClear(){
   hotelLayerGroup.clearLayers();
+  _hotelLayerLastPois=[];
   if(map.hasLayer(hotelLayerGroup))map.removeLayer(hotelLayerGroup);
+}
+
+/* ── GOLF-144: visible state for a layer that can legitimately draw nothing.
+
+   Every no-pins outcome below used to be silent, which is why "Show hotels"
+   read as dead: the button went active, and the map never changed whether
+   you were zoomed too far out, waiting on a 17-second query, or hitting an
+   upstream that was down. One pill, appended to the Leaflet container so it
+   tracks the map rather than the pane, says which of those is happening. */
+let _hotelStatusEl=null;
+function tbHotelStatusEl(){
+  if(_hotelStatusEl)return _hotelStatusEl;
+  _hotelStatusEl=document.createElement('div');
+  _hotelStatusEl.className='hotel-status';
+  _hotelStatusEl.id='hotel-status';
+  /* Announced politely: the pin count changing is a background update, not
+     something that should interrupt whatever a screen reader is reading. */
+  _hotelStatusEl.setAttribute('role','status');
+  _hotelStatusEl.setAttribute('aria-live','polite');
+  _hotelStatusEl.hidden=true;
+  map.getContainer().appendChild(_hotelStatusEl);
+  return _hotelStatusEl;
+}
+
+/* kind: 'loading' | 'info' | 'error' | null (null hides the pill). */
+function tbHotelLayerStatus(kind,text){
+  const el=tbHotelStatusEl();
+  if(!kind){el.hidden=true;el.textContent='';return;}
+  el.hidden=false;
+  el.classList.toggle('is-error',kind==='error');
+  // esc() the message even though every caller passes a literal — keeps the
+  // one innerHTML in this file safe if a future caller ever interpolates.
+  el.innerHTML=(kind==='loading'?'<span class="spin"></span>':'')+`<span>${esc(text)}</span>`;
 }
 
 /* Matches a viewport POI against the current trip's already-added stays.
@@ -101,29 +155,77 @@ function tbHotelLayerRefreshTint(){
 }
 
 function tbHotelLayerFetch(){
-  if(!tbHotelLayerOn||!ORS_PROXY_URL)return;
-  if(map.getZoom()<HOTEL_LAYER_MIN_ZOOM){tbHotelLayerClear();return;}
-  const b=map.getBounds();
-  const bbox=[b.getSouth(),b.getWest(),b.getNorth(),b.getEast()];
-  const token=++_hotelLayerToken;
+  if(!tbHotelLayerOn)return;
+  if(!ORS_PROXY_URL){tbHotelLayerStatus('error','Hotels unavailable');return;}
+  /* Below the min zoom, say so instead of clearing in silence. This is the
+     single most common way the layer looked broken: the app opens at zoom 5,
+     so switching hotels on from the default view did nothing at all and gave
+     no reason why. The threshold itself is unchanged (see HOTEL_LAYER_MIN_ZOOM) —
+     widening it would only make an already-slow Overpass query slower. */
+  if(map.getZoom()<HOTEL_LAYER_MIN_ZOOM){
+    tbHotelLayerClear();
+    tbHotelLayerStatus('info','Zoom in to see hotels');
+    return;
+  }
+  const reqBounds=map.getBounds();
+  const bbox=[reqBounds.getSouth(),reqBounds.getWest(),reqBounds.getNorth(),reqBounds.getEast()];
+  const seq=++_hotelLayerSeq;
+
+  _hotelLayerInflight++;
+  tbHotelLayerStatus('loading','Finding hotels…');
+
+  const ctl=new AbortController();
+  const timer=setTimeout(()=>ctl.abort(),HOTEL_LAYER_TIMEOUT_MS);
+
   fetch(ORS_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({mode:'hotelsViewport',bbox})})
+    body:JSON.stringify({mode:'hotelsViewport',bbox}),signal:ctl.signal})
     .then(r=>r.ok?r.json():Promise.reject(new Error('proxy error '+r.status)))
     .then(data=>{
-      if(token!==_hotelLayerToken)return; // stale: toggled off, or moved again meanwhile
-      if(!tbHotelLayerOn)return;
-      if(data&&Array.isArray(data.pois))tbHotelLayerRender(data.pois);
+      if(!tbHotelLayerOn)return;                 // switched off while in flight
+      if(seq<=_hotelLayerDrawnSeq)return;        // a newer response already drew
+      if(map.getZoom()<HOTEL_LAYER_MIN_ZOOM)return; // zoomed back out meanwhile
+      /* The GOLF-142 rule dropped this response the moment the viewport moved
+         at all. Against a ~17s upstream that discarded nearly every result.
+         Overlap is the question that actually matters: if any part of the area
+         we asked about is still on screen, these pins are worth drawing. */
+      if(!map.getBounds().intersects(reqBounds))return;
+      if(!data||!Array.isArray(data.pois))return;
+      _hotelLayerDrawnSeq=seq;
+      tbHotelLayerRender(data.pois);
+      tbHotelLayerStatus(data.pois.length?null:'info','No hotels found here');
     })
-    .catch(()=>{ /* silent — matches tbHeritageFor()/tbHotelsFor()'s no-retry, fail-quiet contract */ });
+    .catch(err=>{
+      /* Deliberately louder than tbHeritageFor()/tbHotelsFor()'s fail-quiet
+         contract: those decorate a map the user is already looking at, whereas
+         this layer's entire output is the pins, so swallowing the error leaves
+         nothing on screen and no explanation. Still no retry — Overpass's
+         fair-use limits (CLAUDE.md/DEC-016) make a retry storm the wrong
+         response to an upstream that is already struggling. */
+      if(!tbHotelLayerOn||seq<=_hotelLayerDrawnSeq)return;
+      if(_hotelLayerInflight>1)return; // another attempt may still succeed
+      tbHotelLayerStatus('error',err&&err.name==='AbortError'
+        ?'Hotels are taking too long — try again'
+        :'Couldn’t load hotels right now');
+    })
+    .finally(()=>{
+      clearTimeout(timer);
+      _hotelLayerInflight--;
+      // Clear a lingering spinner only once nothing else could still resolve.
+      if(_hotelLayerInflight===0&&_hotelStatusEl&&!_hotelStatusEl.hidden
+         &&_hotelStatusEl.querySelector('.spin'))tbHotelLayerStatus(null);
+    });
 }
 
 function tbToggleHotelLayer(){
   tbHotelLayerOn=!tbHotelLayerOn;
   if(!tbHotelLayerOn){
-    _hotelLayerToken++; // invalidate any in-flight fetch so it can't render after the fact
     clearTimeout(_hotelLayerTimer);
     tbHotelLayerClear();
+    tbHotelLayerStatus(null);
+    /* Any fetch still in flight sees tbHotelLayerOn===false when it resolves
+       and drops itself, so nothing can draw after the layer is switched off. */
   }else{
+    _hotelLayerDrawnSeq=0; // a fresh switch-on should accept the next response
     tbHotelLayerFetch();
   }
 }
