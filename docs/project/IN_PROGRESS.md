@@ -4,6 +4,37 @@ _Features a coding agent is actively implementing. Move here from BACKLOG.md
 when work starts; move to "Recently completed" in BACKLOG.md when done and
 verified._
 
+## GOLF-148 — Notable POIs along a route
+
+**Status:** ACTIVE — stage 1 of 3 (dataset) · **Priority:** P1
+
+Full scope, rationale and the ranking design live in the GOLF-148 row in
+`BACKLOG.md`; this is only the "where did it get to" note.
+
+**Three stages. Only the first is underway.**
+
+1. **Dataset (in progress).** `scripts/fetch_pois.py` → `scripts/output/pois_raw.json`.
+   Fetch-once → JSON intermediate, per CLAUDE.md; it never touches `data/*.js`.
+   Last observed 2026-09-19 18:30: England/notable complete at **7,714 POIs
+   kept**, mid-England/open, backing off through Overpass 429/504s. Five
+   regions still to go (Scotland, Wales, Ireland, N. Ireland, South Africa).
+   **`pois_raw.json` is gitignored** — it lives only on the owner's machine.
+   Re-running the script from scratch is safe and is the right move if the
+   run was interrupted: per-region dumps, exponential backoff, a two-pass
+   retry over failed tiles, and a loud `HOLES` report + exit 2 if any tile
+   never recovers. It is slow on purpose (Overpass fair use, DEC-016).
+2. **Merge (not started).** `pois_raw.json` → a lazy-loaded `data/pois-*.js`,
+   so first paint doesn't grow.
+3. **Runtime + UI (not started).** Point-to-polyline distance with a bbox
+   prefilter, top-5 by score, a **"Show more POIs"** button for the deeper
+   tier, and clickable pins that add to a trip day reusing GOLF-145's popup
+   pattern. **The owner has already noticed the button is missing — it was
+   never built, and that is expected at this stage, not a regression.**
+
+Two product decisions are still open and should be settled before stage 3:
+**per-leg vs whole-trip suggestion scoping**, and **how many POIs the "show
+more" tier reveals**.
+
 ## GOLF-98 — Green-fee data entry, `feeV2` re-research programme
 
 **Status:** ACTIVE (v2 code + batch 1 shipped; batches 2+ = data) · **Priority:** P2
