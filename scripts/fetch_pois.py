@@ -220,6 +220,78 @@ def categorise(tags):
     return "Attraction"
 
 
+# Tags kept on each record for scoring. Overpass already returns all of them
+# (the queries end `out center tags`), so this is free.
+SCORING_TAGS = (
+    "designation", "protect_class", "protection_title", "heritage",
+    "listed_status", "blue_flag", "website", "whc:criteria",
+)
+
+# How much each designation is worth on top of the category baseline.
+#
+# WHY THIS EXISTS: notability came only from Wikidata sitelinks, which works
+# for a castle and not at all for a nature reserve — 20% of reserves have a
+# Wikidata id, 9% of beaches, 7% of breweries. Everything else scored exactly
+# its category baseline, so ~30% of the dataset was tied with no tiebreaker
+# and "the 5 most notable things" would have returned five alphabetically
+# first reserves. These tags are the signal that distinguishes them, and OSM
+# already carries it: protect_class is an IUCN severity scale, and the UK
+# designations say plainly whether something is nationally or locally
+# important.
+PROTECT_CLASS_BONUS = {
+    "1a": 25, "1b": 25, "2": 25, "3": 12, "4": 8, "5": 10, "6": 5,
+    "7": 2,  # UK Local Nature Reserve — the common case, deliberately low
+}
+DESIGNATION_BONUS = {
+    "world_heritage_site": 40,
+    "national_park": 25,
+    "national_nature_reserve": 18,
+    "area_of_outstanding_natural_beauty": 12,
+    "ramsar": 10,
+    "site_of_special_scientific_interest": 8,
+    "special_area_of_conservation": 8,
+    "special_protection_area": 8,
+    "local_nature_reserve": 2,
+}
+HERITAGE_BONUS = {"1": 20, "2": 12, "3": 6, "4": 3, "yes": 4}
+LISTED_BONUS = {"grade i": 15, "grade ii*": 8, "grade ii": 3}
+
+
+def tag_bonus(tags):
+    """Notability from designation tags, for records Wikidata can't rank."""
+    if not tags:
+        return 0
+    # Protection signals are combined with max(), not sum(). `designation`,
+    # `protection_title` and `protect_class` are three ways of stating the
+    # SAME fact — a national park routinely carries designation=national_park
+    # and protect_class=2 — so summing them scores a place for how thoroughly
+    # it happens to be tagged rather than for how protected it is, and rewards
+    # mapping completeness over significance. The strongest designation wins;
+    # genuinely independent axes (heritage listing, blue flag) still add.
+    protection = 0
+    raw = (tags.get("designation") or "").lower()
+    raw = raw + ";" + (tags.get("protection_title") or "").lower()
+    for token in re.split(r"[;,]", raw):
+        key = token.strip().replace(" ", "_")
+        if key in DESIGNATION_BONUS:
+            protection = max(protection, DESIGNATION_BONUS[key])
+    protection = max(
+        protection,
+        PROTECT_CLASS_BONUS.get(str(tags.get("protect_class", "")).strip().lower(), 0),
+    )
+    bonus = protection
+    bonus += HERITAGE_BONUS.get(str(tags.get("heritage", "")).strip().lower(), 0)
+    bonus += LISTED_BONUS.get(str(tags.get("listed_status", "")).strip().lower(), 0)
+    if str(tags.get("blue_flag", "")).lower() == "yes":
+        bonus += 12
+    # Weak signal, deliberately worth almost nothing on its own: someone
+    # bothered to add a website, so the place is maintained rather than a
+    # bare polygon. Only ever breaks a tie between two otherwise equal records.
+    if tags.get("website"):
+        bonus += 1
+    return bonus
+
+
 def check_tag_coverage():
     """Every queried tag needs a CATEGORY_RULE and every category a baseline.
 
@@ -361,6 +433,12 @@ def collect(data, group, region, found):
             # tag fix and merged back over the previous run without redoing
             # the groups that were already correct.
             "group": group["name"],
+            # Designation/protection tags, kept for scoring. `out center tags`
+            # already returns every tag on the object, so these cost nothing
+            # extra to collect — the first version downloaded them and threw
+            # them away, which is why 30% of records ended up with no
+            # tiebreaker at all. See tag_bonus().
+            "tags": {k: tags[k] for k in SCORING_TAGS if k in tags},
         }
         kept += 1
     return kept
@@ -472,7 +550,11 @@ def main():
     for p in pois:
         sitelinks = counts.get(p.get("wikidata") or "", 0)
         p["sitelinks"] = sitelinks
-        p["score"] = CATEGORY_BASE.get(p["category"], 5) + sitelinks
+        # Three independent parts: what kind of thing it is, how widely it is
+        # written about, and how it is formally designated. The third is what
+        # ranks the ~30% of records Wikidata has never heard of.
+        p["bonus"] = tag_bonus(p.get("tags"))
+        p["score"] = CATEGORY_BASE.get(p["category"], 5) + sitelinks + p["bonus"]
     pois.sort(key=lambda p: (-p["score"], p["name"]))
 
     _dump(args.out, pois)
