@@ -46,6 +46,7 @@ Usage:
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import urllib.error
@@ -121,7 +122,12 @@ OPEN_TAGS = [
     '["craft"="winery"]', '["industrial"="distillery"]',
     # nature
     '["boundary"="national_park"]', '["leisure"="nature_reserve"]',
-    '["natural"="waterfall"]', '["natural"="cave_entrance"]',
+    # waterfalls are waterway=waterfall, NOT natural=waterfall. The first
+    # version queried the latter and collected exactly one waterfall from
+    # England, Scotland and Wales combined — which is the kind of wrong that
+    # looks like working code, because a query for a nonexistent tag returns
+    # a valid empty result rather than an error.
+    '["waterway"="waterfall"]', '["natural"="cave_entrance"]',
     '["natural"="arch"]', '["natural"="hot_spring"]',
     # coast
     '["natural"="beach"]', '["man_made"="lighthouse"]',
@@ -147,6 +153,10 @@ CATEGORY_BASE = {
     "Museum": 15,
     "Lighthouse": 15,
     "Cathedral": 15,
+    "Hot spring": 15,
+    "Arch": 14,
+    "Aquarium": 12,
+    "Church": 10,
     "Historic site": 12,
     "Ruins": 12,
     "Gardens": 12,
@@ -176,17 +186,21 @@ CATEGORY_RULES = [
     (("historic", "battlefield"), "Historic site"),
     (("historic", "monument"), "Monument"),
     (("historic", "tower"), "Historic site"),
-    (("historic", "church"), "Cathedral"),
+    # building=cathedral must be tested BEFORE historic=church: a cathedral
+    # usually carries both, and the first matching rule wins.
     (("building", "cathedral"), "Cathedral"),
+    (("historic", "church"), "Church"),
     (("leisure", "nature_reserve"), "Nature reserve"),
-    (("natural", "waterfall"), "Waterfall"),
+    (("waterway", "waterfall"), "Waterfall"),
     (("natural", "cave_entrance"), "Cave"),
+    (("natural", "arch"), "Arch"),
+    (("natural", "hot_spring"), "Hot spring"),
     (("natural", "beach"), "Beach"),
     (("man_made", "lighthouse"), "Lighthouse"),
     (("tourism", "museum"), "Museum"),
     (("tourism", "gallery"), "Gallery"),
     (("tourism", "zoo"), "Zoo"),
-    (("tourism", "aquarium"), "Zoo"),
+    (("tourism", "aquarium"), "Aquarium"),
     (("tourism", "theme_park"), "Attraction"),
     (("tourism", "viewpoint"), "Viewpoint"),
     (("tourism", "artwork"), "Artwork"),
@@ -204,6 +218,35 @@ def categorise(tags):
     if "historic" in tags:
         return "Historic site"
     return "Attraction"
+
+
+def check_tag_coverage():
+    """Every queried tag needs a CATEGORY_RULE and every category a baseline.
+
+    Without this, a queried tag with no rule falls through categorise() to
+    "Attraction" and scores 8 — so the POIs are silently mis-labelled and
+    under-ranked instead of missing, which is far harder to notice than an
+    empty category. natural=arch and natural=hot_spring shipped that way in
+    the first version: both were queried, neither had a rule, and both
+    disappeared into the Attraction pile where nothing looked wrong.
+    """
+    rule_keys = {kv for kv, _ in CATEGORY_RULES}
+    problems = []
+    for group in GROUPS:
+        for tag in group["tags"]:
+            pairs = re.findall(r'\["([^"]+)"="([^"]+)"\]', tag)
+            if not pairs:
+                problems.append(f"unparseable tag filter: {tag}")
+            elif not any(p in rule_keys for p in pairs):
+                problems.append(f"{tag} has no CATEGORY_RULES entry")
+    for _, label in CATEGORY_RULES:
+        if label not in CATEGORY_BASE:
+            problems.append(f'category "{label}" has no CATEGORY_BASE score')
+    if problems:
+        raise SystemExit(
+            "fetch_pois.py is misconfigured:\n  "
+            + "\n  ".join(problems)
+        )
 
 
 # overpass-api.de starts returning 429 well before this script runs out of
@@ -313,6 +356,11 @@ def collect(data, group, region, found):
             "region": region,
             "wikidata": wikidata,
             "osm": key,
+            # Which GROUPS entry produced this record. Not shipped to the
+            # browser — it exists so a single group can be re-fetched after a
+            # tag fix and merged back over the previous run without redoing
+            # the groups that were already correct.
+            "group": group["name"],
         }
         kept += 1
     return kept
@@ -406,6 +454,7 @@ def main():
                          "category baseline alone)")
     ap.add_argument("--out", default=OUT)
     args = ap.parse_args()
+    check_tag_coverage()
 
     regions = args.region or list(REGIONS)
     pois = []
