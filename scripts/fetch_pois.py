@@ -199,9 +199,17 @@ CATEGORY_BASE = {
 # First match wins, so order matters: a castle that is also an attraction
 # should read as a castle.
 CATEGORY_RULES = [
-    # All three spellings of "this is a national park" are tested first, and
+    # Protected landscapes that are NOT national parks are matched first,
+    # because in Northern Ireland they are routinely mapped with
+    # boundary=national_park and would otherwise be scored as parks. They are
+    # still worth a detour, so they land as Nature reserve rather than being
+    # dropped; tag_bonus() adds the AONB designation bonus on top.
+    (("designation", "area_of_outstanding_natural_beauty"), "Nature reserve"),
+    (("designation", "national_scenic_area"), "Nature reserve"),
+    # All three spellings of "this is a national park" are tested next, and
     # ahead of leisure=nature_reserve: a park boundary often carries the
-    # reserve tag too, and the first matching rule wins.
+    # reserve tag too, and the first matching rule wins. Each is additionally
+    # checked by _is_real_national_park().
     (("boundary", "national_park"), "National park"),
     (("designation", "national_park"), "National park"),
     (("protect_class", "2"), "National park"),
@@ -242,9 +250,35 @@ CATEGORY_RULES = [
 ]
 
 
+def _is_real_national_park(tags):
+    """Does this object claiming boundary=national_park actually look like one?
+
+    boundary=national_park is applied loosely, and Northern Ireland is the
+    worst case: a first run returned 159 "national parks", of which 149 were
+    NI rivers and AONBs — "Blackstaff River" and thirty boundary fragments of
+    "Strangford AONB". With the National park baseline at 45 plus a protection
+    bonus, a river would have outranked Edinburgh Castle.
+
+    So the category needs positive evidence rather than one loose tag:
+    designation or protect_class confirming it, no *contradicting* designation
+    (an AONB says plainly what it is), and no waterway tag (a river is a
+    river, whatever boundary happens to be drawn along it).
+    """
+    designation = tags.get("designation")
+    if designation == "national_park" or tags.get("protect_class") == "2":
+        return True
+    if designation:
+        return False   # it states what it is, and it is not a national park
+    if tags.get("waterway"):
+        return False
+    return True
+
+
 def categorise(tags):
     for (k, v), label in CATEGORY_RULES:
         if tags.get(k) == v:
+            if label == "National park" and not _is_real_national_park(tags):
+                continue   # keep looking; nature_reserve often matches next
             return label
     if "historic" in tags:
         return "Historic site"
