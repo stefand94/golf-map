@@ -656,11 +656,33 @@ def fetch_region(region, spec, only_groups=None):
     return list(found.values())
 
 
+WIKIDATA_BATCH_PAUSE_S = 1.0
+WIKIDATA_ATTEMPTS = 5
+# A batch that never succeeds scores its 50 ids 0, which is indistinguishable
+# from "nothing links to this place". Past this share of the dataset the
+# ranking is no longer measuring notability, so the run says so instead of
+# writing a file that looks fine.
+WIKIDATA_MAX_FAILED_SHARE = 0.02
+
+
+class WikidataUnresolved(RuntimeError):
+    """Too much of the notability pass failed for the scores to mean anything."""
+
+
 def add_sitelinks(pois):
-    """Fill in Wikidata sitelink counts, 50 ids per API call."""
+    """Fill in Wikidata sitelink counts, 50 ids per API call.
+
+    Sitelinks ARE the ranking — a batch scored 0 because the API said "slow
+    down" sorts a cathedral below a car park. So 429 is retried with backoff
+    (honouring Retry-After) rather than swallowed, and a run that still could
+    not resolve a meaningful share of its ids raises instead of returning
+    quietly. One earlier run lost 316 of 366 batches to 429 and reported
+    nothing worse than a few printed lines.
+    """
     ids = sorted({p["wikidata"] for p in pois if p.get("wikidata")})
     print(f"\nResolving notability for {len(ids)} Wikidata ids…", flush=True)
     counts = {}
+    failed_ids = 0
     for i in range(0, len(ids), 50):
         batch = ids[i:i + 50]
         params = urllib.parse.urlencode({
@@ -669,20 +691,51 @@ def add_sitelinks(pois):
             "props": "sitelinks",
             "format": "json",
         })
-        try:
-            req = urllib.request.Request(
-                f"{WIKIDATA_API}?{params}", headers={"User-Agent": UA}
-            )
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                entities = json.loads(resp.read()).get("entities", {})
-            for qid, ent in entities.items():
-                counts[qid] = len(ent.get("sitelinks") or {})
-        except Exception as exc:  # noqa: BLE001
-            print(f"  batch {i//50}: failed ({exc}) — scored as 0",
-                  file=sys.stderr, flush=True)
+        for attempt in range(WIKIDATA_ATTEMPTS):
+            try:
+                req = urllib.request.Request(
+                    f"{WIKIDATA_API}?{params}", headers={"User-Agent": UA}
+                )
+                with urllib.request.urlopen(req, timeout=120) as resp:
+                    entities = json.loads(resp.read()).get("entities", {})
+                for qid, ent in entities.items():
+                    # A deleted or redirected id comes back without sitelinks;
+                    # 0 is the honest answer there.
+                    counts[qid] = len(ent.get("sitelinks") or {})
+                break
+            except Exception as exc:  # noqa: BLE001
+                last = attempt == WIKIDATA_ATTEMPTS - 1
+                retry_after = 0
+                if isinstance(exc, urllib.error.HTTPError):
+                    try:
+                        retry_after = int(exc.headers.get("Retry-After") or 0)
+                    except (TypeError, ValueError):
+                        retry_after = 0
+                if last:
+                    failed_ids += len(batch)
+                    print(f"  batch {i//50}: failed ({exc}) after "
+                          f"{WIKIDATA_ATTEMPTS} attempts — {len(batch)} ids "
+                          f"unscored", file=sys.stderr, flush=True)
+                    break
+                wait = max(retry_after, WIKIDATA_BATCH_PAUSE_S * (2 ** attempt))
+                print(f"  batch {i//50}: {exc} — waiting {wait:g}s "
+                      f"(attempt {attempt + 2}/{WIKIDATA_ATTEMPTS})",
+                      file=sys.stderr, flush=True)
+                time.sleep(wait)
         if (i // 50) % 10 == 0:
             print(f"  …{min(i + 50, len(ids))}/{len(ids)}", flush=True)
-        time.sleep(0.3)
+        time.sleep(WIKIDATA_BATCH_PAUSE_S)
+
+    if ids and failed_ids / len(ids) > WIKIDATA_MAX_FAILED_SHARE:
+        raise WikidataUnresolved(
+            f"{failed_ids} of {len(ids)} Wikidata ids ({failed_ids/len(ids):.0%}) "
+            "could not be resolved, so their notability scores would be 0 for "
+            "the wrong reason. Re-run the scoring pass "
+            "(scripts/score_pois.py) rather than shipping this ranking."
+        )
+    if failed_ids:
+        print(f"  {failed_ids} of {len(ids)} ids unresolved (scored 0).",
+              flush=True)
     return counts
 
 
