@@ -206,19 +206,53 @@ def categorise(tags):
     return "Attraction"
 
 
+# overpass-api.de starts returning 429 well before this script runs out of
+# work, and the first version treated a 429 as "this mirror is dead, try the
+# other one, then give up on the tile" — which silently dropped whole tiles
+# from the dataset. A rate limit is a "wait", not a failure: back off and come
+# back. Holes in a pre-baked dataset are invisible at runtime (the map just
+# quietly has no castles in one county), so losing a tile must be loud and
+# retried rather than shrugged off.
+MAX_ATTEMPTS = 5
+BACKOFF_BASE_S = 20
+# Pause between successful tiles. 2s provoked sustained 429s from
+# overpass-api.de; this run is a one-off and correctness beats speed.
+TILE_PAUSE_S = 6
+# Tiles that failed every attempt of both passes, reported loudly at the end
+# so a holey dataset is never mistaken for a complete one.
+HOLES = []
+
+
 def overpass(query, attempt_label):
-    """POST a query to each mirror in turn; return parsed JSON or None."""
+    """POST a query to each mirror, retrying with backoff. None if all fail."""
     body = urllib.parse.urlencode({"data": query}).encode()
-    for url in OVERPASS_URLS:
-        try:
-            req = urllib.request.Request(
-                url, data=body, headers={"User-Agent": UA}
-            )
-            with urllib.request.urlopen(req, timeout=900) as resp:
-                return json.loads(resp.read())
-        except Exception as exc:  # noqa: BLE001 - report and try next mirror
-            print(f"    {attempt_label}: {url.split('/')[2]} failed ({exc})",
-                  file=sys.stderr, flush=True)
+    for attempt in range(MAX_ATTEMPTS):
+        for url in OVERPASS_URLS:
+            host = url.split("/")[2]
+            try:
+                req = urllib.request.Request(
+                    url, data=body, headers={"User-Agent": UA}
+                )
+                with urllib.request.urlopen(req, timeout=600) as resp:
+                    return json.loads(resp.read())
+            except urllib.error.HTTPError as exc:
+                retryable = exc.code in (429, 502, 503, 504)
+                print(f"    {attempt_label}: {host} HTTP {exc.code}"
+                      f"{' (will retry)' if retryable else ''}",
+                      file=sys.stderr, flush=True)
+                if not retryable:
+                    continue
+            except Exception as exc:  # noqa: BLE001
+                print(f"    {attempt_label}: {host} failed ({exc})",
+                      file=sys.stderr, flush=True)
+        # Both mirrors refused this round — wait longer each time. 429 in
+        # particular means "you are asking too fast", so the pause has to be
+        # substantial rather than a token sleep.
+        if attempt < MAX_ATTEMPTS - 1:
+            wait = BACKOFF_BASE_S * (2 ** attempt)
+            print(f"    {attempt_label}: backing off {wait}s "
+                  f"(attempt {attempt + 2}/{MAX_ATTEMPTS})", flush=True)
+            time.sleep(wait)
     return None
 
 
@@ -290,21 +324,37 @@ def fetch_region(region, spec, only_groups=None):
     for group in GROUPS:
         if only_groups and group["name"] not in only_groups:
             continue
-        kept = failed = 0
-        for i, tile in enumerate(region_tiles, 1):
-            label = f"{region}/{group['name']} tile {i}/{len(region_tiles)}"
-            data = overpass(build_query(spec["area"], group, tile), label)
-            if data is None:
-                failed += 1
-                print(f"    !! {label} FAILED on every mirror",
-                      file=sys.stderr, flush=True)
-                continue
-            kept += collect(data, group, region, found)
-            # Courtesy pause — a free shared service, and DEC-016's fair-use
-            # constraint applies to this script as much as to the Worker.
-            time.sleep(2)
-        note = f" ({failed} tiles failed)" if failed else ""
-        print(f"  [{region}] {group['name']:<10} kept {kept:>5}{note}", flush=True)
+        kept = 0
+        pending = list(enumerate(region_tiles, 1))
+        # Two passes: anything still failing after the in-request backoff gets
+        # one more go at the end, by which point the rate limit has usually
+        # cleared. A tile that fails both passes is reported as a hole rather
+        # than silently missing.
+        for final_pass in (False, True):
+            if not pending:
+                break
+            if final_pass:
+                print(f"  [{region}] retrying {len(pending)} failed tile(s) "
+                      f"after a pause…", flush=True)
+                time.sleep(60)
+            still_failing = []
+            for i, tile in pending:
+                label = f"{region}/{group['name']} tile {i}/{len(region_tiles)}"
+                data = overpass(build_query(spec["area"], group, tile), label)
+                if data is None:
+                    still_failing.append((i, tile))
+                    continue
+                kept += collect(data, group, region, found)
+                # Courtesy pause — a free shared service, and DEC-016's
+                # fair-use constraint applies here as much as to the Worker.
+                time.sleep(TILE_PAUSE_S)
+            pending = still_failing
+        if pending:
+            holes = ", ".join(str(i) for i, _ in pending)
+            HOLES.append(f"{region}/{group['name']} tiles {holes}")
+            print(f"    !! {region}/{group['name']}: {len(pending)} tile(s) "
+                  f"UNRECOVERED ({holes})", file=sys.stderr, flush=True)
+        print(f"  [{region}] {group['name']:<10} kept {kept:>5}", flush=True)
     return list(found.values())
 
 
@@ -391,6 +441,15 @@ def main():
     print("\nTop 15 by score:")
     for p in pois[:15]:
         print(f"  {p['score']:>4}  {p['category']:<14}{p['name']}")
+
+    if HOLES:
+        print("\n!! INCOMPLETE — these tiles never succeeded, so the dataset "
+              "has gaps in those areas:", file=sys.stderr)
+        for h in HOLES:
+            print(f"   {h}", file=sys.stderr)
+        print("   Re-run with --region/--group to fill them before merging.",
+              file=sys.stderr)
+        return 2
     return 0
 
 
