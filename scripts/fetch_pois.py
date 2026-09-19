@@ -449,6 +449,21 @@ _DEAD_HOSTS = {}
 REFUSALS_BEFORE_DEAD = 3
 
 
+def _socket_cause(exc):
+    """Unwrap urllib's URLError to the socket error underneath it.
+
+    urlopen does not let a ConnectionRefusedError through: it wraps it in a
+    URLError and hangs the original off .reason. URLError subclasses OSError
+    but not ConnectionRefusedError, so testing the exception urlopen raises
+    tells you nothing about whether the connection was refused.
+    """
+    for _ in range(5):  # .reason can nest; don't trust it not to loop
+        if not isinstance(exc, urllib.error.URLError):
+            break
+        exc = exc.reason
+    return exc
+
+
 def _note_refusal(host, exc):
     """Track connection-level refusals and retire a host that is blocking us.
 
@@ -465,7 +480,8 @@ def _note_refusal(host, exc):
     run makes it fail fast and fall through to a mirror immediately, and it
     stops us knocking on a door that is deliberately shut.
     """
-    if not isinstance(exc, (ConnectionRefusedError, ConnectionResetError)):
+    if not isinstance(_socket_cause(exc),
+                      (ConnectionRefusedError, ConnectionResetError)):
         _DEAD_HOSTS.pop(host, None)  # it answered, so any streak is over
         return False
     n = _DEAD_HOSTS.get(host, 0) + 1
