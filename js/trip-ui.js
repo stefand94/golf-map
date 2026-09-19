@@ -523,7 +523,12 @@ function tbDayCardHTML(d,idx){
   const dow=d.date?new Date(d.date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short'}):'';
   const sub=[dow,d.place?esc(tripShortPlace(d.place)):'',kind!=='golf'?TRIP_DAY_KINDS[kind]:''].filter(Boolean).join(' · ');
   const town=tripDaySuggestedTown(d);
-  const menu=tbRowMenuHTML(
+  /* GOLF-152: "Move to" as a list of destinations, so reordering never
+     depends on a drag that has to be done in stages down a long trip. */
+  const moveItems=tripDays.length>1?tripDays.map((_,i)=>i===idx?''
+    :`<button type="button" class="tb-menu-item" onclick="tripDayMoveToPos(${d.id},${i})">${
+        i===0?'↑ Move to Day 1':i===tripDays.length-1?`↓ Move to Day ${i+1} (last)`:`Move to Day ${i+1}`}</button>`).join(''):'';
+  const menu=tbRowMenuHTML(moveItems+
     `<button type="button" class="tb-menu-item is-danger" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">🗑 Remove day ${idx+1}</button>`);
   return`
     <div class="tb-day tb-day-${kind}"

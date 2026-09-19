@@ -497,6 +497,21 @@ function tbDayMoveTo(dragId,targetId){
   saveState();
   return true;
 }
+/* GOLF-152: reordering by drag alone made "day 6 → day 1" a multi-stage
+   scroll-and-drag, and doesn't work with a keyboard at all. This is the
+   same move expressed as a destination: pick the position, the day lands
+   there. Drag still works; this is the direct route.
+   Positions are 0-based final positions. Moving DOWN has to target the
+   day one further on, because removing the day first shifts everything
+   after it up by one; past the end, null means "append". */
+function tripDayMoveToPos(dayId,pos){
+  const from=tripDays.findIndex(d=>d.id===dayId);
+  if(from<0||pos===from)return;
+  const target=pos<from?tripDays[pos]:tripDays[pos+1];
+  tbDayMoveTo(dayId,target?target.id:null);
+  renderTripBuilder();
+  if(typeof tbDrawMap==='function')tbDrawMap();
+}
 /* The single drop entry point for anything dropped inside a day block.
    A day being dragged wins (it's the coarser gesture and can only mean
    one thing); otherwise this is exactly the old tbDropOn() call. */
