@@ -48,6 +48,7 @@ const ORDER = [
   'trip-add.js',
   'ors.js',
   'hotel-layer.js',
+  'poi.js',
   'trip-ui.js',
   'touch-dnd.js',
   'app-mode.js',

@@ -228,54 +228,11 @@ function tripDaySuggestedTown(day){
   }
   return null;
 }
-/* GOLF-79 (renamed "Show POI's" — supersedes the old GOLF-46 practical
-   food/fuel/lodging POI toggle, removed): wiki-notable (Wikipedia/Wikidata
-   tagged) historic/tourism points near an overnight stop, via the same
-   Cloudflare Worker proxy as GOLF-45's drive times, routed server-side to
-   a mode:'heritage-pois' branch backed by OpenStreetMap's Overpass API.
-   Same "inert until ORS_PROXY_URL is set" and "cache, don't re-fetch a
-   view that hasn't changed" pattern as GOLF-45, so this never regresses
-   anything when the proxy isn't configured.
-   2026-09-02: query moved from a fixed 6-tag category whitelist to a
-   wikipedia/wikidata tag-presence query (dropping unnamed results) — the
-   cache key is bumped v1->v2 since the response for a given point can now
-   differ from what an old cached entry holds, and there's no reliable way
-   to tell "old-shape cached miss" from "genuinely nothing nearby" once the
-   query itself has changed (same reasoning as ORS_CACHE_KEY's v1->v2 bump
-   for GOLF-50). Bumped again v2->v3 the same day: wiki-notability alone
-   proved too loose live (named rivers/roads/rail lines near Craigellachie;
-   suburbs, railway stations, schools, government offices and courthouses
-   near Johannesburg, from SA's dense "sagns" OSM import) — the Worker now
-   also requires a visitable-place tag family (tourism/historic/distillery-
-   etc.), so old cached results no longer match what the same point would
-   return today. Bumped v3->v4 the same day: wine farms (and small
-   distilleries/breweries) turned out to almost never carry a wikipedia/
-   wikidata tag even when real and well-tagged — verified live around
-   Stellenbosch (14 real wineries, zero wiki-linked) — so craft=winery/
-   distillery/brewery and shop=wine are now queried unconditionally
-   alongside the notability query, not gated behind it. */
-const HERITAGE_CACHE_KEY='golfmap:heritagecache:v4';
-/* Memoised in memory exactly like orsCacheLoad() above, and for the same
-   reason: tbHeritageFor() is called once per day per render, so an open
-   pane re-parsed this out of localStorage on every keystroke-triggered
-   re-render. Our own save is the only writer, so it's the only thing that
-   has to invalidate it. */
-let heritageCacheMemo=null;
-function heritageCacheLoad(){
-  if(heritageCacheMemo)return heritageCacheMemo;
-  try{heritageCacheMemo=JSON.parse(localStorage.getItem(HERITAGE_CACHE_KEY)||'{}');}catch(e){heritageCacheMemo={};}
-  return heritageCacheMemo;
-}
-function heritageCacheSave(c){
-  const t=orsCacheTrim(c,ORS_POI_CACHE_CAP);
-  heritageCacheMemo=t;
-  try{localStorage.setItem(HERITAGE_CACHE_KEY,JSON.stringify(t));}catch(e){}
-}
+/* GOLF-79's live "Show POI's" (Worker mode:'heritage-pois' → Overpass,
+   cached in localStorage) was replaced by GOLF-148's pre-baked dataset —
+   see js/poi.js. poiKey()/tbPoiPoint() below stay: the hotel picker uses
+   them. */
 function poiKey(lat,lng){return lat.toFixed(4)+','+lng.toFixed(4);}
-let heritagePending=new Set();
-/* dayIds currently toggled "on" — pure UI state, not persisted, same as
-   GOLF-44's cost-line checkboxes (resets to hidden on reload). */
-let tbHeritageOn=new Set();
 function tbPoiPoint(day){
   const cs=tripDayCourses(day);
   if(cs.length){
@@ -285,59 +242,10 @@ function tbPoiPoint(day){
   if(Number.isFinite(day.placeLat)&&Number.isFinite(day.placeLng))return{lat:day.placeLat,lng:day.placeLng};
   return null;
 }
-/* Returns a cached heritage-POI array for this day's overnight point, or
-   null if not yet known — mirrors tripDayRealEstimate()'s contract
-   exactly (cache lookup -> null on miss + async fetch + cache +
-   re-render, silent on failure) so a course/stop with genuinely nothing
-   nearby just renders an empty list, never an error. */
-function tbHeritageFor(day){
-  if(!ORS_PROXY_URL)return null;
-  const pt=tbPoiPoint(day);
-  if(!pt)return null;
-  const key=poiKey(pt.lat,pt.lng);
-  const cache=heritageCacheLoad();
-  if(cache[key])return cache[key].pois;
-  if(heritagePending.has(key))return null;
-  heritagePending.add(key);
-  fetch(ORS_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({mode:'heritage-pois',point:[pt.lng,pt.lat],radius:3000})})
-    .then(r=>r.ok?r.json():Promise.reject(new Error('proxy error '+r.status)))
-    .then(data=>{
-      if(data&&Array.isArray(data.pois)){
-        const c=heritageCacheLoad();
-        c[key]={pois:data.pois,ts:Date.now()};
-        heritageCacheSave(c);
-        if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
-      }
-    })
-    .catch(()=>{ /* silent — on-demand only, no retry loop; toggle just stays empty */ })
-    .finally(()=>{heritagePending.delete(key);});
-  return null;
-}
-function tbToggleHeritage(dayId){
-  if(tbHeritageOn.has(dayId))tbHeritageOn.delete(dayId);else tbHeritageOn.add(dayId);
-  renderTripBuilder();tbDrawMap();
-}
-function tbAddHeritagePoi(dayId,idx){
-  const d=tripDays.find(d=>d.id===dayId);if(!d)return;
-  const pois=tbHeritageFor(d);
-  const p=pois&&pois[idx];if(!p)return;
-  tripDayAddStop(dayId,'poi',p.name,null,p.lat,p.lng);
-  renderTripBuilder();tbDrawMap();
-}
-function tbHeritageListHTML(day){
-  if(!tbHeritageOn.has(day.id))return'';
-  if(!ORS_PROXY_URL)return'';
-  const pois=tbHeritageFor(day);
-  if(pois==null)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Looking for things to do…</p></div>`;
-  if(!pois.length)return`<div class="tb-poi-list"><p class="hint" style="margin:4px 10px">Nothing found nearby.</p></div>`;
-  return`<div class="tb-poi-list">${pois.map((p,idx)=>`<div class="tb-poi-row"><span>${esc(p.name)}</span>${p.category?`<span class="wt">${esc(p.category)}</span>`:''}<button class="tb-btn is-sm is-icon" onclick="tbAddHeritagePoi(${day.id},${idx})" title="Add to trip">＋</button></div>`).join('')}</div>`;
-}
-
 /* GOLF-96: "Add a stay" — zoom to the day's area and offer real nearby
    hotels to pick from, sourced from OpenStreetMap via the Worker's
    'hotels' mode (Overpass-only, no ORS_API_KEY dependency — works even
-   while ORS itself is down). Mirrors tbHeritageFor()'s exact
+   while ORS itself is down). Mirrors the old tbHeritageFor()'s exact
    cache/dedupe/silent-fail contract; the picker panel (list + map
    markers) is a convenience layer in front of the existing
    tbAddStopFormHTML add-stay form, not a replacement for it — manual

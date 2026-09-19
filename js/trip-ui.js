@@ -545,8 +545,8 @@ function tbDayCardHTML(d,idx){
         ondragover="event.preventDefault();event.stopPropagation();event.dataTransfer.dropEffect='move';tbDropOver(this);"
         ondragleave="tbDropOut(this,event);"
         ondrop="event.preventDefault();event.stopPropagation();tbDropOut(this);tbDropInDay(${d.id},null);">↓ Put it last on Day ${idx+1}</div>
-      ${town?`<div class="tb-day-town">Staying near <b>${esc(town)}</b>${tbPoiPoint(d)&&ORS_PROXY_URL?` · <a href="#" class="linkbtn" onclick="event.preventDefault();tbToggleHeritage(${d.id})">${tbHeritageOn.has(d.id)?'hide':'show'} POI's</a>`:''}</div>`:''}
-      ${tbHeritageListHTML(d)}
+      ${town?`<div class="tb-day-town">Staying near <b>${esc(town)}</b>${tbPoiLinkHTML(d)}</div>`:''}
+      ${tbPoiListHTML(d)}
       ${/* GOLF-96 follow-up: search bar on top, nearby candidates below —
            the form (tbAddStopFormHTML) now always opens together with the
            hotel picker's own list (tbOpenHotelPicker, js/ors.js), so this

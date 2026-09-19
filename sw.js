@@ -102,6 +102,7 @@ const PRECACHE_URLS = [
   './js/trip-add.js',
   './js/ors.js',
   './js/hotel-layer.js',
+  './js/poi.js',
   './js/trip-ui.js',
   './js/app-mode.js',
   './js/trip-share.js',
@@ -200,7 +201,15 @@ self.addEventListener('fetch', (event) => {
   // cache-first below — those files get a fresh CACHE_NAME whenever their
   // content changes, so cache-first is both correct and what keeps
   // repeat/offline loads instant.
-  if (req.mode === 'navigate') {
+  // GOLF-148: the POI dataset (data/pois-*.js) is deliberately NOT in
+  // PRECACHE_URLS — precaching would download every region (~450KB gz) on
+  // install, defeating the lazy load. It also can't be cache-first: its
+  // content changes without CACHE_NAME changing (CACHE_NAME only tracks
+  // precached files), so a returning visitor would keep stale sights
+  // forever. Network-first (a cheap 304 when unchanged), cache as the
+  // offline fallback.
+  const isPoiData = /\/data\/pois-[a-z]+\.js$/.test(new URL(req.url).pathname);
+  if (req.mode === 'navigate' || isPoiData) {
     event.respondWith(
       fetch(req)
         .then((res) => stripRedirect(res).then((out) => {
@@ -213,7 +222,7 @@ self.addEventListener('fetch', (event) => {
         // Offline: fall back to this request's cached copy, then to the
         // canonical shell so any in-app URL still renders.
         .catch(() => caches.match(req)
-          .then((hit) => hit || caches.match('./london-golf-map-v5_1')))
+          .then((hit) => hit || (isPoiData ? Response.error() : caches.match('./london-golf-map-v5_1'))))
     );
     return;
   }

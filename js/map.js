@@ -397,7 +397,7 @@ function drawLink(i){linkLayer.clearLayers();
    the toggle button itself is display:none above 900px. */
 const mobToggle=document.getElementById('mob-toggle');
 document.body.classList.add('mob-list');
-function showMobileMap(){
+function showMobileMap(noFit){
   if(window.innerWidth>900)return;
   document.body.classList.remove('mob-list');document.body.classList.add('mob-map');
   mobToggle.textContent='Show list';
@@ -405,7 +405,9 @@ function showMobileMap(){
      display:none (e.g. right after tbSelect() on mobile, still on the
      list view) computed against a stale/zero-size container — re-fit
      once the map is actually visible and sized. */
-  setTimeout(()=>{map.invalidateSize();if(tripBuilderOn)tbDrawMap();},0);
+  setTimeout(()=>{map.invalidateSize();if(tripBuilderOn&&!noFit)tbDrawMap();},0);
+  /* noFit: the caller is about to centre on one thing itself (poiFocus) —
+     an animated re-fit would land after it and win. */
 }
 function showMobileList(){
   document.body.classList.remove('mob-map');document.body.classList.add('mob-list');

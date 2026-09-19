@@ -559,8 +559,8 @@ function tripDrawCart(fit){
    be marked with little hotel emojis and POIs with location pins. Since we
    don't have hotel information, you can drop the pin somewhere in the
    nearest city."
-   Note this is a different thing from tbDrawHeritage() below, which draws
-   *suggested* nearby heritage POIs fetched from the ORS proxy; these are
+   Note this is a different thing from tbDrawPois() (js/poi.js), which draws
+   *suggested* sights from the GOLF-148 dataset; these are
    the stops the visitor actually put on a day.
    Location, in priority order: the stop's own geocoded point (set when it
    was picked from the search picker) → the day's own city/place point
@@ -569,29 +569,11 @@ function tripDrawCart(fit){
    is jittered a few hundred metres and says so in its tooltip, so two
    locationless stops on the same day don't stack into one invisible pin
    and nobody mistakes an approximate pin for a real address. */
-/* GOLF-79 ("Show POI's"): small muted markers for whichever days currently
-   have it toggled on — drawn from cache only (never triggers a fetch
-   itself; the pane's own render already called tbHeritageFor() for that).
-   Deliberately NOT included in the fitBounds points below — a nearby
-   sight shouldn't zoom the map away from the actual trip route. */
-function tbDrawHeritage(){
-  tripDays.forEach(d=>{
-    if(!tbHeritageOn.has(d.id))return;
-    const pois=tbHeritageFor(d);
-    if(!pois)return;
-    pois.forEach(p=>{
-      L.circleMarker([p.lat,p.lng],{radius:5,color:'#8A5A2B',weight:1.5,fillColor:'#fff',fillOpacity:.9})
-        // p.name/p.category come straight from Overpass — escape both, same
-        // as tbDrawHotelCandidates() below already does.
-        .bindTooltip(p.category?`${esc(p.name)} — ${esc(p.category)}`:esc(p.name),{direction:'top'}).addTo(tripLayer);
-    });
-  });
-}
 /* GOLF-96: the hotel-picker's real OSM candidates, shown alongside a day's
    already-added stays (tbDrawTripItems, drawn as solid 🏨 pins) — these are
    deliberately visually distinct (a hollow ring, not a solid emoji marker)
    so "pick one of these" never reads as "already booked", and excluded
-   from fitBounds for the same reason tbDrawHeritage()'s candidates are. */
+   from fitBounds for the same reason tbDrawPois()'s suggestions are. */
 function tbDrawHotelCandidates(){
   if(tbHotelPickerFor==null)return;
   const d=tripDays.find(d=>d.id===tbHotelPickerFor);if(!d)return;
@@ -679,7 +661,7 @@ function tbDrawMap(fit=true){
     // GOLF-108: nearby bookable courses in the Itinerary tab (map only).
     pts2=tripShow(tbItinNearbyCourses(),null,false,false);
   }
-  tbDrawHeritage();
+  tbDrawPois(); // GOLF-148 (js/poi.js)
   tbDrawHotelCandidates();
   const pts1=tripShowOrdered(order,false,false);
   tbDrawTripItems();

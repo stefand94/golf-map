@@ -254,7 +254,7 @@ function tbHotelLayerRender(pois){
   hotelLayerGroup.clearLayers();
   pois.forEach((p,idx)=>{
     // p.name/p.category come straight from Overpass — escape both, same
-    // as tbDrawHeritage()/tbDrawHotelCandidates() already do.
+    // as tbDrawPois()/tbDrawHotelCandidates() already do.
     L.marker([p.lat,p.lng],{icon:hotelLayerIcon(tbHotelInTrip(p))})
       .bindTooltip(p.category?`🏨 ${esc(p.name)} — ${esc(p.category)}`:`🏨 ${esc(p.name)}`,{direction:'top'})
       /* Built on open, not up front: the day list and the already-in-trip
@@ -336,7 +336,7 @@ function tbHotelLayerFetch(){
       tbHotelLayerStatus(data.pois.length?null:'info','No hotels found here');
     })
     .catch(err=>{
-      /* Deliberately louder than tbHeritageFor()/tbHotelsFor()'s fail-quiet
+      /* Deliberately louder than tbHotelsFor()'s fail-quiet
          contract: those decorate a map the user is already looking at, whereas
          this layer's entire output is the pins, so swallowing the error leaves
          nothing on screen and no explanation. Still no retry — Overpass's

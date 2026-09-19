@@ -523,6 +523,25 @@
   .tb-hotel-picker{margin:calc(-1 * var(--sp-2)) var(--sp-3) var(--sp-3);padding:var(--sp-3);background:var(--paper-2);
     border:1px solid var(--line);border-radius:var(--radius-md)}
   .tb-hotel-picker .tb-poi-list{padding:0}
+  /* GOLF-148: "Things to see" — the pre-baked sights along a day's route. */
+  .tb-sights{margin:0 var(--sp-3) var(--sp-3) 44px;padding:var(--sp-2) var(--sp-3) var(--sp-3);background:var(--paper-2);
+    border-radius:var(--radius-md);display:flex;flex-direction:column;gap:2px}
+  .tb-sight-chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 var(--sp-2);scrollbar-width:none}
+  .tb-sight-chips::-webkit-scrollbar{display:none}
+  .tb-sight-chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 10px;border:1px solid var(--line);border-radius:var(--radius-pill);
+    background:#fff;color:var(--stone);font:600 var(--fs-caption) var(--font-sans);cursor:pointer}
+  .tb-sight-chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-dark)}
+  .tb-sight-row{display:flex;align-items:center;gap:var(--sp-2);min-height:44px}
+  .tb-sight-ico{flex:0 0 28px;height:28px;display:grid;place-items:center;border-radius:50%;font-size:14px;
+    background:#fff;box-shadow:inset 0 0 0 2px var(--poi-c)}
+  .tb-sight-main{flex:1 1 auto;min-width:0}
+  .tb-sight-name{display:block;font:600 var(--fs-small) var(--font-sans);color:var(--ink);text-decoration:none;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tb-sight-name:hover{color:var(--accent-dark);text-decoration:underline}
+  .tb-sight-main .cart-region{font-size:var(--fs-caption)}
+  .tb-sight-added{flex:0 0 36px;text-align:center;color:var(--accent);font-weight:800}
+  .tb-sight-note{margin:var(--sp-1) 0}
+  .tb-sight-more{align-self:flex-start;margin-top:var(--sp-1);color:var(--accent-dark)}
   /* GOLF-95 follow-up: the reorder-suggestion banner (js/trip-ui.js
      tbReorderSuggestionHTML) gained a "Now" vs "Suggested" path preview
      so a visitor can see WHICH day is out of place, not just a blind
@@ -1023,6 +1042,7 @@
 <script src="js/trip-add.js"></script>
 <script src="js/ors.js"></script>
 <script src="js/hotel-layer.js"></script>
+<script src="js/poi.js"></script>
 <script src="js/trip-ui.js"></script>
 <script src="js/touch-dnd.js"></script>
 <script src="js/app-mode.js"></script>

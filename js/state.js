@@ -196,7 +196,6 @@ function saveState(){
       try{
         ['golfmap:legcache:v2','golfmap:heritagecache:v4','golfmap:hotelscache:v1'].forEach(k=>localStorage.removeItem(k));
         if(typeof orsCacheMemo!=='undefined')orsCacheMemo=null;
-        if(typeof heritageCacheMemo!=='undefined')heritageCacheMemo=null;
         if(typeof hotelsCacheMemo!=='undefined')hotelsCacheMemo=null;
         localStorage.setItem(LS_KEY,JSON.stringify(payload));
         return;

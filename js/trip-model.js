@@ -254,7 +254,7 @@ function tripDaySetCourse(i,dayId){
    Typing a plain name and hitting Add still works exactly as before —
    that item just contributes no leg, same as an un-geocoded day place.
    tbAddStop is transient page state (one open form at a time, like
-   tbHeritageOn), deliberately not persisted. */
+   tbPoiOn), deliberately not persisted. */
 /* GOLF-73: the same transient state and the same form now serve BOTH adding
    and editing — an `itemId` on it is the only difference (null = add). Reusing
    one shape means the geocode search-as-you-type wiring, the coordinate
@@ -348,7 +348,7 @@ function tbAddStopFormHTML(dayId,itemId){
 function tripDayRemove(dayId){
   tripDays=tripDays.filter(d=>d.id!==dayId);
   if(tbAddStop&&tbAddStop.dayId===dayId)tbAddStop=null;
-  tbHeritageOn.delete(dayId);
+  tbPoiOn.delete(dayId);tbPoiMore.delete(dayId);
   if(tbHotelPickerFor===dayId)tbHotelPickerFor=null;
   saveState();
 }
@@ -679,7 +679,7 @@ function tripListAll(){
    js/editor.js) has to clear all of them, or the next trip inherits
    stale state keyed to day ids that no longer exist.
    Each of those used to hand-copy its own slightly different subset,
-   which is exactly how tbDayShown/tbHeritageOn/tbHotelPickerFor ended up
+   which is exactly how tbDayShown/tbPoiOn/tbHotelPickerFor ended up
    being reset in some paths and not others.
 
    >>> Any new tb* transient must be registered HERE and nowhere else. <<<
@@ -688,7 +688,7 @@ function tripListAll(){
    tbAnchor is part of the per-trip snapshot (tripRestoreActive() sets it),
    and tbDiscoveryTab is a deliberate per-caller navigation choice. Callers
    that want either set do it themselves, right after calling this.
-   tbHeritageOn/tbHotelPickerFor (js/ors.js) and tbUnifiedPlaceResults
+   tbPoiOn/tbHotelPickerFor (js/ors.js) and tbUnifiedPlaceResults
    (js/trip-add.js) live in modules loaded after this one — fine, since
    this only ever runs from a user action, long after load. */
 function tbResetTransients(){
@@ -702,7 +702,7 @@ function tbResetTransients(){
   tbReorderDismissedSig=null;
   tbRegion='';
   tbBorder=8;
-  tbHeritageOn.clear();
+  tbPoiOn.clear();tbPoiMore.clear();
   tbHotelPickerFor=null;
 }
 function tripSwitchTo(id){
