@@ -101,6 +101,21 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   distinct from GOLF-119 §3: that is Golf Australia **the governing body**
   blocking automated access to the *club list*; this is a **publisher**
   restricting reuse of the *ranking*. Same country, unrelated organisations.
+- **Premise note, and it binds every permission not just this decision
+  (added 2026-09-20, GOLF-119 §10):** the permission emails state that the
+  site is **free, with no ads, no accounts and no revenue**, because that
+  is what makes the ask reasonable. It follows that **every permission
+  granted is granted on that premise**. If the site ever takes revenue,
+  ads or accounts, the grants do not simply survive — they were given
+  against a description that no longer holds, and each one needs
+  revisiting alongside this decision. Same re-open trigger as R-11.
+- **Keep the two Australian counterparties distinct.** *Golf Australia
+  Magazine* (nextmedia) is the one with the selection-and-arrangement
+  clause and is in scope here. *Australian Golf Digest* (CMMA Digital &
+  Print), which publishes the NZ Top 50, is a **different magazine from a
+  different publisher** whose terms are subscription-only — no content-use
+  clause at all. Different magazines, different publishers, different
+  terms; do not merge them in a summary.
 - **Affected:** GOLF-160 (BLOCKED on the email), GOLF-157 (AU ranking, now
   in scope of this decision),
   GOLF-129/GOLF-35 (launch readiness — the re-open trigger).
