@@ -14,7 +14,7 @@ question: *is AU/NZ a bulk pull or a hand-curated Top 100?*
 
 | | |
 |---|---|
-| **New Zealand** | **YES — bulk pull.** DotGolf, unauthenticated, 424 clubs with coordinates in **one** HTTP call. No anti-automation clause. **But** Golf NZ's Notice & Disclaimer restricts *republication*, which is a live issue for this project — see §5. |
+| **New Zealand** | **YES — bulk pull.** DotGolf, unauthenticated, 424 clubs with coordinates in **one** HTTP call. No anti-automation clause. **But** Golf NZ's Notice & Disclaimer restricts *republication* — and the same platform already feeds the five nations we publish today, so §5 is a live question, not a future one. |
 | **Australia** | **NO — hand-curate.** It *is* DotGolf and a bulk index does exist, but Golf Australia's Terms of Service §6.2(c) (v1.0, eff. 1 Oct 2025) expressly forbids "scraping tools, bots, or other automated methods", and the whole site is behind a Cloudflare bot challenge that returns 403 to any non-browser client. **Same call as the BRS Golf finding under GOLF-97/98: we may not use this source.** |
 
 Net effect on GOLF-157: the two countries are **not** symmetric. Plan
@@ -52,6 +52,12 @@ per-club enrichment.
 > the class of bug the README documents — the difflib "closest match"
 > picking *Royal Co Down Ladies GC* over the real club. Raised to BA/PM as
 > a suggestion; no code touched here.
+>
+> **Sequence it after §5, though.** If the republication question resolves
+> badly for the five nations already shipped, rebuilding the fetch path to
+> lean *harder* on that source is wasted work at best. Answer the terms
+> question first. (Point raised by the Developer session, who owns these
+> scripts.)
 
 **Fields returned** (bulk `FindClubs`): `ClubId`, `ClubName`, address
 lines, `PostalCode`, `Latitude`, `Longitude`, `Phone`, `Email`,
@@ -198,14 +204,31 @@ Three options, for the owner to pick — **not** a decision this audit makes:
    existing step, not a new capability.
 3. **Hand-curate a NZ Top 100** from ranking sources, as for AU.
 
-**Flag for BA/PM — the same question applies to data already shipped.**
-This audit checked NZ and AU terms in depth because they were in scope. It
-did **not** re-audit England / Scotland / Wales / Ireland / South Africa,
-whose data the app already publishes; England Golf's terms page is
-client-rendered and was not parsed. If Golf NZ's wording is DotGolf
-boilerplate rather than NZ-specific, it may apply to those five too.
-**Suggest a RISK entry and a follow-up ticket.** Not actioned here —
-`RISKS.md` is BA/PM-owned.
+### This is already live for the five shipped nations
+
+**Not a pre-launch check — a live question.** The Developer session, who
+owns `scripts/`, confirmed what actually feeds `data/courses-*.js`:
+`scripts/README.md` records that `fetch_england_golf_clubs.py` returns
+*"coordinates, website, phone, and amenity/facility data per club"* from
+England Golf's club-finder API, and the Scotland, Wales, Ireland and South
+Africa scripts are the same script pointed at the other DotGolf tenants.
+
+So the coordinates and contact details **published today** at
+`golf-map.pages.dev` for all five nations come from the same platform
+whose NZ tenant bars public reproduction. The exposure is present tense,
+not conditional on GOLF-157 shipping. That changes the urgency without
+changing the finding.
+
+**What is genuinely unknown:** nobody has read those five sets of terms.
+This audit checked NZ and AU in depth because they were in scope; England
+Golf's terms page is client-rendered and was not parsed. Golf NZ's wording
+may be DotGolf boilerplate that covers all tenants, or it may be
+NZ-specific. **Only reading them settles it, and that is the cheap next
+step** — five pages, one sitting.
+
+**Suggest a RISK entry** recording that the data is already published, and
+a follow-up ticket to read the five tenants' terms. Not actioned here —
+`RISKS.md` is BA/PM-owned, and the call is the owner's.
 
 ---
 
