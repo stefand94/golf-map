@@ -520,3 +520,48 @@ Gotchas:
 - Dedupes on OSM id, so the same place mapped as two separate objects (e.g.
   Penderyn Distillery) can still appear twice by name — worth a pass at merge
   time.
+
+### `backfill_names.py`
+GOLF-158. A **one-off repair**, not a pipeline stage: re-asks Overpass for the
+`name:en` of POIs already collected, by OSM type/id.
+
+```bash
+python3 scripts/backfill_names.py scripts/output/pois_raw.json --dry-run
+python3 scripts/backfill_names.py scripts/output/pois_raw.json \
+    --regions wales,scotland,ireland,northern-ireland
+python3 scripts/backfill_names.py in.json --reset   # ignore the checkpoint
+```
+
+Why it had to exist: DEC-017 wants English labels where OSM has them, but
+`KEEP_TAGS` never included `name:en`, so the saved JSON had no English name to
+fall back on and the files could not simply be rebuilt. `name:en` is in
+`KEEP_TAGS` now, so a fresh `fetch_pois.py` run needs none of this.
+
+**Always `--dry-run` first** — it prints how many objects and queries the real
+run will cost without fetching anything.
+
+**It is checkpointed, and that is the point.** Progress is written to
+`scripts/output/backfill_names.checkpoint.json` after *every* query, and a
+resumed run re-asks nothing. Two earlier attempts made ~30 successful Overpass
+requests between them and kept none, because everything lived in memory until
+a single write at the end. The expensive resource here is someone else's
+server capacity, not our wall-clock time.
+
+Run of 2026-09-20 (wales, scotland, ireland, northern-ireland): 11,441 objects
+in 13 queries, **467 names replaced** — ireland 209, wales 139, scotland 115,
+northern-ireland 3, england 1. Several 429s and 504s from both mirrors mid-run;
+the inherited backoff rode them out and nothing was re-asked.
+
+Gotchas:
+- It rewrites `pois_raw.json` in place. `build_poi_data.py` still has to run
+  afterwards to regenerate `data/pois-*.js`.
+- **Expect the record count to drop slightly.** Relabelling makes
+  cross-language duplicates visible to the existing merge step: the 2026-09-20
+  run took 27,439 → 27,436 by merging two records for Flannan Isles Lighthouse,
+  two for Cardigan Island, and a Gaelic-named second object for Balranald
+  Nature Reserve ~7km from the English one. Each merge keeps the
+  higher-scoring record. Verify a drop is merges and not losses before
+  committing — compare names keyed on coordinates, not counts.
+- Objects with no `name:en` keep their local name, per DEC-017 — 96 Gaelic and
+  29 Welsh after the 2026-09-20 run. That is the decision working, not a
+  shortfall. There is deliberately **no override list**.

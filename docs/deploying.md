@@ -83,6 +83,24 @@ see `scripts/cloudflare-worker/README.md` for its own deploy steps. It has
 its own URL (`ORS_PROXY_URL` in the app) and its own `ORS_API_KEY` secret;
 redeploying the Pages site does not touch it, and vice versa.
 
+**It deploys from git (since 2026-09-20).** Cloudflare Workers Builds is
+connected to the GitHub repo, and a push to `main` that touches
+`ors-proxy.js` now goes live on its own — no dashboard paste. Verified by
+the `X-Worker-Build` header moving unaided on commit `06df67a`. The only
+reasons left to open the dashboard are changing a secret, or a build that
+failed.
+
+Before that date it was connected but **built without deploying**: the
+Worker's build ran the Version command (a `wrangler versions upload`) for
+every push, which uploads a version and leaves production untouched. Three
+consecutive green builds shipped nothing, and production served
+pre-GOLF-164 code while GitHub showed ✅ on every commit. The tell in the
+build output was a branch-named preview alias
+(`main-geofftheworker.stefand94.workers.dev`) and no deployment. If the
+header ever stops moving again, that is the first thing to check: Worker →
+Settings → Builds → Branch control → **Production branch** must be `main`,
+or the Deploy command never runs.
+
 **When redeploying the Worker, never paste over its secrets.** `ORS_API_KEY`
 (and any Google key) are set separately as Worker variables — this file does
 not contain them and pasting the source over a running Worker doesn't touch
@@ -103,17 +121,31 @@ Same value → the deployed Worker is this source. Different → the redeploy
 hasn't landed. A HEAD request lands on the 405 path, so this costs no ORS
 quota. `.githooks/pre-push` keeps the stamp current automatically.
 
-This is also how to settle the standing contradiction about this Worker: its
-own header comment says it auto-deploys via Cloudflare's Git integration,
-while the project notes say a push does not deploy it and it needs a manual
-redeploy. Push a Worker change, wait, and curl — whichever it is, the header
-will say so.
+**This is still worth running after a Worker push even though deploys are
+automatic now** — automatic is not the same as verified, and the whole
+reason the versions-upload bug survived three pushes is that a green check
+was taken as proof. The header is the proof; the check is not.
 
-## GitHub Pages (legacy, may still be live)
+This also settled the standing contradiction about this Worker. Its own
+header comment claimed Git auto-deploy while the project notes said it
+needed a manual redeploy, and **both were describing the same broken
+setup**: connected to git, building on every push, never promoting. Neither
+note was wrong about what it observed.
+
+## GitHub Pages (decommissioned 2026-09-20)
 
 The site was previously hosted on GitHub Pages, auto-deployed from `main`'s
 root with no build step — the same zero-config static-hosting model
-Cloudflare Pages now provides, kept live in parallel initially rather than
-torn down same-day as the Cloudflare cutover. Once the Cloudflare Pages
-production URL is confirmed working, this becomes the canonical link;
-GitHub Pages can be decommissioned in the repo settings whenever convenient.
+Cloudflare Pages now provides, kept live in parallel rather than torn down
+same-day as the Cloudflare cutover. DEC-006 retired it, but only in the
+sense that the repo stopped carrying a workflow or CNAME for it; **the
+GitHub setting itself stayed on for another three weeks** and kept
+publishing every push to `main` at `stefand94.github.io/golf-map/`, a
+second live copy of the app calling the same Worker.
+
+Turned off in the repo settings on 2026-09-20 (`gh api -X DELETE
+repos/stefand94/golf-map/pages`); the URL now 404s and the
+`pages-build-deployment` workflow no longer runs. Cloudflare Pages is the
+only host. Worth remembering as a general lesson: retiring a host in the
+repo is not the same as retiring it at the provider, and nothing in the
+repo would ever have told us.

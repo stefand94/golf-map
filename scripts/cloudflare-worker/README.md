@@ -21,30 +21,49 @@ an encrypted secret → deploy → copy the `*.workers.dev` URL). No
 `wrangler` CLI needed — the dashboard's built-in editor is enough for a
 Worker this small.
 
-**After that, auto-deploy from GitHub instead of copy-pasting** (GOLF-55):
-Cloudflare can redeploy this Worker automatically every time `ors-proxy.js`
-changes on `main`, via its native "Connect to Git" build integration —
-no GitHub Actions file, no API token to manage.
+**It deploys from git — as of 2026-09-20 this actually works** (GOLF-55,
+finished off under GOLF-164). Cloudflare Workers Builds is connected to
+`stefand94/golf-map`; a push to `main` that touches `ors-proxy.js`
+redeploys the Worker with no dashboard paste, no GitHub Actions file and
+no API token to manage.
 
-1. In the Cloudflare dashboard, open your existing Worker (the one
-   already running — check its name at the top of its overview page).
-2. **Before connecting**, open `wrangler.toml` in this folder and make
-   sure `name` matches that Worker's name exactly. If it doesn't,
-   Cloudflare will create a brand-new Worker (new URL, no `ORS_API_KEY`
-   secret) instead of taking over deploys for the existing one — update
-   the file and push it first if needed.
-3. Worker → Settings → Build → **Connect to Git** → authorize Cloudflare
-   against the `stefand94/golf-map` GitHub repo → branch `main` → set the
-   build's root directory to `scripts/cloudflare-worker`.
-4. Save. Cloudflare deploys once immediately to confirm the connection,
-   then again automatically on every future push that touches this
-   folder.
-5. `ORS_API_KEY` is untouched by any of this — it stays exactly as it is,
-   a secret set in the dashboard, never read from or written to Git.
+Current settings, for reference if it ever needs rebuilding:
 
-Verify: change something trivial-but-visible in `ors-proxy.js` (e.g. a
-comment), push, and confirm the Worker's dashboard shows a fresh
-deployment without you touching the editor.
+- **Root directory: empty.** Not `scripts/cloudflare-worker`, despite what
+  this file and the Worker's own header comment used to say. Workers
+  Builds runs from the repo root, so the root `wrangler.jsonc` is the
+  config that matters; it points `main` at
+  `scripts/cloudflare-worker/ors-proxy.js`.
+- **Production branch: `main`.** This is the setting that was wrong, and
+  it is the first thing to check if pushes stop deploying — see below.
+- `scripts/cloudflare-worker/wrangler.toml` is kept for local/manual
+  `wrangler` runs from inside this folder. Both files name the same
+  Worker (`geofftheworker`) and the same entry file; if you ever rename
+  the Worker, both must change or Cloudflare will create a *new* Worker
+  with a new URL and no `ORS_API_KEY`.
+- `ORS_API_KEY` (and the Google key) are untouched by any of this. They
+  are dashboard secrets, never read from or written to git.
+
+**The failure mode this had for weeks, because it is silent and will look
+like success if it recurs:** the build was running a *version upload*
+rather than a deploy. Every push produced a green "Workers Builds" check
+on GitHub and a new version in Cloudflare, and production kept serving the
+old code. Nothing anywhere said "not deployed". It was only visible once
+GOLF-164 put a content hash in a response header. The tell in the build
+output is a branch-named preview alias
+(`main-geofftheworker.stefand94.workers.dev`) and no deployment line —
+that means Cloudflare ran the *Version* command, which it does for any
+branch it does not consider production.
+
+Verify a deploy — always, and never trust the green check on its own:
+
+```bash
+curl -sI https://geofftheworker.stefand94.workers.dev/ | grep -i x-worker-build
+python3 scripts/update_worker_build.py --print
+```
+
+Same value → live. Different → not live yet, regardless of what the build
+status says.
 
 ## Wiring it into the app
 

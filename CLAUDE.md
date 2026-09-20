@@ -24,8 +24,15 @@ archaeology, not for onboarding; grep it by ticket number).
 - Hosted on **Cloudflare Pages** (production = `main` branch, deployed to
   `golf-map.pages.dev` until a custom domain is bought; every other branch
   gets its own automatic preview URL). GitHub Pages is not used — retired
-  per DEC-006, no workflow/CNAME for it exists in this repo. See
-  `docs/deploying.md`.
+  per DEC-006, and the GitHub setting itself was finally turned off on
+  2026-09-20, having quietly kept publishing `main` to
+  `stefand94.github.io/golf-map/` for three weeks after the repo stopped
+  referencing it. See `docs/deploying.md`.
+- **The Worker deploys from git too, since 2026-09-20** — a push to `main`
+  touching `ors-proxy.js` goes live by itself. Verify it landed with the
+  `X-Worker-Build` header rather than trusting the green build check; the
+  check was green for three pushes that deployed nothing. See
+  `scripts/cloudflare-worker/README.md`.
 
 ## App structure (3 modes, one pane)
 
