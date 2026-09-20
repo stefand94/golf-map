@@ -311,17 +311,36 @@ example of a country that fails at step one.
 
 ---
 
-## Method / reproducibility
+## 7. Board updates requested (BA/PM)
 
-Throwaway stdlib-Python probes plus the Browser tool for front-end
-network inspection, run from the session scratchpad and **not committed**
-to `scripts/`, per the ticket. A handful of requests per host, ~2 s apart;
-nothing crawled. No API key was used, requested or seen. No attempt was
-made to defeat Australia's bot protection.
+No BA/PM session was running when this audit completed, so the board is
+untouched. Requested:
 
-Probe artefacts (session scratchpad, not in the repo): `probe.py`,
-`sweep.sh`, `nz_findclubs.json` (the 424-club NZ intermediate, kept as the
-fetch-once JSON should GOLF-157 want it).
+1. **GOLF-119 → COMPLETE.** One-line summary: *NZ is a one-call bulk pull;
+   Australia is ToS-barred and must be hand-curated; no other DotGolf
+   tenant exists.* Add a "Recently completed" line.
+2. **GOLF-157 — update the estimate and split AU/NZ.** They are different
+   jobs (§6). NZ additionally needs a **ranking source** to support
+   `nzRanked:1` ringfencing — 424 clubs is far too many for the map. That
+   is the one genuinely unsourced piece of NZ work.
+3. **A DEC, not a RISK.** On the strength of §5 as revised, this is better
+   recorded as a decision — *"published coordinates come from
+   OpenStreetMap; DotGolf is used as an index only"* — than as a standing
+   risk. It closes the question for all seven nations at once and costs
+   about a day, reusing the OSM correction pass built in GOLF-121a.
+   If the owner prefers, a narrow RISK covering **England and Scotland
+   only** would also be accurate. **Do not** raise it as a five-nation
+   risk — that framing was mine and it was wrong; §5 explains why.
+4. **New ticket:** replace the name-by-name `GetClubsByName` + difflib step
+   in the four GB/Ireland fetch scripts with a single unfiltered
+   `FindClubs` call (§1). Owned by the Developer session's area
+   (`scripts/`), unblocked by §5.
+5. **Strike `golflink.com.au`** from `HANDOVER-GOLF-119.md` and any
+   GOLF-157 notes — it is dead (503), folded into `golf.com.au`.
+6. **Separate ticket for §8 (ranking sources) — higher priority than §5.**
+   Degrade `t100.*` positions to a boolean flag and/or seek permission.
+   **Read Golf Australia Magazine's terms before the GOLF-157 AU build**,
+   since that ranking is the spine of the AU dataset.
 
 ---
 
@@ -409,33 +428,18 @@ Magazine, which is unread and feeds GOLF-157.
 
 ---
 
-## 7. Board updates requested (BA/PM)
+---
 
-No BA/PM session was running when this audit completed, so the board is
-untouched. Requested:
+## Method / reproducibility
 
-1. **GOLF-119 → COMPLETE.** One-line summary: *NZ is a one-call bulk pull;
-   Australia is ToS-barred and must be hand-curated; no other DotGolf
-   tenant exists.* Add a "Recently completed" line.
-2. **GOLF-157 — update the estimate and split AU/NZ.** They are different
-   jobs (§6). NZ additionally needs a **ranking source** to support
-   `nzRanked:1` ringfencing — 424 clubs is far too many for the map. That
-   is the one genuinely unsourced piece of NZ work.
-3. **A DEC, not a RISK.** On the strength of §5 as revised, this is better
-   recorded as a decision — *"published coordinates come from
-   OpenStreetMap; DotGolf is used as an index only"* — than as a standing
-   risk. It closes the question for all seven nations at once and costs
-   about a day, reusing the OSM correction pass built in GOLF-121a.
-   If the owner prefers, a narrow RISK covering **England and Scotland
-   only** would also be accurate. **Do not** raise it as a five-nation
-   risk — that framing was mine and it was wrong; §5 explains why.
-4. **New ticket:** replace the name-by-name `GetClubsByName` + difflib step
-   in the four GB/Ireland fetch scripts with a single unfiltered
-   `FindClubs` call (§1). Owned by the Developer session's area
-   (`scripts/`), unblocked by §5.
-5. **Strike `golflink.com.au`** from `HANDOVER-GOLF-119.md` and any
-   GOLF-157 notes — it is dead (503), folded into `golf.com.au`.
-6. **Separate ticket for §8 (ranking sources) — higher priority than §5.**
-   Degrade `t100.*` positions to a boolean flag and/or seek permission.
-   **Read Golf Australia Magazine's terms before the GOLF-157 AU build**,
-   since that ranking is the spine of the AU dataset.
+Throwaway stdlib-Python probes plus the Browser tool for front-end
+network inspection, run from the session scratchpad and **not committed**
+to `scripts/`, per the ticket. A handful of requests per host, ~2 s apart;
+nothing crawled. No API key was used, requested or seen. No attempt was
+made to defeat Australia's bot protection.
+
+Probe artefacts (session scratchpad, not in the repo): `probe.py`,
+`sweep.sh`, `nz_findclubs.json` (the 424-club NZ intermediate, kept as the
+fetch-once JSON should GOLF-157 want it).
+
+---
