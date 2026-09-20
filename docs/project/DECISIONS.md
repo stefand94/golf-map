@@ -35,11 +35,25 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   real question ("what do I stop at on the way?"). Three fits a day card
   without dominating the itinerary; ten is browsable without becoming a list
   to wade through.
-- **Known cost, accepted:** Snowdonia's official name is now Eryri, so an
-  English-primary label diverges from what the road signs say. Revisit if
-  testers report it.
-- **Affects:** GOLF-148 (UI stage), `scripts/build_poi_data.py` (a rebuild is
-  needed for the label change — the shipped files carry OSM `name`).
+- **Known cost, accepted:** the English label is **not** the familiar one.
+  OSM's `name:en` for the park is "Eryri National Park", not "Snowdonia" — so
+  choosing English-primary does not buy back the pre-rebrand name, and no
+  label source would. Getting "Snowdonia" specifically would need a hand-kept
+  override list, which is not in scope. Revisit if testers report it.
+- **Correction (2026-09-20, same day):** this entry first recorded the relabel
+  as a scoring-free rebuild from the saved JSON. That was wrong. `name:en` was
+  never in `KEEP_TAGS`, so `collect()` discarded it at fetch time and
+  `pois_raw.json` has only OSM `name` — a rebuild from saved data would emit
+  byte-identical files. The repair needs **network work**, though not a
+  re-fetch: every record keeps its OSM type/id, so `scripts/backfill_names.py`
+  asks Overpass for those objects directly (~72 id queries against 28,124
+  objects, ~20 minutes, reusing `fetch_pois.overpass()` so it inherits mirror
+  rotation and backoff per DEC-016) rather than repeating the 400-tile
+  overnight crawl. `name:en` is now in `KEEP_TAGS`, so this cannot recur.
+  The original name is kept as `name_local` per record so the decision stays
+  reversible without another fetch.
+- **Affects:** GOLF-148 (UI stage), `scripts/backfill_names.py` (one-off
+  repair, not a pipeline stage), `scripts/fetch_pois.py` (`KEEP_TAGS`).
 - **Status:** agreed 2026-09-20.
 
 ## DEC-016 — GOLF-142 data source: Overpass, as a live per-viewport call (not a bulk cache)

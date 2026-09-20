@@ -70,10 +70,14 @@ national parks.
 
 1. **Labels: `name:en` where it exists**, OSM `name` otherwise. The Wales file
    currently mixes four forms and 30% of its top 50 carry a Welsh-language
-   name, so this is visible on the headline sights. **This needs a
-   `build_poi_data.py` rebuild** — the shipped files carry OSM `name`.
-   Accepted cost: Snowdonia is officially Eryri, so the label will differ
-   from the road signs.
+   name, so this is visible on the headline sights. **This needs a targeted
+   re-query, not a rebuild** — `name:en` was never in `KEEP_TAGS`, so it is
+   not in `pois_raw.json` and a rebuild would emit identical files.
+   `scripts/backfill_names.py` re-queries the saved OSM ids (~72 queries,
+   ~20 min) instead of repeating the overnight crawl; `KEEP_TAGS` now
+   includes `name:en` so it cannot recur. Accepted cost: OSM's English name
+   for the park is "Eryri National Park", not "Snowdonia" — English-primary
+   does not buy back the familiar name, and no label source would.
 2. **Scoping: per-leg.** Sights in the corridor between today's stops, not
    ranked across the whole trip.
 3. **Counts: 3 per day, expanding to 10.**
