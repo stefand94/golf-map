@@ -75,7 +75,7 @@
    manifest and icons are unchanged — still cache-first, since they get
    a fresh CACHE_NAME whenever their content changes and that's what
    keeps repeat/offline loads instant. */
-const CACHE_NAME = 'golfmap-shell-v5-b5bf7bb1ec';
+const CACHE_NAME = 'golfmap-shell-v5-3658b399a9';
 
 /* GOLF-147: hotel-layer.js (GOLF-142) and trip-share.js were both added to the
    page's <script> list without ever being added here, so the SW precached
@@ -112,6 +112,10 @@ const PRECACHE_URLS = [
   './js/touch-dnd.js',
   './js/boot.js',
   './data/config.js',
+  // The POI category list, but NOT the per-region pois-*.js files: those are
+  // lazy (see the isPoiRegionData branch below). This one is 1KB and js/poi.js
+  // needs it before it can render a single chip.
+  './data/pois-categories.js',
   './data/stations.js',
   './data/rail-geometry.js',
   './data/courses-london.js',
@@ -208,8 +212,12 @@ self.addEventListener('fetch', (event) => {
   // precached files), so a returning visitor would keep stale sights
   // forever. Network-first (a cheap 304 when unchanged), cache as the
   // offline fallback.
-  const isPoiData = /\/data\/pois-[a-z]+\.js$/.test(new URL(req.url).pathname);
-  if (req.mode === 'navigate' || isPoiData) {
+  // pois-categories.js is deliberately NOT matched here — it IS precached, so
+  // it follows the normal cache-first path and refreshes when CACHE_NAME bumps,
+  // exactly like the course data. Only the lazy region files are network-first.
+  const isPoiRegionData = /\/data\/pois-(?!categories\.js$)[a-z]+\.js$/
+    .test(new URL(req.url).pathname);
+  if (req.mode === 'navigate' || isPoiRegionData) {
     event.respondWith(
       fetch(req)
         .then((res) => stripRedirect(res).then((out) => {
@@ -222,7 +230,7 @@ self.addEventListener('fetch', (event) => {
         // Offline: fall back to this request's cached copy, then to the
         // canonical shell so any in-app URL still renders.
         .catch(() => caches.match(req)
-          .then((hit) => hit || (isPoiData ? Response.error() : caches.match('./london-golf-map-v5_1'))))
+          .then((hit) => hit || (isPoiRegionData ? Response.error() : caches.match('./london-golf-map-v5_1'))))
     );
     return;
   }
