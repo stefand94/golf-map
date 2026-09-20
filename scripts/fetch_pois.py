@@ -341,7 +341,12 @@ SCORING_TAGS = (
 # new rule cannot forget to add its key here.
 CATEGORY_TAGS = tuple(sorted({k for (k, _), _ in CATEGORY_RULES}
                              | {"protection_title"}))
-KEEP_TAGS = tuple(sorted(set(SCORING_TAGS) | set(CATEGORY_TAGS)))
+# DEC-017 labels POIs in English where OSM has an English name. Keeping the
+# tag costs a few bytes per record; NOT keeping it cost a second fetch of
+# every object by id (scripts/backfill_names.py), because a name that was
+# never saved cannot be recovered from the saved file.
+NAME_TAGS = ("name:en",)
+KEEP_TAGS = tuple(sorted(set(SCORING_TAGS) | set(CATEGORY_TAGS) | set(NAME_TAGS)))
 
 # How much each designation is worth on top of the category baseline.
 #
@@ -463,6 +468,54 @@ HOLES = []
 _DEAD_HOSTS = {}
 REFUSALS_BEFORE_DEAD = 3
 
+# GOLF-158: a fair-use block outlives the process that earned it. Every fresh
+# run used to re-probe a blocking host three times before retiring it again —
+# which is not just three wasted attempts, it is three more unwanted knocks on
+# a door that was deliberately shut, and plausibly extends the block. The
+# retirement is remembered on disk instead, with a TTL because a block does
+# clear eventually and permanently blacklisting a mirror would be worse than
+# the problem.
+_STATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
+BLOCKED_HOSTS_FILE = os.path.join(_STATE_DIR, ".overpass-blocked.json")
+BLOCKED_TTL_S = 6 * 3600
+_BLOCKED_LOADED = False
+
+
+def _load_blocked_hosts():
+    """Pre-retire hosts that blocked us recently enough for it to still hold."""
+    try:
+        with open(BLOCKED_HOSTS_FILE, encoding="utf-8") as fh:
+            seen = json.load(fh)
+    except (OSError, ValueError):
+        return
+    now = time.time()
+    for host, ts in seen.items():
+        age = now - ts
+        if 0 <= age < BLOCKED_TTL_S:
+            _DEAD_HOSTS[host] = REFUSALS_BEFORE_DEAD
+            print(f"    {host} blocked this IP {age / 3600:.1f}h ago — skipping "
+                  f"it rather than knocking again (clears after "
+                  f"{BLOCKED_TTL_S / 3600:.0f}h).", file=sys.stderr, flush=True)
+
+
+def _remember_blocked(host):
+    try:
+        os.makedirs(_STATE_DIR, exist_ok=True)
+        try:
+            with open(BLOCKED_HOSTS_FILE, encoding="utf-8") as fh:
+                seen = json.load(fh)
+        except (OSError, ValueError):
+            seen = {}
+        seen[host] = time.time()
+        tmp = BLOCKED_HOSTS_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(seen, fh)
+        os.replace(tmp, BLOCKED_HOSTS_FILE)
+    except OSError as exc:  # noqa: BLE001
+        # Remembering is an optimisation; failing to is not worth losing a run.
+        print(f"    (could not record {host} as blocked: {exc})",
+              file=sys.stderr, flush=True)
+
 
 def _socket_cause(exc):
     """Unwrap urllib's URLError to the socket error underneath it.
@@ -505,49 +558,69 @@ def _note_refusal(host, exc):
         print(f"    {host} refused {n} connections in a row — treating it as "
               f"blocking this IP and skipping it for the rest of this run.",
               file=sys.stderr, flush=True)
+        _remember_blocked(host)  # and for the next run, until BLOCKED_TTL_S
     return n >= REFUSALS_BEFORE_DEAD
 
 
 def overpass(query, attempt_label):
     """POST a query to each mirror, retrying with backoff. None if all fail."""
+    global _BLOCKED_LOADED
+    if not _BLOCKED_LOADED:
+        # Lazily, so importing this module for its constants (build_poi_data.py
+        # does) neither reads the file nor prints anything.
+        _BLOCKED_LOADED = True
+        _load_blocked_hosts()
+
     body = urllib.parse.urlencode({"data": query}).encode()
     for attempt in range(MAX_ATTEMPTS):
-        live = [u for u in OVERPASS_URLS
-                if _DEAD_HOSTS.get(u.split("/")[2], 0) < REFUSALS_BEFORE_DEAD]
-        if not live:
-            # Every mirror is refusing us. Retrying cannot fix that, and the
-            # run should stop rather than grind through every remaining tile.
-            print(f"    {attempt_label}: every Overpass mirror is refusing "
-                  f"connections — aborting.", file=sys.stderr, flush=True)
-            raise AllMirrorsBlocked(
-                "all Overpass mirrors refused connections: "
-                + ", ".join(sorted(_DEAD_HOSTS))
-            )
-        for url in live:
-            host = url.split("/")[2]
-            try:
-                req = urllib.request.Request(
-                    url, data=body, headers={"User-Agent": UA}
+        # GOLF-159: `tried` is per-attempt, so retiring a host mid-round costs
+        # nothing. The old code broke out to "re-evaluate the live list" but
+        # fell straight into the backoff sleep instead, so the mirrors that
+        # were still healthy that round never got asked — a dead host cost a
+        # whole attempt plus a doubling sleep, precisely when mirrors were
+        # already failing and throughput mattered most.
+        tried = set()
+        while True:
+            live = [u for u in OVERPASS_URLS
+                    if _DEAD_HOSTS.get(u.split("/")[2], 0) < REFUSALS_BEFORE_DEAD]
+            if not live:
+                # Every mirror is refusing us. Retrying cannot fix that, and the
+                # run should stop rather than grind through every remaining tile.
+                print(f"    {attempt_label}: every Overpass mirror is refusing "
+                      f"connections — aborting.", file=sys.stderr, flush=True)
+                raise AllMirrorsBlocked(
+                    "all Overpass mirrors refused connections: "
+                    + ", ".join(sorted(_DEAD_HOSTS))
                 )
-                with urllib.request.urlopen(req, timeout=600) as resp:
+            todo = [u for u in live if u not in tried]
+            if not todo:
+                break  # every live mirror has had a go this round
+            for url in todo:
+                tried.add(url)
+                host = url.split("/")[2]
+                try:
+                    req = urllib.request.Request(
+                        url, data=body, headers={"User-Agent": UA}
+                    )
+                    with urllib.request.urlopen(req, timeout=600) as resp:
+                        _DEAD_HOSTS.pop(host, None)
+                        return json.loads(resp.read())
+                except urllib.error.HTTPError as exc:
+                    # An HTTP status means the server is talking to us, however
+                    # unhappily, so it is not blocking this IP.
                     _DEAD_HOSTS.pop(host, None)
-                    return json.loads(resp.read())
-            except urllib.error.HTTPError as exc:
-                # An HTTP status means the server is talking to us, however
-                # unhappily, so it is not blocking this IP.
-                _DEAD_HOSTS.pop(host, None)
-                retryable = exc.code in (429, 502, 503, 504)
-                print(f"    {attempt_label}: {host} HTTP {exc.code}"
-                      f"{' (will retry)' if retryable else ''}",
-                      file=sys.stderr, flush=True)
-                if not retryable:
-                    continue
-            except Exception as exc:  # noqa: BLE001
-                print(f"    {attempt_label}: {host} failed ({exc})",
-                      file=sys.stderr, flush=True)
-                if _note_refusal(host, exc):
-                    break  # host retired; re-evaluate the live list
-        # Both mirrors refused this round — wait longer each time. 429 in
+                    retryable = exc.code in (429, 502, 503, 504)
+                    print(f"    {attempt_label}: {host} HTTP {exc.code}"
+                          f"{' (will retry)' if retryable else ''}",
+                          file=sys.stderr, flush=True)
+                    if not retryable:
+                        continue
+                except Exception as exc:  # noqa: BLE001
+                    print(f"    {attempt_label}: {host} failed ({exc})",
+                          file=sys.stderr, flush=True)
+                    if _note_refusal(host, exc):
+                        break  # refresh the live list, then try the rest
+        # Every live mirror refused this round — wait longer each time. 429 in
         # particular means "you are asking too fast", so the pause has to be
         # substantial rather than a token sleep.
         if attempt < MAX_ATTEMPTS - 1:
