@@ -123,9 +123,16 @@ function loadStoredState(){
   let raw;try{raw=localStorage.getItem(LS_KEY)}catch(e){return}
   if(!raw)return;
   let saved;try{saved=JSON.parse(raw)}catch(e){return}
-  if(saved.edits)Object.assign(EDITS,saved.edits);
-  (saved.played||[]).forEach(i=>PLAYED.add(i));
-  (saved.want||[]).forEach(i=>WANT.add(i));
+  /* GOLF-163: course references are stored as stable ids now, not array
+     indices. Every one of these decodes goes through courseRefDecode(),
+     which accepts both the id form and the old numeric form (resolved via
+     the frozen index->id table) — so a visitor who last used the site
+     before ids shipped keeps their trip, their corrections and their
+     played/want marks. `null` means "that course no longer exists", which
+     is dropped exactly as an out-of-range index always was. */
+  if(saved.edits)Object.assign(EDITS,courseDecodeKeyed(saved.edits));
+  (saved.played||[]).forEach(r=>{const i=courseRefDecode(r);if(i!==null)PLAYED.add(i)});
+  (saved.want||[]).forEach(r=>{const i=courseRefDecode(r);if(i!==null)WANT.add(i)});
   if(deployChanged){
     // Leave `trips`/`activeTripId` at their already-initialised, empty
     // defaults (same shape tripStartFresh() resets to) and persist that
@@ -133,13 +140,13 @@ function loadStoredState(){
     // anything this session.
   }else if(saved.trips&&typeof saved.trips==='object'&&Object.keys(saved.trips).length){
     const nextTrips={};
-    Object.entries(saved.trips).forEach(([id,t])=>{if(t&&typeof t==='object')nextTrips[id]=validateTripEntry(t)});
+    Object.entries(saved.trips).forEach(([id,t])=>{if(t&&typeof t==='object')nextTrips[id]=validateTripEntry(courseDecodeTripEntry(t))});
     if(Object.keys(nextTrips).length){
       trips=nextTrips;
       activeTripId=(typeof saved.activeTripId==='string'&&trips[saved.activeTripId])?saved.activeTripId:Object.keys(trips)[0];
     }
   }else if(Array.isArray(saved.trip)){
-    trips={default:validateTripEntry({name:'My trip',trip:saved.trip,tripSeq:saved.tripSeq,tripDays:saved.tripDays})};
+    trips={default:validateTripEntry(courseDecodeTripEntry({name:'My trip',trip:saved.trip,tripSeq:saved.tripSeq,tripDays:saved.tripDays}))};
     activeTripId='default';
   }
   tripRestoreActive();
@@ -170,9 +177,18 @@ function saveState(){
   try{
     tripSnapshotActive();
     const c=map?map.getCenter():null;
+    /* GOLF-163: written as stable ids, so a future reorder of C[] cannot
+       silently turn someone's saved trip into a different one. The runtime
+       globals stay index-based — the translation lives only here and in
+       loadStoredState(), which is the whole point of keeping it to the
+       storage boundary. */
+    const encTrips={};
+    Object.entries(trips).forEach(([id,t])=>{encTrips[id]=courseEncodeTripEntry(t)});
     payload=JSON.stringify({
-      edits:EDITS,
-      played:[...PLAYED],want:[...WANT],trips,activeTripId,
+      cidv:1,
+      edits:courseEncodeKeyed(EDITS),
+      played:[...PLAYED].map(courseRefEncode),want:[...WANT].map(courseRefEncode),
+      trips:encTrips,activeTripId,
       filters:{access:[...state.access],price:[...state.price],region:[...state.region],flag:[...state.flag],arch:[...state.arch],feeMin:state.feeMin,feeMax:state.feeMax},
       q:state.q,sort:state.sort,nation:state.nation,
       mapCenter:c?[c.lat,c.lng]:undefined,mapZoom:map?map.getZoom():undefined
@@ -197,7 +213,13 @@ function saveState(){
         ['golfmap:legcache:v2','golfmap:heritagecache:v4','golfmap:hotelscache:v1'].forEach(k=>localStorage.removeItem(k));
         if(typeof orsCacheMemo!=='undefined')orsCacheMemo=null;
         if(typeof hotelsCacheMemo!=='undefined')hotelsCacheMemo=null;
-        localStorage.setItem(LS_KEY,JSON.stringify(payload));
+        /* `payload` is already the JSON string — JSON.stringify()ing it
+           again wrote a quoted string into LS_KEY, which JSON.parse()s
+           back to a string and then silently loses every field on the
+           next load. Noticed while adding the id encoding above; it only
+           ever fired on the quota-retry path, which is exactly where a
+           silent total loss is least likely to be noticed. */
+        localStorage.setItem(LS_KEY,payload);
         return;
       }catch(e2){
         console.warn('golfmap: could not save to localStorage even after clearing the route/POI caches — this session\'s changes will not persist.',e2);

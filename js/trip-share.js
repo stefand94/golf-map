@@ -22,13 +22,19 @@ function tripBuildSharePayload(){
     gs:groupSize,
     nm:((trips[activeTripId]||{}).name)||null, // GOLF-115: carry the trip name so the shared view can show it in full
 
-    seq:[...tripSeq],
+    /* GOLF-163: courses travel as stable ids (`c`), not array indices.
+       A share link is the one reference we can never migrate — it is a
+       URL already in someone else's hands — so from here on it names
+       courses by something that does not move when C[] does. The old
+       numeric `i` is still *read* by tripDecodeSharePayload() for every
+       link made before today, but is no longer written. */
+    seq:[...tripSeq].map(courseRefEncode),
     days:tripDays.map(d=>({
       id:d.id,kind:d.kind,place:d.place||null,
       placeLat:d.placeLat??null,placeLng:d.placeLng??null,
       date:d.date||null,driveIn:d.driveIn??null,
       items:tripDayItems(d).map(it=>it.type==='golf'
-        ?{id:it.id,type:'golf',i:it.i}
+        ?{id:it.id,type:'golf',c:courseRefEncode(it.i)}
         :{id:it.id,type:it.type,name:it.name,price:it.price,lat:it.lat,lng:it.lng})
     }))
   };
@@ -93,13 +99,23 @@ function tripDecodeSharePayload(hash){
     const json=decodeURIComponent(hash.slice('#share='.length));
     const p=JSON.parse(json);
     if(!p||typeof p!=='object'||Array.isArray(p)||!Array.isArray(p.days)||!Array.isArray(p.seq))return null;
-    const seq=p.seq.filter(i=>Number.isInteger(i)&&C[i]).slice(0,500);
+    /* GOLF-163: accepts both forms for ever — a stable id (written from
+       2026-09-20 on) and a bare index (every link made before that), the
+       latter resolved through the frozen index->id table. A reference
+       that no longer names a real course resolves to null and is dropped,
+       which is what the old `C[i]` guard did too. Note this runs on
+       untrusted input off the URL: courseRefDecode() is a Map lookup with
+       a type check, so an arbitrary string can only ever miss. */
+    const seq=p.seq.map(courseRefDecode).filter(i=>i!==null&&C[i]).slice(0,500);
     const days=p.days.slice(0,SHARE_MAX_DAYS).map((d,idx)=>{
       if(!d||typeof d!=='object')return null;
       const items=(Array.isArray(d.items)?d.items:[]).slice(0,SHARE_MAX_ITEMS_PER_DAY).map((it,n)=>{
         if(!it||typeof it!=='object')return null;
         const id=shareStr(it.id,64)||('s'+idx+'-'+n);
-        if(it.type==='golf')return(Number.isInteger(it.i)&&C[it.i])?{id,type:'golf',i:it.i}:null;
+        if(it.type==='golf'){
+          const ci=courseRefDecode(it.c!==undefined?it.c:it.i);
+          return(ci!==null&&C[ci])?{id,type:'golf',i:ci}:null;
+        }
         if(it.type!=='hotel'&&it.type!=='poi')return null;
         const name=shareStr(it.name,80);
         if(!name)return null;

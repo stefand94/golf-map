@@ -12,8 +12,9 @@ to `docs/testing-full.md`.** These docs are only useful if they stay current.
 ## Layer 1 — automated, always run before committing
 
 ```bash
-node scripts/test_data.js   # data-file integrity + course counts
-node scripts/check_js.js    # every js/*.js parses + correct load order
+node scripts/test_data.js        # data-file integrity + course counts
+node scripts/check_js.js         # every js/*.js parses + correct load order
+node scripts/test_course_ids.js  # course identity + order didn't move
 ```
 
 - `test_data.js` loads `data/*.js` for real (Node `vm`) and checks required
@@ -24,8 +25,19 @@ node scripts/check_js.js    # every js/*.js parses + correct load order
   known modules in the known order (update the `ORDER` array if you
   add/remove/reorder one), then parses the concatenation. Run after any
   `js/*.js` or `<script src>` edit.
-- Neither executes load-time code, so a module calling a function from a
-  *later* module only throws in a real browser — Layer 2 #1 is the backstop.
+- `test_course_ids.js` (GOLF-163) is the one to run after **any** change that
+  touches `data/courses-*.js`. It asserts every course has a unique `id`, that
+  `C[i]` still holds the same course as the committed
+  `scripts/course-order-baseline.json`, and — the check that actually matters
+  — it reverses `C[]` on purpose and asserts that references written against
+  the original order still resolve to the original courses. Saved trips can be
+  migrated on load; share links already sent to other people cannot, so a
+  silent re-index is the one data change with no recovery path. If a course is
+  deliberately added or removed, regenerate the baseline and say so in the
+  commit message.
+- None of the three executes load-time code, so a module calling a function
+  from a *later* module only throws in a real browser — Layer 2 #1 is the
+  backstop.
 
 ## Layer 2 — browser checks (run after any rendering / filter / persistence change)
 

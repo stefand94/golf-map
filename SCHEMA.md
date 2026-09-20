@@ -23,6 +23,7 @@ in `london-golf-map-v5_1.html` to know what's expected.
 | `C_WALES` | array of course objects | GOLF-26: 38 curated notable Welsh courses (`data/courses-wales.js`). Appended onto `C` via `C.push(...C_WALES)`, same convention as `C_TOP100`. |
 | `C_IRELAND` | array of course objects | GOLF-77: 37 curated notable Irish courses, Republic of Ireland + Northern Ireland (`data/courses-ireland.js`). Appended onto `C` via `C.push(...C_IRELAND)`, same convention as `C_TOP100`. Republic entries price in `€`, Northern Ireland entries in `£` — a genuine currency split within one nation's data. |
 | `C_SOUTHAFRICA` | array of course objects | GOLF-78 / GOLF-121a: 421 South African courses (`data/courses-southafrica.js`) — 99 curated (19 originally, grown to 99 across the 2026-08/09 Top-100 passes), plus 322 net from the 2026-09-09 GOLF-121a bulk DotGolf pull (near-complete national coverage from Handicap Network Africa): +321 DotGolf, +5 clubs recovered from OpenStreetMap that HNA returned with no coordinates, −5 redundant society-club aliases, +1 course-level split (Randpark → Firethorn + Bushwillow). Appended onto `C` via `C.push(...C_SOUTHAFRICA)`, same convention as `C_TOP100`/`C_IRELAND`. Fees in ZAR (`R`). Bulk-batch entries carry placeholder `band`/`wd`/`we`/`arch`/`note` and `spec:"Unknown"` (hole count was never supplied — HNA's `NoOfHoles` was `0` for the whole pull and OSM has no `holes` tag on SA courses), `conf:"est"` — only `lat`/`lng`/`clubInfo.phone`/`site` are live-sourced, with coordinates snapped to the matching OpenStreetMap course centroid where one exists. |
+| `COURSE_IDS_V1` (`data/course-ids.js`) | array of 879 id strings | GOLF-163: the **frozen** index → id table for the course ordering as it stood on 2026-09-20. Never regenerate it. It is not a description of the current `C[]` ordering and is not meant to track it — it is the only record of what an index meant in every share link and saved trip created before ids shipped. Regenerating it after a reorder would make those links decode to the wrong courses, silently, which is exactly the failure it exists to prevent. Read only by `courseIndexFromLegacy()` in `js/course-id.js`. |
 | `RAIL_GEOM` (`data/rail-geometry.js`) | `{family: [[[lat,lng],...], ...]}` | Real track geometry for the 8 TfL-network line families (`met`/`jub`/`nor`/`pic`/`cen`/`dis`/`eli`/`ovg`), traced from OpenStreetMap via `scripts/fetch_rail_geometry.py`. Each family maps to a list of polylines (one per matched OSM way, not stitched into one line). When a family has an entry here, the app draws these instead of the `spline()` approximation through `R`'s station points; National Rail groupings (`tl`/`gn`/`chil`/`sn`/`se`/`swr`/`wcml`) have no entry and always fall back to the spline, since they're our own station groupings by corridor, not one physical route. |
 
 ## Course object fields
@@ -32,6 +33,7 @@ Every field below appears on **all** courses unless marked otherwise.
 | Field | Type | Meaning |
 |---|---|---|
 | `n` | string | Course name, as shown on the pin/card. |
+| `id` | string | GOLF-163: the course's stable identity, e.g. `"royal-birkdale-8c21"` — a slug of the name plus four hex characters of `sha1(name\|lat\|lng)`, the suffix being what separates two courses at one venue. **Frozen on creation and never re-derived.** It is data, not a function of the name and coordinates: GOLF-161 moves coordinates and a future pass may correct names, and neither may change identity. Minted by `scripts/add_course_ids.py`, which preserves any id it finds and only mints for records that have none. This is what `localStorage` and `#share=` links store; see `js/course-id.js`. |
 | `lat`, `lng` | number | Coordinates. |
 | `r` | string | Region — must be one of the `REGIONS` values. |
 | `a` | string | Access tier key — must be one of the `ACCESS` keys. |
@@ -121,6 +123,28 @@ rather than a walkable London-network station.
 |---|---|---|
 | `PLAYED`, `WANT` | `Set<courseIndex>` | GOLF-15: two distinct personal lists ("Played" / "Want to play"), mutually exclusive per course — marking a course played clears it from the want list. Toggled from the popup, persisted via the same `localStorage` mechanism as `EDITS` (GOLF-9), cleared together via "Clear saved filters & corrections". |
 | `TRIP` | `Set<courseIndex>` | GOLF-28: the trip cart, same pattern as `PLAYED`/`WANT` — toggled from the popup ("Add to trip") or the GOLF-31 Trip Builder pane's discovery-list "Add" buttons, persisted the same way, cleared together with the others. Insertion order (preserved by JS `Set` iteration) is the starting point for `tripOrder()`'s greedy nearest-neighbour walk. Also included in the "Review & export corrections" JSON export (`trip` array) since there's no backend to persist it beyond this browser. |
+
+### How course references are stored (GOLF-163)
+
+At runtime a course is still its index into `C[]` — `PLAYED`, `WANT`, `TRIP`,
+`tripDays[].items[].i` and `EDITS`'s keys are all indices, and nothing in
+`js/` had to change for this. The translation happens only at the two
+boundaries where a reference **outlives the array**:
+
+- **`localStorage`** — encoded to ids by `saveState()`, decoded by
+  `loadStoredState()` (`js/state.js`, via `js/course-id.js`). Payloads
+  written from 2026-09-20 carry `cidv:1`.
+- **`#share=` links** — golf items carry `c:"<id>"` instead of `i:<index>`.
+
+Both boundaries accept the old numeric form **for ever**, resolved through
+`COURSE_IDS_V1`. That asymmetry is the whole point of the ticket: a saved
+trip lives in the visitor's own browser and can be migrated on load, but a
+share link is a URL already in someone else's hands. Reorder `C[]` without
+this and an old link renders a *different* trip — no error, no warning.
+
+`scripts/test_course_ids.js` locks it down, including by deliberately
+reversing `C[]` and asserting that references written against the original
+order still resolve to the original courses.
 
 ## Conventions worth preserving
 

@@ -1,0 +1,3522 @@
+{
+ "note": "GOLF-163: frozen snapshot of C[] identity+order as at 2026-09-20. scripts/test_course_ids.js asserts the live data still matches, index for index. Regenerate ONLY when a course is deliberately added or removed, and say so in the commit message.",
+ "count": 879,
+ "courses": [
+  [
+   "trent-park-golf-course-1311",
+   "Trent Park Golf Course"
+  ],
+  [
+   "mill-hill-golf-club-57d2",
+   "Mill Hill Golf Club"
+  ],
+  [
+   "hendon-golf-club-a453",
+   "Hendon Golf Club"
+  ],
+  [
+   "highgate-golf-club-acab",
+   "Highgate Golf Club"
+  ],
+  [
+   "finchley-golf-club-ae15",
+   "Finchley Golf Club"
+  ],
+  [
+   "hampstead-golf-club-3db4",
+   "Hampstead Golf Club"
+  ],
+  [
+   "muswell-hill-golf-club-5d4f",
+   "Muswell Hill Golf Club"
+  ],
+  [
+   "north-middlesex-golf-club-7286",
+   "North Middlesex Golf Club"
+  ],
+  [
+   "stanmore-golf-club-ac3b",
+   "Stanmore Golf Club"
+  ],
+  [
+   "sudbury-golf-club-c8dd",
+   "Sudbury Golf Club"
+  ],
+  [
+   "playgolf-northwick-park-2c54",
+   "Playgolf Northwick Park"
+  ],
+  [
+   "old-fold-manor-golf-club-3bb2",
+   "Old Fold Manor Golf Club"
+  ],
+  [
+   "south-herts-golf-club-cf7f",
+   "South Herts Golf Club"
+  ],
+  [
+   "hadley-wood-golf-club-e7b9",
+   "Hadley Wood Golf Club"
+  ],
+  [
+   "the-shire-london-de04",
+   "The Shire London"
+  ],
+  [
+   "brookmans-park-golf-club-6a84",
+   "Brookmans Park Golf Club"
+  ],
+  [
+   "crews-hill-golf-club-c106",
+   "Crews Hill Golf Club"
+  ],
+  [
+   "enfield-golf-club-13d6",
+   "Enfield Golf Club"
+  ],
+  [
+   "the-hertsmere-elstree-6b92",
+   "The Hertsmere (Elstree)"
+  ],
+  [
+   "aldenham-golf-country-club-6d90",
+   "Aldenham Golf & Country Club"
+  ],
+  [
+   "porters-park-golf-club-6e5a",
+   "Porters Park Golf Club"
+  ],
+  [
+   "moor-park-high-course-9174",
+   "Moor Park (High Course)"
+  ],
+  [
+   "moor-park-west-course-74bc",
+   "Moor Park (West Course)"
+  ],
+  [
+   "sandy-lodge-golf-club-cabb",
+   "Sandy Lodge Golf Club"
+  ],
+  [
+   "northwood-golf-club-7c35",
+   "Northwood Golf Club"
+  ],
+  [
+   "haste-hill-golf-club-9506",
+   "Haste Hill Golf Club"
+  ],
+  [
+   "pinner-hill-golf-club-e94d",
+   "Pinner Hill Golf Club"
+  ],
+  [
+   "rickmansworth-public-course-044e",
+   "Rickmansworth Public Course"
+  ],
+  [
+   "west-herts-golf-club-29b0",
+   "West Herts Golf Club"
+  ],
+  [
+   "the-grove-21e2",
+   "The Grove"
+  ],
+  [
+   "the-inspiration-club-a1bf",
+   "The Inspiration Club"
+  ],
+  [
+   "west-london-golf-centre-city9-3a35",
+   "West London Golf Centre (City9)"
+  ],
+  [
+   "ealing-golf-club-a3d4",
+   "Ealing Golf Club"
+  ],
+  [
+   "brent-valley-golf-course-4439",
+   "Brent Valley Golf Course"
+  ],
+  [
+   "horsenden-hill-golf-club-0034",
+   "Horsenden Hill Golf Club"
+  ],
+  [
+   "london-airlinks-golf-club-f167",
+   "London Airlinks Golf Club"
+  ],
+  [
+   "dukes-meadows-golf-e167",
+   "Dukes Meadows Golf"
+  ],
+  [
+   "richmond-park-duke-s-10d4",
+   "Richmond Park (Duke's)"
+  ],
+  [
+   "richmond-park-prince-s-cd6a",
+   "Richmond Park (Prince's)"
+  ],
+  [
+   "hampton-court-palace-golf-club-3b23",
+   "Hampton Court Palace Golf Club"
+  ],
+  [
+   "wimbledon-common-london-scottish-f9e9",
+   "Wimbledon Common / London Scottish"
+  ],
+  [
+   "the-richmond-golf-club-42cf",
+   "The Richmond Golf Club"
+  ],
+  [
+   "fulwell-golf-club-51b0",
+   "Fulwell Golf Club"
+  ],
+  [
+   "royal-wimbledon-8dbb",
+   "Royal Wimbledon"
+  ],
+  [
+   "coombe-hill-golf-club-09ef",
+   "Coombe Hill Golf Club"
+  ],
+  [
+   "walton-heath-old-course-e914",
+   "Walton Heath (Old Course)"
+  ],
+  [
+   "walton-heath-new-course-41f4",
+   "Walton Heath (New Course)"
+  ],
+  [
+   "the-addington-a337",
+   "The Addington"
+  ],
+  [
+   "addington-palace-golf-club-799a",
+   "Addington Palace Golf Club"
+  ],
+  [
+   "croham-hurst-golf-club-a6dc",
+   "Croham Hurst Golf Club"
+  ],
+  [
+   "woodcote-park-golf-club-ca66",
+   "Woodcote Park Golf Club"
+  ],
+  [
+   "banstead-downs-golf-club-dbc1",
+   "Banstead Downs Golf Club"
+  ],
+  [
+   "cuddington-golf-club-fc19",
+   "Cuddington Golf Club"
+  ],
+  [
+   "kingswood-golf-country-club-a61c",
+   "Kingswood Golf & Country Club"
+  ],
+  [
+   "tyrrells-wood-golf-club-25e0",
+   "Tyrrells Wood Golf Club"
+  ],
+  [
+   "woldingham-golf-club-f627",
+   "Woldingham Golf Club"
+  ],
+  [
+   "surrey-national-golf-club-a632",
+   "Surrey National Golf Club"
+  ],
+  [
+   "godstone-golf-club-5a2e",
+   "Godstone Golf Club"
+  ],
+  [
+   "westerham-golf-club-b5ac",
+   "Westerham Golf Club"
+  ],
+  [
+   "cherry-lodge-golf-club-1553",
+   "Cherry Lodge Golf Club"
+  ],
+  [
+   "sundridge-park-east-03c4",
+   "Sundridge Park (East)"
+  ],
+  [
+   "sundridge-park-west-5fde",
+   "Sundridge Park (West)"
+  ],
+  [
+   "royal-blackheath-golf-club-569c",
+   "Royal Blackheath Golf Club"
+  ],
+  [
+   "dulwich-sydenham-hill-a704",
+   "Dulwich & Sydenham Hill"
+  ],
+  [
+   "shooters-hill-golf-club-5b3c",
+   "Shooters Hill Golf Club"
+  ],
+  [
+   "langley-park-golf-club-212c",
+   "Langley Park Golf Club"
+  ],
+  [
+   "chelsfield-lakes-golf-centre-f973",
+   "Chelsfield Lakes Golf Centre"
+  ],
+  [
+   "london-golf-club-heritage-a370",
+   "London Golf Club (Heritage)"
+  ],
+  [
+   "chingford-royal-epping-forest-07bb",
+   "Chingford / Royal Epping Forest"
+  ],
+  [
+   "hainault-forest-golf-club-1d8d",
+   "Hainault Forest Golf Club"
+  ],
+  [
+   "wanstead-golf-club-wgc-london-4c8b",
+   "Wanstead Golf Club (WGC London)"
+  ],
+  [
+   "abridge-golf-country-club-cbd9",
+   "Abridge Golf & Country Club"
+  ],
+  [
+   "thorndon-park-golf-club-1b94",
+   "Thorndon Park Golf Club"
+  ],
+  [
+   "romford-golf-club-3b82",
+   "Romford Golf Club"
+  ],
+  [
+   "upminster-golf-club-fa89",
+   "Upminster Golf Club"
+  ],
+  [
+   "denham-golf-club-1594",
+   "Denham Golf Club"
+  ],
+  [
+   "beaconsfield-golf-club-59e6",
+   "Beaconsfield Golf Club"
+  ],
+  [
+   "the-buckinghamshire-8542",
+   "The Buckinghamshire"
+  ],
+  [
+   "stoke-park-8c26",
+   "Stoke Park"
+  ],
+  [
+   "bexleyheath-golf-club-7ae1",
+   "Bexleyheath Golf Club"
+  ],
+  [
+   "sidcup-golf-club-fa0c",
+   "Sidcup Golf Club"
+  ],
+  [
+   "barnehurst-golf-course-9b3b",
+   "Barnehurst Golf Course"
+  ],
+  [
+   "coombe-wood-golf-club-7b3d",
+   "Coombe Wood Golf Club"
+  ],
+  [
+   "malden-golf-club-b503",
+   "Malden Golf Club"
+  ],
+  [
+   "grim-s-dyke-golf-club-7129",
+   "Grim's Dyke Golf Club"
+  ],
+  [
+   "verulam-golf-club-b1c9",
+   "Verulam Golf Club"
+  ],
+  [
+   "redbourn-golf-club-2b8b",
+   "Redbourn Golf Club"
+  ],
+  [
+   "mid-herts-golf-club-7da1",
+   "Mid Herts Golf Club"
+  ],
+  [
+   "batchwood-golf-sports-centre-5077",
+   "Batchwood Golf & Sports Centre"
+  ],
+  [
+   "wheathampstead-golf-village-9600",
+   "Wheathampstead Golf Village"
+  ],
+  [
+   "harpenden-golf-club-cdd0",
+   "Harpenden Golf Club"
+  ],
+  [
+   "centurion-club-bba3",
+   "Centurion Club"
+  ],
+  [
+   "wildernesse-golf-club-832e",
+   "Wildernesse Golf Club"
+  ],
+  [
+   "knole-park-a3f1",
+   "Knole Park"
+  ],
+  [
+   "sevenoaks-town-golf-club-2307",
+   "Sevenoaks Town Golf Club"
+  ],
+  [
+   "woodford-golf-club-1626",
+   "Woodford Golf Club"
+  ],
+  [
+   "chigwell-golf-club-58c0",
+   "Chigwell Golf Club"
+  ],
+  [
+   "woolston-manor-golf-course-ea3d",
+   "Woolston Manor Golf Course"
+  ],
+  [
+   "strawberry-hill-golf-club-def4",
+   "Strawberry Hill Golf Club"
+  ],
+  [
+   "wyke-green-golf-club-ba87",
+   "Wyke Green Golf Club"
+  ],
+  [
+   "west-middlesex-golf-club-172a",
+   "West Middlesex Golf Club"
+  ],
+  [
+   "royal-mid-surrey-golf-club-a917",
+   "Royal Mid-Surrey Golf Club"
+  ],
+  [
+   "purley-downs-golf-club-eca3",
+   "Purley Downs Golf Club"
+  ],
+  [
+   "addington-court-golf-club-c426",
+   "Addington Court Golf Club"
+  ],
+  [
+   "shirley-park-golf-club-3e20",
+   "Shirley Park Golf Club"
+  ],
+  [
+   "epsom-golf-club-9b63",
+   "Epsom Golf Club"
+  ],
+  [
+   "the-leatherhead-club-87e3",
+   "The Leatherhead Club"
+  ],
+  [
+   "orpington-golf-centre-cray-valley-ae81",
+   "Orpington Golf Centre / Cray Valley"
+  ],
+  [
+   "high-elms-golf-course-14b7",
+   "High Elms Golf Course"
+  ],
+  [
+   "lullingstone-park-golf-course-e5bb",
+   "Lullingstone Park Golf Course"
+  ],
+  [
+   "hartsbourne-country-club-bba8",
+   "Hartsbourne Country Club"
+  ],
+  [
+   "the-9-of-herts-golf-course-929f",
+   "The 9 of Herts Golf Course"
+  ],
+  [
+   "dartford-golf-club-b497",
+   "Dartford Golf Club"
+  ],
+  [
+   "birchwood-park-golf-country-club-7b73",
+   "Birchwood Park Golf & Country Club"
+  ],
+  [
+   "hillingdon-golf-course-5349",
+   "Hillingdon Golf Course"
+  ],
+  [
+   "thames-ditton-esher-golf-club-ede4",
+   "Thames Ditton & Esher Golf Club"
+  ],
+  [
+   "sandown-park-golf-centre-6193",
+   "Sandown Park Golf Centre"
+  ],
+  [
+   "surbiton-golf-club-8b2e",
+   "Surbiton Golf Club"
+  ],
+  [
+   "hersham-golf-club-6f1a",
+   "Hersham Golf Club"
+  ],
+  [
+   "silvermere-golf-course-45c6",
+   "Silvermere Golf Course"
+  ],
+  [
+   "chobham-golf-club-d8a5",
+   "Chobham Golf Club"
+  ],
+  [
+   "reigate-hill-golf-club-ed3f",
+   "Reigate Hill Golf Club"
+  ],
+  [
+   "reigate-heath-golf-club-76e1",
+   "Reigate Heath Golf Club"
+  ],
+  [
+   "royal-st-george-s-e753",
+   "Royal St George's"
+  ],
+  [
+   "sunningdale-old-8bde",
+   "Sunningdale (Old)"
+  ],
+  [
+   "royal-birkdale-d0c1",
+   "Royal Birkdale"
+  ],
+  [
+   "royal-lytham-st-annes-e893",
+   "Royal Lytham & St Annes"
+  ],
+  [
+   "sunningdale-new-86a7",
+   "Sunningdale (New)"
+  ],
+  [
+   "woodhall-spa-hotchkin-f4ac",
+   "Woodhall Spa (Hotchkin)"
+  ],
+  [
+   "royal-cinque-ports-b058",
+   "Royal Cinque Ports"
+  ],
+  [
+   "swinley-forest-28a2",
+   "Swinley Forest"
+  ],
+  [
+   "royal-west-norfolk-4284",
+   "Royal West Norfolk"
+  ],
+  [
+   "ganton-bb40",
+   "Ganton"
+  ],
+  [
+   "royal-liverpool-d2d7",
+   "Royal Liverpool"
+  ],
+  [
+   "formby-815a",
+   "Formby"
+  ],
+  [
+   "alwoodley-2f18",
+   "Alwoodley"
+  ],
+  [
+   "saunton-east-529a",
+   "Saunton (East)"
+  ],
+  [
+   "st-george-s-hill-9011",
+   "St George's Hill"
+  ],
+  [
+   "rye-a6f3",
+   "Rye"
+  ],
+  [
+   "burnham-berrow-27a9",
+   "Burnham & Berrow"
+  ],
+  [
+   "notts-hollinwell-8348",
+   "Notts (Hollinwell)"
+  ],
+  [
+   "st-enodoc-church-bdf6",
+   "St Enodoc (Church)"
+  ],
+  [
+   "hankley-common-68b4",
+   "Hankley Common"
+  ],
+  [
+   "hillside-a0d3",
+   "Hillside"
+  ],
+  [
+   "silloth-on-solway-0054",
+   "Silloth-on-Solway"
+  ],
+  [
+   "the-berkshire-red-3762",
+   "The Berkshire (Red)"
+  ],
+  [
+   "west-lancs-1a0e",
+   "West Lancs"
+  ],
+  [
+   "west-sussex-pulborough-ecce",
+   "West Sussex (Pulborough)"
+  ],
+  [
+   "hunstanton-c9bc",
+   "Hunstanton"
+  ],
+  [
+   "woking-90cb",
+   "Woking"
+  ],
+  [
+   "southport-ainsdale-b830",
+   "Southport & Ainsdale"
+  ],
+  [
+   "prince-s-shore-dunes-himalayas-4916",
+   "Prince's (Shore/Dunes/Himalayas)"
+  ],
+  [
+   "the-berkshire-blue-cbcf",
+   "The Berkshire (Blue)"
+  ],
+  [
+   "sherwood-forest-2020",
+   "Sherwood Forest"
+  ],
+  [
+   "liphook-f55b",
+   "Liphook"
+  ],
+  [
+   "worplesdon-87e5",
+   "Worplesdon"
+  ],
+  [
+   "parkstone-8284",
+   "Parkstone"
+  ],
+  [
+   "moortown-8290",
+   "Moortown"
+  ],
+  [
+   "aldeburgh-3fbd",
+   "Aldeburgh"
+  ],
+  [
+   "trevose-4be3",
+   "Trevose"
+  ],
+  [
+   "west-hill-dbcb",
+   "West Hill"
+  ],
+  [
+   "seaton-carew-a8c4",
+   "Seaton Carew"
+  ],
+  [
+   "royal-worlington-newmarket-892b",
+   "Royal Worlington & Newmarket"
+  ],
+  [
+   "goswick-86ab",
+   "Goswick"
+  ],
+  [
+   "ferndown-5289",
+   "Ferndown"
+  ],
+  [
+   "wallasey-91a0",
+   "Wallasey"
+  ],
+  [
+   "broadstone-48ef",
+   "Broadstone"
+  ],
+  [
+   "royal-north-devon-ce65",
+   "Royal North Devon"
+  ],
+  [
+   "little-aston-b309",
+   "Little Aston"
+  ],
+  [
+   "hindhead-008f",
+   "Hindhead"
+  ],
+  [
+   "seacroft-2333",
+   "Seacroft"
+  ],
+  [
+   "ipswich-purdis-heath-3938",
+   "Ipswich (Purdis Heath)"
+  ],
+  [
+   "new-zealand-873a",
+   "New Zealand"
+  ],
+  [
+   "delamere-forest-109d",
+   "Delamere Forest"
+  ],
+  [
+   "hayling-41c9",
+   "Hayling"
+  ],
+  [
+   "blackmoor-bf71",
+   "Blackmoor"
+  ],
+  [
+   "beau-desert-be2c",
+   "Beau Desert"
+  ],
+  [
+   "royal-ashdown-forest-3205",
+   "Royal Ashdown Forest"
+  ],
+  [
+   "littlestone-77ae",
+   "Littlestone"
+  ],
+  [
+   "jcb-4aff",
+   "JCB"
+  ],
+  [
+   "saunton-west-0187",
+   "Saunton (West)"
+  ],
+  [
+   "huntercombe-5630",
+   "Huntercombe"
+  ],
+  [
+   "east-devon-c12d",
+   "East Devon"
+  ],
+  [
+   "perranporth-1f25",
+   "Perranporth"
+  ],
+  [
+   "stoneham-057b",
+   "Stoneham"
+  ],
+  [
+   "piltdown-afe1",
+   "Piltdown"
+  ],
+  [
+   "woodbridge-a2d5",
+   "Woodbridge"
+  ],
+  [
+   "kington-02f7",
+   "Kington"
+  ],
+  [
+   "sheringham-cd6f",
+   "Sheringham"
+  ],
+  [
+   "cavendish-1b7e",
+   "Cavendish"
+  ],
+  [
+   "st-annes-old-links-abb5",
+   "St Annes Old Links"
+  ],
+  [
+   "prestbury-b981",
+   "Prestbury"
+  ],
+  [
+   "blackwell-bbf1",
+   "Blackwell"
+  ],
+  [
+   "tandridge-af14",
+   "Tandridge"
+  ],
+  [
+   "camberley-heath-f651",
+   "Camberley Heath"
+  ],
+  [
+   "sutton-coldfield-0828",
+   "Sutton Coldfield"
+  ],
+  [
+   "isle-of-purbeck-ece5",
+   "Isle of Purbeck"
+  ],
+  [
+   "fulford-37c7",
+   "Fulford"
+  ],
+  [
+   "seascale-8a97",
+   "Seascale"
+  ],
+  [
+   "thorpeness-2d44",
+   "Thorpeness"
+  ],
+  [
+   "royal-cromer-fe35",
+   "Royal Cromer"
+  ],
+  [
+   "ashridge-02fc",
+   "Ashridge"
+  ],
+  [
+   "the-belfry-brabazon-e2dd",
+   "The Belfry (Brabazon)"
+  ],
+  [
+   "lindrick-d42c",
+   "Lindrick"
+  ],
+  [
+   "centurion-af6b",
+   "Centurion"
+  ],
+  [
+   "cleeve-hill-5b18",
+   "Cleeve Hill"
+  ],
+  [
+   "yelverton-bce2",
+   "Yelverton"
+  ],
+  [
+   "dunstanburgh-castle-6196",
+   "Dunstanburgh Castle"
+  ],
+  [
+   "formby-ladies-dcab",
+   "Formby Ladies"
+  ],
+  [
+   "remedy-oak-ff6c",
+   "Remedy Oak"
+  ],
+  [
+   "chart-hills-116b",
+   "Chart Hills"
+  ],
+  [
+   "northants-county-4362",
+   "Northants County"
+  ],
+  [
+   "crowborough-beacon-81bf",
+   "Crowborough Beacon"
+  ],
+  [
+   "bude-north-cornwall-6be9",
+   "Bude & North Cornwall"
+  ],
+  [
+   "berkhamsted-c8c7",
+   "Berkhamsted"
+  ],
+  [
+   "north-hants-a791",
+   "North Hants"
+  ],
+  [
+   "enville-highgate-ed1b",
+   "Enville (Highgate)"
+  ],
+  [
+   "bearwood-lakes-470f",
+   "Bearwood Lakes"
+  ],
+  [
+   "woburn-marquess-65ab",
+   "Woburn (Marquess)"
+  ],
+  [
+   "woburn-duke-s-0169",
+   "Woburn (Duke's)"
+  ],
+  [
+   "woburn-duchess-d1f4",
+   "Woburn (Duchess)"
+  ],
+  [
+   "wentworth-west-f8da",
+   "Wentworth (West)"
+  ],
+  [
+   "wentworth-east-e5bf",
+   "Wentworth (East)"
+  ],
+  [
+   "hadley-wood-bca5",
+   "Hadley Wood"
+  ],
+  [
+   "painswick-ae7d",
+   "Painswick"
+  ],
+  [
+   "cleveland-fb35",
+   "Cleveland"
+  ],
+  [
+   "hallamshire-364a",
+   "Hallamshire"
+  ],
+  [
+   "tadmarton-heath-c9b9",
+   "Tadmarton Heath"
+  ],
+  [
+   "royal-norwich-c037",
+   "Royal Norwich"
+  ],
+  [
+   "appleby-df48",
+   "Appleby"
+  ],
+  [
+   "coxmoor-54e8",
+   "Coxmoor"
+  ],
+  [
+   "moor-park-high-ab21",
+   "Moor Park (High)"
+  ],
+  [
+   "close-house-colt-72b0",
+   "Close House (Colt)"
+  ],
+  [
+   "sandiway-1913",
+   "Sandiway"
+  ],
+  [
+   "enville-lodge-fab0",
+   "Enville (Lodge)"
+  ],
+  [
+   "wildernesse-10fb",
+   "Wildernesse"
+  ],
+  [
+   "beaconsfield-9d75",
+   "Beaconsfield"
+  ],
+  [
+   "st-andrews-old-068e",
+   "St Andrews (Old)"
+  ],
+  [
+   "turnberry-ailsa-7990",
+   "Turnberry (Ailsa)"
+  ],
+  [
+   "royal-dornoch-221d",
+   "Royal Dornoch"
+  ],
+  [
+   "muirfield-12b3",
+   "Muirfield"
+  ],
+  [
+   "north-berwick-west-links-1741",
+   "North Berwick (West Links)"
+  ],
+  [
+   "kingsbarns-8658",
+   "Kingsbarns"
+  ],
+  [
+   "carnoustie-championship-5e36",
+   "Carnoustie (Championship)"
+  ],
+  [
+   "cruden-bay-dd5f",
+   "Cruden Bay"
+  ],
+  [
+   "royal-troon-old-8f3b",
+   "Royal Troon (Old)"
+  ],
+  [
+   "castle-stuart-2476",
+   "Castle Stuart"
+  ],
+  [
+   "trump-international-old-fda9",
+   "Trump International (Old)"
+  ],
+  [
+   "prestwick-1ca6",
+   "Prestwick"
+  ],
+  [
+   "loch-lomond-d787",
+   "Loch Lomond"
+  ],
+  [
+   "royal-aberdeen-balgownie-76a4",
+   "Royal Aberdeen (Balgownie)"
+  ],
+  [
+   "gleneagles-king-s-973f",
+   "Gleneagles (King's)"
+  ],
+  [
+   "machrihanish-9b8a",
+   "Machrihanish"
+  ],
+  [
+   "western-gailes-105d",
+   "Western Gailes"
+  ],
+  [
+   "the-machrie-islay-a93c",
+   "The Machrie, Islay"
+  ],
+  [
+   "nairn-75de",
+   "Nairn"
+  ],
+  [
+   "gullane-no-1-a66a",
+   "Gullane (No.1)"
+  ],
+  [
+   "dumbarnie-links-6af3",
+   "Dumbarnie Links"
+  ],
+  [
+   "elie-golf-house-club-8ca0",
+   "Elie (Golf House Club)"
+  ],
+  [
+   "brora-32f7",
+   "Brora"
+  ],
+  [
+   "st-andrews-new-7d95",
+   "St Andrews (New)"
+  ],
+  [
+   "the-renaissance-club-4c2c",
+   "The Renaissance Club"
+  ],
+  [
+   "southerness-48f8",
+   "Southerness"
+  ],
+  [
+   "dunbar-16d2",
+   "Dunbar"
+  ],
+  [
+   "panmure-2a8c",
+   "Panmure"
+  ],
+  [
+   "st-andrews-castle-989c",
+   "St Andrews (Castle)"
+  ],
+  [
+   "murcar-links-6033",
+   "Murcar Links"
+  ],
+  [
+   "dundonald-links-c095",
+   "Dundonald Links"
+  ],
+  [
+   "boat-of-garten-0e4c",
+   "Boat of Garten"
+  ],
+  [
+   "fraserburgh-f086",
+   "Fraserburgh"
+  ],
+  [
+   "luffness-new-8100",
+   "Luffness New"
+  ],
+  [
+   "moray-old-cfad",
+   "Moray (Old)"
+  ],
+  [
+   "gailes-links-7c6c",
+   "Gailes Links"
+  ],
+  [
+   "gullane-no-2-1724",
+   "Gullane (No.2)"
+  ],
+  [
+   "montrose-1562-0a17",
+   "Montrose (1562)"
+  ],
+  [
+   "blairgowrie-rosemount-6d2f",
+   "Blairgowrie (Rosemount)"
+  ],
+  [
+   "archerfield-fidra-54d4",
+   "Archerfield (Fidra)"
+  ],
+  [
+   "lanark-399f",
+   "Lanark"
+  ],
+  [
+   "ardfin-7fcb",
+   "Ardfin"
+  ],
+  [
+   "skibo-castle-carnegie-cf5e",
+   "Skibo Castle (Carnegie)"
+  ],
+  [
+   "gleneagles-queen-s-521a",
+   "Gleneagles (Queen's)"
+  ],
+  [
+   "cabot-highlands-old-petty-75d0",
+   "Cabot Highlands (Old Petty)"
+  ],
+  [
+   "fortrose-rosemarkie-7e5c",
+   "Fortrose & Rosemarkie"
+  ],
+  [
+   "machrihanish-dunes-d38a",
+   "Machrihanish Dunes"
+  ],
+  [
+   "shiskine-fca4",
+   "Shiskine"
+  ],
+  [
+   "crail-balcomie-links-4f43",
+   "Crail (Balcomie Links)"
+  ],
+  [
+   "kilmarnock-barassie-0259",
+   "Kilmarnock (Barassie)"
+  ],
+  [
+   "lundin-6427",
+   "Lundin"
+  ],
+  [
+   "askernish-3266",
+   "Askernish"
+  ],
+  [
+   "bruntsfield-links-4743",
+   "Bruntsfield Links"
+  ],
+  [
+   "downfield-4b32",
+   "Downfield"
+  ],
+  [
+   "duff-house-royal-63f7",
+   "Duff House Royal"
+  ],
+  [
+   "dunaverty-3dfe",
+   "Dunaverty"
+  ],
+  [
+   "durness-d907",
+   "Durness"
+  ],
+  [
+   "east-renfrewshire-0652",
+   "East Renfrewshire"
+  ],
+  [
+   "edzell-d4eb",
+   "Edzell"
+  ],
+  [
+   "elgin-8522",
+   "Elgin"
+  ],
+  [
+   "forfar-a7f2",
+   "Forfar"
+  ],
+  [
+   "glenbervie-4b53",
+   "Glenbervie"
+  ],
+  [
+   "golspie-1900",
+   "Golspie"
+  ],
+  [
+   "grantown-on-spey-f995",
+   "Grantown-on-Spey"
+  ],
+  [
+   "irvine-bogside-6833",
+   "Irvine (Bogside)"
+  ],
+  [
+   "kilmacolm-ab23",
+   "Kilmacolm"
+  ],
+  [
+   "kilspindie-1f04",
+   "Kilspindie"
+  ],
+  [
+   "ladybank-d570",
+   "Ladybank"
+  ],
+  [
+   "longniddry-7afa",
+   "Longniddry"
+  ],
+  [
+   "nairn-dunbar-5f77",
+   "Nairn Dunbar"
+  ],
+  [
+   "peterhead-d886",
+   "Peterhead"
+  ],
+  [
+   "pitlochry-f32e",
+   "Pitlochry"
+  ],
+  [
+   "portpatrick-dunskey-e7d5",
+   "Portpatrick (Dunskey)"
+  ],
+  [
+   "powfoot-68e9",
+   "Powfoot"
+  ],
+  [
+   "prestwick-st-nicholas-7ee3",
+   "Prestwick St Nicholas"
+  ],
+  [
+   "scotscraig-3226",
+   "Scotscraig"
+  ],
+  [
+   "spey-valley-42b0",
+   "Spey Valley"
+  ],
+  [
+   "stranraer-bc7e",
+   "Stranraer"
+  ],
+  [
+   "tain-5784",
+   "Tain"
+  ],
+  [
+   "west-kilbride-ff9f",
+   "West Kilbride"
+  ],
+  [
+   "archerfield-dirleton-bf8b",
+   "Archerfield (Dirleton)"
+  ],
+  [
+   "blairgowrie-lansdowne-cd80",
+   "Blairgowrie (Lansdowne)"
+  ],
+  [
+   "carnoustie-burnside-f2c9",
+   "Carnoustie (Burnside)"
+  ],
+  [
+   "fairmont-st-andrews-kittocks-f040",
+   "Fairmont St Andrews (Kittocks)"
+  ],
+  [
+   "fairmont-st-andrews-torrance-fdad",
+   "Fairmont St Andrews (Torrance)"
+  ],
+  [
+   "gleneagles-pga-centenary-5904",
+   "Gleneagles (PGA Centenary)"
+  ],
+  [
+   "gullane-no-3-9a8d",
+   "Gullane (No.3)"
+  ],
+  [
+   "leven-links-44d4",
+   "Leven Links"
+  ],
+  [
+   "moray-new-c338",
+   "Moray (New)"
+  ],
+  [
+   "musselburgh-monktonhall-5c6a",
+   "Musselburgh (Monktonhall)"
+  ],
+  [
+   "newmachar-hawkshill-c139",
+   "Newmachar (Hawkshill)"
+  ],
+  [
+   "royal-troon-portland-87b3",
+   "Royal Troon (Portland)"
+  ],
+  [
+   "st-andrews-links-eden-98c7",
+   "St Andrews Links (Eden)"
+  ],
+  [
+   "st-andrews-links-jubilee-24b6",
+   "St Andrews Links (Jubilee)"
+  ],
+  [
+   "the-glen-north-berwick-37d0",
+   "The Glen (North Berwick)"
+  ],
+  [
+   "the-roxburghe-73db",
+   "The Roxburghe"
+  ],
+  [
+   "trump-international-new-496d",
+   "Trump International (New)"
+  ],
+  [
+   "monifieth-links-e3fb",
+   "Monifieth Links"
+  ],
+  [
+   "the-duke-s-course-st-andrews-8d81",
+   "The Duke's Course (St Andrews)"
+  ],
+  [
+   "trump-turnberry-king-robert-the-bruce-64ea",
+   "Trump Turnberry (King Robert the Bruce)"
+  ],
+  [
+   "royal-porthcawl-8e88",
+   "Royal Porthcawl"
+  ],
+  [
+   "pennard-0822",
+   "Pennard"
+  ],
+  [
+   "royal-st-david-s-c788",
+   "Royal St David's"
+  ],
+  [
+   "aberdovey-6327",
+   "Aberdovey"
+  ],
+  [
+   "conwy-caernarvonshire-7597",
+   "Conwy (Caernarvonshire)"
+  ],
+  [
+   "southerndown-29e7",
+   "Southerndown"
+  ],
+  [
+   "tenby-5788",
+   "Tenby"
+  ],
+  [
+   "pyle-kenfig-6eeb",
+   "Pyle & Kenfig"
+  ],
+  [
+   "celtic-manor-twenty-ten-9148",
+   "Celtic Manor (Twenty Ten)"
+  ],
+  [
+   "bull-bay-d687",
+   "Bull Bay"
+  ],
+  [
+   "nefyn-district-163c",
+   "Nefyn & District"
+  ],
+  [
+   "cardigan-1f4a",
+   "Cardigan"
+  ],
+  [
+   "borth-ynyslas-3f67",
+   "Borth & Ynyslas"
+  ],
+  [
+   "welshpool-f3b3",
+   "Welshpool"
+  ],
+  [
+   "the-rolls-of-monmouth-e371",
+   "The Rolls of Monmouth"
+  ],
+  [
+   "newport-0ad6",
+   "Newport"
+  ],
+  [
+   "st-pierre-old-f8c7",
+   "St Pierre (Old)"
+  ],
+  [
+   "celtic-manor-montgomerie-dde5",
+   "Celtic Manor (Montgomerie)"
+  ],
+  [
+   "langland-bay-eb85",
+   "Langland Bay"
+  ],
+  [
+   "radyr-4f4d",
+   "Radyr"
+  ],
+  [
+   "wrexham-5e79",
+   "Wrexham"
+  ],
+  [
+   "ashburnham-3f1e",
+   "Ashburnham"
+  ],
+  [
+   "machynys-peninsula-e0af",
+   "Machynys Peninsula"
+  ],
+  [
+   "clyne-4da2",
+   "Clyne"
+  ],
+  [
+   "north-wales-2688",
+   "North Wales"
+  ],
+  [
+   "llandrindod-wells-aaf5",
+   "Llandrindod Wells"
+  ],
+  [
+   "porthmadog-6233",
+   "Porthmadog"
+  ],
+  [
+   "abersoch-23e9",
+   "Abersoch"
+  ],
+  [
+   "pwllheli-2c6c",
+   "Pwllheli"
+  ],
+  [
+   "vale-resort-wales-national-579c",
+   "Vale Resort (Wales National)"
+  ],
+  [
+   "holyhead-94fd",
+   "Holyhead"
+  ],
+  [
+   "llandudno-maesdu-785e",
+   "Llandudno (Maesdu)"
+  ],
+  [
+   "anglesey-ab2c",
+   "Anglesey"
+  ],
+  [
+   "aberystwyth-3269",
+   "Aberystwyth"
+  ],
+  [
+   "abergele-372b",
+   "Abergele"
+  ],
+  [
+   "the-monmouthshire-4611",
+   "The Monmouthshire"
+  ],
+  [
+   "vale-of-llangollen-8814",
+   "Vale of Llangollen"
+  ],
+  [
+   "prestatyn-68bc",
+   "Prestatyn"
+  ],
+  [
+   "royal-portrush-dunluce-afb5",
+   "Royal Portrush (Dunluce)"
+  ],
+  [
+   "royal-county-down-7fbb",
+   "Royal County Down"
+  ],
+  [
+   "portmarnock-a842",
+   "Portmarnock"
+  ],
+  [
+   "lahinch-old-c9ed",
+   "Lahinch (Old)"
+  ],
+  [
+   "ballybunion-old-2cdc",
+   "Ballybunion (Old)"
+  ],
+  [
+   "county-louth-baltray-dfde",
+   "County Louth (Baltray)"
+  ],
+  [
+   "waterville-eff2",
+   "Waterville"
+  ],
+  [
+   "adare-manor-176f",
+   "Adare Manor"
+  ],
+  [
+   "the-island-d9e9",
+   "The Island"
+  ],
+  [
+   "tralee-0987",
+   "Tralee"
+  ],
+  [
+   "rosapenna-st-patrick-s-links-c3e7",
+   "Rosapenna (St Patrick's Links)"
+  ],
+  [
+   "rosapenna-sandy-hills-links-e470",
+   "Rosapenna (Sandy Hills Links)"
+  ],
+  [
+   "rosapenna-old-tom-morris-links-264e",
+   "Rosapenna (Old Tom Morris Links)"
+  ],
+  [
+   "carne-belmullet-3bb1",
+   "Carne (Belmullet)"
+  ],
+  [
+   "county-sligo-rosses-point-3bf3",
+   "County Sligo (Rosses Point)"
+  ],
+  [
+   "the-k-club-palmer-north-0525",
+   "The K Club (Palmer North)"
+  ],
+  [
+   "the-k-club-palmer-south-b26d",
+   "The K Club (Palmer South)"
+  ],
+  [
+   "enniscrone-e6ba",
+   "Enniscrone"
+  ],
+  [
+   "doonbeg-1f21",
+   "Doonbeg"
+  ],
+  [
+   "portstewart-strand-4e86",
+   "Portstewart (Strand)"
+  ],
+  [
+   "ballyliffin-glashedy-3464",
+   "Ballyliffin (Glashedy)"
+  ],
+  [
+   "ballyliffin-old-links-b079",
+   "Ballyliffin (Old Links)"
+  ],
+  [
+   "royal-dublin-742d",
+   "Royal Dublin"
+  ],
+  [
+   "portsalon-5d35",
+   "Portsalon"
+  ],
+  [
+   "dooks-7079",
+   "Dooks"
+  ],
+  [
+   "old-head-9e64",
+   "Old Head"
+  ],
+  [
+   "druids-glen-a99e",
+   "Druids Glen"
+  ],
+  [
+   "druids-glen-druids-heath-e6fd",
+   "Druids Glen (Druids Heath)"
+  ],
+  [
+   "slieve-russell-4395",
+   "Slieve Russell"
+  ],
+  [
+   "connemara-f7c0",
+   "Connemara"
+  ],
+  [
+   "killeen-castle-2d7b",
+   "Killeen Castle"
+  ],
+  [
+   "narin-portnoo-4307",
+   "Narin & Portnoo"
+  ],
+  [
+   "strandhill-fd1c",
+   "Strandhill"
+  ],
+  [
+   "fota-island-deerpark-e53e",
+   "Fota Island (Deerpark)"
+  ],
+  [
+   "fota-island-belvelly-8661",
+   "Fota Island (Belvelly)"
+  ],
+  [
+   "cork-little-island-20a9",
+   "Cork (Little Island)"
+  ],
+  [
+   "mount-juliet-784a",
+   "Mount Juliet"
+  ],
+  [
+   "donegal-murvagh-9282",
+   "Donegal (Murvagh)"
+  ],
+  [
+   "malone-6562",
+   "Malone"
+  ],
+  [
+   "carlow-5739",
+   "Carlow"
+  ],
+  [
+   "castlerock-844e",
+   "Castlerock"
+  ],
+  [
+   "galway-bay-265a",
+   "Galway Bay"
+  ],
+  [
+   "the-european-club-d4ca",
+   "The European Club"
+  ],
+  [
+   "ardglass-golf-club-3712",
+   "Ardglass Golf Club"
+  ],
+  [
+   "balbriggan-golf-club-feb8",
+   "Balbriggan Golf Club"
+  ],
+  [
+   "belvoir-park-golf-club-afa8",
+   "Belvoir Park Golf Club"
+  ],
+  [
+   "bunclody-golf-club-6aa6",
+   "Bunclody Golf Club"
+  ],
+  [
+   "carton-house-montgomerie-golf-club-2605",
+   "Carton House (Montgomerie) Golf Club"
+  ],
+  [
+   "clandeboye-dufferin-golf-club-a67e",
+   "Clandeboye (Dufferin) Golf Club"
+  ],
+  [
+   "concra-wood-golf-club-9b90",
+   "Concra Wood Golf Club"
+  ],
+  [
+   "dun-laoghaire-golf-club-db05",
+   "Dun Laoghaire Golf Club"
+  ],
+  [
+   "dundalk-golf-club-9bc9",
+   "Dundalk Golf Club"
+  ],
+  [
+   "farnham-estate-golf-club-09d9",
+   "Farnham Estate Golf Club"
+  ],
+  [
+   "galgorm-castle-golf-club-3199",
+   "Galgorm Castle Golf Club"
+  ],
+  [
+   "glasson-golf-club-e143",
+   "Glasson Golf Club"
+  ],
+  [
+   "golf-at-the-hawthorn-golf-club-2f23",
+   "Golf at The Hawthorn Golf Club"
+  ],
+  [
+   "grange-golf-club-a552",
+   "Grange Golf Club"
+  ],
+  [
+   "headfort-new-golf-club-ea05",
+   "Headfort (New) Golf Club"
+  ],
+  [
+   "hermitage-golf-club-6cfc",
+   "Hermitage Golf Club"
+  ],
+  [
+   "killarney-killeen-bfeb",
+   "Killarney (Killeen)"
+  ],
+  [
+   "killarney-mahony-s-point-6fae",
+   "Killarney (Mahony's Point)"
+  ],
+  [
+   "laytown-bettystown-golf-club-d773",
+   "Laytown & Bettystown Golf Club"
+  ],
+  [
+   "lough-erne-golf-club-a12e",
+   "Lough Erne Golf Club"
+  ],
+  [
+   "macreddin-golf-club-0ec0",
+   "Macreddin Golf Club"
+  ],
+  [
+   "monkstown-golf-club-1b62",
+   "Monkstown Golf Club"
+  ],
+  [
+   "moyola-park-golf-club-4aff",
+   "Moyola Park Golf Club"
+  ],
+  [
+   "moyvalley-golf-club-94a3",
+   "Moyvalley Golf Club"
+  ],
+  [
+   "mullingar-golf-club-4dd7",
+   "Mullingar Golf Club"
+  ],
+  [
+   "naas-golf-club-ef7e",
+   "Naas Golf Club"
+  ],
+  [
+   "new-forest-golf-club-48e7",
+   "New Forest Golf Club"
+  ],
+  [
+   "north-west-golf-club-819f",
+   "North West Golf Club"
+  ],
+  [
+   "palmerstown-house-estate-golf-club-3dbe",
+   "Palmerstown House Estate Golf Club"
+  ],
+  [
+   "powerscourt-east-golf-club-9729",
+   "Powerscourt (East) Golf Club"
+  ],
+  [
+   "powerscourt-west-golf-club-3ef1",
+   "Powerscourt (West) Golf Club"
+  ],
+  [
+   "rathsallagh-golf-club-a271",
+   "Rathsallagh Golf Club"
+  ],
+  [
+   "rosslare-golf-club-883a",
+   "Rosslare Golf Club"
+  ],
+  [
+   "seapoint-golf-club-66ff",
+   "Seapoint Golf Club"
+  ],
+  [
+   "st-anne-s-golf-club-6e71",
+   "St. Anne's Golf Club"
+  ],
+  [
+   "st-margaret-s-golf-club-f54a",
+   "St. Margaret's Golf Club"
+  ],
+  [
+   "the-heritage-golf-club-2211",
+   "The Heritage Golf Club"
+  ],
+  [
+   "tulfarris-golf-club-8af3",
+   "Tulfarris Golf Club"
+  ],
+  [
+   "tullamore-golf-club-d68d",
+   "Tullamore Golf Club"
+  ],
+  [
+   "westport-golf-club-4895",
+   "Westport Golf Club"
+  ],
+  [
+   "fancourt-the-links-6665",
+   "Fancourt (The Links)"
+  ],
+  [
+   "fancourt-montagu-efa1",
+   "Fancourt (Montagu)"
+  ],
+  [
+   "fancourt-outeniqua-99a2",
+   "Fancourt (Outeniqua)"
+  ],
+  [
+   "leopard-creek-country-club-6440",
+   "Leopard Creek Country Club"
+  ],
+  [
+   "durban-country-club-b2f0",
+   "Durban Country Club"
+  ],
+  [
+   "st-francis-links-28e0",
+   "St Francis Links"
+  ],
+  [
+   "royal-johannesburg-kensington-east-0d7c",
+   "Royal Johannesburg & Kensington (East)"
+  ],
+  [
+   "royal-cape-golf-club-17d9",
+   "Royal Cape Golf Club"
+  ],
+  [
+   "pearl-valley-golf-club-1e4f",
+   "Pearl Valley Golf Club"
+  ],
+  [
+   "arabella-golf-club-b5b9",
+   "Arabella Golf Club"
+  ],
+  [
+   "gary-player-country-club-sun-city-9076",
+   "Gary Player Country Club (Sun City)"
+  ],
+  [
+   "lost-city-golf-course-sun-city-e374",
+   "Lost City Golf Course (Sun City)"
+  ],
+  [
+   "glendower-golf-club-ec05",
+   "Glendower Golf Club"
+  ],
+  [
+   "humewood-golf-club-916b",
+   "Humewood Golf Club"
+  ],
+  [
+   "erinvale-golf-club-83b0",
+   "Erinvale Golf Club"
+  ],
+  [
+   "zimbali-country-club-5ff1",
+   "Zimbali Country Club"
+  ],
+  [
+   "simola-golf-country-estate-54dd",
+   "Simola Golf & Country Estate"
+  ],
+  [
+   "oubaai-golf-club-2a3e",
+   "Oubaai Golf Club"
+  ],
+  [
+   "pinnacle-point-golf-club-28b5",
+   "Pinnacle Point Golf Club"
+  ],
+  [
+   "george-golf-club-aabd",
+   "George Golf Club"
+  ],
+  [
+   "mount-edgecombe-the-woods-9961",
+   "Mount Edgecombe (The Woods)"
+  ],
+  [
+   "mount-edgecombe-the-lakes-bedb",
+   "Mount Edgecombe (The Lakes)"
+  ],
+  [
+   "houghton-golf-club-a94e",
+   "Houghton Golf Club"
+  ],
+  [
+   "atlantic-beach-links-49b1",
+   "Atlantic Beach Links"
+  ],
+  [
+   "benoni-cc-c73a",
+   "Benoni CC"
+  ],
+  [
+   "blair-atholl-golf-equestrian-estate-6d26",
+   "Blair Atholl Golf & Equestrian Estate"
+  ],
+  [
+   "bloemfontein-ad83",
+   "Bloemfontein"
+  ],
+  [
+   "bosch-hoek-82de",
+   "Bosch Hoek"
+  ],
+  [
+   "bryanston-9e38",
+   "Bryanston"
+  ],
+  [
+   "ccj-rocklands-1fdc",
+   "CCJ Rocklands"
+  ],
+  [
+   "ccj-woodmead-64df",
+   "CCJ Woodmead"
+  ],
+  [
+   "centurion-e882",
+   "Centurion"
+  ],
+  [
+   "champagne-sports-resort-ece7",
+   "Champagne Sports Resort"
+  ],
+  [
+   "clovelly-f19d",
+   "Clovelly"
+  ],
+  [
+   "cotswold-downs-3f26",
+   "Cotswold Downs"
+  ],
+  [
+   "dainfern-bd35",
+   "Dainfern"
+  ],
+  [
+   "de-zalze-45c0",
+   "De Zalze"
+  ],
+  [
+   "eagle-canyon-7cdf",
+   "Eagle Canyon"
+  ],
+  [
+   "east-london-golf-club-0ab5",
+   "East London Golf Club"
+  ],
+  [
+   "ebotse-links-bbd2",
+   "Ebotse Links"
+  ],
+  [
+   "elements-f536",
+   "Elements"
+  ],
+  [
+   "emfuleni-006a",
+   "Emfuleni"
+  ],
+  [
+   "eye-of-africa-a480",
+   "Eye of Africa"
+  ],
+  [
+   "glenvista-golf-club-5620",
+   "Glenvista Golf Club"
+  ],
+  [
+   "goldfields-west-8df6",
+   "Goldfields West"
+  ],
+  [
+   "goose-valley-76fc",
+   "Goose Valley"
+  ],
+  [
+   "gowrie-farm-b05b",
+   "Gowrie Farm"
+  ],
+  [
+   "hermanus-3249",
+   "Hermanus"
+  ],
+  [
+   "highland-gate-2e12",
+   "Highland Gate"
+  ],
+  [
+   "huddle-park-f79a",
+   "Huddle Park"
+  ],
+  [
+   "irene-d01c",
+   "Irene"
+  ],
+  [
+   "jackal-creek-a38f",
+   "Jackal Creek"
+  ],
+  [
+   "kambaku-6eba",
+   "Kambaku"
+  ],
+  [
+   "katberg-fdac",
+   "Katberg"
+  ],
+  [
+   "king-david-mowbray-86be",
+   "King David Mowbray"
+  ],
+  [
+   "kingswood-2d57",
+   "Kingswood"
+  ],
+  [
+   "knysna-golf-club-c2f7",
+   "Knysna Golf Club"
+  ],
+  [
+   "krugersdorp-1e31",
+   "Krugersdorp"
+  ],
+  [
+   "kyalami-5395",
+   "Kyalami"
+  ],
+  [
+   "maccauvlei-254b",
+   "Maccauvlei"
+  ],
+  [
+   "mbombela-8672",
+   "Mbombela"
+  ],
+  [
+   "modderfontein-70f7",
+   "Modderfontein"
+  ],
+  [
+   "mossel-bay-golf-club-2534",
+   "Mossel Bay Golf Club"
+  ],
+  [
+   "olivewood-340f",
+   "Olivewood"
+  ],
+  [
+   "paarl-golf-club-363f",
+   "Paarl Golf Club"
+  ],
+  [
+   "parkview-2cc2",
+   "Parkview"
+  ],
+  [
+   "parys-d206",
+   "Parys"
+  ],
+  [
+   "pecanwood-a8f8",
+   "Pecanwood"
+  ],
+  [
+   "pezula-b31c",
+   "Pezula"
+  ],
+  [
+   "plettenberg-bay-cc-5aaf",
+   "Plettenberg Bay CC"
+  ],
+  [
+   "port-elizabeth-golf-club-192e",
+   "Port Elizabeth Golf Club"
+  ],
+  [
+   "pretoria-country-club-038f",
+   "Pretoria Country Club"
+  ],
+  [
+   "prince-s-grant-bea7",
+   "Prince's Grant"
+  ],
+  [
+   "randpark-firethorn-6fa0",
+   "Randpark (Firethorn)"
+  ],
+  [
+   "randpark-bushwillow-5593",
+   "Randpark (Bushwillow)"
+  ],
+  [
+   "reading-country-club-bf6f",
+   "Reading Country Club"
+  ],
+  [
+   "royal-johannesburg-kensington-west-8272",
+   "Royal Johannesburg & Kensington (West)"
+  ],
+  [
+   "royal-port-alfred-245f",
+   "Royal Port Alfred"
+  ],
+  [
+   "ruimsig-3f96",
+   "Ruimsig"
+  ],
+  [
+   "san-lameer-5cf7",
+   "San Lameer"
+  ],
+  [
+   "selborne-park-6b4e",
+   "Selborne Park"
+  ],
+  [
+   "serengeti-2578",
+   "Serengeti"
+  ],
+  [
+   "sishen-158a",
+   "Sishen"
+  ],
+  [
+   "somerset-west-cc-9b17",
+   "Somerset West CC"
+  ],
+  [
+   "southbroom-41b4",
+   "Southbroom"
+  ],
+  [
+   "st-francis-bay-08f9",
+   "St Francis Bay"
+  ],
+  [
+   "steenberg-d822",
+   "Steenberg"
+  ],
+  [
+   "stellenbosch-46d4",
+   "Stellenbosch"
+  ],
+  [
+   "the-club-at-steyn-city-d5fe",
+   "The Club at Steyn City"
+  ],
+  [
+   "umdoni-park-01da",
+   "Umdoni Park"
+  ],
+  [
+   "umhlali-3d77",
+   "Umhlali"
+  ],
+  [
+   "victoria-golf-club-9d41",
+   "Victoria Golf Club"
+  ],
+  [
+   "wanderers-6d7e",
+   "Wanderers"
+  ],
+  [
+   "waterkloof-golf-club-abd7",
+   "Waterkloof Golf Club"
+  ],
+  [
+   "wedgewood-746c",
+   "Wedgewood"
+  ],
+  [
+   "westlake-4a9f",
+   "Westlake"
+  ],
+  [
+   "wild-coast-sun-country-club-4e42",
+   "Wild Coast Sun Country Club"
+  ],
+  [
+   "wingate-park-fa7e",
+   "Wingate Park"
+  ],
+  [
+   "woodhill-b539",
+   "Woodhill"
+  ],
+  [
+   "zebula-2ee3",
+   "Zebula"
+  ],
+  [
+   "adelaide-golf-club-ad4b",
+   "Adelaide Golf Club"
+  ],
+  [
+   "alexandria-golf-club-d646",
+   "Alexandria Golf Club"
+  ],
+  [
+   "aliwal-north-golf-club-5938",
+   "Aliwal North Golf Club"
+  ],
+  [
+   "barkly-east-golf-club-60e1",
+   "Barkly East Golf Club"
+  ],
+  [
+   "bedford-golf-club-f75e",
+   "Bedford Golf Club"
+  ],
+  [
+   "burgersdorp-golf-club-e928",
+   "Burgersdorp Golf Club"
+  ],
+  [
+   "cathcart-golf-club-f95e",
+   "Cathcart Golf Club"
+  ],
+  [
+   "cradock-golf-club-e5c1",
+   "Cradock Golf Club"
+  ],
+  [
+   "dordrecht-golf-club-e3f0",
+   "Dordrecht Golf Club"
+  ],
+  [
+   "elliot-golf-club-d72d",
+   "Elliot Golf Club"
+  ],
+  [
+   "fort-beaufort-golf-club-7ebb",
+   "Fort Beaufort Golf Club"
+  ],
+  [
+   "gonubie-golf-club-3a97",
+   "Gonubie Golf Club"
+  ],
+  [
+   "graaff-reinet-golf-club-ee5a",
+   "Graaff-Reinet Golf Club"
+  ],
+  [
+   "hankey-golf-club-442e",
+   "Hankey Golf Club"
+  ],
+  [
+   "indwe-golf-club-cb72",
+   "Indwe Golf Club"
+  ],
+  [
+   "jeffreys-bay-golf-club-e40f",
+   "Jeffreys Bay Golf Club"
+  ],
+  [
+   "kei-mouth-golf-club-4799",
+   "Kei Mouth Golf Club"
+  ],
+  [
+   "king-williamstown-gc-04ac",
+   "King Williamstown GC"
+  ],
+  [
+   "kirkwood-golf-club-81ad",
+   "Kirkwood Golf Club"
+  ],
+  [
+   "komga-golf-club-bc27",
+   "Komga Golf Club"
+  ],
+  [
+   "kragga-kamma-country-club-667c",
+   "Kragga Kamma Country Club"
+  ],
+  [
+   "langkloof-golf-club-5ed9",
+   "Langkloof Golf Club"
+  ],
+  [
+   "maclear-golf-club-7b43",
+   "Maclear Golf Club"
+  ],
+  [
+   "matatiele-golf-club-307c",
+   "Matatiele Golf Club"
+  ],
+  [
+   "molteno-golf-club-a1bf",
+   "Molteno Golf Club"
+  ],
+  [
+   "mthatha-country-club-896d",
+   "Mthatha Country Club"
+  ],
+  [
+   "port-st-johns-golf-club-750f",
+   "Port St Johns Golf Club"
+  ],
+  [
+   "queenstown-golf-club-9040",
+   "Queenstown Golf Club"
+  ],
+  [
+   "somerset-east-golf-club-44b3",
+   "Somerset East Golf Club"
+  ],
+  [
+   "stutterheim-country-club-7bc1",
+   "Stutterheim Country Club"
+  ],
+  [
+   "the-belmont-golf-club-858b",
+   "The Belmont Golf Club"
+  ],
+  [
+   "uitenhage-golf-club-1dc8",
+   "Uitenhage Golf Club"
+  ],
+  [
+   "walmer-country-club-bbd6",
+   "Walmer Country Club"
+  ],
+  [
+   "walmer-golf-club-e02a",
+   "Walmer Golf Club"
+  ],
+  [
+   "west-bank-golf-club-4344",
+   "West Bank Golf Club"
+  ],
+  [
+   "zwartenbosch-golf-club-86d1",
+   "Zwartenbosch Golf Club"
+  ],
+  [
+   "balkfontein-golf-club-5308",
+   "Balkfontein Golf Club"
+  ],
+  [
+   "bethlehem-golf-club-c3fc",
+   "Bethlehem Golf Club"
+  ],
+  [
+   "bothaville-golf-club-69cf",
+   "Bothaville Golf Club"
+  ],
+  [
+   "brandfort-golf-club-d616",
+   "Brandfort Golf Club"
+  ],
+  [
+   "bultfontein-golf-club-3db9",
+   "Bultfontein Golf Club"
+  ],
+  [
+   "clocolan-golf-club-9807",
+   "Clocolan Golf Club"
+  ],
+  [
+   "dewetsdorp-golf-club-fa3d",
+   "Dewetsdorp Golf Club"
+  ],
+  [
+   "edenburg-golf-club-31ea",
+   "Edenburg Golf Club"
+  ],
+  [
+   "ficksburg-golf-club-6935",
+   "Ficksburg Golf Club"
+  ],
+  [
+   "frankfort-golf-club-8f1d",
+   "Frankfort Golf Club"
+  ],
+  [
+   "harrismith-country-club-5308",
+   "Harrismith Country Club"
+  ],
+  [
+   "heilbron-golf-club-f726",
+   "Heilbron Golf Club"
+  ],
+  [
+   "hoopstad-golf-club-b67f",
+   "Hoopstad Golf Club"
+  ],
+  [
+   "jacobsdal-golf-club-566b",
+   "Jacobsdal Golf Club"
+  ],
+  [
+   "jagersfontein-golf-club-547d",
+   "Jagersfontein Golf Club"
+  ],
+  [
+   "kestell-country-club-8efe",
+   "Kestell Country Club"
+  ],
+  [
+   "koffiefontein-golf-club-5daf",
+   "Koffiefontein Golf Club"
+  ],
+  [
+   "kroonstad-country-club-6d81",
+   "Kroonstad Country Club"
+  ],
+  [
+   "ladybrand-sports-club-993b",
+   "Ladybrand Sports Club"
+  ],
+  [
+   "marquard-golf-club-00c4",
+   "Marquard Golf Club"
+  ],
+  [
+   "maseru-golf-club-98bd",
+   "Maseru Golf Club"
+  ],
+  [
+   "oppenheimer-park-golf-club-3bec",
+   "Oppenheimer Park Golf Club"
+  ],
+  [
+   "petrus-steyn-golf-club-dae3",
+   "Petrus Steyn Golf Club"
+  ],
+  [
+   "reitz-golf-club-d85c",
+   "Reitz Golf Club"
+  ],
+  [
+   "sand-river-golf-club-b66e",
+   "Sand River Golf Club"
+  ],
+  [
+   "schoeman-park-golf-club-4e0f",
+   "Schoeman Park Golf Club"
+  ],
+  [
+   "senekal-golf-club-41d8",
+   "Senekal Golf Club"
+  ],
+  [
+   "smithfield-golf-club-1eff",
+   "Smithfield Golf Club"
+  ],
+  [
+   "tempe-golf-club-2fd8",
+   "Tempe Golf Club"
+  ],
+  [
+   "the-clarens-golf-and-leisure-estate-88ab",
+   "The Clarens Golf And Leisure Estate"
+  ],
+  [
+   "theunissen-golf-club-b08f",
+   "Theunissen Golf Club"
+  ],
+  [
+   "vaal-de-grace-golf-estate-b449",
+   "Vaal De Grace Golf Estate"
+  ],
+  [
+   "viljoenskroon-country-club-3bcb",
+   "Viljoenskroon Country Club"
+  ],
+  [
+   "vrede-golf-club-ed74",
+   "Vrede Golf Club"
+  ],
+  [
+   "wesselsbron-golf-club-bb58",
+   "Wesselsbron Golf Club"
+  ],
+  [
+   "westminster-golf-club-b255",
+   "Westminster Golf Club"
+  ],
+  [
+   "whites-golf-club-afc8",
+   "Whites Golf Club"
+  ],
+  [
+   "zastron-golf-club-a853",
+   "Zastron Golf Club"
+  ],
+  [
+   "avion-park-golf-club-4325",
+   "Avion Park Golf Club"
+  ],
+  [
+   "benoni-lake-golf-club-c5e0",
+   "Benoni Lake Golf Club"
+  ],
+  [
+   "blue-valley-golf-estate-c322",
+   "Blue Valley Golf Estate"
+  ],
+  [
+   "bronkhorstspruit-golf-club-3a88",
+   "Bronkhorstspruit Golf Club"
+  ],
+  [
+   "cmr-golf-club-bb3b",
+   "Cmr Golf Club"
+  ],
+  [
+   "cullinan-golf-club-1758",
+   "Cullinan Golf Club"
+  ],
+  [
+   "daveyton-golf-club-57f0",
+   "Daveyton Golf Club"
+  ],
+  [
+   "erpm-golf-club-203b",
+   "Erpm Golf Club"
+  ],
+  [
+   "heidelberg-golf-club-321d",
+   "Heidelberg Golf Club"
+  ],
+  [
+   "hillside-golf-club-0b2a",
+   "Hillside Golf Club"
+  ],
+  [
+   "kempton-park-golf-club-cc26",
+   "Kempton Park Golf Club"
+  ],
+  [
+   "killarney-country-club-223d",
+   "Killarney Country Club"
+  ],
+  [
+   "meyerton-golf-club-8bab",
+   "Meyerton Golf Club"
+  ],
+  [
+   "nigel-golf-club-5f80",
+   "Nigel Golf Club"
+  ],
+  [
+   "observatory-golf-club-682d",
+   "Observatory Golf Club"
+  ],
+  [
+   "pebble-rock-country-club-93ae",
+   "Pebble Rock Country Club"
+  ],
+  [
+   "pollak-park-golf-club-dab6",
+   "Pollak Park Golf Club"
+  ],
+  [
+   "riviera-on-vaal-country-club-41af",
+   "Riviera On Vaal Country Club"
+  ],
+  [
+   "royal-oak-country-club-e941",
+   "Royal Oak Country Club"
+  ],
+  [
+   "sandonia-golf-club-71ec",
+   "Sandonia Golf Club"
+  ],
+  [
+   "saps-mech-golf-club-28db",
+   "Saps Mech Golf Club"
+  ],
+  [
+   "services-golf-club-9bb1",
+   "Services Golf Club"
+  ],
+  [
+   "silver-lakes-golf-wildlife-estate-f7ed",
+   "Silver Lakes Golf & Wildlife Estate"
+  ],
+  [
+   "southdowns-country-club-be6d",
+   "Southdowns Country Club"
+  ],
+  [
+   "soweto-country-club-4ee3",
+   "Soweto Country Club"
+  ],
+  [
+   "springs-country-club-c937",
+   "Springs Country Club"
+  ],
+  [
+   "state-mines-country-club-268f",
+   "State Mines Country Club"
+  ],
+  [
+   "sun-valley-golf-club-be61",
+   "Sun Valley Golf Club"
+  ],
+  [
+   "the-els-club-copperleaf-e94e",
+   "THE ELS CLUB-Copperleaf"
+  ],
+  [
+   "the-river-club-097d",
+   "The River Club"
+  ],
+  [
+   "tiptol-golf-course-0a8b",
+   "Tiptol Golf Course"
+  ],
+  [
+   "waterpan-golf-club-26cf",
+   "Waterpan Golf Club"
+  ],
+  [
+   "amanzimtoti-country-club-6f75",
+   "Amanzimtoti Country Club"
+  ],
+  [
+   "amatikulu-country-club-7309",
+   "Amatikulu Country Club"
+  ],
+  [
+   "amphitheatre-golf-club-51cb",
+   "Amphitheatre Golf Club"
+  ],
+  [
+   "athlone-golf-club-9360",
+   "Athlone Golf Club"
+  ],
+  [
+   "augusta-country-estate-31c5",
+   "Augusta Country Estate"
+  ],
+  [
+   "bluff-national-park-golf-club-9ee0",
+   "Bluff National Park Golf Club"
+  ],
+  [
+   "camelot-country-club-4310",
+   "Camelot Country Club"
+  ],
+  [
+   "cathedral-peak-golf-club-e2e4",
+   "Cathedral Peak Golf Club"
+  ],
+  [
+   "cato-ridge-golf-club-2c79",
+   "Cato Ridge Golf Club"
+  ],
+  [
+   "darnall-golf-club-ff17",
+   "Darnall Golf Club"
+  ],
+  [
+   "drakensberg-gardens-gc-6487",
+   "Drakensberg Gardens GC"
+  ],
+  [
+   "dundee-country-club-15ca",
+   "Dundee Country Club"
+  ],
+  [
+   "empangeni-golf-club-b0cf",
+   "Empangeni Golf Club"
+  ],
+  [
+   "eshowe-country-club-12dd",
+   "Eshowe Country Club"
+  ],
+  [
+   "estcourt-golf-club-af6c",
+   "Estcourt Golf Club"
+  ],
+  [
+   "greytown-country-club-f52a",
+   "Greytown Country Club"
+  ],
+  [
+   "harding-golf-club-6624",
+   "Harding Golf Club"
+  ],
+  [
+   "howick-golf-club-9b70",
+   "Howick Golf Club"
+  ],
+  [
+   "kilbarchan-golf-club-7d5d",
+   "Kilbarchan Golf Club"
+  ],
+  [
+   "kloof-country-club-ea53",
+   "Kloof Country Club"
+  ],
+  [
+   "kokstad-golf-club-a450",
+   "Kokstad Golf Club"
+  ],
+  [
+   "kwambonambi-golf-club-8113",
+   "Kwambonambi Golf Club"
+  ],
+  [
+   "ladysmith-country-club-a7b4",
+   "Ladysmith Country Club"
+  ],
+  [
+   "maidstone-golf-club-5ccb",
+   "Maidstone Golf Club"
+  ],
+  [
+   "margate-country-club-b988",
+   "Margate Country Club"
+  ],
+  [
+   "maritzburg-golf-club-de6d",
+   "Maritzburg Golf Club"
+  ],
+  [
+   "monks-cowl-golf-club-130a",
+   "Monks Cowl Golf Club"
+  ],
+  [
+   "monzi-golf-club-b829",
+   "Monzi Golf Club"
+  ],
+  [
+   "mooi-river-country-club-fd1d",
+   "Mooi River Country Club"
+  ],
+  [
+   "mtunzini-country-club-7a25",
+   "Mtunzini Country Club"
+  ],
+  [
+   "newcastle-country-club-be2c",
+   "Newcastle Country Club"
+  ],
+  [
+   "noble-village-golf-club-1426",
+   "Noble Village Golf Club"
+  ],
+  [
+   "noodsberg-country-club-9dd1",
+   "Noodsberg Country Club"
+  ],
+  [
+   "paulpietersburg-country-club-de33",
+   "Paulpietersburg Country Club"
+  ],
+  [
+   "phoenix-golf-club-73bb",
+   "Phoenix Golf Club"
+  ],
+  [
+   "pongola-golf-club-dc13",
+   "Pongola Golf Club"
+  ],
+  [
+   "port-edward-country-club-809f",
+   "Port Edward Country Club"
+  ],
+  [
+   "port-shepstone-country-club-3f7d",
+   "Port Shepstone Country Club"
+  ],
+  [
+   "richards-bay-country-club-0a68",
+   "Richards Bay Country Club"
+  ],
+  [
+   "riverside-gc-kzn-0897",
+   "Riverside GC Kzn"
+  ],
+  [
+   "royal-durban-golf-club-9710",
+   "Royal Durban Golf Club"
+  ],
+  [
+   "sakabula-golf-course-b1db",
+   "Sakabula Golf Course"
+  ],
+  [
+   "scottburgh-golf-club-9320",
+   "Scottburgh Golf Club"
+  ],
+  [
+   "simbithi-country-club-4f1a",
+   "Simbithi Country Club"
+  ],
+  [
+   "st-cathryns-golf-club-6316",
+   "St Cathryns Golf Club"
+  ],
+  [
+   "umfolozi-country-club-5b1f",
+   "Umfolozi Country Club"
+  ],
+  [
+   "umkomaas-golf-club-e80c",
+   "Umkomaas Golf Club"
+  ],
+  [
+   "underberg-country-club-b4f1",
+   "Underberg Country Club"
+  ],
+  [
+   "utrecht-golf-club-0bfb",
+   "Utrecht Golf Club"
+  ],
+  [
+   "vryheid-golf-club-c0dc",
+   "Vryheid Golf Club"
+  ],
+  [
+   "vulintaba-country-estate-d892",
+   "Vulintaba Country Estate"
+  ],
+  [
+   "windsor-park-gc-449d",
+   "Windsor Park GC"
+  ],
+  [
+   "zimbali-lakes-golf-club-dc21",
+   "Zimbali Lakes Golf Club"
+  ],
+  [
+   "amandelbult-golf-club-dce3",
+   "Amandelbult Golf Club"
+  ],
+  [
+   "ba-phalaborwa-golf-club-3f64",
+   "Ba-Phalaborwa Golf Club"
+  ],
+  [
+   "chrome-golf-club-3da6",
+   "Chrome Golf Club"
+  ],
+  [
+   "drakensig-golf-club-7c0e",
+   "Drakensig Golf Club"
+  ],
+  [
+   "euphoria-golf-club-f9c5",
+   "Euphoria Golf Club"
+  ],
+  [
+   "groblersdal-golf-club-5cb7",
+   "Groblersdal Golf Club"
+  ],
+  [
+   "kameeldoring-golf-club-5709",
+   "Kameeldoring Golf Club"
+  ],
+  [
+   "koro-creek-golf-estate-c029",
+   "Koro Creek Golf Estate"
+  ],
+  [
+   "marble-hall-golf-club-ce30",
+   "Marble Hall Golf Club"
+  ],
+  [
+   "messina-golf-club-4eca",
+   "Messina Golf Club"
+  ],
+  [
+   "mogol-golf-club-4863",
+   "Mogol Golf Club"
+  ],
+  [
+   "naboomspruit-golf-club-e8fa",
+   "Naboomspruit Golf Club"
+  ],
+  [
+   "polokwane-golf-club-9e1d",
+   "Polokwane Golf Club"
+  ],
+  [
+   "sesambos-golf-club-5888",
+   "Sesambos Golf Club"
+  ],
+  [
+   "swartklip-golf-club-5e05",
+   "Swartklip Golf Club"
+  ],
+  [
+   "thabazimbi-golf-club-2eac",
+   "Thabazimbi Golf Club"
+  ],
+  [
+   "tzaneen-golf-club-40b2",
+   "Tzaneen Golf Club"
+  ],
+  [
+   "university-of-limpopo-gc-e93f",
+   "University Of Limpopo GC"
+  ],
+  [
+   "amersfoort-golf-club-fe20",
+   "Amersfoort Golf Club"
+  ],
+  [
+   "arnot-golf-club-15ee",
+   "Arnot Golf Club"
+  ],
+  [
+   "badplaas-golf-club-6ee1",
+   "Badplaas Golf Club"
+  ],
+  [
+   "bankenveld-golf-estate-71cd",
+   "Bankenveld Golf Estate"
+  ],
+  [
+   "barberton-golf-club-b002",
+   "Barberton Golf Club"
+  ],
+  [
+   "belfast-golf-club-816f",
+   "Belfast Golf Club"
+  ],
+  [
+   "bethal-golf-club-640d",
+   "Bethal Golf Club"
+  ],
+  [
+   "carolina-golf-club-3c3f",
+   "Carolina Golf Club"
+  ],
+  [
+   "delmas-golf-club-d998",
+   "Delmas Golf Club"
+  ],
+  [
+   "ermelo-golf-club-573a",
+   "Ermelo Golf Club"
+  ],
+  [
+   "graceland-country-club-64b0",
+   "Graceland Country Club"
+  ],
+  [
+   "greenside-colliery-golf-club-eb39",
+   "Greenside Colliery Golf Club"
+  ],
+  [
+   "iindalo-wiltshire-gc-of-skukuza-d515",
+   "Iindalo Wiltshire GC Of Skukuza"
+  ],
+  [
+   "jakelskloof-links-golf-club-a627",
+   "Jakelskloof Links Golf Club"
+  ],
+  [
+   "kranspoort-golf-club-d252",
+   "Kranspoort Golf Club"
+  ],
+  [
+   "kriel-golf-club-91cf",
+   "Kriel Golf Club"
+  ],
+  [
+   "krugerpark-lodge-golf-club-e86f",
+   "Krugerpark Lodge Golf Club"
+  ],
+  [
+   "lydenburg-golf-club-265e",
+   "Lydenburg Golf Club"
+  ],
+  [
+   "malelane-golf-club-f587",
+   "Malelane Golf Club"
+  ],
+  [
+   "middelburg-country-club-b9b7",
+   "Middelburg Country Club"
+  ],
+  [
+   "morgenzon-golf-club-d007",
+   "Morgenzon Golf Club"
+  ],
+  [
+   "piet-retief-country-club-8acd",
+   "Piet Retief Country Club"
+  ],
+  [
+   "pilgrims-rest-golf-club-a121",
+   "Pilgrims Rest Golf Club"
+  ],
+  [
+   "pullens-hope-5fe9",
+   "Pullens Hope"
+  ],
+  [
+   "sabi-river-sun-golf-club-2628",
+   "Sabi River Sun Golf Club"
+  ],
+  [
+   "sabie-country-club-0656",
+   "Sabie Country Club"
+  ],
+  [
+   "standerton-golf-club-9b7d",
+   "Standerton Golf Club"
+  ],
+  [
+   "volksrust-golf-club-2bbc",
+   "Volksrust Golf Club"
+  ],
+  [
+   "walker-park-golf-club-7ee7",
+   "Walker Park Golf Club"
+  ],
+  [
+   "white-river-country-club-944f",
+   "White River Country Club"
+  ],
+  [
+   "witbank-golf-club-c017",
+   "Witbank Golf Club"
+  ],
+  [
+   "bloemhof-golf-club-0e04",
+   "Bloemhof Golf Club"
+  ],
+  [
+   "christiana-golf-club-0536",
+   "Christiana Golf Club"
+  ],
+  [
+   "delareyville-golf-club-5459",
+   "Delareyville Golf Club"
+  ],
+  [
+   "hunters-rest-golf-club-c4d6",
+   "Hunters Rest Golf Club"
+  ],
+  [
+   "klerksdorp-golf-club-952b",
+   "Klerksdorp Golf Club"
+  ],
+  [
+   "koster-golf-club-7ec2",
+   "Koster Golf Club"
+  ],
+  [
+   "landbou-golf-club-potch-e894",
+   "Landbou Golf Club Potch"
+  ],
+  [
+   "leopard-park-golf-club-c9ec",
+   "Leopard Park Golf Club"
+  ],
+  [
+   "lichtenburg-golf-club-5cee",
+   "Lichtenburg Golf Club"
+  ],
+  [
+   "magaliespark-country-club-e566",
+   "Magaliespark Country Club"
+  ],
+  [
+   "millvale-golf-course-e0e6",
+   "Millvale Golf Course"
+  ],
+  [
+   "mooinooi-golf-club-8774",
+   "Mooinooi Golf Club"
+  ],
+  [
+   "orkney-golf-club-7993",
+   "Orkney Golf Club"
+  ],
+  [
+   "ottosdal-golf-club-74b1",
+   "Ottosdal Golf Club"
+  ],
+  [
+   "potchefstroom-country-club-372f",
+   "Potchefstroom Country Club"
+  ],
+  [
+   "reivilo-golf-club-3303",
+   "Reivilo Golf Club"
+  ],
+  [
+   "rustenburg-golf-club-d9ef",
+   "Rustenburg Golf Club"
+  ],
+  [
+   "sandy-lane-golf-club-d1a4",
+   "Sandy Lane Golf Club"
+  ],
+  [
+   "sannieshof-golf-club-6695",
+   "Sannieshof Golf Club"
+  ],
+  [
+   "schweizer-reneke-golf-club-4186",
+   "Schweizer Reneke Golf Club"
+  ],
+  [
+   "seasons-eco-golf-estate-715f",
+   "Seasons Eco Golf Estate"
+  ],
+  [
+   "ventersdorp-golf-club-df3a",
+   "Ventersdorp Golf Club"
+  ],
+  [
+   "vryburg-golf-club-0f49",
+   "Vryburg Golf Club"
+  ],
+  [
+   "wolmaransstad-golf-club-de7f",
+   "Wolmaransstad Golf Club"
+  ],
+  [
+   "zeerust-country-club-a8ae",
+   "Zeerust Country Club"
+  ],
+  [
+   "arendskraal-golf-club-056f",
+   "Arendskraal Golf Club"
+  ],
+  [
+   "black-mountain-golf-club-9d97",
+   "Black Mountain Golf Club"
+  ],
+  [
+   "calvinia-golf-club-4f51",
+   "Calvinia Golf Club"
+  ],
+  [
+   "carnarvon-golf-club-c583",
+   "Carnarvon Golf Club"
+  ],
+  [
+   "colesberg-golf-club-cb31",
+   "Colesberg Golf Club"
+  ],
+  [
+   "de-aar-golf-club-6ac2",
+   "De Aar Golf Club"
+  ],
+  [
+   "douglas-golf-club-7922",
+   "Douglas Golf Club"
+  ],
+  [
+   "hartswater-golf-club-01fc",
+   "Hartswater Golf Club"
+  ],
+  [
+   "hopetown-golf-club-491b",
+   "Hopetown Golf Club"
+  ],
+  [
+   "hotazel-golf-club-4c71",
+   "Hotazel Golf Club"
+  ],
+  [
+   "jan-kemp-golf-club-a506",
+   "Jan Kemp Golf Club"
+  ],
+  [
+   "kakamas-golf-club-a442",
+   "Kakamas Golf Club"
+  ],
+  [
+   "kimberley-golf-club-1e21",
+   "Kimberley Golf Club"
+  ],
+  [
+   "kleinsee-gholfklub-92c3",
+   "Kleinsee Gholfklub"
+  ],
+  [
+   "kuruman-golf-club-5a6c",
+   "Kuruman Golf Club"
+  ],
+  [
+   "lime-acres-golf-club-274a",
+   "Lime Acres Golf Club"
+  ],
+  [
+   "loeriesfontein-golf-club-9766",
+   "Loeriesfontein Golf Club"
+  ],
+  [
+   "magersfontein-memorial-gc-06da",
+   "Magersfontein Memorial GC"
+  ],
+  [
+   "prieska-siyathemba-golf-club-golf-club-2ebb",
+   "PRIESKA SIYATHEMBA GOLF CLUB Golf Club"
+  ],
+  [
+   "richmond-golf-club-763b",
+   "Richmond Golf Club"
+  ],
+  [
+   "springbok-golf-club-2530",
+   "Springbok Golf Club"
+  ],
+  [
+   "ulco-golf-club-217d",
+   "Ulco Golf Club"
+  ],
+  [
+   "upington-golf-club-c033",
+   "Upington Golf Club"
+  ],
+  [
+   "victoria-wes-golf-club-199b",
+   "Victoria-Wes Golf Club"
+  ],
+  [
+   "williston-golf-club-72f9",
+   "Williston Golf Club"
+  ],
+  [
+   "albertinia-golf-club-a50b",
+   "Albertinia Golf Club"
+  ],
+  [
+   "atlantis-gc-6653",
+   "Atlantis GC"
+  ],
+  [
+   "beaufort-west-golf-club-d5d9",
+   "Beaufort West Golf Club"
+  ],
+  [
+   "bellville-golf-club-07d2",
+   "Bellville Golf Club"
+  ],
+  [
+   "berg-river-golf-club-b8e3",
+   "Berg River Golf Club"
+  ],
+  [
+   "boggomsbaai-golf-club-05b7",
+   "Boggomsbaai Golf Club"
+  ],
+  [
+   "bonnievale-golf-club-3659",
+   "Bonnievale Golf Club"
+  ],
+  [
+   "bredasdorp-golf-club-3ae6",
+   "Bredasdorp Golf Club"
+  ],
+  [
+   "caledon-golf-club-80f8",
+   "Caledon Golf Club"
+  ],
+  [
+   "cape-peninsula-golf-club-52b8",
+   "Cape Peninsula Golf Club"
+  ],
+  [
+   "ceres-golf-club-ca98",
+   "Ceres Golf Club"
+  ],
+  [
+   "citrusdal-golf-club-134c",
+   "Citrusdal Golf Club"
+  ],
+  [
+   "clanwilliam-golf-club-e4e6",
+   "Clanwilliam Golf Club"
+  ],
+  [
+   "darling-golf-club-cb15",
+   "Darling Golf Club"
+  ],
+  [
+   "de-hoek-golf-club-d0e7",
+   "De Hoek Golf Club"
+  ],
+  [
+   "defence-golf-club-710f",
+   "Defence Golf Club"
+  ],
+  [
+   "devonvale-golf-estate-8131",
+   "Devonvale Golf Estate"
+  ],
+  [
+   "dolphins-creek-country-estate-golf-club-5ede",
+   "Dolphins Creek Country Estate Golf Club"
+  ],
+  [
+   "durbanville-golf-club-c3ca",
+   "Durbanville Golf Club"
+  ],
+  [
+   "fairview-golf-club-b254",
+   "Fairview Golf Club"
+  ],
+  [
+   "fynbos-golf-club-b79e",
+   "Fynbos Golf Club"
+  ],
+  [
+   "gansbaai-golf-club-2d8f",
+   "Gansbaai Golf Club"
+  ],
+  [
+   "glenwood-golf-club-80a5",
+   "Glenwood Golf Club"
+  ],
+  [
+   "heidelberg-golf-club-cape-cf9d",
+   "Heidelberg Golf Club (Cape)"
+  ],
+  [
+   "helderberg-village-golf-club-7344",
+   "Helderberg Village Golf Club"
+  ],
+  [
+   "hex-valley-golf-club-6e62",
+   "Hex Valley Golf Club"
+  ],
+  [
+   "kleinmond-golf-club-dc81",
+   "Kleinmond Golf Club"
+  ],
+  [
+   "kuilsrivier-golf-club-bb61",
+   "Kuilsrivier Golf Club"
+  ],
+  [
+   "ladismith-golf-club-1230",
+   "Ladismith Golf Club"
+  ],
+  [
+   "langebaan-golf-sports-club-094f",
+   "Langebaan Golf & Sports Club"
+  ],
+  [
+   "lutzville-golf-club-17ea",
+   "Lutzville Golf Club"
+  ],
+  [
+   "malmesbury-golf-club-fe97",
+   "Malmesbury Golf Club"
+  ],
+  [
+   "metropolitan-golf-club-3c38",
+   "Metropolitan Golf Club"
+  ],
+  [
+   "milnerton-golf-club-0c31",
+   "Milnerton Golf Club"
+  ],
+  [
+   "montagu-golf-club-af4d",
+   "Montagu Golf Club"
+  ],
+  [
+   "moorreesburg-golf-club-39dd",
+   "Moorreesburg Golf Club"
+  ],
+  [
+   "oudtshoorn-golf-club-0c66",
+   "Oudtshoorn Golf Club"
+  ],
+  [
+   "parow-golf-club-5603",
+   "Parow Golf Club"
+  ],
+  [
+   "porterville-golf-club-545b",
+   "Porterville Golf Club"
+  ],
+  [
+   "prins-albert-gholfklub-d562",
+   "Prins Albert Gholfklub"
+  ],
+  [
+   "riversdale-golf-club-78a3",
+   "Riversdale Golf Club"
+  ],
+  [
+   "riverside-golf-club-1137",
+   "Riverside Golf Club"
+  ],
+  [
+   "riviersonderend-golf-club-6f2e",
+   "Riviersonderend Golf Club"
+  ],
+  [
+   "robertson-golf-club-9a3b",
+   "Robertson Golf Club"
+  ],
+  [
+   "rondebosch-golf-club-80b8",
+   "Rondebosch Golf Club"
+  ],
+  [
+   "shelley-point-golf-club-3821",
+   "Shelley Point Golf Club"
+  ],
+  [
+   "simons-town-country-club-24d5",
+   "Simons Town Country Club"
+  ],
+  [
+   "still-bay-golf-club-6239",
+   "Still Bay Golf Club"
+  ],
+  [
+   "strand-golf-club-e61c",
+   "Strand Golf Club"
+  ],
+  [
+   "swellendam-golf-club-04b0",
+   "Swellendam Golf Club"
+  ],
+  [
+   "theewaterskloof-golf-club-e62e",
+   "Theewaterskloof Golf Club"
+  ],
+  [
+   "uniondale-1c95",
+   "Uniondale"
+  ],
+  [
+   "vredenburg-golf-club-ee15",
+   "Vredenburg Golf Club"
+  ],
+  [
+   "vredendal-golf-club-544a",
+   "Vredendal Golf Club"
+  ],
+  [
+   "wellington-golf-club-28bd",
+   "Wellington Golf Club"
+  ],
+  [
+   "willowmore-golf-club-2784",
+   "Willowmore Golf Club"
+  ],
+  [
+   "worcester-golf-club-a8aa",
+   "Worcester Golf Club"
+  ],
+  [
+   "xamarin-golf-country-club-adec",
+   "Xamarin Golf & Country Club"
+  ],
+  [
+   "zwartkops-country-club-817b",
+   "Zwartkops Country Club"
+  ],
+  [
+   "akasia-golf-club-cd67",
+   "Akasia Golf Club"
+  ],
+  [
+   "felixton-country-club-57f0",
+   "Felixton Country Club"
+  ],
+  [
+   "sedge-links-6f77",
+   "Sedge Links"
+  ],
+  [
+   "hazendal-golf-club-32ab",
+   "Hazendal Golf Club"
+  ]
+ ]
+}

@@ -340,6 +340,33 @@ it.
 node scripts/test_data.js
 ```
 
+### `add_course_ids.py`
+GOLF-163: mints the stable `id` on every record in `data/courses-*.js`,
+reordering nothing. Already run once — it exists for the next course that
+gets added by hand. It preserves any id it finds and only mints for records
+that have none, because an id must survive a rename and a corrected
+coordinate (GOLF-161 is about to move coordinates). Patches in place with a
+per-record insertion, the same technique as `merge_course_stats.py`, for the
+same reason: rebuilding the array re-indexes it.
+
+It will **not** overwrite `data/course-ids.js` if that file exists — that
+table is frozen at the 2026-09-20 ordering and is the only record of what an
+index meant in share links made before ids shipped.
+
+```bash
+python3 scripts/add_course_ids.py --dry-run
+python3 scripts/add_course_ids.py
+node scripts/test_course_ids.js
+```
+
+### `test_course_ids.js`
+GOLF-163: asserts course identity hasn't moved — unique ids, `C[i]` matching
+`scripts/course-order-baseline.json` index for index, and (the real check) a
+deliberate reversal of `C[]` after which legacy references still resolve to
+the courses they originally named. Run after **any** `data/courses-*.js`
+change. If a course was deliberately added or removed, regenerate the
+baseline and say so in the commit message.
+
 ## Verifying a re-run
 
 After running either fetch script, spot-check a few known values against

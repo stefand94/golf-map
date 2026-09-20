@@ -23,6 +23,8 @@ const files = [
   'data/config.js', 'data/stations.js', 'data/courses-london.js',
   'data/courses-top100.js', 'data/courses-scotland.js', 'data/courses-wales.js',
   'data/courses-ireland.js', 'data/courses-southafrica.js',
+  // GOLF-163: state.js decodes stored course references through this.
+  'data/course-ids.js', 'js/course-id.js',
   'js/trip-model.js', 'js/state.js',
 ];
 

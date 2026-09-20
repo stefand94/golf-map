@@ -89,9 +89,17 @@ total, not a shown-count — it only looked close to 565 by coincidence.
 ## Verification checklist after any change
 
 ```bash
-node scripts/test_data.js   # data-file integrity + course counts
-node scripts/check_js.js    # all js/*.js modules parse + correct load order
+node scripts/test_data.js        # data-file integrity + course counts
+node scripts/check_js.js         # all js/*.js modules parse + correct load order
+node scripts/test_course_ids.js  # GOLF-163: course ids unique, array order unmoved
 ```
+A course's identity is its `id` (GOLF-163), not its position in `C[]` — but
+runtime code still speaks indices, with the translation confined to the
+`localStorage` and `#share=` boundaries (`js/course-id.js`). Any script that
+edits `data/courses-*.js` must patch records **in place**, never rebuild the
+array from a source list: rebuilding re-indexes, and an already-shared link
+then renders a different trip with no error. `data/course-ids.js` is frozen
+and must never be regenerated.
 Plus, for UI changes: in-browser check for console errors and "undefined"
 in rendered popups; `TESTING.md` is the short checklist, `docs/testing-full.md`
 the exhaustive one for anything not covered by the two scripts above.

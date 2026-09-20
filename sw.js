@@ -101,6 +101,7 @@ const PRECACHE_URLS = [
   './images/icon-maskable.svg',
   './js/app-version.js',
   './js/util.js',
+  './js/course-id.js',
   './js/trip-model.js',
   './js/state.js',
   './js/map.js',
@@ -128,6 +129,7 @@ const PRECACHE_URLS = [
   './data/courses-wales.js',
   './data/courses-ireland.js',
   './data/courses-southafrica.js',
+  './data/course-ids.js',
 ];
 
 self.addEventListener('install', (event) => {

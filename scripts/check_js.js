@@ -36,6 +36,9 @@ const failures = [];
 const ORDER = [
   'app-version.js',
   'util.js',
+  // GOLF-163: must precede state.js, which calls loadStoredState() at its
+  // own top level and decodes stored course ids through this module.
+  'course-id.js',
   'trip-model.js',
   'state.js',
   // handicap.js is only function declarations, but it must precede map.js:
