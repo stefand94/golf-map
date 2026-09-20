@@ -262,7 +262,83 @@ step-3 rules rather than just choosing a different filter.
 
 ---
 
-## Step 5 — Verify
+## Step 5 — Wire the nation into the app
+
+Merging the data file is not the end of it. These are the places the app
+has to be told a new nation exists, and **the first two fail silently** —
+nothing throws, the courses simply behave as though they were British.
+
+All of these are `js/` changes, so per DEC-024 check who owns them before
+editing.
+
+**1. `courseNation()` — `js/explore.js:23`.** A hardcoded chain:
+
+```js
+function courseNation(i){const c=C[i];return c.topIreland?'ie':c.topSouthAfrica?'za':'gb'}
+```
+
+It **defaults to `'gb'`**. A new nation that isn't added here doesn't
+error — every one of its courses silently becomes Great Britain, and will
+sit under the GB pill and in GB's cost bucket. Add a per-nation flag on
+the records (`topAustralia`, following `topIreland`/`topSouthAfrica`) and
+extend the chain.
+
+**2. `courseCurrency()` — `js/util.js:198`, and this is the real trap.**
+There is **no nation → currency map.** The currency is sniffed out of the
+course's green-fee *string* by `feeCurrencySym()` (`js/util.js:191`),
+which recognises exactly three symbols — `€`, `£`, and `R` (matched as
+`R` followed by digits) — and **defaults to `£`**.
+
+So a new nation whose fees are in dollars has no recognised symbol, and
+every price in the app renders as **£** — in the day totals, the cost
+table and the trip summary — with no warning anywhere.
+
+Worse for AU/NZ specifically: **AUD and NZD both use `$`**, as do USD and
+several others, so adding `$` to `feeCurrencySym()` is *not* sufficient —
+it cannot tell an Australian fee from a New Zealand one, and a trip
+spanning both would silently add them together. Onboarding a dollar
+nation means changing how currency is determined (deriving it from
+`courseNation()`, or carrying an explicit currency on the record —
+`feeV2` already has a `currency` field, per `js/trip-geo.js:156`) rather
+than adding a symbol to the regex. **Decide this before merging fee
+data**, and note it is a genuine code change, not a data change.
+
+**3. `NATIONS` — `js/explore.js:31`.** `[['gb','Great Britain'],
+['ie','Ireland'],['za','South Africa']]`. `renderNationPills()` derives
+the pills from this array, so adding the `[code,label]` pair is all the
+pill itself needs.
+
+**4. `REGIONS` — `data/config.js:25`.** One flat array of region names
+for all nations. It works because **region names are nation-distinct**,
+which lets `js/trip-ui.js` derive a nation's region list by filtering
+rather than maintaining a second map (see its comment at ~line 723). So:
+append the new nation's regions, and **keep every name globally unique**
+— a region name that collides with an existing one will attach to the
+wrong nation. Add a `DATA_REFRESHED` key too (`data/config.js:9`).
+
+**5. `courseShownOnMap()` — `js/explore.js:30`.** Only needed if the
+country is ringfenced (step 4).
+
+**6. Ranking fields.** `t100.<cc>` for the position and `<cc>Ranked:1`
+for the ringfence flag, following `za`/`zaRanked`. Note `rankNum()`
+(`js/util.js`) has its own field-priority list mirroring
+`bestRankBadge()` — a new nation's ranking field has to be added to
+**both** or "Sort: by ranking" silently falls through to its flat default
+for that nation, which is precisely the GOLF-81 bug.
+
+**7. The two-independent-sources rule.** Established practice is that a
+nation's ranking is the **union of two independent published rankings** —
+South Africa's ringfence is the union of satop100courses.com's Top 100
+and Top100GolfCourses.com's South Africa list, as `courseShownOnMap()`'s
+own comment records. A single-source nation is a deviation: either find a
+second source **or record a DEC accepting single-source, explicitly**.
+Do not merge silently and leave the next person to infer which it was.
+This is live — Australia's ranking is currently effectively single-source
+(Golf Australia Magazine) and that decision is still open.
+
+---
+
+## Step 6 — Verify
 
 ```bash
 node scripts/test_data.js        # data-file integrity + course counts
@@ -274,6 +350,13 @@ node scripts/test_course_ids.js  # ids unique, array order unmoved
 counts, don't just check it exits 0. `check_js.js` confirms all modules
 parse and the HTML load order matches, which is what catches a new data
 file added to the directory but not to `london-golf-map-v5_1.html`.
+
+Note `test_data.js` carries **hardcoded expected counts** —
+`EXPECTED_TOTAL` (line 51) plus per-file totals for `C_TOP100`,
+`C_SCOTLAND` and `C_WALES`. A new country makes it fail *by design*; the
+failure message says so. Update the constant **deliberately, in the same
+commit**, so the number always states what the data should be rather than
+what it happens to be.
 
 `test_course_ids.js` is the step-3 regression test and the one that
 matters most here: it asserts ids are unique and, in the test that
