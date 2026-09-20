@@ -1,8 +1,17 @@
 /**
  * GOLF-45 / GOLF-46 / GOLF-50 / GOLF-55 / GOLF-56 / GOLF-142 — ORS
- * driving-time + route + POI + geocoding + hotel proxy, auto-deployed via
- * Cloudflare's Git integration (build root directory:
- * scripts/cloudflare-worker).
+ * driving-time + route + POI + geocoding + hotel proxy.
+ *
+ * Deploys: Cloudflare Workers Builds is connected to the GitHub repo and
+ * builds on every push to main, but "built" is NOT "live" — on
+ * 2026-09-20 three green builds in a row uploaded versions that were
+ * never promoted, so production served pre-GOLF-164 code while every
+ * check was green. Build root directory is EMPTY (not
+ * scripts/cloudflare-worker, as this comment used to claim); the repo
+ * root wrangler.jsonc points `main` at this file.
+ * Never conclude a change is live from a green build or a 200 — curl the
+ * X-Worker-Build header (GOLF-164) and compare it to
+ * `python3 scripts/update_worker_build.py --print`.
  * ORS_API_KEY is set under the Build's own "Variables and secrets"
  * section and needs a fresh build to bind — it doesn't apply
  * retroactively to a running deployment.
