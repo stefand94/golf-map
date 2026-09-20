@@ -145,53 +145,72 @@ owner. Check who that is before writing either.
 
 ---
 
-## Step 3 — Merge by appending. Never rebuild, never re-sort
+## Step 3 — Patch in place. Never rebuild the array, never re-mint an id
 
 **This is the one that can break saved user data, and it is not obvious
 from reading the data files.**
 
-A course's identity *is its array position*. No course record carries an
-id. `TRIP` is a `Set` of array indices; `tripSeq` is an ordering of them;
-`tripBuildSharePayload()` embeds the index directly in the `#share=` hash.
+Since GOLF-163 (shipped 2026-09-20) a course's identity is its **`id`** —
+a slug of the name plus four hex characters, e.g. `royal-birkdale-8c21` —
+and **not** its position in `C[]`. That id is **frozen on creation and
+never re-derived**: it is data, not a function of the name and
+coordinates. GOLF-161 moves coordinates and a future pass may correct
+names; neither may change identity.
 
-So:
+Runtime code still speaks indices — `TRIP`, `tripSeq`, `tripDays[].items[].i`
+and `EDITS` keys are all indices, and none of that changed. The
+translation to ids happens only at the two boundaries where a reference
+**outlives the array**: `localStorage` (encoded by `saveState()`, decoded
+by `loadStoredState()`) and `#share=` links (golf items carry `c:"<id>"`
+instead of `i:<index>`). Both accept the old numeric form for ever,
+resolved through the frozen `COURSE_IDS_V1` table in
+`data/course-ids.js`. See `js/course-id.js` and SCHEMA.md.
 
-- **Appending** new records to the end of a country's array is safe.
-  Every existing index still points at the course it pointed at before.
-- **Rebuilding** an array from a fresh pull, **re-sorting** it, or
-  **removing** a record is not. Every index at or after the change now
-  points at a different course. Saved trips silently become trips to the
-  wrong courses, and every share link ever issued breaks — including ones
-  already sent to other people, which cannot be recalled or fixed.
+**What that does and does not buy you.** A reorder no longer silently
+rewrites someone's saved trip or an already-issued share link — that was
+R-10, and GOLF-163 closed it. What remains is narrow, and it is absolute:
 
-This is R-10 / GOLF-163. It fails *silently* — nothing throws, the app
-renders happily, and the trip is simply wrong.
+1. **Never regenerate `data/course-ids.js`.** It is not a description of
+   the current ordering and is not meant to track it. It is the only
+   record of what an index *meant* in every link and saved trip created
+   before ids shipped. Regenerate it after a reorder and those links
+   decode to the wrong courses — silently, which is the exact failure the
+   table exists to prevent. It must never lose entries.
+2. **Never re-mint an id for an existing course.**
+   `scripts/add_course_ids.py` preserves any id it finds and mints only
+   for records that have none. Keep that property. Re-deriving ids from
+   the name and coordinates would reissue new identities for courses
+   whose names or coordinates have since been corrected — breaking every
+   stored reference even though nothing was reordered.
+3. **Patch records in place; never rebuild the array from a source
+   list.** This is the rule in CLAUDE.md and it is the one a merge script
+   is most likely to violate by accident, because rebuilding is the
+   natural way to write one. A rebuild re-indexes *and* drops ids.
+4. **Appending is still the safe operation**, and removing is still
+   unsafe — a dropped record takes its id with it, and every reference to
+   it, legacy or current, now resolves to nothing.
 
-> **This section has a shelf life.** GOLF-163 adds a stable `id` to all
-> 879 records, freezes an `index → id` table for the current ordering,
-> migrates saved `localStorage` trips and emits ids in new share links.
-> **Once all four of those have landed**, identity stops being positional
-> and the re-sort prohibition relaxes to "don't drop or renumber ids".
-> Until then, and for any country onboarded before then, the rules above
-> apply as written. Check `docs/project/IN_PROGRESS.md` for where GOLF-163
-> actually got to before relying on ids existing.
-
-Rules:
+Rules for a merge, then:
 
 1. New country → **new file**, `data/courses-<country>.js`, appended to
-   the load order. This is inherently safe and is why adding a country is
-   cheap while re-sourcing an existing one is not.
+   the load order, ids minted once by `scripts/add_course_ids.py`. This
+   is inherently safe and is why adding a country is cheap while
+   re-sourcing an existing one is not. New courses have no legacy index
+   to resolve, so they need no entry in the frozen table.
 2. Re-sourcing fields on an **existing** country → change values **in
-   place**. Record count and order unchanged.
+   place**, in the `merge_course_stats.py` line-by-line style. Record
+   count, array order and every `id` unchanged.
 3. A course that fails to match the new source **keeps its existing
    coordinate and is flagged, never removed**.
 4. Carry structured fee data (`feeV2`, GOLF-97/98/120) across untouched.
-   The only way to damage GOLF-98's incremental work is to scope a
-   re-sourcing job as a rebuild.
+   The 184 records carrying hand-researched `fee:{}` are **not
+   re-derivable from any API** — DotGolf carries no green fees at all.
+   The only way to destroy that work is to scope a re-sourcing job as a
+   rebuild, which is why it is never described as a "redo".
 
 Acceptance criterion for any merge touching an existing file: **record
-count and order unchanged**, and `node scripts/test_data.js` reports the
-same totals it did before.
+count, order and ids unchanged**; `node scripts/test_data.js` reports the
+same totals as before; `node scripts/test_course_ids.js` passes.
 
 ---
 
@@ -220,15 +239,22 @@ step-3 rules rather than just choosing a different filter.
 ## Step 5 — Verify
 
 ```bash
-node scripts/test_data.js
-node scripts/check_js.js
+node scripts/test_data.js        # data-file integrity + course counts
+node scripts/check_js.js         # modules parse + HTML load order
+node scripts/test_course_ids.js  # ids unique, array order unmoved
 ```
 
-`test_data.js` checks data-file integrity and course counts —
-**the counts are the R-10 regression test**, so read them, don't just
-check it exits 0. `check_js.js` confirms all modules parse and the HTML
-load order matches, which is what catches a new data file added to the
-directory but not to `london-golf-map-v5_1.html`.
+`test_data.js` checks data-file integrity and course counts — read the
+counts, don't just check it exits 0. `check_js.js` confirms all modules
+parse and the HTML load order matches, which is what catches a new data
+file added to the directory but not to `london-golf-map-v5_1.html`.
+
+`test_course_ids.js` is the step-3 regression test and the one that
+matters most here: it asserts ids are unique and, in the test that
+actually earns its keep, **deliberately reverses `C[]` and checks that
+references written against the original order still resolve to the
+original courses**. If a merge script has rebuilt the array or re-minted
+ids, this is what catches it.
 
 Then in-browser: console errors, and `undefined` in rendered popups.
 `TESTING.md` is the short checklist.
