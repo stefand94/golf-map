@@ -14,7 +14,7 @@ question: *is AU/NZ a bulk pull or a hand-curated Top 100?*
 
 | | |
 |---|---|
-| **New Zealand** | **YES — bulk pull.** DotGolf, unauthenticated, 424 clubs with coordinates in **one** HTTP call. No anti-automation clause. **But** Golf NZ's Notice & Disclaimer restricts *republication* — and the same platform already feeds the five nations we publish today, so §5 is a live question, not a future one. |
+| **New Zealand** | **YES — bulk pull.** DotGolf, unauthenticated, 424 clubs with coordinates in **one** HTTP call. No anti-automation clause. Golf NZ's terms restrict *republication*, which is cheaply handled by taking published coordinates from OpenStreetMap — see §5. |
 | **Australia** | **NO — hand-curate.** It *is* DotGolf and a bulk index does exist, but Golf Australia's Terms of Service §6.2(c) (v1.0, eff. 1 Oct 2025) expressly forbids "scraping tools, bots, or other automated methods", and the whole site is behind a Cloudflare bot challenge that returns 403 to any non-browser client. **Same call as the BRS Golf finding under GOLF-97/98: we may not use this source.** |
 
 Net effect on GOLF-157: the two countries are **not** symmetric. Plan
@@ -53,11 +53,12 @@ per-club enrichment.
 > picking *Royal Co Down Ladies GC* over the real club. Raised to BA/PM as
 > a suggestion; no code touched here.
 >
-> **Sequence it after §5, though.** If the republication question resolves
-> badly for the five nations already shipped, rebuilding the fetch path to
-> lean *harder* on that source is wasted work at best. Answer the terms
-> question first. (Point raised by the Developer session, who owns these
-> scripts.)
+> **Sequencing (raised by the Developer session, who owns these scripts):**
+> don't rebuild the fetch path until the terms question is settled, or the
+> work could be wasted. **That question is now answered — see §5.** Ireland
+> and South Africa have no relevant clause; England's and Scotland's bear
+> on *republication*, not on how the list is fetched. So this optimisation
+> is safe to do on its own merits.
 
 **Fields returned** (bulk `FindClubs`): `ClubId`, `ClubName`, address
 lines, `PostalCode`, `Latitude`, `Longitude`, `Phone`, `Email`,
@@ -178,59 +179,99 @@ country.**
 
 ---
 
-## 5. Risk raised by this audit — republication terms
+## 5. Republication terms — all seven read (revised 2026-09-20)
 
-Not in the original brief, but it changes the recommendation, so it is
-recorded rather than left out.
+*Not legal advice; this is a practical read for the owner to decide on.*
 
-**Golf New Zealand's Notice & Disclaimer** has no anti-scraping clause —
-but it does say content may be stored *"for your own personal use"* and
-that *"You may not display or distribute the content of any of these
-pages in public … including any reproduction in any form on the
-Internet, without permission from Golf New Zealand."*
+The first version of this section flagged a republication risk from Golf
+NZ's terms and warned it **might** extend to the five nations already
+shipped. The owner pushed back — the data is public fact, obtainable
+elsewhere — and asked for the other countries' terms to be read. They now
+have been, and **the earlier framing was too broad.** Correction below.
 
-Golf Map is a public website. Publishing NZ club names, coordinates and
-contact details sourced from `golf.co.nz` at `golf-map.pages.dev` is
-plausibly caught by that clause. The *fetch* is unrestricted; the
-*publication* is the exposure.
+### What each body's terms actually say
 
-Three options, for the owner to pick — **not** a decision this audit makes:
+| Body | Anti-scraping / bot clause | Republication bar | Weight |
+|---|---|---|---|
+| **Golf Australia** | **YES — ToS §6.2(c), explicit** | Yes (§7.1, personal non-commercial) | **Hard bar** |
+| **Scottish Golf** | No | **Yes — strongest.** §2.11: *"no part of the Website may be reproduced or stored in any other website or included in any public or private electronic retrieval system"*; §2.10 reaches *"extracts, information or data"* | Strong |
+| **England Golf** | No | Yes. §4.2 bars copying/reproduction/distribution without written consent; §4.3 allows only *"private and personal non-commercial"* use | Moderate |
+| **Golf New Zealand** | No | Yes. Personal use only; no reproduction *"in any form on the Internet"* without permission | Moderate |
+| **Wales Golf** | No | Boilerplate only. IP claim is limited to *"the design, layout, look, appearance and graphics"* — **does not claim the data** | Weak |
+| **Golf Ireland** | No | **None.** Only §1.4: do not *"damage, disable or impair"* the service | None |
+| **Handicap Network Africa (SA)** | No | **None — no terms-of-use page exists**, only a privacy notice | None |
 
-1. **Ask Golf New Zealand for permission.** Cheap, one email, and a clean
-   DEC either way. Recommended.
-2. **Use `golf.co.nz` as an index only** and source the published
-   coordinates from **OpenStreetMap** (ODbL, attribution required) — the
-   project already does an OSM correction pass (GOLF-121a), so this is an
-   existing step, not a new capability.
-3. **Hand-curate a NZ Top 100** from ranking sources, as for AU.
+### Correcting the earlier version
 
-### This is already live for the five shipped nations
+**The live exposure is two nations, not five.** Ireland and South Africa
+have no relevant clause at all, and Wales's IP claim explicitly covers
+presentation rather than data. Only **England and Scotland** have terms
+that plausibly reach what this project publishes. The previous
+"five shipped nations" framing — mine, reinforced by the Developer
+session — escalated urgency that the actual terms do not support.
 
-**Not a pre-launch check — a live question.** The Developer session, who
-owns `scripts/`, confirmed what actually feeds `data/courses-*.js`:
-`scripts/README.md` records that `fetch_england_golf_clubs.py` returns
-*"coordinates, website, phone, and amenity/facility data per club"* from
-England Golf's club-finder API, and the Scotland, Wales, Ireland and South
-Africa scripts are the same script pointed at the other DotGolf tenants.
+**Australia is the only one of the seven with an anti-automation clause.**
+That is the real dividing line, and it holds: AU is different *in kind*,
+not merely stricter. Everything else is a copyright/contract question
+about republication, not about how the data was fetched.
 
-So the coordinates and contact details **published today** at
-`golf-map.pages.dev` for all five nations come from the same platform
-whose NZ tenant bars public reproduction. The exposure is present tense,
-not conditional on GOLF-157 shipping. That changes the urgency without
-changing the finding.
+### How much is the remaining risk actually worth?
 
-**What is genuinely unknown:** nobody has read those five sets of terms.
-This audit checked NZ and AU in depth because they were in scope; England
-Golf's terms page is client-rendered and was not parsed. Golf NZ's wording
-may be DotGolf boilerplate that covers all tenants, or it may be
-NZ-specific. **Only reading them settles it, and that is the cheap next
-step** — five pages, one sitting.
+The owner's argument is sound as far as it goes:
 
-**Suggest a RISK entry** recording that the data is already published, and
-a follow-up ticket to read the five tenants' terms. Not actioned here —
-`RISKS.md` is BA/PM-owned, and the call is the owner's.
+- **Facts are not copyrightable.** A club's name, coordinates and phone
+  number are facts. Copyright protects expression, and a plain club list
+  has little to no originality in that sense.
+- **The data is genuinely obtainable elsewhere** — OpenStreetMap, club
+  websites, the clubs themselves.
+- **These are browsewrap terms**, accepted merely by accessing. Their
+  enforceability against an anonymous, unregistered client is weak.
 
----
+Two things cut the other way, and only for England and Scotland:
+
+- **The UK and Ireland have a sui generis database right** (UK: Copyright
+  and Rights in Databases Regs 1997; IE: EU Directive 96/9/EC) which
+  protects investment in a database *independently of copyright* and bars
+  extraction of a substantial part. A national club register is close to
+  the paradigm case, and Scottish Golf's §2.11 reads as though drafted to
+  invoke it. **NZ, Australia and South Africa have no such right** — for
+  those three it is contract only.
+- But even that is arguable: *British Horseracing Board v William Hill*
+  (ECJ, 2004) held that investment in **creating** data does not count,
+  only in **obtaining, verifying or presenting** it. A governing body
+  that generates its own membership register may therefore have a
+  *weaker* database right, not a stronger one.
+
+**Realistic worst case** for a free, non-commercial trip planner: a
+takedown email or an IP block. Litigation over a golf club directory is
+vanishingly unlikely — the cost/benefit for a governing body is absurd.
+The owner is right that the risk is low.
+
+### Why the recommendation does not change much anyway
+
+**Because compliance is nearly free.** The coordinates can come from
+**OpenStreetMap** (ODbL, explicitly reuse-friendly, attribution required)
+— and the project *already runs an OSM correction pass*, added in
+GOLF-121a. Using DotGolf as an index of *which clubs exist* and OSM as the
+source of *published* coordinates costs roughly a day and moots the whole
+question for every nation at once.
+
+That is the point worth weighing: the risk premium buys almost nothing,
+because the alternative is cheap and already built. A small risk is still
+worth avoiding when avoiding it is close to free.
+
+**Suggested disposition — owner's call:**
+
+1. **Do nothing for Ireland, South Africa, Wales.** No clause, no issue.
+2. **England and Scotland:** either source published coordinates from OSM
+   (preferred — one existing pipeline step), or send one email asking
+   permission. Both are cheap; neither is urgent.
+3. **New Zealand (GOLF-157):** use DotGolf as the index, OSM for published
+   coordinates. Same pattern, decided before the pull rather than after.
+4. **Australia:** unchanged — hand-curate, coordinates from OSM, never
+   fetch from `golf.com.au`.
+
+Not actioned here: `RISKS.md` and `DECISIONS.md` are BA/PM-owned. See §7.
 
 ## 6. Recommendation for GOLF-157
 
@@ -281,3 +322,32 @@ made to defeat Australia's bot protection.
 Probe artefacts (session scratchpad, not in the repo): `probe.py`,
 `sweep.sh`, `nz_findclubs.json` (the 424-club NZ intermediate, kept as the
 fetch-once JSON should GOLF-157 want it).
+
+---
+
+## 7. Board updates requested (BA/PM)
+
+No BA/PM session was running when this audit completed, so the board is
+untouched. Requested:
+
+1. **GOLF-119 → COMPLETE.** One-line summary: *NZ is a one-call bulk pull;
+   Australia is ToS-barred and must be hand-curated; no other DotGolf
+   tenant exists.* Add a "Recently completed" line.
+2. **GOLF-157 — update the estimate and split AU/NZ.** They are different
+   jobs (§6). NZ additionally needs a **ranking source** to support
+   `nzRanked:1` ringfencing — 424 clubs is far too many for the map. That
+   is the one genuinely unsourced piece of NZ work.
+3. **A DEC, not a RISK.** On the strength of §5 as revised, this is better
+   recorded as a decision — *"published coordinates come from
+   OpenStreetMap; DotGolf is used as an index only"* — than as a standing
+   risk. It closes the question for all seven nations at once and costs
+   about a day, reusing the OSM correction pass built in GOLF-121a.
+   If the owner prefers, a narrow RISK covering **England and Scotland
+   only** would also be accurate. **Do not** raise it as a five-nation
+   risk — that framing was mine and it was wrong; §5 explains why.
+4. **New ticket:** replace the name-by-name `GetClubsByName` + difflib step
+   in the four GB/Ireland fetch scripts with a single unfiltered
+   `FindClubs` call (§1). Owned by the Developer session's area
+   (`scripts/`), unblocked by §5.
+5. **Strike `golflink.com.au`** from `HANDOVER-GOLF-119.md` and any
+   GOLF-157 notes — it is dead (503), folded into `golf.com.au`.
