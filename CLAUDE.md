@@ -59,7 +59,13 @@ Costs).
 
 `data/courses-{london,top100,scotland,wales,ireland,southafrica}.js` +
 `data/{config,stations,rail-geometry}.js`. Schema documented in
-`SCHEMA.md`. 557 courses total (114 in the England Top 100).
+`SCHEMA.md`. **879 courses in the data files, 565 of which are visible on
+the map** (114 in the England Top 100). The gap is GOLF-121d: GOLF-121a's
+bulk South Africa pull added ~320 clubs, and `courseShownOnMap()`
+(`js/explore.js`) ringfences South Africa to the 107 carrying `zaRanked:1`.
+The other 314 stay in `data/courses-southafrica.js`, recoverable and ready
+for a future "show all" toggle. The old "557" figure was the pre-GOLF-121a
+total, not a shown-count — it only looked close to 565 by coincidence.
 
 ## Conventions (from accumulated user feedback — see memory files)
 
