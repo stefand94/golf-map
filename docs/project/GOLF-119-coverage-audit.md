@@ -567,7 +567,15 @@ Throwaway stdlib-Python probes plus the Browser tool for front-end
 network inspection, run from the session scratchpad and **not committed**
 to `scripts/`, per the ticket. A handful of requests per host, ~2 s apart;
 nothing crawled. No API key was used, requested or seen. No attempt was
-made to defeat Australia's bot protection.
+made to defeat Australia's bot protection, nor Golf Digest's (§9b).
+
+For §9 the same rules applied: terms and `robots.txt` first, then a small
+number of page reads. The Planet Golf rankings index is client-rendered,
+so it was read with the Browser tool rather than guessed at from URLs —
+the plain-HTTP fetch returns a shell with no course names in it, and the
+near-identical byte counts across `/rankings`, `/rankings/australia` and
+`/rankings/new-zealand` look like a soft-404 until you render them. The
+site's consent banner was left untouched and nothing was accepted.
 
 Probe artefacts (session scratchpad, not in the repo): `probe.py`,
 `sweep.sh`, `nz_findclubs.json` (the 424-club NZ intermediate, kept as the
