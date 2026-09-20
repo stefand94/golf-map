@@ -101,6 +101,15 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   distinct from GOLF-119 §3: that is Golf Australia **the governing body**
   blocking automated access to the *club list*; this is a **publisher**
   restricting reuse of the *ranking*. Same country, unrelated organisations.
+- **Updated 2026-09-20 — the re-open trigger is a *when*, not an *if*.**
+  The owner has since confirmed: *"Eventually revenue generation is part
+  of the vision."* So this decision and every permission sought under it
+  are known-temporary, and the ranking question **will** have to be
+  settled before the site earns anything — it is not a hypothetical
+  branch. Parked deliberately, not forgotten. **Anyone planning
+  monetisation work must re-open DEC-022 as part of that scope**, not
+  discover it afterwards. GOLF-160's fallback is fully specced and costs
+  hours, so the park is cheap — provided the trigger is honoured.
 - **Premise note, and it binds every permission not just this decision
   (added 2026-09-20, GOLF-119 §10):** the permission emails state that the
   site is **free, with no ads, no accounts and no revenue**, because that
