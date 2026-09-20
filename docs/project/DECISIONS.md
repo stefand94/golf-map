@@ -4,6 +4,111 @@ _Stable IDs `DEC-nnn`. Record: decision · context · alternatives · reason ·
 date · affected features. Newest first. Full rationale for older calls lives
 in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 
+## DEC-021 — Ferry legs ship against what the router actually returns; foot-passenger operators are permanently out of scope
+
+- **Decision:** GOLF-118 is unblocked and ships. The itinerary flags a ferry
+  and splits the leg time whenever the routing provider reports ferry
+  waytypes. Crossings the provider does not know about are **not** chased,
+  hand-curated, or treated as a reason to delay the feature.
+- **Context:** owner observed live on 2026-09-20 that routes around the
+  Scottish isles (Troon → Campbeltown → Port Ellen) *do* route over the
+  vehicle ferries, and the app silently presents the crossing as driving
+  time. Separately, the Kintyre Express foot-passenger service (Port Ellen →
+  Ballycastle) is absent — "but Google doesn't pick it up either."
+- **Alternatives considered:** keep GOLF-118 parked until the provider
+  question (GOLF-143) resolves — which is what the board said until today;
+  curate a `data/ferries.js` of missing crossings and splice them into routes
+  (unbounded, and wrong the moment a timetable changes); ship nothing and let
+  ferry time stay hidden inside drive time.
+- **Reason:** the parking note generalised one true fact ("ORS misses foot
+  ferries") into a false one ("ORS is unreliable for ferries"). Vehicle
+  ferries — the ones a golf trip actually drives onto — route fine. No
+  provider choice fixes the foot-passenger gap, so waiting on GOLF-143 bought
+  nothing and cost a built feature eleven days on a branch. Presenting a
+  2-hour crossing as driving time is a real planning defect; missing an
+  operator no mapping provider carries is an industry data gap.
+- **Date:** 2026-09-20 · **Affects:** GOLF-118 (unblocked, P3 → P2, dependency
+  on GOLF-143 removed), GOLF-143 (loses a dependant).
+
+## DEC-020 — Trip sharing means a read-only link; collaborative editing is deferred
+
+- **Decision:** GOLF-99 covers **one** feature — a read-only `#share=` snapshot
+  of a trip. The second sharing concept, two people editing the same trip
+  independently, is split out as GOLF-158 and deferred.
+- **Context:** owner, 2026-09-20: "We had 2 concepts of trip sharing. 1 was
+  sharing a static version of the itinerary which is done. The other was about
+  being able to work on the same trip independently of the other person. I
+  dont know if the second feature is truly necessary right now." GOLF-99 had
+  been carrying both implicitly and sitting at P1 for weeks as a result.
+- **Alternatives considered:** keep them in one row and build both (makes a
+  shipped feature look unfinished); cancel collaborative editing outright (the
+  want is real, just not now); build a lightweight "fork this shared trip into
+  your own browser" as a middle path — worth asking about before any backend
+  is contemplated, and recorded as the first discovery question on GOLF-158.
+- **Reason:** they are not two halves of one feature, they are a snapshot and a
+  shared database. Collaborative editing breaks DEC-004 (no backend): two
+  people editing one trip needs server-side storage and conflict resolution,
+  and `localStorage` is per-browser by definition. Tracking them together kept
+  a P1 open against work nobody had scoped, and hid the fact that concept 1
+  probably already passes its acceptance criteria.
+- **Date:** 2026-09-20 · **Affects:** GOLF-99 (now verification-only), GOLF-158
+  (new, DEFERRED), GOLF-104, DEC-004, R-4.
+
+## DEC-019 — Country expansion stops at Australia and New Zealand, and goes through a written runbook
+
+- **Decision:** GOLF-121 is closed. Its UK/Ireland curation write-up (121b) and
+  further-nations work (121c) are cancelled. Australia — plus New Zealand —
+  become GOLF-157, whose **first deliverable is `docs/country-onboarding.md`**,
+  written while onboarding Australia rather than afterwards.
+- **Context:** owner, 2026-09-20: "121 can be scrapped except for the Australia
+  (and I think it has NZ too) which should be opened as a separate add new
+  countries ticket. Part of that should be to write up a short piece of
+  documentation on all the things that need to be done to get a new country
+  onboarded and aligned with the data we have for GB, Ireland and SA."
+- **Alternatives considered:** keep GOLF-121 open as the umbrella (it had
+  become a container for four unrelated states — two done, two not wanted);
+  onboard Australia without the runbook (cheaper once, and the fifth country
+  rediscovers the checklist again); write the runbook as a standalone doc with
+  no country attached (runbooks written from memory omit the steps that were
+  hard).
+- **Reason:** adding a country has now been done three times and each pass
+  re-derived the same checklist by hand. The runbook is the deliverable that
+  makes the next one cheap; the country is what proves the runbook is right.
+  GOLF-119 sequences first because whether AU/NZ expose a bulk source decides
+  most of the cost.
+- **Open item carried forward:** the Australian ranking is effectively
+  single-source (Golf Australia Magazine 2026), against a project practice of
+  union-of-two-independent-rankings. Find a second source or record a decision
+  accepting single-source — do not merge silently.
+- **Date:** 2026-09-20 · **Affects:** GOLF-121 (closed), GOLF-157 (new),
+  GOLF-119 (re-pointed to feed 157).
+
+## DEC-018 — Green-fee research finishes London, then stops
+
+- **Decision:** complete `feeV2` for the 123 London courses, then close the
+  GOLF-98 programme. After that, **no further fee re-research without a
+  specific complaint about a specific course.**
+- **Context:** owner, 2026-09-20: "98 seemed like it just ate through too many
+  tokens. I'm not sure if the cost benefit is worth it, in particular because
+  rate cards can be quite granular and depend on many variables." Current
+  state: England Top 100 (114), South Africa's ranked courses, and all 220
+  Scotland/Wales/Ireland courses are done. London is the last batch and stands
+  at 0 of 123.
+- **Alternatives considered:** stop immediately (leaves costs accurate
+  everywhere except the app's founding region — a total that is right for
+  Scotland and wrong for London misleads more than one that is uniformly
+  rough); continue indefinitely toward true rate-card fidelity (unbounded —
+  season, day, time band, member/guest, society size and package all vary);
+  replace research with a live pricing feed (no such feed exists that the
+  project may lawfully use — see the BRS Golf ToS finding).
+- **Reason:** the expensive part is already paid, and London is the cheapest
+  remaining unit of a proven batch pattern, not a fresh start. The owner's
+  granularity point is correct and is the reason to *stop after* London rather
+  than to stop now: `feeV2` is good enough to plan a budget and will never be
+  good enough to pay from, which the `confidence` field already encodes.
+  Chasing quoting-engine fidelity has no natural end.
+- **Date:** 2026-09-20 · **Affects:** GOLF-98/GOLF-120 continuation row, R-3.
+
 ## DEC-017 — GOLF-148 POI presentation: English labels, per-leg scoping, 3-then-10
 
 - **Decision:** three calls, made by the owner 2026-09-20, that unblock the

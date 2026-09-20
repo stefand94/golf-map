@@ -84,7 +84,19 @@ national parks.
 
 ## GOLF-98 — Green-fee data entry, `feeV2` re-research programme
 
-**Status:** ACTIVE (v2 code + batch 1 shipped; batches 2+ = data) · **Priority:** P2
+**Status:** FINAL BATCH — London only (123 courses, 0 with `feeV2`), then the
+programme closes · **Priority:** P2
+
+> **2026-09-20 — DEC-018 gives this an end date.** The owner questioned the
+> cost/benefit ("98 seemed like it just ate through too many tokens... rate
+> cards can be quite granular and depend on many variables"). Decision: finish
+> London, then stop — no further fee re-research without a specific complaint
+> about a specific course. Rationale in `DECISIONS.md`. In short: 348 courses
+> across four nations are already done, London is the cheapest remaining unit
+> of a proven pattern, and stopping short of it would leave costs accurate
+> everywhere except the founding region. `feeV2` is good enough to plan a
+> budget and never good enough to pay from — which is what `confidence`
+> already says.
 
 > 2026-09-10: GOLF-120 Phase 2 is on `main` — the `feeV2` reader/derivation
 > (`js/trip-geo.js`), the display wiring (popup / tooltip / Explore / Costs /
