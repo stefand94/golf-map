@@ -454,6 +454,7 @@ async function handleRoute(body, env, request) {
     // Common cases: 403 bad/expired key, 429 quota exceeded, 404 no
     // route found between the two points. Pass the status through
     // untranslated so the caller can decide how to fall back.
+    await logUpstreamFailure('directions', orsRes);
     return json({ error: 'ORS request failed', status: orsRes.status }, 502, request);
   }
 
@@ -539,6 +540,7 @@ async function handlePois(body, env, request) {
   }
 
   if (!orsRes.ok) {
+    await logUpstreamFailure('pois', orsRes);
     return json({ error: 'ORS request failed', status: orsRes.status }, 502, request);
   }
 
@@ -910,6 +912,8 @@ async function handleGeocode(body, env, request) {
   }
 
   if (!orsRes.ok) {
+    // Label only — never the URL: it carries api_key= in its query string.
+    await logUpstreamFailure('geocode', orsRes);
     return json({ error: 'ORS request failed', status: orsRes.status }, 502, request);
   }
 
@@ -940,6 +944,40 @@ async function handleGeocode(body, env, request) {
 
 function isCoord(v) {
   return Array.isArray(v) && v.length === 2 && typeof v[0] === 'number' && typeof v[1] === 'number';
+}
+
+/* GOLF-155: an upstream failure used to be thrown away. Every !ok branch
+   returned the bare status and discarded the response body — the one part
+   that says *why* — so from the outside a 403 meaning "quota exhausted" and
+   a 403 meaning "invalid key" looked identical, which is exactly the
+   ambiguity that made GOLF-154's directions outage slow to diagnose.
+
+   The body is logged and deliberately NOT returned to the caller. ORS error
+   bodies are free text from a third party and may quote back part of the
+   request that produced them — and the geocode request carries `api_key=`
+   in its query string (see handleGeocode), so an echoed body is a plausible
+   route for a key fragment to reach the browser. For the same reason this
+   takes a caller-supplied static label rather than the request URL: logging
+   that URL would write the key into the Worker's own logs.
+
+   Truncated because Workers logs are for diagnosis, not payload storage.
+   Reading the body consumes the stream, which is safe here — every caller
+   is on its way to discarding the response. */
+const UPSTREAM_LOG_LIMIT = 1000;
+
+async function logUpstreamFailure(label, orsRes) {
+  let body;
+  try {
+    body = await orsRes.text();
+  } catch (e) {
+    // Never let diagnostics break the error path: the caller still has a
+    // 502 to return, and a failure to read the body is not worth a throw.
+    body = `<body unreadable: ${e}>`;
+  }
+  const clipped = body.length > UPSTREAM_LOG_LIMIT
+    ? `${body.slice(0, UPSTREAM_LOG_LIMIT)}… [${body.length} bytes total]`
+    : body;
+  console.log(`ORS ${label} failed: HTTP ${orsRes.status} ${orsRes.statusText} — ${clipped}`);
 }
 
 function json(obj, status = 200, request) {
