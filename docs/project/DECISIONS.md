@@ -4,6 +4,94 @@ _Stable IDs `DEC-nnn`. Record: decision · context · alternatives · reason ·
 date · affected features. Newest first. Full rationale for older calls lives
 in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 
+## DEC-024 — The Developer session owns `data/courses-*.js`; Daniel owns the source-and-terms question
+
+- **Decision:** for the GOLF-160/161/162/163 chain, **nobody writes
+  `data/courses-*.js` or `scripts/fetch_*` but the Developer session.**
+  Daniel the Dev owns the source, terms and audit question
+  (`docs/project/GOLF-119-coverage-audit.md`, GOLF-119, GOLF-157) and
+  writes docs only.
+- **Context:** two coding sessions are live against the same area at the
+  same time. They have not collided so far only because Daniel has stayed
+  in his worktree and touched one docs file. The risk is a concurrent
+  write to a data file, which is exactly the failure mode CLAUDE.md's
+  "background agents return JSON, never edit data files directly" rule
+  already exists to prevent.
+- **Alternatives:** split by region (rejected — the files interleave);
+  split by ticket (rejected — GOLF-160 and GOLF-161 both touch the same
+  records); let them coordinate ad hoc (rejected — that is what a merge
+  conflict looks like in advance).
+- **Reason:** cheapest possible guard, proposed by the Developer session
+  itself, and it matches the ownership split that has already emerged
+  naturally.
+- **Affected:** GOLF-160, GOLF-161, GOLF-162, GOLF-163, GOLF-157.
+- **Date:** 2026-09-20.
+
+## DEC-023 — Published coordinates come from OpenStreetMap; DotGolf is an index only
+
+- **Decision:** where a governing body's terms bar republication, the
+  coordinates we ship come from **OpenStreetMap** (ODbL, attribution
+  required) and the DotGolf club-finder is used only as an index of
+  *which clubs exist*. Recorded as a decision rather than a standing risk,
+  because it closes the question for all seven nations at once.
+- **Context:** GOLF-119 §5, with all seven bodies' terms now read. Live
+  exposure is **England (§4.2/4.3) and Scotland (§2.10/2.11) only**.
+  Ireland and Handicap Network Africa have no relevant clause at all;
+  Wales's IP claim covers "design, layout, look, appearance and graphics",
+  not the data. **Australia (§6.2(c)) is different in kind** — the only
+  anti-automation clause of the seven — and stays a hard no.
+- **Alternatives:** do nothing and rely on the facts-aren't-copyrightable
+  argument (reasonable on the merits — browsewrap terms, weak
+  enforceability, realistic worst case is a takedown email — but it buys
+  almost nothing, because the alternative is nearly free); email each body
+  for permission (slower, and needed per-nation).
+- **Reason:** the project **already runs an OSM correction pass**, built in
+  GOLF-121a. Compliance costs about a day of reuse. A small risk is worth
+  avoiding when avoiding it is close to free. Note the UK/IE *sui generis*
+  database right is the one argument that genuinely cuts against us — and
+  even that is weakened by *British Horseracing Board v William Hill*,
+  which held that investment in **creating** data does not count.
+- **Correction on the record:** the earlier "five shipped nations are
+  exposed" framing — Daniel's, amplified via the Developer session —
+  **was wrong** and has been retracted by both.
+- **Affected:** GOLF-161, GOLF-157 (NZ), GOLF-162.
+- **Date:** 2026-09-20.
+
+## DEC-022 — Ask Top 100 Golf Courses for permission; keep the rank badges live while we wait
+
+- **Decision:** send Top 100 Golf Courses Ltd a permission request and
+  **leave the `England #7` / `Britain & Ireland #24` badges in place**
+  meanwhile. Do **not** degrade `t100.*` to a boolean yet.
+- **Context:** GOLF-119 §8. Their Terms §2 names *"course rankings"*
+  explicitly and bars commercial or public use, derivative works and
+  reproduction "in or transmitted to any other web site". English law.
+  Unlike the coordinates question there is **no fact/expression argument**
+  — a ranking is original selection and arrangement, protected even under
+  *Feist* — and these are commercial publishers for whom the ranking *is*
+  the product. The BA/PM recommendation was to degrade now and ask in
+  parallel.
+- **Alternatives:** degrade immediately, then ask (recommended, not
+  taken); attribute and keep the numbers (rejected — attribution does not
+  cure a reproduction bar, and it looks like a fix without being one);
+  derive our own ranking (rejected — expensive, worse result).
+- **Reason — the owner's, recorded as given:** *"I have a gut feel they
+  won't be happy about us using it if it's ever a commercial product, but
+  for now it's a hobby and no one even knows about this."* This is an
+  explicit, informed acceptance of an open exposure on the grounds of
+  scale and non-commercial use.
+- **The condition that makes it reversible, and it is the important
+  part:** this decision is **coupled to the site staying a
+  non-commercial hobby with no audience**. The owner has already named
+  commercialisation as the trigger. **Any move toward a commercial
+  product, a custom domain with real traffic, or a public launch must
+  re-open DEC-022 before it ships** — the GOLF-160 fallback is fully
+  specced and costs hours, not days, so the cost of deferring is genuinely
+  low *provided the trigger is not missed*. Linked from R-10 so it is not.
+- **Affected:** GOLF-160 (BLOCKED on the email), GOLF-157 (the same
+  question applies to the unread Golf Australia Magazine terms),
+  GOLF-129/GOLF-35 (launch readiness — the re-open trigger).
+- **Date:** 2026-09-20.
+
 ## DEC-021 — Ferry legs ship against what the router actually returns; foot-passenger operators are permanently out of scope
 
 - **Decision:** GOLF-118 is unblocked and ships. The itinerary flags a ferry

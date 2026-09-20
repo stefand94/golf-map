@@ -4,6 +4,45 @@ _Features a coding agent is actively implementing. Move here from BACKLOG.md
 when work starts; move to "Recently completed" in BACKLOG.md when done and
 verified._
 
+## GOLF-163 → GOLF-161 — Course-data re-sourcing (kicked off 2026-09-20)
+
+**Owner:** Developer session (sole writer of `data/courses-*.js` and
+`scripts/fetch_*`, per DEC-024). Daniel the Dev owns the source/terms
+question and writes docs only.
+
+**Run them in this order. The order is the whole point.**
+
+1. **GOLF-163 — stable `id` first.** Four steps, all of them the ticket:
+   add an `id` to all 879 records reordering nothing; freeze an
+   `index → id` table for the *current* ordering; migrate `localStorage`
+   TRIP/tripDays index→id on load; emit ids in new share links while
+   still decoding old index-based ones via the frozen table. Until all
+   four land, nothing may reorder or drop a record — see R-10.
+2. **GOLF-161 — coordinates from OSM** for England and Scotland
+   (DEC-023). Field-level, in place, patched line-by-line in the
+   `merge_course_stats.py` style. **Not** a rebuild.
+
+**Hard acceptance criteria, both tickets:** record count and array order
+unchanged · `node scripts/test_data.js` still reports **879 / 114** ·
+`node scripts/test_fee_v2.js` passes unchanged before and after · a
+course with no OSM match keeps its existing coordinate and is **flagged,
+never removed** · a test asserts `C.length` unchanged and `C[i].n`
+identical for every `i` before and after.
+
+**Not in scope, and deliberately so:** course identity, names, array
+order, fees, `feeV2`, stations, POIs. The 184 records carrying structured
+`fee:{}` are GOLF-97/98/120's hand research and are **not re-derivable
+from any API** — DotGolf does not carry green fees. A drop-and-rebuild
+would destroy them. This is the single strongest reason the work is
+scoped as re-sourcing two fields in place and **never** described as a
+"redo".
+
+**GOLF-160 (rankings) is NOT part of this and must not be started.** It is
+blocked on the owner's permission email; the badges stay live per DEC-022.
+Do not touch `bestRankBadge()` or `rankChips()`.
+
+---
+
 ## GOLF-148 — Notable POIs along a route
 
 **Status:** DATASET SHIPPED (`d58e8a3`) — UI implementation is the remaining
