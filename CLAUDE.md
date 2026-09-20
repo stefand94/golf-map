@@ -110,6 +110,10 @@ the exhaustive one for anything not covered by the two scripts above.
 - `SCHEMA.md` — full data-field reference.
 - `TESTING.md` / `docs/testing-full.md` — short / exhaustive test checklist.
 - `scripts/README.md` — what each fetch/merge script does.
+- `docs/country-onboarding.md` — the runbook for adding a new country.
+  **Read it before writing any fetch code for a new source**, not after:
+  it opens with the terms check, because that is the step that can cancel
+  a whole country (Australia does).
 - `docs/deploying.md` — Cloudflare Pages preview-URL workflow.
 - `docs/pwa.md` — PWA manifest/service-worker notes.
 - `.claude/plans/history/2026-H1-archive.md` — full phase-by-phase history if

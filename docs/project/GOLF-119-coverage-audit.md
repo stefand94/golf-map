@@ -727,8 +727,18 @@ rather than working around it, which is why its ownership details are
 thinner than the others'. No email was sent to any of these parties —
 that is the owner's to send.
 
-Probe artefacts (session scratchpad, not in the repo): `probe.py`,
-`sweep.sh`, `nz_findclubs.json` (the 424-club NZ intermediate, kept as the
-fetch-once JSON should GOLF-157 want it).
+Probe artefacts (`probe.py`, `sweep.sh`, `nz_findclubs.json` — the
+424-club NZ intermediate) were written to the **session scratchpad**, not
+the repo, per the ticket. **Do not plan on them surviving:** that
+directory is session-scoped and goes away with the session, so an earlier
+version of this line calling the NZ JSON "kept" was wrong.
+
+Nothing is lost by that. The NZ pull is a **single unauthenticated
+request**, and §2 records everything needed to redo it — host, endpoint,
+exact payload, and the coordinate/null/name-join gotchas that the raw
+response will not tell you. When GOLF-157 unparks, re-fetch into
+`scripts/output/` (gitignored, which is where the fetch-once intermediate
+belongs) rather than hunting for this file. The reproduction recipe is
+the durable artefact here, not the JSON.
 
 ---
