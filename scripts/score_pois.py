@@ -25,6 +25,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("path")
     ap.add_argument("--out", help="default: overwrite the input file")
+    ap.add_argument("--recheck-places", action="store_true",
+                    help="skip the sitelinks fetch and only re-apply the "
+                         "is-this-a-place check to the counts already in the "
+                         "file, using the ids it already holds")
     ap.add_argument("--only-missing", action="store_true",
                     help="only re-resolve ids currently scoring 0, to repair a "
                          "partly rate-limited run without redoing the rest")
@@ -38,6 +42,32 @@ def main():
     pois = json.load(open(args.path, encoding="utf-8"))
     if not pois:
         raise SystemExit("file is empty")
+
+    if args.recheck_places:
+        # The sitelink counts are already right; what may be wrong is whose
+        # notability they are. Reuse them rather than asking Wikidata again.
+        counts = {}
+        for p in pois:
+            if p.get("wikidata"):
+                counts[p["wikidata"]] = p.get("sitelinks", 0)
+        before = dict(counts)
+        fp.drop_non_place_ids(counts)
+        changed = 0
+        for p in pois:
+            qid = p.get("wikidata") or ""
+            if qid not in counts or counts[qid] == before[qid]:
+                continue
+            p["sitelinks"] = counts[qid]
+            p["score"] = (fp.CATEGORY_BASE.get(p["category"], 5)
+                          + counts[qid] + p.get("bonus", 0))
+            changed += 1
+        print(f"\n{changed} records rescored.")
+        out = args.out or args.path
+        pois.sort(key=lambda p: (-p["score"], p["name"]))
+        with open(out, "w", encoding="utf-8") as fh:
+            json.dump(pois, fh, ensure_ascii=False, indent=1)
+        print(f"Wrote {len(pois)} -> {out}")
+        return
 
     targets = pois
     if args.only_missing:

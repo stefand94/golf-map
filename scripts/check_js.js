@@ -99,6 +99,23 @@ if (listed.length === ORDER.length && listed.join(',') !== ORDER.join(',')) {
 // by nature, so assert it rather than rely on remembering.
 const SW = path.join(ROOT, 'sw.js');
 const swSrc = fs.readFileSync(SW, 'utf8');
+
+// 2a. sw.js parses. It is not in js/, so nothing here used to look at it as
+// code at all — only at its PRECACHE_URLS list. Renaming a variable inside its
+// fetch handler and missing one use left a ReferenceError that every check
+// still called green, in the one file whose failure mode is a silently broken
+// offline mode for everyone who already installed it.
+parses(swSrc, 'sw.js');
+// A stale identifier still parses, so also assert nothing references a name
+// the file never declares. Cheap and catches exactly the rename-miss above.
+{
+  const declared = new Set([...swSrc.matchAll(/\b(?:const|let|var|function)\s+([A-Za-z_$][\w$]*)/g)].map(m => m[1]));
+  const suspicious = [...new Set([...swSrc.matchAll(/\bis[A-Z][\w$]*/g)].map(m => m[0]))]
+    .filter(n => !declared.has(n));
+  if (suspicious.length) {
+    failures.push(`sw.js uses undeclared identifier(s): ${suspicious.join(', ')}`);
+  }
+}
 const swBlock = swSrc.match(/const PRECACHE_URLS = \[([\s\S]*?)\];/);
 if (!swBlock) {
   failures.push('could not find PRECACHE_URLS in sw.js');

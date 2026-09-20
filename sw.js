@@ -84,6 +84,13 @@ const CACHE_NAME = 'golfmap-shell-v5-3658b399a9';
    that didn't get updated. scripts/check_js.js now asserts this array and the
    HTML's script tags agree, so the next new module can't repeat it.
 
+   GOLF-148: './data/pois-categories.js' is here but the per-region
+   './data/pois-*.js' files deliberately are NOT — precaching them would pull
+   every region (~450KB gzipped) on install and defeat the lazy load. The
+   category list is 1KB and js/poi.js cannot render a chip without it, so it
+   is precached and stays cache-first; the region files are network-first in
+   the fetch handler (see isPoiRegionData).
+
    Keep entries as plain quoted strings with no inline comments:
    scripts/update_sw_cache_version.py parses this array textually. */
 const PRECACHE_URLS = [
@@ -112,9 +119,6 @@ const PRECACHE_URLS = [
   './js/touch-dnd.js',
   './js/boot.js',
   './data/config.js',
-  // The POI category list, but NOT the per-region pois-*.js files: those are
-  // lazy (see the isPoiRegionData branch below). This one is 1KB and js/poi.js
-  // needs it before it can render a single chip.
   './data/pois-categories.js',
   './data/stations.js',
   './data/rail-geometry.js',

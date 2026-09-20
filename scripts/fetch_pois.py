@@ -297,6 +297,20 @@ def _is_real_national_park(tags, name=""):
 
 
 def categorise(tags, name=""):
+    # protection_title states the designation in words, and it is the only
+    # evidence for some of the biggest parks there are: Kruger carries
+    # boundary=protected_area + leisure=nature_reserve like any game reserve,
+    # and says "national park" only here. It needs its own check because the
+    # value is free text — "national park" and "national_park" both occur —
+    # so the exact-match rules table cannot express it.
+    #
+    # Matched exactly after normalising, never as a substring. The most common
+    # value in the whole dataset is "national nature reserve", and treating
+    # that as a park is precisely the mistake that once promoted 64 Welsh
+    # nature reserves.
+    if re.sub(r"[\s_]+", " ", (tags.get("protection_title") or "").strip().lower()) == "national park":
+        return "National park"
+
     for (k, v), label in CATEGORY_RULES:
         if tags.get(k) == v:
             if label == "National park" and not _is_real_national_park(tags, name):
@@ -325,7 +339,8 @@ SCORING_TAGS = (
 # which of the 511 were churches. Overpass had to be asked again for data it
 # had already sent. Derived from CATEGORY_RULES rather than hand-listed, so a
 # new rule cannot forget to add its key here.
-CATEGORY_TAGS = tuple(sorted({k for (k, _), _ in CATEGORY_RULES}))
+CATEGORY_TAGS = tuple(sorted({k for (k, _), _ in CATEGORY_RULES}
+                             | {"protection_title"}))
 KEEP_TAGS = tuple(sorted(set(SCORING_TAGS) | set(CATEGORY_TAGS)))
 
 # How much each designation is worth on top of the category baseline.
@@ -665,6 +680,70 @@ WIKIDATA_ATTEMPTS = 5
 WIKIDATA_MAX_FAILED_SHARE = 0.02
 
 
+WDQS_URL = "https://query.wikidata.org/sparql"
+# Below this many sitelinks a wrong id cannot move a record far enough up the
+# ranking to matter, and checking every id costs a second pass over ~19k of
+# them for no visible gain.
+NON_PLACE_CHECK_MIN_SITELINKS = 10
+NON_PLACE_BATCH = 300
+
+
+def drop_non_place_ids(counts):
+    """Zero the count for any id that is not a place, in-place.
+
+    OSM often tags an object with the Wikidata id of what it DEPICTS rather
+    than of the object: a statue of Queen Victoria carries her id, a bronze
+    cannon carries the id of the cannon as a type of weapon, a Spitfire on a
+    plinth carries the aircraft's. Those ids are famous — Queen Victoria has
+    174 sitelinks — so the record inherits a score no monument earns and
+    dominates the ranking. A statue of her topped Ireland at 182, well above
+    the Giant's Causeway.
+
+    A place has coordinates. A person, an aircraft type, an institution or a
+    mythological creature does not, so P625 separates them cleanly: of the 202
+    records scoring 30+ on the first full dataset, the 14 with no P625 were all
+    mis-tags and the other 188 were all genuine.
+
+    A lookup failure leaves the count alone. Being unable to check is not
+    evidence of anything, and the wrong way to fail here is to silently zero a
+    real cathedral.
+    """
+    suspect = sorted(q for q, n in counts.items()
+                     if n >= NON_PLACE_CHECK_MIN_SITELINKS)
+    if not suspect:
+        return
+    print(f"  checking {len(suspect)} well-linked ids are places…", flush=True)
+    located, answered = set(), set()
+    for i in range(0, len(suspect), NON_PLACE_BATCH):
+        batch = suspect[i:i + NON_PLACE_BATCH]
+        values = " ".join(f"wd:{q}" for q in batch)
+        query = f"SELECT ?item WHERE {{ VALUES ?item {{ {values} }} ?item wdt:P625 ?c }}"
+        try:
+            req = urllib.request.Request(
+                WDQS_URL,
+                data=urllib.parse.urlencode({"query": query}).encode(),
+                headers={"User-Agent": UA, "Accept": "application/sparql-results+json"},
+            )
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                rows = json.loads(resp.read())["results"]["bindings"]
+            located.update(r["item"]["value"].rsplit("/", 1)[-1] for r in rows)
+            answered.update(batch)
+        except Exception as exc:  # noqa: BLE001
+            print(f"    place-check batch {i//NON_PLACE_BATCH} failed ({exc}) — "
+                  f"{len(batch)} ids keep their score",
+                  file=sys.stderr, flush=True)
+        time.sleep(1.0)
+
+    # Only an id whose batch actually came back can be judged; the rest keep
+    # whatever they had.
+    dropped = [q for q in answered if q not in located]
+    for q in dropped:
+        counts[q] = 0
+    if dropped:
+        print(f"  {len(dropped)} ids are not places (no coordinate) — "
+              f"their notability is not inherited", flush=True)
+
+
 class WikidataUnresolved(RuntimeError):
     """Too much of the notability pass failed for the scores to mean anything."""
 
@@ -725,6 +804,8 @@ def add_sitelinks(pois):
         if (i // 50) % 10 == 0:
             print(f"  …{min(i + 50, len(ids))}/{len(ids)}", flush=True)
         time.sleep(WIKIDATA_BATCH_PAUSE_S)
+
+    drop_non_place_ids(counts)
 
     if ids and failed_ids / len(ids) > WIKIDATA_MAX_FAILED_SHARE:
         raise WikidataUnresolved(
