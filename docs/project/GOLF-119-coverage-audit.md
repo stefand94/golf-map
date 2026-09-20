@@ -423,7 +423,10 @@ worst case is still a takedown email to a free hobby site. But unlike §5,
 **we would not have a good answer**, and the mitigation is a few hours.
 
 **Do not treat satop100courses.com as settled** — no terms page is not
-permission, and the 406 shows they block bots. Golf Australia Magazine was
+permission. (**Corrected in §10.1:** the claim that "the 406 shows they
+block bots" was wrong — robots.txt is allow-all and the site serves bare
+`curl` fine. The no-terms-is-not-permission point stands; the bot-blocking
+one does not.) Golf Australia Magazine was
 the other unread source feeding GOLF-157; it has now been read — see §9a.
 
 ---
@@ -488,13 +491,18 @@ ranking author at all — `planetgolf.com/rankings/new-zealand` is an
 
 | Source | List | Current | Terms | Verdict |
 |---|---|---|---|---|
-| **NZ Golf Magazine** | **Top 40** | **2026** | **none exist** | **USE THIS** |
-| Golf Digest | NZ Top 50 | 2025 | unreadable — edge-blocked | No |
+| **NZ Golf Rankings** | **Top 40** | **2026** | **none exist** | **USE THIS** — rights-holder, see §10.3 |
+| NZ Golf Magazine | reprints the Top 40 | 2026 | none exist | outlet, not the owner |
+| Australian Golf Digest | NZ Top 50 | 2025 | subscription terms only | Viable — see §10.2 |
 | Golfweek | Aus/NZ Top 25 | 2021 | US publisher, stale | No |
 | Planet Golf (own) | Top 10 | current | permissive | Too short; useful as index |
 | top100golfcourses | NZ list | current | §2 bars it (DEC-022) | No |
 
-**NZ Golf Magazine — recommended.** Probed seven candidate paths
+**NZ Golf Magazine — recommended, but ask the right party.** The Top 40
+is **NZ Golf Rankings'** ranking (`golfrankings.co.nz`, Andrew Whiley,
+biennial since 2012); the magazine is one of the outlets that reprints
+it. Everything below about the magazine's posture holds, but the
+rights-holder is NZGR — see §10.3. Probed seven candidate paths
 (`/terms`, `/terms-and-conditions`, `/terms-of-use`, `/terms-conditions`,
 `/legal`, `/copyright`, `/disclaimer`) — **all 404**. The footer carries
 only privacy-policy, about-us and contact-us. No `robots.txt` (404). The
@@ -509,11 +517,13 @@ without nextmedia's clause.
 permission — the §8 warning about satop100courses.com applies here too.
 Attribution should be on the pin either way.
 
-**Golf Digest — no.** Every non-browser request 403s at the Akamai edge,
-including `robots.txt` itself. That is the same posture as Golf Australia
-in §3, and it gets the same treatment: **recorded as a finding, not
-defeated.** It is the larger list (50), so it is the one to ask for if a
-permission request is being written anyway.
+**Golf Digest — see §10.2, this entry tested the wrong company.** I
+probed `golfdigest.com` (the US title), which 403s every non-browser
+request at the Akamai edge including `robots.txt` itself. But the NZ Top
+50 is **Australian** Golf Digest's (`australiangolfdigest.com.au`,
+publisher CMMA Digital & Print), which is allow-all in robots, serves
+normally, and whose terms page carries no content-use clause at all. The
+Akamai finding is real but irrelevant to this list.
 
 **Planet Golf's own terms are the permissive outlier**, worth recording
 because it is the only source audited so far that is genuinely clean. The
@@ -561,6 +571,136 @@ build, not a terms question — the terms answer is unchanged either way.
 
 ---
 
+## 10. What a permission request would have to name (and three corrections)
+
+Not on the critical path; done while GOLF-157 is parked and GOLF-161 is
+blocked. **No email was sent** — that is the owner's to send, and this
+section only establishes who to send it to and what to ask for.
+
+Three things I got wrong earlier turned up in the process. They are
+corrected below rather than quietly edited out of §8 and §9b.
+
+### Correction 1 — satop100courses.com does *not* block non-browser clients
+
+§8 said it "406s non-browser clients" and treated that as an intent
+signal. **That was wrong.** Its `robots.txt` is `User-agent: * /
+Disallow:` — an explicit allow-all — and it publishes a sitemap. The
+homepage and the course pages return **200 to a bare `curl` with no
+User-Agent at all**, and to `curl/8.4.0` and `Python-urllib/3.11`
+identically. The 406 I saw is simply what the site returns for a path
+that does not exist; it is its not-found response, not a bot block. I
+had generalised one 406 on a guessed URL into a statement about the
+site's posture.
+
+What *is* true, and is the honest version: after sustained probing the
+host stopped answering me altogether (connection timeouts rather than
+any status code). So it does throttle. I stopped there rather than
+working around it, which is why the ownership and panel details below
+are thinner for this source than for the NZ ones.
+
+Net effect on §8: satop100courses.com is *more* permissive than
+recorded, not less. It still has **no terms page**, so the "no terms is
+not permission" caveat stands unchanged — but it should not be described
+as blocking bots.
+
+### Correction 2 — the NZ Top 50 is *Australian* Golf Digest, a different publisher
+
+§9b recorded "Golf Digest — 403s every non-browser request at the Akamai
+edge". That test was against `golfdigest.com`, the US title, and
+**`golfdigest.com` is not the publisher of the NZ Top 50.** The list is
+Australian Golf Digest's (`australiangolfdigest.com.au`), published by
+**CMMA Digital & Print**. I tested the wrong company.
+
+The real publisher's posture is completely different from what §9b says:
+
+- `robots.txt` is allow-all, with `Crawl-delay: 10` (respected here).
+- The site serves normally; no edge blocking.
+- Its "Terms & Conditions" page is **subscription terms only** —
+  delivery, pricing, refunds, damaged magazines. There is **no
+  content-use, republication or anti-automation clause anywhere in it.**
+- The only IP assertion is a bare footer line: *"© 2026 Australian Golf
+  Digest. All rights reserved."*
+- It has a `/contact-us/` page, and the list itself is at
+  `/2023-2024-new-zealand-top-50/`.
+
+Worth noting a scan for the usual red-flag words returns hits that are
+**all false positives** — `bot` inside `both`, `selection` inside
+`select2-selection` in the CSS. The counts look alarming and mean
+nothing. Read the context, never the count.
+
+Also keep AGD distinct from §9a: **Golf Australia Magazine (nextmedia)
+and Australian Golf Digest (CMMA) are different magazines from different
+publishers with different terms.** Only nextmedia has the
+selection-and-arrangement clause. It would be very easy to merge the two
+in a year's time and attribute nextmedia's restriction to the wrong
+company.
+
+### Correction 3 — NZ Golf Magazine is an outlet, not the rights-holder
+
+The more useful finding. The NZ Top 40 does not originate with NZ Golf
+Magazine — it originates with **NZ Golf Rankings**
+(`golfrankings.co.nz`), and the magazine is one of the places it gets
+published. From their own About page: the rankings have been compiled
+**every two years since 2012** and are *"showcased through the major NZ
+Golf publications and international golf publications"*.
+
+So §9b's recommendation stands but the *counterparty changes*: a
+permission request goes to NZ Golf Rankings, not to the magazine that
+reprints them.
+
+| | |
+|---|---|
+| **Rights-holder** | NZ Golf Rankings (NZGR) |
+| **Named individual** | Andrew Whiley, NZPGA Golf Professional & Rankings Coordinator |
+| **Contact** | `contact-us@nzgr.co.nz` (from their own contact page) |
+| **The list** | Top 40, biennial since 2012, on the homepage at `#top-40-courses` |
+| **Per-course pages** | `/golf-courses/<slug>` |
+| **robots.txt** | sitemap line only — no restrictions |
+| **Terms** | none — five candidate paths probed, all 404 |
+
+This is the best-placed request of any source in this audit, and not only
+because there are no terms in the way. Their stated mission is to
+*"showcase and celebrate the nation's finest golf courses, inviting both
+local players and international visitors"*, and the site exists to share
+the results with *"local and international golfers"*. The origin story on
+the About page is a professional's frustration that good New Zealand
+courses **were not being noticed by international visitors**. A free map
+that puts those courses in front of exactly those visitors is aligned
+with why the ranking exists, which is a materially better position to ask
+from than top100golfcourses.com, where the ranking *is* the product.
+
+### What the email should actually ask for
+
+The same wording works for all of them, and being narrow is the point —
+most of what makes these sources valuable to their owners is precisely
+what we do not want:
+
+- **What we want:** the **rank position only** — the integer — displayed
+  as a badge against a course, plus the right to use it as a sort order.
+- **What we are not asking for and will not take:** the reviews, the
+  written descriptions, the photographs (explicitly reserved to
+  individual photographers on Planet Golf, and likely elsewhere), the
+  scoring, the criteria breakdowns, or the ranking as a browsable list.
+  The app never reproduces a Top 100 *as a list* — which matters,
+  because the list as a list is the copyrightable selection and
+  arrangement, and a position attached to a course is the part closest
+  to bare fact.
+- **What they get:** attribution on the badge and a link back to the
+  ranking.
+- **What the site is:** free, no ads, no accounts, no revenue, no
+  tracking. Worth stating plainly, because DEC-022's acceptability is
+  coupled to the site staying non-commercial and unpublicised — if that
+  ever changes, every permission here was granted on a premise that no
+  longer holds and they all need revisiting.
+
+Priority if only some get sent: **NZ Golf Rankings first** (best
+alignment, no terms, real contact, and it unblocks NZ), then Australian
+Golf Digest (no content clause, so possibly a formality), then
+top100golfcourses.com and nextmedia together per DEC-022 — those two are
+the actual asks, since both have clauses that squarely cover what we do.
+
+---
+
 ## Method / reproducibility
 
 Throwaway stdlib-Python probes plus the Browser tool for front-end
@@ -576,6 +716,16 @@ the plain-HTTP fetch returns a shell with no course names in it, and the
 near-identical byte counts across `/rankings`, `/rankings/australia` and
 `/rankings/new-zealand` look like a soft-404 until you render them. The
 site's consent banner was left untouched and nothing was accepted.
+
+§10 added three source-posture checks on top of that: response codes by
+User-Agent (bare `curl`, `curl/8.4.0`, `Python-urllib/3.11`, browser) to
+tell a real bot block apart from a not-found response, `robots.txt` and
+terms for each publisher, and the published contact route. Australian
+Golf Digest declares `Crawl-delay: 10` and it was honoured.
+satop100courses.com stopped answering after sustained probing; I stopped
+rather than working around it, which is why its ownership details are
+thinner than the others'. No email was sent to any of these parties —
+that is the owner's to send.
 
 Probe artefacts (session scratchpad, not in the repo): `probe.py`,
 `sweep.sh`, `nz_findclubs.json` (the 424-club NZ intermediate, kept as the
