@@ -94,6 +94,22 @@ standing in for the expensive check that actually answers the question:
 because someone re-checked their own finished work against the ticket
 rather than against their memory of it.
 
+## 5b. GitHub Pages was still live for three weeks
+
+DEC-006 retired GitHub Pages **in the repo** on 2026-09-07 — no workflow,
+no CNAME, and CLAUDE.md described that accurately. **The GitHub repository
+setting stayed switched on**, so `main` kept publishing to
+`stefand94.github.io/golf-map/` the entire time: a second public copy of
+the app, its own service-worker cache, calling the same Worker. Turned off
+2026-09-20; verified 404.
+
+**Same shape as the Worker deploy failure found the same day.**
+Provider-side state is invisible to every check this project runs — no
+test, no grep, no file would ever have shown it. Before the custom domain
+goes live, it is worth a sweep of anything assumed dormant at a provider:
+old Pages projects, stale preview deployments, DNS records. Recorded
+against DEC-006.
+
 ## 6. Sessions, worktrees and hazards
 
 Unchanged from session 2, except the ui-designer worktree

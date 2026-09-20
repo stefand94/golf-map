@@ -638,6 +638,24 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   way and closes the CORS/abuse gap.
 - **Date:** 2026-09-07 · **Affects:** GOLF-35, GOLF-102, `docs/deploying.md`,
   `ors-proxy.js`, PWA manifest/`sw.js`.
+- **Closed out 2026-09-20 — and it had not actually been done.** The repo
+  side of the retirement was real and CLAUDE.md described it accurately:
+  no workflow, no CNAME, nothing referencing GitHub Pages. **The GitHub
+  repository *setting* stayed switched on the whole time**, so for roughly
+  three weeks `main` was still being published to
+  `stefand94.github.io/golf-map/` — a second public copy of the app, with
+  its own independent service-worker cache, calling the same Worker.
+  Turned off at the owner's instruction on 2026-09-20; the URL now 404s.
+- **The general lesson, which is why this is recorded rather than just
+  fixed:** *retiring a host in the repo is not retiring it at the
+  provider.* Nothing in the repo could ever have revealed this — every
+  in-repo signal correctly said "retired". The same shape as the Worker
+  deploy failure found the same day (a green build that deployed nothing):
+  **provider-side state is invisible to every check we run, so it has to
+  be verified against the provider, or by fetching the URL.** Worth a
+  thought for anything else assumed dormant at a provider — old Pages
+  projects, preview deployments, DNS records — especially before a custom
+  domain goes live.
 
 ## DEC-005 — Trip sharing v1 ships as a throwaway demo
 
