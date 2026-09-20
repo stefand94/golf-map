@@ -4,7 +4,29 @@ _Features a coding agent is actively implementing. Move here from BACKLOG.md
 when work starts; move to "Recently completed" in BACKLOG.md when done and
 verified._
 
-## GOLF-163 → GOLF-161 — Course-data re-sourcing (kicked off 2026-09-20)
+## GOLF-161 — Course-data re-sourcing (GOLF-163 DONE; 161 blocked on the owner)
+
+**GOLF-163 shipped `144d4ae` — stable ids are in, R-10 is mitigated and
+tested.** GOLF-164 (Worker build marker) shipped `49711cb` alongside it.
+
+**GOLF-161 is code-complete (`637a36f`) and blocked on one thing only:**
+a live England + Scotland Overpass pull, which the owner's standing
+Overpass cooldown covers. The dev is asking him directly; a BA/PM
+go-ahead does not override that instruction and did not try to. Scripts
+were rehearsed against the **cached** GOLF-121a South Africa pull at zero
+new Overpass cost, which caught two real matching defects before any live
+traffic — keep that pattern.
+
+**Also still parked on the owner's Overpass call:** the scoped GOLF-148
+POI relabel (13 queries, checkpointed, resumable in one command), with
+`scripts/build_poi_data.py`'s `window.POI_CATEGORIES` change held
+uncommitted until its data commit so the script and shipped data cannot
+disagree.
+
+**Original kickoff note, kept because the sequencing reasoning still
+applies to any future re-pull:**
+
+### GOLF-163 → GOLF-161 — original ordering rationale
 
 **Owner:** Developer session (sole writer of `data/courses-*.js` and
 `scripts/fetch_*`, per DEC-024). Daniel the Dev owns the source/terms

@@ -87,8 +87,22 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   re-open DEC-022 before it ships** — the GOLF-160 fallback is fully
   specced and costs hours, not days, so the cost of deferring is genuinely
   low *provided the trigger is not missed*. Linked from R-10 so it is not.
-- **Affected:** GOLF-160 (BLOCKED on the email), GOLF-157 (the same
-  question applies to the unread Golf Australia Magazine terms),
+- **Extended 2026-09-20 to cover Golf Australia Magazine.** Its terms are
+  now read (nextmedia, §3.2/3.3) and claim copyright in the *"selection,
+  coordination, arrangement and enhancement"* of content — which is
+  precisely what a Top 100 is, so the facts-aren't-copyrightable argument
+  does not rescue it either. **Same class as top100golfcourses.com, so it
+  folds into this decision and the same permission email rather than
+  becoming a separate risk.** Two softeners, neither load-bearing: the bar
+  is qualified by "except as otherwise expressly permitted under copyright
+  law" (fair dealing survives), and **Australia has no sui generis database
+  right** (*IceTV* rejected sweat-of-the-brow), so it rests on arrangement
+  copyright alone — narrower than the UK position, not broader. Keep this
+  distinct from GOLF-119 §3: that is Golf Australia **the governing body**
+  blocking automated access to the *club list*; this is a **publisher**
+  restricting reuse of the *ranking*. Same country, unrelated organisations.
+- **Affected:** GOLF-160 (BLOCKED on the email), GOLF-157 (AU ranking, now
+  in scope of this decision),
   GOLF-129/GOLF-35 (launch readiness — the re-open trigger).
 - **Date:** 2026-09-20.
 
