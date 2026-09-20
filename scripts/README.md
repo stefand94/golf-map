@@ -340,6 +340,45 @@ it.
 node scripts/test_data.js
 ```
 
+### `fetch_osm_golf_courses.py` + `merge_osm_coords.py`
+GOLF-161 / DEC-023: re-source published coordinates from OpenStreetMap for
+**England and Scotland only** — the two nations whose governing-body terms
+bear on republication (see `docs/project/GOLF-119-coverage-audit.md` §5).
+Ireland, Wales and South Africa have no equivalent clause and are out of
+scope. A generalisation of `fetch_sa_golf_overpass.py`, which did this for
+South Africa in GOLF-121a.
+
+```bash
+python3 scripts/fetch_osm_golf_courses.py england scotland
+python3 scripts/merge_osm_coords.py --regions england,scotland --dry-run
+python3 scripts/merge_osm_coords.py --regions england,scotland
+node scripts/test_course_ids.js && node scripts/test_data.js && node scripts/test_fee_v2.js
+```
+
+The fetch reuses `fetch_pois.overpass()`, so it inherits the mirror rotation,
+backoff and the GOLF-158 persisted block list — it will not knock on a mirror
+that has already refused this IP.
+
+The merge patches each record's `lat`/`lng` in place (never rebuilds the
+array — that would re-index it, see GOLF-163) and stamps `coordSrc:"osm"`
+plus the OSM object id for ODbL attribution. It never removes a record: a
+course with no confident match keeps the coordinate it has and appears in
+the report. **Always `--dry-run` first and read the "largest moves" list** —
+a wrong match shows up as a big move, and a plausible-looking count is
+exactly what a bad mapping would also produce.
+
+Two guards, both added after a dry run against the cached South Africa data
+found real failures:
+
+- **A weak name far away is rejected.** "Avion Park Golf Club" matched
+  "Kempton Park Golf Course" 3.3km off on a 0.64 score. Anything beyond 1km
+  now needs 0.80.
+- **One OSM object may back at most one course.** Fancourt's three courses
+  all matched the single OSM object "The Links at Fancourt", which would have
+  collapsed them onto one pin. Multi-course venues are normal and OSM usually
+  maps the venue, so every contested group is left alone and reported —
+  moving one course and not its siblings is worse than moving none.
+
 ### `update_worker_build.py`
 GOLF-164: stamps a content hash of `scripts/cloudflare-worker/ors-proxy.js`
 into its own `WORKER_BUILD` constant, which the Worker returns as
