@@ -70,7 +70,16 @@
 // GOLF-50: the /geojson variant returns the actual route geometry
 // alongside the same duration/distance summary the plain endpoint gives —
 // no extra request, no extra cost, just a different response shape.
-const ORS_DIRECTIONS_URL = 'https://api.openrouteservice.org/v2/directions/driving-car/geojson';
+// GOLF-154: directions moved to HeiGIT's host. The legacy
+// api.openrouteservice.org path answers 403 for a key with quota to spare,
+// and a *missing* key there answers 401 — so the key is recognised and
+// refused, not unrecognised. The same route under
+// api.heigit.org/openrouteservice/... is live (401 without a key, i.e. it
+// exists and wants authorising). Isochrones and matrix moved with it.
+// Revert this one constant if the theory is wrong; nothing else depends on it.
+const ORS_DIRECTIONS_URL = 'https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson';
+// Geocoding and POIs have NO equivalent path on the new host (both 404 there)
+// and geocoding still answers 200 on the legacy host, so they stay put.
 const ORS_POIS_URL = 'https://api.openrouteservice.org/pois';
 const ORS_GEOCODE_URL = 'https://api.openrouteservice.org/geocode/autocomplete';
 // GOLF-79: Overpass, not ORS — a free, no-key OpenStreetMap query service.
