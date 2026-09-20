@@ -60,4 +60,7 @@ handover doc.
 - **API keys:** never ask for, see, or commit one. The owner sets them as
   Worker dashboard secrets himself.
 - **Clear trip/test `localStorage`** before ending any session that
-  touched the live app.
+  touched the live app — **but wait for the owner to say so.** Standing
+  instruction, 2026-09-20: *"dont clear immediately i will tell you to."*
+  He keeps a live trip loaded between sessions to look at. Ask, or wait to
+  be told; do not clear on your own initiative at the end of a turn.
