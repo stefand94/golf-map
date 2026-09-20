@@ -13,15 +13,30 @@ visitor's service worker installed, unchanged, still serving its old
 cache-first copies of everything — forever, until someone remembered to
 bump the version by hand.
 
-This script removes the "remember to bump it" step: it hashes the actual
-on-disk content of every file sw.js's PRECACHE_URLS list points at (NOT
-sw.js itself — that would be circular, since sw.js's own bytes change when
-this script rewrites CACHE_NAME into it) and writes that hash into
-CACHE_NAME. Run it any time before a push; it's a no-op (exits 0, prints
-"unchanged") when nothing precached actually changed content, and rewrites
-sw.js with a fresh hash when something did — which is exactly the trigger
-a browser needs to notice sw.js changed and install a fresh service worker,
-which is what actually forces the hard reset.
+This script removes the "remember to bump it" step: it hashes the content
+of every file sw.js's PRECACHE_URLS list points at (NOT sw.js itself —
+that would be circular, since sw.js's own bytes change when this script
+rewrites CACHE_NAME into it) and writes that hash into CACHE_NAME. Run it
+any time before a push; it's a no-op (exits 0, prints "unchanged") when
+nothing precached actually changed content, and rewrites sw.js with a
+fresh hash when something did — which is exactly the trigger a browser
+needs to notice sw.js changed and install a fresh service worker, which is
+what actually forces the hard reset.
+
+GOLF-165: it hashes the committed content at HEAD, not the working tree.
+This used to read the files off disk, which made the digest a property of
+*whichever checkout happened to run the hook* rather than of the repo.
+With git worktrees in play that is not a hypothetical: a docs-only push
+from a worktree sitting on another branch stamped main's CACHE_NAME with
+the hash of that worktree's older app files (c80e299083 -> 85a520a365 on
+2026-09-20, commit 813b30d), and because DEC-011 wipes a visitor's saved
+trips whenever APP_VERSION moves, a backlog-file edit silently deleted
+every visitor's trips. Recomputing 813b30d from its own committed tree
+gives c80e299083 — unchanged — which is what should have happened.
+
+Hashing HEAD also makes the digest reproducible after the fact: anyone can
+recompute what any commit's CACHE_NAME should have been, which is how the
+above was diagnosed rather than argued about.
 
 GOLF-132: the same digest is also stamped into js/app-version.js's
 APP_VERSION constant, a tiny page-visible script the HTML loads before
@@ -38,6 +53,7 @@ Exits non-zero only on a real error (missing file, unreadable sw.js).
 """
 import hashlib
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -66,6 +82,20 @@ def extract_precache_urls(sw_text):
         raise SystemExit('FAIL: PRECACHE_URLS parsed empty — check sw.js format')
     return urls
 
+def committed_bytes(rel):
+    """The file's content at HEAD, or None if HEAD doesn't have it.
+
+    GOLF-165: deliberately NOT the working copy. See the module docstring —
+    reading from disk made the digest depend on which checkout ran the hook,
+    and a worktree on another branch stamped main with its own app files.
+    A pre-push hook is asking "what content is going out", and that is the
+    committed content, not whatever happens to be lying in the tree.
+    """
+    r = subprocess.run(['git', 'show', f'HEAD:{rel}'],
+                       cwd=ROOT, capture_output=True)
+    return r.stdout if r.returncode == 0 else None
+
+
 def main():
     sw_text = SW_PATH.read_text(encoding='utf-8')
     urls = extract_precache_urls(sw_text)
@@ -76,14 +106,16 @@ def main():
         rel = URL_TO_FILE.get(url, url[2:] if url.startswith('./') else url)
         if rel in HASH_EXCLUDED_FILES:
             continue
-        fp = ROOT / rel
-        if not fp.exists():
+        blob = committed_bytes(rel)
+        if blob is None:
             missing.append((url, rel))
             continue
-        h.update(fp.read_bytes())
+        h.update(blob)
     if missing:
         for url, rel in missing:
-            print(f'FAIL: PRECACHE_URLS entry {url!r} -> {rel} does not exist on disk', file=sys.stderr)
+            print(f'FAIL: PRECACHE_URLS entry {url!r} -> {rel} is not committed at HEAD '
+                  f'(a new precached file must be committed before it can be hashed)',
+                  file=sys.stderr)
         sys.exit(1)
 
     digest = h.hexdigest()[:10]
