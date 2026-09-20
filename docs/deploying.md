@@ -83,6 +83,32 @@ see `scripts/cloudflare-worker/README.md` for its own deploy steps. It has
 its own URL (`ORS_PROXY_URL` in the app) and its own `ORS_API_KEY` secret;
 redeploying the Pages site does not touch it, and vice versa.
 
+**When redeploying the Worker, never paste over its secrets.** `ORS_API_KEY`
+(and any Google key) are set separately as Worker variables — this file does
+not contain them and pasting the source over a running Worker doesn't touch
+them, but re-entering them by hand is how one gets clobbered.
+
+### Checking whether a Worker change is actually live (GOLF-164)
+
+A Worker change that only touches logging or an error path is externally
+indistinguishable from the old code — a 200 means nothing either way. Since
+GOLF-164 every response carries the source's content hash:
+
+```bash
+curl -sI https://geofftheworker.stefand94.workers.dev/ | grep -i x-worker-build
+python3 scripts/update_worker_build.py --print
+```
+
+Same value → the deployed Worker is this source. Different → the redeploy
+hasn't landed. A HEAD request lands on the 405 path, so this costs no ORS
+quota. `.githooks/pre-push` keeps the stamp current automatically.
+
+This is also how to settle the standing contradiction about this Worker: its
+own header comment says it auto-deploys via Cloudflare's Git integration,
+while the project notes say a push does not deploy it and it needs a manual
+redeploy. Push a Worker change, wait, and curl — whichever it is, the header
+will say so.
+
 ## GitHub Pages (legacy, may still be live)
 
 The site was previously hosted on GitHub Pages, auto-deployed from `main`'s

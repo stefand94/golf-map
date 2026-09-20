@@ -17,6 +17,11 @@ set -e
 cd "$(git rev-parse --show-toplevel)"
 
 python3 scripts/update_sw_cache_version.py
+# GOLF-164: same idea for the Cloudflare Worker — stamp a content hash into
+# it so X-Worker-Build answers "is the deployed Worker this source?" in one
+# curl. The Worker isn't precached by sw.js (different origin), so it needs
+# its own stamper rather than a line in the one above.
+python3 scripts/update_worker_build.py
 
 # GOLF-150: the stamper writes TWO files — sw.js's CACHE_NAME and
 # js/app-version.js's APP_VERSION (GOLF-132) — and they are only meaningful
@@ -29,4 +34,25 @@ if ! git diff --quiet -- sw.js js/app-version.js; then
   git add sw.js js/app-version.js
   git commit -m "sw.js: auto-bump CACHE_NAME (precached content changed)" -q
   echo "pre-push: sw.js CACHE_NAME + js/app-version.js APP_VERSION bumped and committed automatically."
+fi
+
+# GOLF-164: committed separately from the sw.js bump — they version different
+# things (the site's precached shell vs the Worker's source) and a push that
+# changes one usually doesn't change the other.
+#
+# Unlike sw.js and js/app-version.js, ors-proxy.js is hand-edited, so this
+# must never sweep up someone's in-progress Worker changes into an
+# auto-commit. It commits only when the working-tree diff is confined to the
+# WORKER_BUILD line; anything else and it says so and leaves the file alone,
+# because a stamp pushed without the code it describes is worse than no stamp.
+if ! git diff --quiet -- scripts/cloudflare-worker/ors-proxy.js; then
+  if [ -z "$(git diff -U0 -- scripts/cloudflare-worker/ors-proxy.js \
+             | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' | grep -v 'WORKER_BUILD')" ]; then
+    git add scripts/cloudflare-worker/ors-proxy.js
+    git commit -m "ors-proxy.js: auto-stamp WORKER_BUILD (Worker source changed)" -q
+    echo "pre-push: ors-proxy.js WORKER_BUILD stamped and committed automatically."
+  else
+    echo "pre-push: ors-proxy.js has uncommitted changes beyond WORKER_BUILD —"
+    echo "          leaving it alone. Commit them yourself; the stamp goes with them."
+  fi
 fi

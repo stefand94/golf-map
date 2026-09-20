@@ -340,6 +340,26 @@ it.
 node scripts/test_data.js
 ```
 
+### `update_worker_build.py`
+GOLF-164: stamps a content hash of `scripts/cloudflare-worker/ors-proxy.js`
+into its own `WORKER_BUILD` constant, which the Worker returns as
+`X-Worker-Build` on every response. Run automatically by `.githooks/pre-push`
+(a no-op when the Worker source hasn't changed), so a redeploy is verifiable
+in one command instead of needing the Cloudflare dashboard:
+
+```bash
+curl -sI https://geofftheworker.stefand94.workers.dev/ | grep -i x-worker-build
+python3 scripts/update_worker_build.py --print
+```
+
+Same value → the deployed Worker is this source. Different → it is not. A
+HEAD request lands on the 405 path, which carries the header, so checking
+costs no ORS quota.
+
+This also settles, empirically, whether the Worker auto-deploys from git (as
+its own header comment claims) or needs a manual redeploy (as the project
+notes say): push a Worker change, wait, and curl.
+
 ### `add_course_ids.py`
 GOLF-163: mints the stable `id` on every record in `data/courses-*.js`,
 reordering nothing. Already run once — it exists for the next course that

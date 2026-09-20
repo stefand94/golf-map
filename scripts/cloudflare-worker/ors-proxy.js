@@ -217,7 +217,16 @@ async function withPoiCache(key, request, ctx, handler) {
   if (hit) {
     return new Response(hit.body, {
       status: 200,
-      headers: { 'Content-Type': 'application/json', 'X-POI-Cache': 'HIT', ...corsHeaders(request) },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-POI-Cache': 'HIT',
+        /* GOLF-164: on the cache-hit path too, and taken from the constant
+           rather than the cached response — a body served from cache was
+           stored by an older build, but the Worker answering right now is
+           this one, and "which code is running" is what the header means. */
+        'X-Worker-Build': WORKER_BUILD,
+        ...corsHeaders(request),
+      },
     });
   }
   const res = await handler();
@@ -351,7 +360,7 @@ async function overpassFetch(query) {
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders(request) });
+      return new Response(null, { headers: { 'X-Worker-Build': WORKER_BUILD, ...corsHeaders(request) } });
     }
     if (request.method !== 'POST') {
       return json({ error: 'POST only' }, 405, request);
@@ -980,10 +989,38 @@ async function logUpstreamFailure(label, orsRes) {
   console.log(`ORS ${label} failed: HTTP ${orsRes.status} ${orsRes.statusText} — ${clipped}`);
 }
 
+/* GOLF-164: which build of this file is actually running?
+ *
+ * Twice now (GOLF-149, GOLF-155) a Worker change has been impossible to
+ * confirm from outside. A change that only touches logging or an error path
+ * is externally identical to the old code — a 200 is equally consistent with
+ * both — and the only header we emitted was X-POI-Cache. Confirming a deploy
+ * meant the Cloudflare dashboard or `wrangler tail` during a forced failure,
+ * both of which only the owner can do, so "is it live?" was answered by
+ * trust rather than evidence.
+ *
+ * This is a content hash of this file, stamped by
+ * scripts/update_worker_build.py (the line below is rewritten in place; the
+ * hash deliberately excludes that line, which would otherwise be circular).
+ * A hash of the source answers the question directly — "is THIS code live?"
+ * — where a commit sha would only say which commit was deployed from.
+ *
+ * To check, from anywhere (a HEAD gets the 405 path, which carries it, so
+ * this costs no upstream quota):
+ *   curl -sI https://geofftheworker.stefand94.workers.dev/ | grep -i x-worker-build
+ *   python3 scripts/update_worker_build.py --print
+ * Same value, the deployed Worker is this source. Different, it is not.
+ */
+const WORKER_BUILD = '381c541130';
+
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { 'Content-Type': 'application/json', ...corsHeaders(request) },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Worker-Build': WORKER_BUILD,
+      ...corsHeaders(request),
+    },
   });
 }
 
