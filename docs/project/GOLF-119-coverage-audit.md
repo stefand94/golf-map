@@ -325,6 +325,90 @@ fetch-once JSON should GOLF-157 want it).
 
 ---
 
+## 8. Ranking sources — this one cuts the other way
+
+*Added 2026-09-20 at the owner's request. Not legal advice.*
+
+§5 concluded the club-data risk is low, largely because club names and
+coordinates are **facts**. **That argument does not transfer to rankings,
+and this section is the more serious of the two.**
+
+A Top 100 list is not a fact. It is original selection and arrangement —
+the editorial product itself — and that is protected even under the
+authority usually cited for "facts are free" (*Feist*, which expressly
+protects original selection and arrangement while denying protection to
+the underlying facts). These are also **commercial publishers**, for whom
+the ranking *is* the product, rather than governing bodies for whom a club
+list is administrative overhead.
+
+### What we use, and what it says
+
+| Source | Used for | robots.txt | Terms |
+|---|---|---|---|
+| **top100golfcourses.com** | `t100.gbi`; half the `zaRanked` union | `*` may crawl content. **`ClaudeBot` and `GPTBot` `Disallow: /`** — but **`Claude-User`, `Claude-SearchBot`, `ChatGPT-User`, `OAI-SearchBot` are `Allow: /`** | **Strictest found anywhere in this audit — see below** |
+| **satop100courses.com** | `zaRanked` union; `t100.za` | none served | **No terms page exists.** But returns **406** to non-browser clients — a WAF bot block |
+| **Golf Australia Magazine** | AU Top 100 (GOLF-157) | generic | **Not yet read — read before the AU build** |
+| nationalclubgolfer.com, golfmonthly.com | secondary GB&I refs | block many AI crawlers | Not read; low usage |
+
+**Top 100 Golf Courses Ltd, Terms §2** names our exact use case:
+
+> *"All website content — including, but not limited to, design, text,
+> graphics, layout, **course rankings**, reviews … are copyright Top 100 …
+> You may print or download extracts … only for your **personal use** …
+> **None of Top 100's material or information may be used for any
+> commercial or public use.** You agree not to copy, reproduce, transmit,
+> publish, display, distribute … or **create derivative works** … No part
+> … may be **reproduced or stored in or transmitted to any other web
+> site** … nor **included in any retrieval system or service** without
+> prior written permission."*
+
+English law, English courts. Rankings are named explicitly. There is no
+fact/expression argument to fall back on.
+
+**Note the robots.txt nuance, because it is easy to overstate:** they
+block *training* crawlers (`ClaudeBot`, `GPTBot`) while explicitly
+allowing *user-initiated* agent fetches (`Claude-User`, `ChatGPT-User`).
+A human-directed one-off lookup is within what their robots.txt permits.
+robots.txt governs **crawling**; §2 governs **republication**, and §2 is
+the binding half here.
+
+### What the app actually does with it
+
+Not internal-only. `bestRankBadge()` and `rankChips()` in `js/map.js`
+render **`England #7`, `Britain & Ireland #24`, `South Africa #12`** as
+pin badges, popup chips and tooltips, and `rankNum()` in `js/util.js`
+sorts by position. The published site reproduces the ordered lists.
+
+### Options
+
+1. **Degrade positions to a boolean `notable` flag.** The app's *functional*
+   needs are which courses appear on the map (`courseShownOnMap()`,
+   `zaRanked`) and a stable sort. A boolean "this is a recognised top-100
+   course" is a fact-like derived signal, not a reproduction of an ordered
+   list. **Removes nearly all the exposure, keeps map behaviour, costs the
+   `#7` badges.** Cheapest real fix.
+2. **Ask Top 100 Golf Courses Ltd for permission.** A small company; a free,
+   non-commercial planner that links back is plausibly *good* for them.
+   One email, and a genuine chance of yes.
+3. **Attribute and link, keep the numbers.** Common practice, reduces the
+   chance anyone minds — but attribution does not cure a reproduction bar.
+   Weakest option; do not mistake it for a fix.
+4. **Derive an own ranking** from permissive inputs. Expensive, and the
+   result would be worse. Not recommended.
+
+**Recommended: 1 + 2 in parallel** — degrade now because it is cheap, ask
+in parallel, restore the numbers if they say yes.
+
+**Proportion:** this is a bigger deal than §5, not an emergency. Realistic
+worst case is still a takedown email to a free hobby site. But unlike §5,
+**we would not have a good answer**, and the mitigation is a few hours.
+
+**Do not treat satop100courses.com as settled** — no terms page is not
+permission, and the 406 shows they block bots. Same for Golf Australia
+Magazine, which is unread and feeds GOLF-157.
+
+---
+
 ## 7. Board updates requested (BA/PM)
 
 No BA/PM session was running when this audit completed, so the board is
@@ -351,3 +435,7 @@ untouched. Requested:
    (`scripts/`), unblocked by §5.
 5. **Strike `golflink.com.au`** from `HANDOVER-GOLF-119.md` and any
    GOLF-157 notes — it is dead (503), folded into `golf.com.au`.
+6. **Separate ticket for §8 (ranking sources) — higher priority than §5.**
+   Degrade `t100.*` positions to a boolean flag and/or seek permission.
+   **Read Golf Australia Magazine's terms before the GOLF-157 AU build**,
+   since that ranking is the spine of the AU dataset.
