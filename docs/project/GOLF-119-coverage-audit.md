@@ -423,10 +423,141 @@ worst case is still a takedown email to a free hobby site. But unlike §5,
 **we would not have a good answer**, and the mitigation is a few hours.
 
 **Do not treat satop100courses.com as settled** — no terms page is not
-permission, and the 406 shows they block bots. Same for Golf Australia
-Magazine, which is unread and feeds GOLF-157.
+permission, and the 406 shows they block bots. Golf Australia Magazine was
+the other unread source feeding GOLF-157; it has now been read — see §9a.
 
 ---
+
+---
+
+## 9. Ranking sources for GOLF-157 (AU + NZ) — terms read first
+
+Assigned by BA/PM after DEC-022. Both were open questions at the end of
+§8; both are now closed. Terms were read **before** any data was pulled,
+which is the rule `docs/country-onboarding.md` now opens with.
+
+### 9a. Australia — Golf Australia Magazine (the AU spine)
+
+The AU Top 100 spine recorded in `GOLF-121-australia-sources.json` is
+`golfaustralia.com.au/news/ranking-australias-top-100-courses-for-2026-622887`.
+Golf Australia Magazine is published by **nextmedia**; terms live at
+`nextmedia.com.au/terms-conditions/`. The operative clauses (§3.2/3.3):
+
+> "the entire contents of the Nextmedia network are copyrighted as a
+> collective work under the Australian copyright laws. Nextmedia is the
+> owner of the copyright in the **selection, coordination, arrangement and
+> enhancement** of such content"
+
+> "Except as otherwise expressly permitted under copyright law, you may not
+> copy, redistribute, publish, display or commercially exploit any material
+> from the Nextmedia network without the express permission of Nextmedia
+> and the copyright owner."
+
+**Verdict: same class as top100golfcourses.com.** It claims precisely the
+thing a Top 100 ranking consists of — selection and arrangement — so the
+"it's only facts" argument from §5 does **not** rescue it, exactly as §8
+predicted. It is not a new category and should not be raised as a new
+risk: it falls inside the decision Stefan already made in DEC-022. Fold AU
+into DEC-022's scope and into the same permission request.
+
+Two things that soften it slightly, neither load-bearing:
+
+- The bar is qualified by *"Except as otherwise expressly permitted under
+  copyright law"*, so the fair-dealing carve-out survives rather than being
+  contracted away.
+- Australia has **no sui generis database right** (unlike the UK/EU), and
+  *IceTV v Nine Network* (2009) rejected sweat-of-the-brow. The position
+  rests on copyright in the arrangement alone — narrower than the UK
+  position behind top100golfcourses.com, not broader.
+
+Note this is a *separate and lesser* bar from the one in §3. §3 is Golf
+Australia (the governing body, `golf.org.au`) blocking automated access to
+the **club list**; this is nextmedia (a publisher) restricting reuse of the
+**ranking**. Same country, unrelated organisations, different problem.
+
+### 9b. New Zealand — the ranking source GOLF-157 actually needs
+
+NZ had no ranking source at all, and it is on the critical path: the bulk
+pull in §2 returns **424 clubs**, which cannot all go on the map, so
+`nzRanked:1` needs something to rank from (the same ringfencing pattern as
+`zaRanked:1`, GOLF-121d).
+
+Four candidates found and checked. **Planet Golf** turned out not to be a
+ranking author at all — `planetgolf.com/rankings/new-zealand` is an
+*index* of five third-party lists. That is what made the rest findable:
+
+| Source | List | Current | Terms | Verdict |
+|---|---|---|---|---|
+| **NZ Golf Magazine** | **Top 40** | **2026** | **none exist** | **USE THIS** |
+| Golf Digest | NZ Top 50 | 2025 | unreadable — edge-blocked | No |
+| Golfweek | Aus/NZ Top 25 | 2021 | US publisher, stale | No |
+| Planet Golf (own) | Top 10 | current | permissive | Too short; useful as index |
+| top100golfcourses | NZ list | current | §2 bars it (DEC-022) | No |
+
+**NZ Golf Magazine — recommended.** Probed seven candidate paths
+(`/terms`, `/terms-and-conditions`, `/terms-of-use`, `/terms-conditions`,
+`/legal`, `/copyright`, `/disclaimer`) — **all 404**. The footer carries
+only privacy-policy, about-us and contact-us. No `robots.txt` (404). The
+ranking articles are free, no paywall and no sign-in wall. It is WordPress
+and serves a `/feed/` RSS endpoint, i.e. a publisher-provided
+machine-readable interface. This is the same posture as Golf Ireland and
+HNA South Africa in §5: **no terms to breach**. It is also the *domestic*
+national ranking — the direct NZ analogue of Golf Australia Magazine, but
+without nextmedia's clause.
+
+*Caveat, and it is a real one:* no terms page is not the same as
+permission — the §8 warning about satop100courses.com applies here too.
+Attribution should be on the pin either way.
+
+**Golf Digest — no.** Every non-browser request 403s at the Akamai edge,
+including `robots.txt` itself. That is the same posture as Golf Australia
+in §3, and it gets the same treatment: **recorded as a finding, not
+defeated.** It is the larger list (50), so it is the one to ask for if a
+permission request is being written anyway.
+
+**Planet Golf's own terms are the permissive outlier**, worth recording
+because it is the only source audited so far that is genuinely clean. The
+terms are an unmodified TermsFeed boilerplate — accounts, links,
+termination, NSW governing law — and contain **zero** content-use clauses.
+A scan for `scrape`, `bot`, `automated`, `crawl`, `spider`, `retrieval
+system`, `republish`, `reproduce`, `redistribute`, `derivative`,
+`commercial`, `personal use` and `database` returns **no hits at all**.
+`robots.txt` is present and empty (0 bytes = nothing disallowed). The
+`/copyright` page asserts copyright in non-photographic content but opens
+with *"Except where content has been attributed to a third party source"* —
+and the ranking lists **are** attributed to third parties, so Planet Golf
+expressly disclaims copyright in exactly the lists we would want from it.
+Hence: excellent as a **discovery index** for finding who owns which
+ranking, not itself a thing to copy from. Photographs are explicitly
+reserved to individual photographers — do not take images.
+
+### 9c. The scoping consequence BA/PM should see
+
+The largest NZ ranking we may actually use is **40 courses, out of 424
+clubs**. For comparison South Africa shows 107 of 447. A 40-pin New
+Zealand may be too thin to feel worth shipping, so this is a product
+question, not a data question, and it should be decided before the build
+rather than discovered after it:
+
+1. Ship 40 and accept a sparse map, or
+2. Widen the inclusion rule for NZ (union of NZ Golf Magazine's 40, Planet
+   Golf's Top 10 and the Planet Golf community list — realistically ~45–55,
+   still thin), or
+3. Use a non-ranking inclusion rule for NZ (e.g. all 18-hole clubs) and let
+   `nzRanked:1` mark only the ranked subset, decoupling "on the map" from
+   "ranked". This is the only option that makes NZ look like a real map,
+   and it needs no additional ranking source.
+
+Option 3 is the recommendation. It is also the cheapest, and it sidesteps
+the ranking-terms problem for the map itself, leaving rankings to do only
+what they do elsewhere — badges and sort order.
+
+One loose end, flagged rather than hidden: the NZ Golf Magazine instalment
+articles I could reach and verify (`/new-zealands-top-40-golf-courses-the-top-5/`
+and the `10 to 6` / `20 to 11` parts) are the **2020** edition. Planet Golf
+indexes the series as current to 2026, so a newer edition exists; its
+article URLs still need locating. That is a data-sourcing task for the
+build, not a terms question — the terms answer is unchanged either way.
 
 ---
 
