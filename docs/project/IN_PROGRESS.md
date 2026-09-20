@@ -6,7 +6,8 @@ verified._
 
 ## GOLF-148 — Notable POIs along a route
 
-**Status:** BLOCKED — stage 1 of 3 (dataset) · **Priority:** P1
+**Status:** DATASET SHIPPED (`d58e8a3`) — UI implementation is the remaining
+work · **Priority:** P1
 
 Full scope, rationale and the ranking design live in the GOLF-148 row in
 `BACKLOG.md`; this is only the "where did it get to" note.
@@ -16,48 +17,57 @@ so `js/poi.js` is on `main` and inert: with no `data/pois-*.js` present it
 shows "Sights aren't available for this area yet". That is the expected state,
 not a regression.
 
-1. **Dataset (BLOCKED — see below).** `scripts/fetch_pois.py` →
-   `scripts/output/pois_raw.json`. Fetch-once → JSON intermediate, per
-   CLAUDE.md; it never touches `data/*.js`. **`pois_raw.json` is gitignored**
-   — it lives only on the owner's machine.
-2. **Merge (ready, untested on real data).** `scripts/build_poi_data.py`
-   emits the five `data/pois-*.js` files + `pois-categories.js` to the
-   contract in `docs/project/` and `js/poi.js`. Dry-run against the partial
-   dataset produced 373KB gzipped for GB + Ireland; it refuses to run on a
-   fetch that never reached its Wikidata pass.
-3. **Runtime + UI (done, `d18a8df`).** Per-day "Things to see", corridor
-   filtering, category chips, ties broken by distance from the route.
+1. **Dataset (DONE, `d58e8a3` 2026-09-20).** 27,439 POIs across the five
+   region files + `pois-categories.js`, 450KB gzipped in total, one region
+   downloaded per visitor. Fetch-once → JSON intermediate, per CLAUDE.md;
+   **`pois_raw.json` is gitignored** and lives only on the owner's machine.
+2. **Merge (DONE).** `scripts/build_poi_data.py` runs dedupe itself and emits
+   the six files. Validated by executing the emitted JS: 26 categories, the
+   five groups, 0 malformed rows, score-descending, re-injection idempotent.
+3. **Runtime + UI (code done, `d18a8df`; now has real data to render).**
+   Per-day "Things to see", corridor filtering, category chips, ties broken
+   by distance from the route.
 
-### Why stage 1 is blocked (2026-09-19)
+### What the fetch cost, and what it taught (2026-09-19/20)
 
-**`overpass-api.de` is refusing TCP connections from this machine's IP.** A
-probe run while the main fetch was in flight put two clients on one IP, and
-the block was still in place hours later. General connectivity is fine and
-other hosts are reachable, so this is specific to that mirror. A block clears
-on its own schedule; **retrying aggressively extends it** (DEC-016).
+The fetch itself was clean — 28,124 records, 0 unrecovered tiles — but it
+produced a dataset that **looked** complete and would have shipped wrong three
+separate ways. All three are now guarded; the lesson is that every one of them
+reported success.
 
-**What survived:** 24,135 records covering England, Scotland, Wales, Ireland
-and Northern Ireland, preserved at `scripts/output/pois_gb_ie_v1.json`.
-They are unscored — the run never reached its Wikidata pass — and they were
-collected with the pre-fix tag set, so they are a safety net, not shippable.
+- **A rate-limited Wikidata batch scored 0**, the same value a genuinely
+  obscure place gets. 316 of 366 batches lost to HTTP 429: 89% of ids.
+  Dartmoor National Park scored 0. Now retried with backoff honouring
+  `Retry-After`, and the pass raises if >2% stay unresolved.
+- **Inherited notability.** OSM tags each piece of a collection with the
+  collection's id — 47 pieces of one sculpture trail each scored as the whole
+  trail. Dropped at build time.
+- **Depicted-subject ids.** OSM tags an object with the id of what it depicts:
+  a statue of Queen Victoria carried *her* id (174 sitelinks) and topped
+  Ireland at 182, above the Giant's Causeway. A place has coordinates and a
+  person does not, so `P625` separates them cleanly.
 
-**The re-run is not merely a resume**, because three fixes landed after that
-data was collected and all three change what gets fetched or how it is
-labelled:
-- waterfalls were queried as `natural=waterfall` (1 found in all of GB);
-- national parks were queried only as `boundary=national_park`, which is not
-  how the UK maps them (zero in England and Wales);
-- `historic=church` categorised as "Cathedral" — 511 cathedrals in a country
-  with about 60.
+Repairing all of this cost **scoring passes, not re-fetches**, because
+`KEEP_TAGS` and the saved Wikidata ids make `recategorise_pois.py` and
+`score_pois.py` possible. That property is worth protecting.
 
-`fetch_pois.py` now retires a mirror that refuses three connections in a row
-and aborts cleanly when all of them do, rather than spending 300s per tile
-rediscovering the same block. Records also now keep the tags `categorise()`
-reads, so `scripts/recategorise_pois.py` can fix a labelling mistake from the
-saved JSON instead of costing another fetch.
+Also fixed: three dedupe gaps (the spatial grid silently capped every merge
+radius, so the 40km rule could never fire at 40km); `protection_title` now
+read, which is the only evidence Kruger is a national park; and `check_js`
+now parses `sw.js`, which was never checked as code.
 
-**Next action:** wait for the block to clear, then a full clean re-run
-(all regions, both groups) → dedupe → build → push.
+**Known limitations, deliberately not fixed:** South Africa reports 36
+national parks against SANParks' 21 (Addo's sections are mapped separately,
+plus some outright junk), and England keeps two false positives (`Langley
+Park`, `Cuilcagh Mountain Park`) tagged identically to Loch Lomond. All of it
+scores at the category floor and sinks below anything real. A rule narrow
+enough to catch it would be fitted to a handful of records in one country —
+the same mistake that previously promoted 64 Welsh nature reserves to
+national parks.
+
+**Open, needs an owner decision:** Welsh parks carry Welsh names
+(`Parc Cenedlaethol Eryri`, `Bannau Brycheiniog`). `name:en` is available if
+English labels are preferred.
 
 Two product decisions remain open: **per-leg vs whole-trip suggestion
 scoping**, and **how many POIs the "show more" tier reveals**.
