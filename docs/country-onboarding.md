@@ -71,6 +71,15 @@ organisation or carry the same terms:
 Do step 0 separately for each. Getting a clean club list tells you nothing
 about whether you may publish a ranking position next to it.
 
+And note a third possibility, which is what **DEC-023** settled for
+England and Scotland: where a body's terms bar republication but the
+*facts* are available elsewhere, use the governing body's list purely as
+an **index of which clubs exist** and take the published coordinates from
+**OpenStreetMap** (ODbL — attribution required). The project already runs
+an OSM correction pass, built in GOLF-121a, so this is usually the
+cheapest way past a republication clause. It does **not** help with a
+ranking, which has no equivalent free source.
+
 ---
 
 ## Step 1 — The worked example of a country that fails at step 0: Australia
@@ -157,6 +166,15 @@ So:
 
 This is R-10 / GOLF-163. It fails *silently* — nothing throws, the app
 renders happily, and the trip is simply wrong.
+
+> **This section has a shelf life.** GOLF-163 adds a stable `id` to all
+> 879 records, freezes an `index → id` table for the current ordering,
+> migrates saved `localStorage` trips and emits ids in new share links.
+> **Once all four of those have landed**, identity stops being positional
+> and the re-sort prohibition relaxes to "don't drop or renumber ids".
+> Until then, and for any country onboarded before then, the rules above
+> apply as written. Check `docs/project/IN_PROGRESS.md` for where GOLF-163
+> actually got to before relying on ids existing.
 
 Rules:
 
