@@ -81,13 +81,38 @@ NOISE = re.compile(
     r"\b(golf|club|links|course|the|and|g\s*c|g\s*&\s*c\s*c|country)\b")
 
 
+def _squash(s):
+    s = re.sub(r"[^a-z0-9]+", " ", s.lower())
+    return " ".join(NOISE.sub(" ", s).split())
+
+
 def norm(name):
     """Comparable form: lowercase, qualifier dropped, noise words removed."""
-    s = name.lower()
-    s = re.sub(r"\s*\([^)]*\)\s*$", " ", s)     # "(Old)", "(Championship)"
-    s = re.sub(r"[^a-z0-9]+", " ", s)
-    s = NOISE.sub(" ", s)
-    return " ".join(s.split())
+    return _squash(re.sub(r"\s*\([^)]*\)\s*$", " ", name.lower()))
+
+
+def norm_variants(name):
+    """Every reading of a trailing parenthetical, because it is not always a
+    qualifier.
+
+    Our names use it for the course within a club — "Woodhall Spa (Hotchkin)",
+    "St Andrews (Old)" — so dropping it is right. OSM uses it the other way
+    round: "The National Golf Centre (Woodhall Spa)" puts the *club* in the
+    brackets and the generic part outside. Dropping it there leaves "national
+    centre", which matches nothing — and in the England dry run that is
+    exactly how Woodhall Spa (Hotchkin) skipped the correct OSM object 40m
+    away and matched RAF Woodhall Spa Golf Course, a different club 2.1km up
+    the road, on the strength of a shared town name.
+
+    So try all three readings and keep the best: without the brackets, with
+    them inlined, and the bracketed text on its own.
+    """
+    out = [norm(name)]
+    qual = re.search(r"\(([^)]*)\)\s*$", name)
+    if qual:
+        out.append(_squash(name))
+        out.append(_squash(qual.group(1)))
+    return [v for v in dict.fromkeys(out) if v]
 
 
 def haversine_km(a_lat, a_lng, b_lat, b_lng):
@@ -141,8 +166,8 @@ def load_osm(region):
             f"no OSM data for {region} — run:\n"
             f"    python3 scripts/fetch_osm_golf_courses.py {region}")
     for c in data["courses"]:
-        c["_norm"] = norm(c["name"])
-        c["_alt"] = [norm(a) for a in c.get("alt_names") or []]
+        c["_norm"] = norm_variants(c["name"])
+        c["_alt"] = [v for a in c.get("alt_names") or [] for v in norm_variants(a)]
     return data
 
 
@@ -165,14 +190,23 @@ def best_match(name, lat, lng, candidates, max_shift):
         return None, (f"nothing within {max_shift:g}km"
                       + (f" (nearest OSM course {nearest_km:.1f}km away)"
                          if nearest_km is not None else ""))
-    want = norm(name)
+    wants = norm_variants(name)
     scored = []
     for c, d in near:
-        score = max([difflib.SequenceMatcher(None, want, n).ratio()
-                     for n in [c["_norm"]] + c["_alt"]] or [0.0])
+        score = max([difflib.SequenceMatcher(None, w, n).ratio()
+                     for w in wants for n in c["_norm"] + c["_alt"]] or [0.0])
         scored.append((score, -d, c, d))
     scored.sort(reverse=True)
-    score, _, c, d = scored[0]
+
+    # A plausible course sitting on top of the coordinate we already hold
+    # beats a better-spelled one across town, always. The coordinate we hold
+    # came from a real directory and is roughly right; the question this
+    # script answers is "which OSM object is this course", and at 40m there
+    # is no real doubt. Without this, a shared town name is enough for a
+    # neighbouring club to win on string similarity alone — which is how
+    # Woodhall Spa picked up RAF Woodhall Spa's position in the dry run.
+    close = [s for s in scored if s[3] <= CLOSE_KM and s[0] >= NAME_CUTOFF]
+    score, _, c, d = (close or scored)[0]
     if score < NAME_CUTOFF:
         return None, (f"best nearby name only {score:.2f} "
                       f"({c['name']!r} at {d:.1f}km)")

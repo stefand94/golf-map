@@ -77,6 +77,17 @@ const esriBases=esriBaseLayers();
 esriBases['Default'].addTo(map);
 L.control.layers(esriBases,null,{position:'topright'}).addTo(map);
 
+/* GOLF-161: England and Scotland course positions are re-sourced from
+   OpenStreetMap (the records carrying coordSrc:"osm"), which is ODbL and
+   wants crediting. This is a *data* credit and belongs to us whichever base
+   layer is showing — the Satellite tiles don't mention OSM at all, and the
+   street layer's mention is Esri crediting its own tile source, not us
+   crediting ours. Added once, outside esriBaseLayers(), so switching layers
+   can't drop it. */
+map.attributionControl.addAttribution(
+  'Course positions &copy; <a href="https://www.openstreetmap.org/copyright" '
+  +'target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL)');
+
 /* GOLF-110 (DEC-008): the rail/station map layer is a legacy of the
    original London-only concept. Hidden behind this single flag until
    public-transport planning is a real feature — set to true to restore
