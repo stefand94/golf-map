@@ -4,6 +4,44 @@ _Stable IDs `DEC-nnn`. Record: decision · context · alternatives · reason ·
 date · affected features. Newest first. Full rationale for older calls lives
 in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 
+## DEC-017 — GOLF-148 POI presentation: English labels, per-leg scoping, 3-then-10
+
+- **Decision:** three calls, made by the owner 2026-09-20, that unblock the
+  GOLF-148 UI work.
+  1. **Labels use `name:en` where it exists**, falling back to OSM's `name`.
+     One consistent form across all five region files.
+  2. **Suggestions are scoped per-leg** — sights inside the corridor between
+     today's stops, not ranked across the whole trip.
+  3. **Three sights per day, expanding to ten** on "show more".
+- **Context:** the shipped dataset (`d58e8a3`) mixes four naming forms in
+  Wales alone — fully Welsh (`Parc Cenedlaethol Eryri`), Welsh+English hybrid
+  (`Bannau Brycheiniog National Park`), dual (`Castell Biwmares / Beaumaris
+  Castle`) and plain English (`Conwy Castle`). Measured: 12% of Welsh rows
+  carry a Welsh-language name, but **30% of the top 50** do, so it lands on
+  exactly the headline sights a trip planner surfaces. The other two questions
+  had been logged as open since the feature was scoped.
+- **Alternatives considered:** *Labels* — dual "Eryri / Snowdonia" (matches
+  road signage, but doubles label length in a narrow itinerary card and gives
+  only one country special treatment); leave as OSM has it (zero work, but two
+  adjacent castles labelled in different languages reads as a bug).
+  *Scoping* — whole-trip ranking spread across days (better coverage on a day
+  with no drive, but the suggestion stops relating to where you are); per-leg
+  with a near-the-stop fallback (more complete, more logic).
+  *Counts* — 5-then-15 (taller day card); uncapped expand (a corridor through
+  England holds hundreds, and the tail is low-scoring filler).
+- **Reason:** the inconsistency, not the language, was the actual defect —
+  a mixed list looks broken regardless of which language wins. Per-leg matches
+  the per-day "Things to see" UI already built in `js/poi.js` and answers the
+  real question ("what do I stop at on the way?"). Three fits a day card
+  without dominating the itinerary; ten is browsable without becoming a list
+  to wade through.
+- **Known cost, accepted:** Snowdonia's official name is now Eryri, so an
+  English-primary label diverges from what the road signs say. Revisit if
+  testers report it.
+- **Affects:** GOLF-148 (UI stage), `scripts/build_poi_data.py` (a rebuild is
+  needed for the label change — the shipped files carry OSM `name`).
+- **Status:** agreed 2026-09-20.
+
 ## DEC-016 — GOLF-142 data source: Overpass, as a live per-viewport call (not a bulk cache)
 
 - **Decision:** GOLF-142 unblocked. Data source is **Overpass**

@@ -65,12 +65,18 @@ enough to catch it would be fitted to a handful of records in one country —
 the same mistake that previously promoted 64 Welsh nature reserves to
 national parks.
 
-**Open, needs an owner decision:** Welsh parks carry Welsh names
-(`Parc Cenedlaethol Eryri`, `Bannau Brycheiniog`). `name:en` is available if
-English labels are preferred.
+**All three open product decisions are now settled — see DEC-017
+(owner, 2026-09-20). Nothing product-side blocks the UI stage.**
 
-Two product decisions remain open: **per-leg vs whole-trip suggestion
-scoping**, and **how many POIs the "show more" tier reveals**.
+1. **Labels: `name:en` where it exists**, OSM `name` otherwise. The Wales file
+   currently mixes four forms and 30% of its top 50 carry a Welsh-language
+   name, so this is visible on the headline sights. **This needs a
+   `build_poi_data.py` rebuild** — the shipped files carry OSM `name`.
+   Accepted cost: Snowdonia is officially Eryri, so the label will differ
+   from the road signs.
+2. **Scoping: per-leg.** Sights in the corridor between today's stops, not
+   ranked across the whole trip.
+3. **Counts: 3 per day, expanding to 10.**
 
 ## GOLF-98 — Green-fee data entry, `feeV2` re-research programme
 
