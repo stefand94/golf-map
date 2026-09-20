@@ -71,6 +71,32 @@ organisation or carry the same terms:
 Do step 0 separately for each. Getting a clean club list tells you nothing
 about whether you may publish a ranking position next to it.
 
+**And work out who the counterparty actually is before reading anyone's
+terms.** GOLF-119 got this wrong three separate times, which makes it a
+property of the domain rather than bad luck:
+
+- **The site that publishes a ranking often does not own it.** New
+  Zealand's "NZ Golf Magazine Top 40" is NZ Golf Rankings' ranking, which
+  the magazine reprints. Reading the magazine's terms answers the wrong
+  question, and emailing the magazine asks the wrong company — which
+  fails in the worst way, because you get silence or a confused reply and
+  conclude the country is a dead end.
+- **Two publications in one country are not one counterparty.** Golf
+  Australia Magazine (nextmedia) and Australian Golf Digest (CMMA Digital
+  & Print) are different companies with different terms; only one has a
+  restrictive clause. Never write "the Australian golf press" in a
+  summary.
+- **The governing body and the press are different problems.** Golf
+  Australia blocking automated access to the *club list* and a publisher
+  restricting reuse of a *ranking* are unrelated, even though both are
+  "Australia says no".
+
+Symptom to watch for: a source described by the name of a *publication*
+rather than the name of a *company*. That is usually the point at which
+the ownership question stopped being asked. Look for an About page — it
+usually names the individual or company that compiles the ranking, and
+that is who the terms and any request belong to.
+
 And note a third possibility, which is what **DEC-023** settled for
 England and Scotland: where a body's terms bar republication but the
 *facts* are available elsewhere, use the governing body's list purely as
