@@ -130,6 +130,50 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   GOLF-129/GOLF-35 (launch readiness — the re-open trigger).
 - **Date:** 2026-09-20.
 
+## DEC-025 — Map & geo backend stays open source on the current stack; swap pieces only when they hurt
+
+- **Decision:** GOLF-143 resolved to **Option B**. Keep Leaflet, keep the
+  keyless Esri raster tiles, keep ORS-via-HeiGIT for directions and
+  geocoding, keep Overpass hotels behind the GOLF-146 edge cache. **No
+  migration is scheduled.** Individual pieces get swapped only when a
+  specific one causes a specific problem, one at a time, and every such
+  swap is Worker-internal with the front end untouched.
+- **Owner's words:** *"We sticking with open source — our current stack
+  for now."* The **"for now"** is the operative half and is recorded
+  deliberately: this is a decision to stop deliberating and ship, not a
+  commitment to the stack for ever.
+- **Context:** GOLF-143 had absorbed GOLF-106 and the two had deadlocked
+  each other; meanwhile it was blocking GOLF-118 (ferry legs), which is
+  built, rebased and green. The cost of the open decision had become
+  higher than the cost of either answer.
+- **Alternatives:** **Option A (Google)** rejected on *terms*, not price —
+  ToS §3.2.3(e) "No Use With Non-Google Maps" makes switching the basemap
+  a hard prerequisite rather than an optional last step (~45 Leaflet call
+  sites across 10 files), the API key would have to move into the browser,
+  reversing CLAUDE.md's "no API key ever reaches the browser", and
+  §3.2.3(a)'s ban on pre-fetching or storing directions, geocodes and
+  places data **rules Google out for ever enriching `data/*.js` under the
+  fetch-once pattern this whole project is built on**. Free-tier volume
+  was never the objection. **Option C** not taken.
+- **Reason:** the current stack is keyless, quota-free, account-free and
+  already working; nothing on the board is blocked by its limitations
+  except ferry accuracy, which DEC-021 already settled on its own terms.
+  Option B is also the only option that preserves the fetch-once pattern.
+- **Consequences, so they are not rediscovered later:**
+  - **GOLF-118 is unblocked and ships.** ORS remains imperfect for ferry
+    legs; DEC-021 already decided that ferry legs ship against what the
+    router actually returns, so this decision does not re-open it.
+  - **R-1 stands unchanged** — one free-tier provider still backs both
+    directions and geocoding with no fallback, and it has materialised
+    twice. This decision accepts that rather than solving it. The
+    cheapest partial mitigation, if it bites again, is moving **geocoding
+    only** off ORS (Photon/Geoapify), which is Worker-internal.
+  - The MapLibre vector path from the old GOLF-106 stays available for
+    when the map earns it. Not scheduled.
+- **Affected:** GOLF-143 (CLOSED), GOLF-118 (unblocked), GOLF-106
+  (remains merged in, not revived), R-1, R-8.
+- **Date:** 2026-09-20.
+
 ## DEC-021 — Ferry legs ship against what the router actually returns; foot-passenger operators are permanently out of scope
 
 - **Decision:** GOLF-118 is unblocked and ships. The itinerary flags a ferry
