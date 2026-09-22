@@ -83,6 +83,8 @@
 // exists and wants authorising). Isochrones and matrix moved with it.
 // Revert this one constant if the theory is wrong; nothing else depends on it.
 const ORS_DIRECTIONS_URL = 'https://api.heigit.org/openrouteservice/v2/directions/driving-car/geojson';
+// GOLF-176: max metres ORS may search from each end of a leg for a road.
+const ROUTE_SNAP_RADIUS_M = 5000;
 // Geocoding has NO equivalent path on the new host (404 there) and still
 // answers 200 on the legacy host, so it stays put. (The ORS /pois endpoint
 // was in the same boat; GOLF-156 removed it along with mode:'pois'.)
@@ -459,7 +461,19 @@ async function handleRoute(body, env, request) {
       // The request enum is SINGULAR 'waytype'; the *response* nests it
       // under extras.waytypes (plural), which is where the confusion came
       // from. See EXTRAS_WAYTYPE_KEYS in extractFerry, which reads either.
-      body: JSON.stringify({ coordinates: [origin, destination], extra_info: ['waytype'] }),
+      //
+      // GOLF-176: radiuses widens ORS's search for a road to snap each end
+      // to. The default is 350 m, and course coordinates are course
+      // centroids — often further than that from any road (Dunaverty,
+      // Royal Troon, Turnberry) — so ORS refused the whole leg with
+      // 404 / code 2010 "Could not find routable point". 5 km covers any
+      // course pin while staying well short of snapping across to another
+      // island. A point already near a road snaps exactly as before.
+      body: JSON.stringify({
+        coordinates: [origin, destination],
+        radiuses: [ROUTE_SNAP_RADIUS_M, ROUTE_SNAP_RADIUS_M],
+        extra_info: ['waytype'],
+      }),
     });
   } catch (e) {
     return json({ error: 'could not reach OpenRouteService' }, 502, request);
@@ -943,7 +957,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = 'e064c07175';
+const WORKER_BUILD = '525438fe67';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {

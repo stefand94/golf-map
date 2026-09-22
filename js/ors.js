@@ -105,8 +105,18 @@ let orsPending=new Set();
    asks first fires the single fetch that satisfies both; orsPending
    guards against a duplicate in-flight request for the same leg. a/b are
    plain {lat,lng} points (a course or a searched place, either way). */
+/* GOLF-176: a leg the Worker couldn't route (e.g. ORS 2010, no road near a
+   pin) used to be refetched on every render, since only successes are
+   cached. Remember failures in memory for a while instead — the dotted
+   straight-line fallback stays, and the leg is retried after the backoff
+   or on the next page load (in memory only, so a transient 429/outage
+   never sticks). */
+const ORS_FAIL_RETRY_MS=10*60*1000;
+const orsFailedAt=new Map();
 function orsEnsureLeg(key,a,b){
   if(orsPending.has(key))return;
+  const failedAt=orsFailedAt.get(key);
+  if(failedAt&&Date.now()-failedAt<ORS_FAIL_RETRY_MS)return;
   orsPending.add(key);
   fetch(ORS_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({origin:[a.lng,a.lat],destination:[b.lng,b.lat]})})
@@ -126,10 +136,13 @@ function orsEnsureLeg(key,a,b){
           routeParts:Array.isArray(data.routeParts)?data.routeParts:null,
           ts:Date.now()};
         orsCacheSave(c);
+        orsFailedAt.delete(key);
         if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else if(TRIP.size){tripDrawCart(false);}
-      }
+      }else{orsFailedAt.set(key,Date.now());}
     })
-    .catch(()=>{ /* silent — heuristic/straight-line fallback stays in place */ })
+    .catch(()=>{ /* silent — heuristic/straight-line fallback stays in place */
+      orsFailedAt.set(key,Date.now());
+    })
     .finally(()=>{orsPending.delete(key);});
 }
 /* Returns {minutes,miles} from cache, or null if not yet known (proxy
