@@ -6,20 +6,15 @@ verified._
 
 ## In flight
 
-### GOLF-169 — currency from the course, not from its fee text
+### GOLF-175 — delete the dead cost code
 
-Brief: `HANDOVER-GOLF-169-currency.md`. Dispatched 2026-09-22. Blocks GOLF-157
-(AU/NZ) and must land before any AU/NZ fee data is merged.
+Dispatched 2026-09-22, straight after GOLF-169 landed in the same file.
+`tripCostSummary()` and `tripCostEstimateByDay()` have no callers and still
+compute a single-currency grand total — the exact thing DEC-026 removed.
 
-Two parts, and the second is the one the original row missed: `courseCurrency()`
-regex-matches the fee string, **and** the money buckets are keyed by the symbol,
-so two dollar nations would silently sum into one total. `feeV2.currency` is
-populated everywhere as of GOLF-171; DEC-026 already settles what a mixed total
-does.
-
-**Acceptance:** GB/Ireland/South Africa render identically to today (the main
-risk — 879 courses); a dollar nation renders its own currency; a two-dollar-nation
-trip never sums; all four check scripts pass.
+**Acceptance:** both gone, nothing deleted that is still referenced (including
+inline `onclick=` handlers — this site runs on global scope), Costs tab renders
+identically, all five check scripts pass.
 
 ## In review
 
