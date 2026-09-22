@@ -94,8 +94,24 @@ Observed on London Airlinks, returned as `published-rates` with a
 `golfshake.com` source. **Rule: if the `source` host is not the club's own site,
 downgrade `confidence` to `estimated`** so the UI badges it honestly.
 
-Do both as a scripted pass over the result JSON before touching
+**3. Two named entries, found by validating all nine chunks 2026-09-22.**
+- **West Middlesex** — has `day:"monday"` and `day:"wednesday"` rates. The enum
+  is `weekday|weekend|friday|any`. Those are its public-play days at £15;
+  re-express as `weekday` and put the day restriction in `notes`. **This is the
+  only schema violation in all 123 records.**
+- **Sevenoaks Town** — a 50-member club that plays at Knole Park, so the agent
+  attached *Knole Park's* rate card to it, flagged in `notes`. Another club's
+  price is not this club's published rate: downgrade to `estimated`, keep the
+  note.
+
+Do all of this as a scripted pass over the result JSON before touching
 `data/courses-london.js`, and report the counts changed.
+
+**Validated set as it stands (BA, 2026-09-22):** 123 records, 123 courses, no
+duplicates, no unknown ids — 79 `published-rates`, 23 `estimated`, 5
+`published-from-only`, 16 `poa`. The corrections above will move roughly 4 from
+`published-rates` to `estimated` and drop 10 wave-A `poa` entries, so expect
+about 113 courses to carry a `feeV2` when the merge is done, not 123.
 
 ## Merge step (coding agent, one session, after all chunks return)
 
@@ -119,7 +135,9 @@ Do both as a scripted pass over the result JSON before touching
 
 ## Acceptance criteria
 
-- [ ] All 123 London courses carry a `feeV2` object.
+- [ ] Every London course carries a `feeV2` object **except** the wave-A `poa`
+      entries dropped by correction 1, which keep their legacy `wd`/`we` and get
+      no `feeV2` at all.
 - [ ] Every `poa` entry has `seasons: []`, and every non-`poa` entry has at
       least one rate with a real `amount`.
 - [ ] Every `feeV2` has a `source` URL that was actually read.
