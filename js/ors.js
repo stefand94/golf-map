@@ -268,8 +268,9 @@ function tripDaySuggestedTown(day){
 }
 /* GOLF-79's live "Show POI's" (Worker mode:'heritage-pois' → Overpass,
    cached in localStorage) was replaced by GOLF-148's pre-baked dataset —
-   see js/poi.js. poiKey()/tbPoiPoint() below stay: the hotel picker uses
-   them. */
+   see js/poi.js. GOLF-156 then deleted that Worker mode (and mode:'pois')
+   outright, so there is nothing left to fall back to. poiKey()/tbPoiPoint()
+   below stay: the hotel picker uses them. */
 function poiKey(lat,lng){return lat.toFixed(4)+','+lng.toFixed(4);}
 function tbPoiPoint(day){
   const cs=tripDayCourses(day);
