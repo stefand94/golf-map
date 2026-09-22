@@ -722,6 +722,6 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   converted figure invents precision the app does not have. Showing the
   real components is honest and needs no rate.
 - **Per person:** divide each bucket by group size and show the set
-  (`£160 · €75 pp`). Flagged to the owner as the one part of this decision
-  that was inferred rather than stated.
+  (`£160 · €75 pp`). Inferred at first; **confirmed by the owner
+  2026-09-22.**
 - **Date:** 2026-09-22 · **Affects:** GOLF-170(b), GOLF-174, GOLF-173.
