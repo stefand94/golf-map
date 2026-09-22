@@ -473,30 +473,6 @@ function feeFieldForDate(dateStr){
   const dow=d.getDay(); // 0=Sun .. 6=Sat
   return(dow===0||dow===6)?'we':'wd';
 }
-/* GOLF-48: weekend-aware course costing for the cost summary below — a
-   course scheduled on a dated day is costed at that day's correct wd/we
-   rate; a course with no day-date (including every Unscheduled course,
-   which has no day context at all) falls back to the plain weekday-only
-   behavior the original flat estimate had. */
-function tripCostEstimateByDay(){
-  const buckets={};let covered=0,of=0;
-  const gs=groupSizeFor(); // GOLF-87: each traveller pays their own green fee
-  tripDays.forEach(d=>{
-    const field=feeFieldForDate(d.date);
-    tripDayCourses(d).forEach(i=>{
-      of++;
-      const fee=feeNumberFor(i,field);
-      if(fee!=null){moneyBucketAdd(buckets,courseCurrency(i),fee*gs);covered++;}
-    });
-  });
-  tripUnscheduled().forEach(i=>{
-    of++;
-    const fee=feeNumberFor(i,'wd');
-    if(fee!=null){moneyBucketAdd(buckets,courseCurrency(i),fee*gs);covered++;}
-  });
-  const total=buckets[tripPrimaryCurrency()]||0;
-  return{total,buckets,covered,of};
-}
 /* GOLF-44: typical UK hotel nightly-rate estimate by region — NOT live
    pricing, a ballpark grounded via web search (London ~£120-180,
    Scotland ~£90-150, Wales ~£60-100, rest of UK ~£80-120 as of Aug 2026)
@@ -586,42 +562,8 @@ function tripItemPriceDetail(d,it){
 function tripItemPrice(d,it){return tripItemPriceDetail(d,it).total;}
 /* GOLF-44: fuel-cost estimate — same straight-line leg distances as the
    GOLF-43 drive-time default, x an assumed £/mile (roughly what a
-   40mpg petrol car costs to run in Aug 2026 fuel prices). Both this and
-   the accommodation estimate are separately toggleable in the UI so a
-   visitor who thinks either number looks wrong can drop it from the
-   total without losing the other. */
+   40mpg petrol car costs to run in Aug 2026 fuel prices). Separately
+   toggleable in the UI (tbIncludeFuel, js/trip-ui.js) so a visitor who
+   thinks the number looks wrong can drop it from the total. */
 const FUEL_COST_PER_MILE=0.18;
-let tbIncludeAccom=true,tbIncludeFuel=true;
-function tripCostSummary(){
-  const fees=tripCostEstimateByDay();
-  const fuelMiles=tripTotalDriveMiles();
-  const fuelCost=fuelMiles*FUEL_COST_PER_MILE;
-  const primaryCur=tripPrimaryCurrency();
-  const scheduledDays=tripDays.filter(d=>tripDayCourses(d).length);
-  /* One night's stay per scheduled day except the last — no accommodation
-     needed the night after the final round. Bucketed by each day's own
-     currency, since a multi-nation trip's nightly rates aren't all the
-     same money. */
-  const accomBuckets={};
-  scheduledDays.forEach((d,idx)=>{
-    if(idx===scheduledDays.length-1)return;
-    const rate=tripDayAccomFallback(d)??ACCOM_RATE_DEFAULT;
-    moneyBucketAdd(accomBuckets,tripDayCurrency(d),rate);
-  });
-  const accomCost=accomBuckets[primaryCur]||0;
-  const nights=Math.max(0,scheduledDays.length-1);
-  const grandBuckets={};
-  if(fees.covered)Object.keys(fees.buckets).forEach(c=>moneyBucketAdd(grandBuckets,c,fees.buckets[c]));
-  if(tbIncludeAccom)Object.keys(accomBuckets).forEach(c=>moneyBucketAdd(grandBuckets,c,accomBuckets[c]));
-  if(tbIncludeFuel)moneyBucketAdd(grandBuckets,primaryCur,fuelCost);
-  const grand=grandBuckets[primaryCur]||0;
-  // GOLF-87: fuel is a shared trip cost (one car, regardless of group size)
-  // — the total above stays as-is; only the per-person split divides it.
-  // Green fees are already a whole-group total (each traveller's own fee,
-  // summed in tripCostEstimateByDay()) and accommodation is untouched by
-  // groupSize (GOLF-74's own per-item sharing model), so per-person here is
-  // simply the grand total shared across the party.
-  const gs=groupSizeFor();
-  const perPerson=gs>1?grand/gs:null;
-  return{fees,accomCost,accomBuckets,nights,fuelMiles,fuelCost,grand,grandBuckets,primaryCur,groupSize:gs,perPerson};
-}
+let tbIncludeFuel=true;
