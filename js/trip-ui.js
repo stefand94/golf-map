@@ -204,8 +204,23 @@ function tripDayLegs(dayIdx){
   });
   return legs;
 }
+/* GOLF-170a: a single day can mix currencies — the ordinary trigger is a
+   border-crossing day (play in Northern Ireland at £, stay in the Republic
+   at €). The old flat reduce added those together and tbDaySumHTML then
+   labelled the result with the day's *majority* currency, so £100 + €120
+   rendered as "£220": wrong arithmetic wearing the wrong symbol. Return a
+   money bucket instead ({'£':100,'€':120}) and let moneyBucketFmt() render
+   it as "£100 · €120". Each leg's own `cur` comes from
+   tripItemPriceDetail(); tripDayLegs() excludes only drives, so hotels and
+   POIs are bucketed too. Single-currency days are unaffected — one bucket
+   formats to exactly the string tbMoney() produced before. */
 function tripDayTotal(dayIdx){
-  return tripDayLegs(dayIdx).reduce((sum,l)=>sum+(l.type!=='drive'&&l.price!=null?l.price:0),0);
+  const buckets={};
+  tripDayLegs(dayIdx).forEach(l=>{
+    if(l.type==='drive'||l.price==null)return;
+    moneyBucketAdd(buckets,(l.detail&&l.detail.cur)||'£',l.price);
+  });
+  return buckets;
 }
 /* GOLF-71: the drive leg is a small indented caption sitting directly
    above the stop it leads into — the sketch's "Drive X min" label — not
@@ -241,7 +256,7 @@ const tbMoney=(v,cur='£')=>v!=null?`${cur}${v.toFixed(0)}`:'—';
    collapse control. Cost tables keep tbMoney()'s dash. */
 const tbPrice=(v,cur='£')=>v!=null?tbMoney(v,cur):'<span class="tb-price-tbc">TBC</span>';
 /* Day-header total: blank for a day with nothing priced. */
-const tbDaySumHTML=idx=>{const t=tripDayTotal(idx);return t?`<span class="tb-day-sum">${tbMoney(t,tripDayCurrency(tripDays[idx]))}</span>`:'';};
+const tbDaySumHTML=idx=>{const b=tripDayTotal(idx);return Object.keys(b).some(c=>b[c])?`<span class="tb-day-sum">${moneyBucketFmt(b)}</span>`:'';};
 /* GOLF-74/91: the £ figure as the visitor should read it. A hotel priced
    for more than one traveller shows its arithmetic ("£90 × 2 people = £180")
    rather than silently folding the multiplication into the trip total.
