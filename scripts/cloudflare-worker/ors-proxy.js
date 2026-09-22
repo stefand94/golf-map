@@ -462,8 +462,8 @@ async function handleRoute(body, env, request) {
     // Common cases: 403 bad/expired key, 429 quota exceeded, 404 no
     // route found between the two points. Pass the status through
     // untranslated so the caller can decide how to fall back.
-    await logUpstreamFailure('directions', orsRes);
-    return json({ error: 'ORS request failed', status: orsRes.status }, 502, request);
+    const upstream = await logUpstreamFailure('directions', orsRes);
+    return json({ error: 'ORS request failed', status: orsRes.status, upstream }, 502, request);
   }
 
   let data;
@@ -816,8 +816,8 @@ async function handleGeocode(body, env, request) {
 
   if (!orsRes.ok) {
     // Label only — never the URL: it carries api_key= in its query string.
-    await logUpstreamFailure('geocode', orsRes);
-    return json({ error: 'ORS request failed', status: orsRes.status }, 502, request);
+    const upstream = await logUpstreamFailure('geocode', orsRes);
+    return json({ error: 'ORS request failed', status: orsRes.status, upstream }, 502, request);
   }
 
   let data;
@@ -855,19 +855,41 @@ function isCoord(v) {
    a 403 meaning "invalid key" looked identical, which is exactly the
    ambiguity that made GOLF-154's directions outage slow to diagnose.
 
-   The body is logged and deliberately NOT returned to the caller. ORS error
-   bodies are free text from a third party and may quote back part of the
-   request that produced them — and the geocode request carries `api_key=`
-   in its query string (see handleGeocode), so an echoed body is a plausible
-   route for a key fragment to reach the browser. For the same reason this
-   takes a caller-supplied static label rather than the request URL: logging
-   that URL would write the key into the Worker's own logs.
+   GOLF-172: logging it was not enough. The body only reached Cloudflare's
+   dashboard, which nobody debugging from a terminal can read, so a total
+   directions outage still presented as an opaque `{"error":"ORS request
+   failed","status":400}` — the *reason* existed and was unreachable. It is
+   now returned to the caller as `upstream` as well as logged.
 
-   Truncated because Workers logs are for diagnosis, not payload storage.
-   Reading the body consumes the stream, which is safe here — every caller
-   is on its way to discarding the response. */
+   GOLF-155's reason for withholding it was real and is handled rather than
+   dropped: ORS error bodies are free text from a third party and may quote
+   back the request that produced them, and the geocode request carries
+   `api_key=` in its query string (see handleGeocode), so an echoed body is
+   a plausible route for a key fragment to reach the browser. redactKey()
+   below strips any api_key/Authorization-looking value before the body
+   leaves this function — so the same redacted string is what gets logged
+   *and* what gets returned. This still takes a caller-supplied static label
+   rather than the request URL: logging that URL would write the key into
+   the Worker's own logs.
+
+   Truncated because neither Workers logs nor an error response are payload
+   storage. Reading the body consumes the stream, which is safe here — every
+   caller is on its way to discarding the response. */
 const UPSTREAM_LOG_LIMIT = 1000;
 
+/* Defence in depth for the echo path above. Catches `api_key=...` in a
+   quoted URL/query string and a bearer-ish token after an Authorization
+   label, in both JSON and plain-text bodies. Deliberately greedy about what
+   counts as a key character and deliberately cheap — a false positive just
+   redacts something harmless out of a diagnostic string. */
+function redactKey(s) {
+  return String(s)
+    .replace(/(api_key\s*[=:]\s*"?)[^&"'\s,}]+/gi, '$1<redacted>')
+    .replace(/(authorization\s*[=:]\s*"?)(?:bearer\s+)?[^&"'\s,}]+/gi, '$1<redacted>');
+}
+
+/* Returns the clipped, redacted upstream body so the caller can put it in
+   its own response. Never throws and always returns a string. */
 async function logUpstreamFailure(label, orsRes) {
   let body;
   try {
@@ -880,7 +902,9 @@ async function logUpstreamFailure(label, orsRes) {
   const clipped = body.length > UPSTREAM_LOG_LIMIT
     ? `${body.slice(0, UPSTREAM_LOG_LIMIT)}… [${body.length} bytes total]`
     : body;
-  console.log(`ORS ${label} failed: HTTP ${orsRes.status} ${orsRes.statusText} — ${clipped}`);
+  const safe = redactKey(clipped);
+  console.log(`ORS ${label} failed: HTTP ${orsRes.status} ${orsRes.statusText} — ${safe}`);
+  return safe;
 }
 
 /* GOLF-164: which build of this file is actually running?
@@ -905,7 +929,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = 'd445b5999a';
+const WORKER_BUILD = '8571ca566f';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {
