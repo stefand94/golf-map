@@ -448,11 +448,18 @@ async function handleRoute(body, env, request) {
         Authorization: env.ORS_API_KEY,
         'Content-Type': 'application/json',
       },
-      // GOLF-118: extra_info:["waytypes"] makes ORS return a per-segment
-      // way-type breakdown (extras.waytypes) so we can spot a ferry
-      // crossing folded into a driving-car route. No extra request, no
-      // cost change — just a richer response body.
-      body: JSON.stringify({ coordinates: [origin, destination], extra_info: ['waytypes'] }),
+      // GOLF-118: extra_info makes ORS return a per-segment way-type
+      // breakdown so we can spot a ferry crossing folded into a driving-car
+      // route. No extra request, no cost change — just a richer response body.
+      //
+      // GOLF-172: this said 'waytypes' (plural) and that is what took
+      // directions down completely. ORS answers the whole request
+      // 400 / code 2003 "Parameter 'extra_info' has incorrect value of
+      // 'waytypes'" — one bad enum value fails the route, it is not ignored.
+      // The request enum is SINGULAR 'waytype'; the *response* nests it
+      // under extras.waytypes (plural), which is where the confusion came
+      // from. See EXTRAS_WAYTYPE_KEYS in extractFerry, which reads either.
+      body: JSON.stringify({ coordinates: [origin, destination], extra_info: ['waytype'] }),
     });
   } catch (e) {
     return json({ error: 'could not reach OpenRouteService' }, 502, request);
@@ -520,6 +527,12 @@ async function handleRoute(body, env, request) {
 
 // GOLF-118 — way-type code 9 is "Ferry" in the ORS way-type enum.
 const WAYTYPE_FERRY = 9;
+// GOLF-172 — the response key does not match the request enum value: ORS
+// asks for extra_info:['waytype'] and answers with extras.waytypes. Read
+// both rather than betting on which, so a future host that normalises them
+// either way keeps ferry detection working instead of silently returning
+// hasFerry:false for every crossing.
+const EXTRAS_WAYTYPE_KEYS = ['waytypes', 'waytype'];
 // CalMac vehicle-ferry service speed sits around 15–20 mph; 18 is the
 // midpoint. Only used for the ferryMinutes fallback (see below).
 const FERRY_FALLBACK_MPH = 18;
@@ -530,7 +543,8 @@ const FERRY_FALLBACK_MPH = 18;
 function extractFerry(feature, latlng, minutes) {
   const none = { hasFerry: false, ferryMinutes: 0, ferryMiles: 0, routeParts: null };
   const props = feature && feature.properties;
-  const wt = props && props.extras && props.extras.waytypes;
+  const extras = props && props.extras;
+  const wt = extras && EXTRAS_WAYTYPE_KEYS.map((k) => extras[k]).find(Boolean);
   const values = wt && Array.isArray(wt.values) ? wt.values : null;
   if (!values || !latlng || latlng.length < 2) return none;
 
@@ -929,7 +943,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = '8571ca566f';
+const WORKER_BUILD = 'e064c07175';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {

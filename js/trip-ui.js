@@ -320,7 +320,8 @@ function tbItinHotelRailHTML(){
 }
 function tbItinPoiListHTML(){
   const rows=[];
-  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='poi')rows.push({day:idx+1,name:tripItemName(it),price:tripItemPrice(d,it),cur:tripDayCurrency(d)});}));
+  // GOLF-173: the POI's own currency (from its coordinates), not the day's.
+  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='poi')rows.push({day:idx+1,name:tripItemName(it),price:tripItemPrice(d,it),cur:tripItemPriceDetail(d,it).cur});}));
   if(!rows.length)return`<p class="hint">No stops added yet.</p>`;
   return rows.map(r=>`<div class="itin-card"><div class="itin-card-kicker">Day ${r.day}</div>
     <div class="itin-flat-row"><span class="itin-hotel-name-md">📍 ${esc(r.name)}</span><span class="itin-golf-price-lg">${tbMoney(r.price,r.cur)}</span></div></div>`).join('');

@@ -378,6 +378,51 @@ function tripDayCurrency(d){
   Object.keys(counts).forEach(c=>{if(counts[c]>bestN){best=c;bestN=counts[c];}});
   return best;
 }
+/* GOLF-173: a hotel/POI's currency follows ITS OWN location, not the
+   day's golf — a day with two Scottish rounds and a night in Dublin
+   prices the stay in €, and a golf-less day is decided by where the stay
+   is rather than by the trip's primary currency.
+
+   There is deliberately no second region→currency map here. The app has
+   exactly one location→currency mechanism — courseCurrency(), which reads
+   the national symbol back out of a course's own fee text (js/util.js) —
+   and exactly one location→nation mechanism, courseNation()
+   (js/explore.js), which reads a flag off the course record and so can't
+   answer for an arbitrary coordinate. So the coordinate is resolved by
+   nearest course: find the closest course to (lat,lng) and take its
+   currency. That is strictly better than a nation lookup at the one
+   border that matters — Northern Ireland is nation 'ie' but prices in £,
+   and its nearest courses do too.
+
+   Cheap enough to call per item per render (one pass over C, no trig:
+   an equirectangular approximation is plenty for "which country"), and
+   memoised on a ~100m-rounded key anyway. */
+const _curAtCache=new Map();
+function currencyAtLatLng(lat,lng){
+  if(typeof lat!=='number'||typeof lng!=='number'||!isFinite(lat)||!isFinite(lng))return null;
+  const key=lat.toFixed(3)+','+lng.toFixed(3);
+  if(_curAtCache.has(key))return _curAtCache.get(key);
+  let best=-1,bestD=Infinity;
+  const kx=Math.cos(lat*Math.PI/180);
+  for(let i=0;i<C.length;i++){
+    const c=C[i];
+    if(!c||typeof c.lat!=='number'||typeof c.lng!=='number')continue;
+    const dy=c.lat-lat,dx=(c.lng-lng)*kx;
+    const d=dy*dy+dx*dx;
+    if(d<bestD){bestD=d;best=i;}
+  }
+  const cur=best<0?null:courseCurrency(best);
+  _curAtCache.set(key,cur);
+  return cur;
+}
+/* The currency for one non-golf item: its own location if it has one
+   (GOLF-173), else the old day-derived behaviour — a manually typed stay
+   that was never geocoded carries no lat/lng and must still price at
+   something sensible rather than rendering "undefined". */
+function tripStayCurrency(d,it){
+  const c=it?currencyAtLatLng(it.lat,it.lng):null;
+  return c||tripDayCurrency(d);
+}
 /* A running total bucketed by currency — {[£|€|R]:amount} — plus a few
    small helpers to add to it and to render it as "£320 · €150". */
 function moneyBucketAdd(buckets,cur,amt){
@@ -495,7 +540,9 @@ function tripItemPriceDetail(d,it){
     const range=feeRangeForDate(it.i,d&&d.date);
     return{base:p,guests:gs,sharing:false,total:p==null?null:p*gs,cur:courseCurrency(it.i),feeRange:range};
   }
-  const cur=tripDayCurrency(d);
+  // GOLF-173: hotel/POI currency comes from the item's own coordinates,
+  // falling back to the day's (then the trip's) currency when it has none.
+  const cur=tripStayCurrency(d,it);
   if(it.type==='hotel'){
     const entered=it.price??null;
     if(entered!=null){
