@@ -197,10 +197,10 @@ function renderSharedTrip(){
     groupSize=payload.gs;
     tbIncludeFuel=true;
     const dayCount=tripDays.length;
-    const grand=tripCostBreakdown().grand;
+    const grand=tbTripTotal();
     pane.innerHTML=`<div class="shared-wrap">
       <div class="tb-navbar"><span class="tb-wordmark">${payload.nm?esc(payload.nm):'Shared trip'}</span>
-        <span class="tb-navbar-right"><span class="tb-pill">${dayCount?`${dayCount} day${dayCount===1?'':'s'} · `:''}${tripPrimaryCurrency()}${grand.toFixed(0)}</span>
+        <span class="tb-navbar-right"><span class="tb-pill">${dayCount?`${dayCount} day${dayCount===1?'':'s'} · `:''}${grand}</span>
         <button class="tb-btn is-sm is-quiet no-print" id="shared-print" title="Opens the browser's print dialog — save as PDF from there for a nice printable itinerary.">🖨️ Print / Save as PDF</button></span></div>
       <p class="hint no-print" style="margin:var(--sp-3) var(--sp-4)">📸 <b>Frozen snapshot</b> — this shows the trip exactly as it was when the link was made. It won't update if the trip changes, and viewing it doesn't touch your own trip.</p>
       <div id="shared-map" class="no-print" style="height:320px;margin:0 var(--sp-4) var(--sp-4);border-radius:var(--radius-lg);overflow:hidden"></div>
@@ -228,18 +228,7 @@ function renderSharedTrip(){
    same as the live Costs tab it's a frozen snapshot of — just with a
    plain, non-interactive Fuel row instead of a checkbox. */
 function tbCostsTabReadOnlyHTML(){
-  const b=tripCostBreakdown();
-  const cur=tripPrimaryCurrency();
-  const mixed=b.items.some(x=>x.cur&&x.cur!==cur);
-  const golf=b.items.filter(x=>x.cat==='Golf'),stay=b.items.filter(x=>x.cat==='Stay'),stop=b.items.filter(x=>x.cat==='Stop');
-  return`<div class="cost-banner"><div class="cost-banner-label">Trip total${b.groupSize>1?` · ${b.groupSize} travellers`:''}</div><div class="cost-banner-amount">${cur}${b.grand.toFixed(0)}${b.perPerson!=null?`<span class="cost-banner-pp"> · ${cur}${b.perPerson.toFixed(0)} per person</span>`:''}</div></div>
-    <div class="cost-card cost-groups">
-      ${costGroupHTML('⛳','Golf',b.golfTotal,golf,cur)}
-      ${costGroupHTML('🏨','Stays',b.stayTotal,stay,cur)}
-      ${costGroupHTML('📍','Stops',b.poiTotal,stop,cur)}
-      <div class="cost-fuel-row"><span>⛽ Fuel (est.)</span><span class="cost-group-amt">${cur}${b.fuelCost.toFixed(0)}${costPP(b.fuelCost,cur,b.groupSize)}</span></div>
-    </div>
-    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?` Totals are shown in ${cur} but some line items above are priced in a different currency — no conversion is applied yet.`:''}</p>`;
+  return tbCostsBodyHTML(tripCostBreakdown(),'<span>⛽ Fuel (est.)</span>');
 }
 /* A dedicated Leaflet map instance, entirely separate from the app's main
    `map`/`tripLayer` globals — reusing those (via tripDrawCart()) would

@@ -444,21 +444,34 @@ function tripCostLineItems(){
 }
 function tripCostBreakdown(){
   const items=tripCostLineItems();
-  const sum=arr=>arr.reduce((t,x)=>t+(x.amount||0),0);
+  /* GOLF-174 / DEC-026: every total is a {[£|€|R]:amount} bucket, never a
+     scalar — a trip mixing £ golf with € stays used to add the two and
+     label the sum £. Each bucket is seeded with the primary currency so it
+     always renders first ("£1470 · €1520"); moneyBucketFmt() drops the
+     zero. Fuel has no currency of its own (FUEL_COST_PER_MILE is £/mile)
+     and keeps pricing in the primary one, as before. */
+  const cur=tripPrimaryCurrency();
+  const sum=arr=>{const b={[cur]:0};arr.forEach(x=>moneyBucketAdd(b,x.cur||cur,x.amount));return b;};
   const golf=items.filter(x=>x.cat==='Golf'),stay=items.filter(x=>x.cat==='Stay'),poi=items.filter(x=>x.cat==='Stop');
   const fuelMiles=tripTotalDriveMiles();
   const fuelCost=fuelMiles*FUEL_COST_PER_MILE;
   const golfTotal=sum(golf),stayTotal=sum(stay),poiTotal=sum(poi);
-  const grand=golfTotal+stayTotal+poiTotal+(tbIncludeFuel?fuelCost:0);
+  const grand={[cur]:0};
+  [golfTotal,stayTotal,poiTotal].forEach(b=>Object.keys(b).forEach(c=>moneyBucketAdd(grand,c,b[c])));
+  if(tbIncludeFuel)moneyBucketAdd(grand,cur,fuelCost);
   // GOLF-87: an even per-person split of the whole trip total — golf/POI
   // are already priced per-traveller above, stays keep their own GOLF-74
   // sharing math untouched, and fuel is one shared trip cost only divided
-  // here, at the very last step.
+  // here, at the very last step. Across currencies, each bucket divides on
+  // its own (DEC-026).
   const gs=groupSizeFor();
-  const perPerson=gs>1?grand/gs:null;
-  return{items,golfTotal,golfCov:golf.filter(x=>x.amount!=null).length,golfOf:golf.length,stayTotal,poiTotal,fuelMiles,fuelCost,grand,groupSize:gs,perPerson};
+  const perPerson=gs>1?moneyBucketScale(grand,1/gs):null;
+  return{items,cur,golfTotal,golfCov:golf.filter(x=>x.amount!=null).length,golfOf:golf.length,stayTotal,poiTotal,fuelMiles,fuelCost,grand,groupSize:gs,perPerson};
 }
-function tbTripTotal(){return tripCostBreakdown().grand;}
+/* The headline trip total as display text — navbar pill, Itinerary's
+   "Trip total" card and the shared view's pill all read this, so a mixed
+   trip shows every currency everywhere (DEC-026). */
+function tbTripTotal(){const b=tripCostBreakdown();return moneyBucketFmt(b.grand,b.cur);}
 /* GOLF-71 copy audit. Before, this tab carried a three-sentence paragraph
    under the summary table explaining fee coverage, where stay prices come
    from, how to add one, and that fuel is a straight-line estimate. Two of
@@ -484,6 +497,8 @@ function tbTripTotal(){return tripCostBreakdown().grand;}
    repeat the total). Stacked rather than a third column so it can't
    overflow a 360px sidebar. */
 const costPP=(v,cur,gs)=>(gs>1&&v>0)?`<span class="cost-pp">${cur}${Math.round(v/gs)} pp</span>`:'';
+// GOLF-174: the same, for a currency bucket — "£735 · €760 pp".
+const costPPBucket=(b,gs)=>(gs>1&&moneyBucketCount(b))?`<span class="cost-pp">${moneyBucketFmt(moneyBucketScale(b,1/gs))} pp</span>`:'';
 function costGroupHTML(icon,label,total,items,cur){
   const gs=groupSizeFor();
   const rows=items.length
@@ -491,25 +506,36 @@ function costGroupHTML(icon,label,total,items,cur){
     :`<tr><td colspan="2" class="hint">Nothing here yet.</td></tr>`;
   return`<details class="cost-group"><summary class="cost-group-summary">
       <span class="cost-group-label"><span class="cost-group-toggle" aria-hidden="true"></span>${icon} ${label}</span>
-      <span class="cost-group-amt">${cur}${total.toFixed(0)}${costPP(total,cur,gs)}</span>
+      <span class="cost-group-amt">${moneyBucketFmt(total,cur)}${costPPBucket(total,gs)}</span>
     </summary>
     <table class="cost-line-table cost-group-lines">${rows}</table>
   </details>`;
 }
-function tbCostsTabHTML(){
-  const b=tripCostBreakdown();
-  const cur=tripPrimaryCurrency();
-  const mixed=b.items.some(x=>x.cur&&x.cur!==cur);
+/* GOLF-174: the banner + category rows + coverage note, shared by the live
+   Costs tab and the read-only #share= twin (js/trip-share.js), which used to
+   carry a copy of this markup — and so a copy of the single-currency bug.
+   fuelRowLabel is the only difference between the two: a live checkbox
+   here, plain text in the shared view. With more than one currency the
+   per-person set goes on its own line, since "£1470 · €1520 · £735 · €760
+   per person" would read as one run of four numbers. */
+function tbCostsBodyHTML(b,fuelRowLabel){
+  const cur=b.cur;
+  const mixed=moneyBucketCount(b.grand)>1;
   const golf=b.items.filter(x=>x.cat==='Golf'),stay=b.items.filter(x=>x.cat==='Stay'),stop=b.items.filter(x=>x.cat==='Stop');
-  return`<div class="cost-banner"><div class="cost-banner-label">Trip total${b.groupSize>1?` · ${b.groupSize} travellers`:''}</div><div class="cost-banner-amount">${cur}${b.grand.toFixed(0)}${b.perPerson!=null?`<span class="cost-banner-pp"> · ${cur}${b.perPerson.toFixed(0)} per person</span>`:''}</div></div>
+  const pp=b.perPerson&&moneyBucketCount(b.perPerson)
+    ?`<span class="cost-banner-pp${mixed?' is-own-line':''}">${mixed?'':' · '}${moneyBucketFmt(b.perPerson)} per person</span>`:'';
+  return`<div class="cost-banner"><div class="cost-banner-label">Trip total${b.groupSize>1?` · ${b.groupSize} travellers`:''}</div><div class="cost-banner-amount">${moneyBucketFmt(b.grand,cur)}${pp}</div></div>
     <div class="cost-card cost-groups">
       ${costGroupHTML('⛳','Golf',b.golfTotal,golf,cur)}
       ${costGroupHTML('🏨','Stays',b.stayTotal,stay,cur)}
       ${costGroupHTML('📍','Stops',b.poiTotal,stop,cur)}
-      <div class="cost-fuel-row"><label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel (est.)</label><span class="cost-group-amt">${cur}${b.fuelCost.toFixed(0)}${costPP(b.fuelCost,cur,b.groupSize)}</span></div>
+      <div class="cost-fuel-row">${fuelRowLabel}<span class="cost-group-amt">${cur}${b.fuelCost.toFixed(0)}${costPP(b.fuelCost,cur,b.groupSize)}</span></div>
     </div>
-    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?` Totals are shown in ${cur} but some line items above are priced in a different currency — no conversion is applied yet.`:''}</p>
-    <p class="hint" style="margin-top:var(--sp-2)">🔜 Currency conversion (showing every cost in one currency) is planned for a future update — for now, amounts display in each course's own local currency.</p>`;
+    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?' This trip spans more than one currency, so each is totalled separately — nothing is converted.':''}</p>`;
+}
+function tbCostsTabHTML(){
+  return tbCostsBodyHTML(tripCostBreakdown(),
+    `<label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel (est.)</label>`);
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -679,7 +705,7 @@ function tripDayScheduleHTML(){
         </div>
       </details>`:''}
     </div>
-    <div class="tb-total-card"><span class="tb-total-label">Trip total</span><span class="tb-total-amount">${tripPrimaryCurrency()}${total.toFixed(0)}</span></div>`;
+    <div class="tb-total-card"><span class="tb-total-label">Trip total</span><span class="tb-total-amount">${total}</span></div>`;
 }
 
 /* Plan mode's wishlist. */
@@ -905,7 +931,7 @@ function renderTripBuilder(){
           <span class="tb-group-val" aria-live="polite">${PERSON_ICON_SVG}<b>${groupSize}</b><span class="tb-group-unit">${groupSize===1?'golfer':'golfers'}</span></span>
           <button type="button" class="tb-group-btn" id="tb-groupsize-inc" aria-label="One more golfer">+</button>
         </div>
-        <span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${tripPrimaryCurrency()}${total.toFixed(0)}</span>
+        <span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${total}</span>
       </div>
     </header>
     <div class="tb-tabs" role="tablist">${TABS.map(([k,label])=>

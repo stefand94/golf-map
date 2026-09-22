@@ -438,11 +438,22 @@ function moneyBucketAdd(buckets,cur,amt){
   if(amt==null)return;
   buckets[cur]=(buckets[cur]||0)+amt;
 }
-function moneyBucketFmt(buckets){
+/* emptyCur: what an all-zero bucket renders as. Omitted → '—' (a day
+   header with nothing priced); a trip TOTAL passes its primary currency
+   instead so an empty trip still reads "£0", as it did pre-GOLF-174. */
+function moneyBucketFmt(buckets,emptyCur){
   const keys=Object.keys(buckets).filter(c=>buckets[c]);
-  if(!keys.length)return'—';
+  if(!keys.length)return emptyCur?`${emptyCur}0`:'—';
   return keys.map(c=>`${c}${buckets[c].toFixed(0)}`).join(' · ');
 }
+/* GOLF-174 / DEC-026: per person across currencies is each bucket divided
+   on its own — "£160 · €75 pp" — never a combined figure. */
+function moneyBucketScale(buckets,k){
+  const out={};
+  Object.keys(buckets).forEach(c=>{out[c]=buckets[c]*k;});
+  return out;
+}
+function moneyBucketCount(buckets){return Object.keys(buckets).filter(c=>buckets[c]).length;}
 /* GOLF-48: which fee field (wd/we) a scheduled day should be costed at —
    Saturday/Sunday if the day has a real calendar date attached, wd
    otherwise. A day with no date (the default — GOLF-33 deliberately
