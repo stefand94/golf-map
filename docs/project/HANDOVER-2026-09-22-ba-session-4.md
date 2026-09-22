@@ -30,6 +30,12 @@ next outage explains itself without a trip to the Cloudflare dashboard.
   - One part of DEC-026 was inferred, not stated: **per person = divide
     each currency separately** (`£692 · €760 per person`). Confirm with
     the owner.
+  - Dev evidence since this was written: all five check scripts pass and
+    the dev session checked mixed, single-currency, empty and shared
+    (375px) trips in a browser. The owner said he'd check the live site
+    himself — that plus the per-person answer is what's left.
+  - Two side findings from that session are now GOLF-175 (dead cost code)
+    and GOLF-176 (Worker 502s).
 
 ## Waiting on the owner
 
