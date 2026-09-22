@@ -76,9 +76,31 @@ Enum discipline (this is where earlier batches lost time):
   Costs line.
 - `id` is the join key. Copy it; never re-order, re-key or invent one.
 
+## Two corrections found in the first returned chunks (apply at merge)
+
+Both were seen in real wave-A output on 2026-09-22 and are mechanical:
+
+**1. A wave-A `poa` is a regression, not a result. Drop it.**
+`feeV2` is tier 1, so writing `confidence:"poa"` onto a course whose `wd`/`we`
+already shows a number *replaces a visible price with "POA"*. Observed on Haste
+Hill (`£26.40`), Rickmansworth (`~£20`), Brent Valley (`~£15`), Dukes Meadows
+(`~£15`), Stoke Park, Malden. **Rule: if a wave-A course comes back `poa`,
+discard that entry entirely and leave the course with no `feeV2`.** It keeps
+rendering exactly as it does today off the legacy string — strictly better than
+losing the figure. Wave-B `poa` entries are kept: there is no figure to lose.
+
+**2. `published-rates` requires the club's own domain.**
+Observed on London Airlinks, returned as `published-rates` with a
+`golfshake.com` source. **Rule: if the `source` host is not the club's own site,
+downgrade `confidence` to `estimated`** so the UI badges it honestly.
+
+Do both as a scripted pass over the result JSON before touching
+`data/courses-london.js`, and report the counts changed.
+
 ## Merge step (coding agent, one session, after all chunks return)
 
-1. Read every `golf171-*.result.json` from the scratchpad.
+1. Read every `golf171-*.result.json` from the scratchpad, then apply the two
+   corrections above.
 2. Patch `data/courses-london.js` **in place, by `id`** — add the `feeV2` key to
    the existing record. Never rebuild the array from a list: rebuilding
    re-indexes and silently rewrites already-shared trip links (GOLF-163,
