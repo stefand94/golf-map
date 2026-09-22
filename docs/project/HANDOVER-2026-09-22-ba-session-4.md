@@ -61,7 +61,7 @@ board. The page itself holds the data, so to change a row you edit the page
 and republish it to the same URL (read it first with `Artifact` action
 `read`). The `db` capability is declared but never seeded; the page ignores
 it while it's empty. The table's last column says whether a row was checked
-directly or just copied from another row — keep that honest. Current as of `136e552`. Update
+directly or just copied from another row — keep that honest. Current as of `18ecfbc` (GOLF-174 row + card, GOLF-175/176 added). Update
 the sync stamp every time you republish.
 
 ## Lessons from today
