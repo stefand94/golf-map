@@ -697,3 +697,31 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   `fee:{weekday,weekend,weekendTwilight?,confidence,lastVerified}`.
 - **Reason:** enables real fee ranges, filtering, and confidence tracking.
 - **Date:** 2026-09-05 (GOLF-97) · **Affects:** GOLF-98, cost model.
+
+## DEC-026 — Mixed currencies are shown as mixed, everywhere; the app never converts
+
+- **Decision:** wherever a trip spans more than one currency, every money
+  figure in the app shows the mixed set (`£320 · €150`), not a single
+  converted or primary-currency number. This applies throughout — day
+  headers, cost breakdown line items, the trip total, the per-person
+  figure, the cost banner and the read-only `#share=` view. The app does
+  **not** convert between currencies; the user converts and combines into
+  whatever currency they prefer.
+- **Context:** GOLF-170(a) bucketed the day header only. GOLF-170(b) left
+  the headline total showing the primary currency alone, silently dropping
+  the rest. GOLF-174 found worse: the Costs tab *adds* £ + € + R together
+  and labels the sum with one symbol, stating a figure true in no currency.
+  GOLF-173 makes mixed-currency trips substantially more common.
+- **Alternatives considered:** (a) convert everything to a chosen currency
+  — rejected: needs a live FX rate, which is a network call and a
+  staleness problem in an app whose whole design is zero runtime API
+  calls for anything but routing, and a wrong rate is worse than no rate;
+  (b) primary currency plus a disclosure hint — rejected: the number still
+  reads as a total when it is not.
+- **Reason:** the app's job is to state what things cost, accurately. A
+  converted figure invents precision the app does not have. Showing the
+  real components is honest and needs no rate.
+- **Per person:** divide each bucket by group size and show the set
+  (`£160 · €75 pp`). Flagged to the owner as the one part of this decision
+  that was inferred rather than stated.
+- **Date:** 2026-09-22 · **Affects:** GOLF-170(b), GOLF-174, GOLF-173.
