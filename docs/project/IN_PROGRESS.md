@@ -10,8 +10,7 @@ Nothing.
 
 ## In review
 
-- **GOLF-173** — built and merged (`4b52c48`). Needs owner sign-off on the
-  nearest-course approach (a stay in Newry comes out in €). See BACKLOG row.
+Nothing.
 
 ## Waiting on the owner
 
