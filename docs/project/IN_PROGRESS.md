@@ -4,41 +4,60 @@ _Features a coding agent is actively implementing. Move here from BACKLOG.md
 when work starts; move to "Recently completed" in BACKLOG.md when done and
 verified._
 
-## Nothing is actively being built (as of 2026-09-20)
+## In flight — two dev sessions, dispatched 2026-09-22
 
-Both coding sessions reported clear and **nothing is waiting on either of
-them.** Everything that was in flight through 2026-09-19/20 has landed on
-`main` and been verified:
-
-| Was in flight | Landed | Verified by |
+| Ticket | Session | Scope |
 | --- | --- | --- |
-| GOLF-163 stable course ids | `144d4ae` | `test_course_ids.js` — 879 distinct ids, order matches baseline |
-| GOLF-164 Worker build marker | `49711cb` | `X-Worker-Build` present live |
-| GOLF-161 OSM coordinates | `fd9732b` | 282 coords moved, ids untouched, all suites green |
-| GOLF-118 ferry legs | `d77764d` | `X-Worker-Build: 79b92ca9b7` live |
-| GOLF-148 POIs (incl. the DEC-017 relabel) | `69d1e4b` + `6466bd7` | 27,436 records; `pois-southafrica.js` byte-identical |
-| GOLF-157 deliverable 1 (runbook) | `0254b10` | `docs/country-onboarding.md`, Steps 0–6 |
+| **GOLF-170(a)** | Developer | `tripDayTotal()` (`js/trip-ui.js:207`) returns a currency bucket instead of a scalar; `tbDaySumHTML` (line 244) renders it via the existing `moneyBucketFmt()`. One caller only. **(b) explicitly excluded** — see below. Front-end only, no Worker deploy needed. |
+| **GOLF-156** | Developer 2 | Delete the orphaned `heritage-pois` + `pois` Worker modes and their handlers (~223 lines). **Worker change — must re-stamp `WORKER_BUILD`, push, then verify the live `X-Worker-Build` matches `update_worker_build.py --print`.** A green build check is not a deploy. |
 
-**The queue is empty by design, not by accident.** The owner's stated
-intent on 2026-09-20 was to *"wrap things up and potentially get a domain
-sorted out soon"*, so work was deliberately converged rather than extended.
-Do not start something new to fill the gap — read **§ "What the owner
-actually needs next"** in `HANDOVER-2026-09-20-ba-session-3.md` first.
+Both were told: do not touch the owner's `localStorage`, do not use bare
+`git stash` (shared across worktrees), and run all three check scripts.
+Dev 2 was told to stay out of `trip-ui.js`/`trip-geo.js` while Dev is in them.
 
-## The only things that move the project forward now are the owner's
+**Report which session finishes first** — the owner will assess token usage
+off that before deciding whether to run the GOLF-171 sample batch.
 
-None of these are blocked on a developer; all four are decisions or
-purchases only he can make. They are listed with the reasoning in the
-handover doc.
+## Waiting on the owner (as of 2026-09-22)
 
-1. **GOLF-170(b)** — is a trip total that silently excludes non-primary
-   currencies acceptable, given it is disclosed by a hint line? (170(a),
-   the day-header cross-currency sum, is a plain defect and needs no
-   decision.)
-2. **GOLF-165 / DEC-011** — should a deploy still wipe every visitor's
-   saved trips now that migration exists?
-3. **A domain** — unblocks GOLF-35 Phase B and GOLF-102 Part 2.
-4. **When `noindex` / `Disallow: /` comes off** (GOLF-129).
+1. **GOLF-170(b) — needed before Dev can continue.** The owner asked for (b)
+   to follow (a), but (b) is a product decision that has not been made and the
+   row requires it recorded before the code changes. **The question:** does the
+   headline "Trip total" show `£320 · €150` like the breakdown directly above
+   it, or stay primary-currency-only with the existing disclosure hint?
+   `grand=grandBuckets[primaryCur]` (`js/trip-geo.js:544`). **BA recommendation:
+   show both** — a total that silently omits a line item visible directly above
+   it costs trust in every other figure on the page.
+2. **GOLF-171 (London fees)** — whether to run a small sample batch first, to be
+   decided after seeing the two dev sessions' token cost. Verified 2026-09-22:
+   123 records, 0 `feeV2`, 102 `conf:"est"`, **49 with no number at all** in
+   `wd`/`we` — those 49 are the expensive ones.
+3. **A domain** — unblocks GOLF-35 Phase B and GOLF-102 Part 2. Three questions
+   still unanswered: which registrar (**must be a Cloudflare zone or GOLF-102
+   Part 2 stays blocked**), whether buying it implies coming off `noindex`, and
+   whether any tester has the PWA installed.
+4. **GOLF-165 / DEC-011** — should a deploy still wipe every visitor's trips?
+5. **When `noindex` / `Disallow: /` comes off** (GOLF-129) — and note DEC-022
+   says a public launch re-opens the Top 100 rankings question (GOLF-160, R-11)
+   *before* it ships.
+
+## Also queued
+
+- **Rebuild the project board as a pinnable artifact**, after the devs report.
+  Agreed shape: page + small database so rows update without republishing, and
+  **each row records how its status was verified** (code read / curl / inherited
+  from a row). The previous board was 56 commits stale and wrong about GOLF-143
+  (closed by DEC-025), GOLF-118, GOLF-148, GOLF-155 and GOLF-99, and was missing
+  GOLF-159 through GOLF-171 entirely.
+
+## Recently corrected on the board (2026-09-22)
+
+- **GOLF-155 is COMPLETE** — verified in code, not inferred: `logUpstreamFailure()`
+  (`ors-proxy.js:1115`) wired into all three call sites, `2af5f3e` on `main`, live.
+  It had been queued for Dev 2 off a stale board before this was checked.
+- **GOLF-171** created — the London fee batch had been tracked under a blank ID
+  and marked "DECISION PENDING" when DEC-018 had already decided it.
+- **GOLF-157 deliverable 2 parked**, **GOLF-159 re-pointed** to depend on it.
 
 ## Standing constraints that survive any handover
 
