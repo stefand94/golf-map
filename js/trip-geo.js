@@ -394,14 +394,24 @@ function tripDayCurrency(d){
    border that matters — Northern Ireland is nation 'ie' but prices in £,
    and its nearest courses do too.
 
+   Known limit: within a few miles of the Irish border the nearest course
+   can sit on the other side of it (a stay in Newry resolves to €, its
+   nearest courses being in the Republic). Fixing that properly needs a
+   real boundary polygon, which this app deliberately doesn't carry.
+
    Cheap enough to call per item per render (one pass over C, no trig:
-   an equirectangular approximation is plenty for "which country"), and
-   memoised on a ~100m-rounded key anyway. */
-const _curAtCache=new Map();
+   an equirectangular approximation is plenty for "which country"). The
+   memo on a ~100m-rounded key holds the nearest COURSE, not its symbol,
+   so a corrected fee string (EDITS) shows up on the next render rather
+   than being frozen in. */
+const _nearestCourseCache=new Map();
 function currencyAtLatLng(lat,lng){
   if(typeof lat!=='number'||typeof lng!=='number'||!isFinite(lat)||!isFinite(lng))return null;
   const key=lat.toFixed(3)+','+lng.toFixed(3);
-  if(_curAtCache.has(key))return _curAtCache.get(key);
+  if(_nearestCourseCache.has(key)){
+    const j=_nearestCourseCache.get(key);
+    return j<0?null:courseCurrency(j);
+  }
   let best=-1,bestD=Infinity;
   const kx=Math.cos(lat*Math.PI/180);
   for(let i=0;i<C.length;i++){
@@ -411,9 +421,8 @@ function currencyAtLatLng(lat,lng){
     const d=dy*dy+dx*dx;
     if(d<bestD){bestD=d;best=i;}
   }
-  const cur=best<0?null:courseCurrency(best);
-  _curAtCache.set(key,cur);
-  return cur;
+  _nearestCourseCache.set(key,best);
+  return best<0?null:courseCurrency(best);
 }
 /* The currency for one non-golf item: its own location if it has one
    (GOLF-173), else the old day-derived behaviour — a manually typed stay
