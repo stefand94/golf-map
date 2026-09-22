@@ -289,7 +289,7 @@ function feeLabelFrom(r,sym){
    legacy wd/we text). */
 function feeV2Label(i,field,ctx){
   if(!(C[i]&&C[i].feeV2))return'';
-  return feeLabelFrom(feeRangeForCtx(i,field==='we'?'we':'wd',ctx||null),courseCurrency(i));
+  return feeLabelFrom(feeRangeForCtx(i,field==='we'?'we':'wd',ctx||null),curSym(courseCurrency(i)));
 }
 /* Tier 2+3: the pre-GOLF-120 resolution, unchanged. */
 function feeRangeForLegacy(i,field){
@@ -365,7 +365,7 @@ function feeRangeForDate(i,dateStr){
 function tripPrimaryCurrency(){
   const counts={};
   tripSeq.forEach(i=>{const c=courseCurrency(i);counts[c]=(counts[c]||0)+1;});
-  let best='£',bestN=0;
+  let best='GBP',bestN=0;
   Object.keys(counts).forEach(c=>{if(counts[c]>bestN){best=c;bestN=counts[c];}});
   return best;
 }
@@ -374,7 +374,7 @@ function tripDayCurrency(d){
   if(!cs.length)return tripPrimaryCurrency();
   const counts={};
   cs.forEach(i=>{const c=courseCurrency(i);counts[c]=(counts[c]||0)+1;});
-  let best='£',bestN=0;
+  let best='GBP',bestN=0;
   Object.keys(counts).forEach(c=>{if(counts[c]>bestN){best=c;bestN=counts[c];}});
   return best;
 }
@@ -383,10 +383,11 @@ function tripDayCurrency(d){
    prices the stay in €, and a golf-less day is decided by where the stay
    is rather than by the trip's primary currency.
 
-   There is deliberately no second region→currency map here. The app has
-   exactly one location→currency mechanism — courseCurrency(), which reads
-   the national symbol back out of a course's own fee text (js/util.js) —
-   and exactly one location→nation mechanism, courseNation()
+   There is deliberately no second region→currency map here beyond the one
+   courseCurrency() already owns (js/util.js, GOLF-169: feeV2.currency →
+   courseNation() → legacy wd/we text sniff). The app has exactly one
+   location→currency mechanism — courseCurrency() — and exactly one
+   location→nation mechanism, courseNation()
    (js/explore.js), which reads a flag off the course record and so can't
    answer for an arbitrary coordinate. So the coordinate is resolved by
    nearest course: find the closest course to (lat,lng) and take its
@@ -432,19 +433,24 @@ function tripStayCurrency(d,it){
   const c=it?currencyAtLatLng(it.lat,it.lng):null;
   return c||tripDayCurrency(d);
 }
-/* A running total bucketed by currency — {[£|€|R]:amount} — plus a few
-   small helpers to add to it and to render it as "£320 · €150". */
+/* A running total bucketed by currency CODE — {GBP:320,EUR:150} — plus a
+   few small helpers to add to it and to render it as "£320 · €150".
+   GOLF-169: buckets must key on the real currency code, not the symbol —
+   two dollar nations (AUD/NZD) share "$" and would otherwise land in the
+   same bucket and silently sum. The symbol is derived only at format
+   time, via curSym(). */
 function moneyBucketAdd(buckets,cur,amt){
   if(amt==null)return;
   buckets[cur]=(buckets[cur]||0)+amt;
 }
-/* emptyCur: what an all-zero bucket renders as. Omitted → '—' (a day
-   header with nothing priced); a trip TOTAL passes its primary currency
-   instead so an empty trip still reads "£0", as it did pre-GOLF-174. */
+/* emptyCur: what an all-zero bucket renders as (a currency code). Omitted
+   → '—' (a day header with nothing priced); a trip TOTAL passes its
+   primary currency instead so an empty trip still reads "£0", as it did
+   pre-GOLF-174. */
 function moneyBucketFmt(buckets,emptyCur){
   const keys=Object.keys(buckets).filter(c=>buckets[c]);
-  if(!keys.length)return emptyCur?`${emptyCur}0`:'—';
-  return keys.map(c=>`${c}${buckets[c].toFixed(0)}`).join(' · ');
+  if(!keys.length)return emptyCur?`${curSym(emptyCur)}0`:'—';
+  return keys.map(c=>`${curSym(c)}${buckets[c].toFixed(0)}`).join(' · ');
 }
 /* GOLF-174 / DEC-026: per person across currencies is each bucket divided
    on its own — "£160 · €75 pp" — never a combined figure. */
@@ -545,7 +551,7 @@ function tripDayAccomFallback(d){
 // behaviour) if the live global is somehow missing/invalid.
 function groupSizeFor(){return(typeof groupSize==='number'&&groupSize>0)?groupSize:1;}
 function tripItemPriceDetail(d,it){
-  if(!it)return{base:null,guests:1,sharing:false,total:null,cur:'£'};
+  if(!it)return{base:null,guests:1,sharing:false,total:null,cur:'GBP'};
   const gs=groupSizeFor();
   if(it.type==='golf'){
     // GOLF-87: `sharing` here deliberately stays false regardless of group

@@ -326,7 +326,7 @@ function tbAddStopFormHTML(dayId,itemId){
   // GOLF-173: once the stop has real coordinates (picked from a search
   // result or the hotel layer), the price field's currency hint follows
   // them; before that it falls back to the day's.
-  const cur=tripStayCurrency(dayObj,tbAddStop);
+  const cur=curSym(tripStayCurrency(dayObj,tbAddStop));
   const gs=groupSizeFor();
   return`<div class="tb-addstop">
     <div class="tb-addstop-title">${editing?(isHotel?'Edit this stay':'Edit this stop'):(isHotel?'Add a stay':'Add a stop')}</div>

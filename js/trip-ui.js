@@ -218,7 +218,7 @@ function tripDayTotal(dayIdx){
   const buckets={};
   tripDayLegs(dayIdx).forEach(l=>{
     if(l.type==='drive'||l.price==null)return;
-    moneyBucketAdd(buckets,(l.detail&&l.detail.cur)||'£',l.price);
+    moneyBucketAdd(buckets,(l.detail&&l.detail.cur)||'GBP',l.price);
   });
   return buckets;
 }
@@ -245,16 +245,19 @@ function tbDriveCapHTML(l){
   const tag=l.hasFerry?` <span class="wt tb-ferry-tag" title="This route has a ferry">⛴ This route has a ferry</span>`:'';
   return`<div class="tb-drive-cap${l.hasFerry?' has-ferry':''}" title="${esc(l.label)}">🚗 Drive ${timeHTML}${l.real?` <span class="tb-drive-real">· live</span>`:''}${tag}</div>`;
 }
-/* Currency correctness: every £ figure in the pane now takes an optional
-   currency symbol (defaulting to £, the common case), sourced from
-   courseCurrency()/tripItemPriceDetail()'s new `cur` field rather than
-   hardcoded — GBP for GB/NI courses, EUR for Republic of Ireland, ZAR
-   (shown as R) for South Africa. */
-const tbMoney=(v,cur='£')=>v!=null?`${cur}${v.toFixed(0)}`:'—';
+/* Currency correctness (GOLF-169): every `cur` passed around the pane is
+   now a currency CODE ('GBP'/'EUR'/'ZAR'/'AUD'/'NZD'...), sourced from
+   courseCurrency()/tripItemPriceDetail()'s `cur` field — never a bare
+   symbol, since a symbol alone can't tell AUD from NZD apart (both "$").
+   tbMoney() is the one place that turns a code into the displayed symbol
+   (curSym(), js/util.js), so every caller downstream of it — tbPrice(),
+   this file's manual "£X × N people" templates below — gets the
+   conversion for free as long as it goes through tbMoney or curSym(). */
+const tbMoney=(v,cur='GBP')=>v!=null?`${curSym(cur)}${v.toFixed(0)}`:'—';
 /* GOLF-150 I3: a row's own price when it's unknown reads "TBC" (muted)
    rather than a bare "–" that sat beside the ⋯ menu looking like a
    collapse control. Cost tables keep tbMoney()'s dash. */
-const tbPrice=(v,cur='£')=>v!=null?tbMoney(v,cur):'<span class="tb-price-tbc">TBC</span>';
+const tbPrice=(v,cur='GBP')=>v!=null?tbMoney(v,cur):'<span class="tb-price-tbc">TBC</span>';
 /* Day-header total: blank for a day with nothing priced. */
 const tbDaySumHTML=idx=>{const b=tripDayTotal(idx);return Object.keys(b).some(c=>b[c])?`<span class="tb-day-sum">${moneyBucketFmt(b)}</span>`:'';};
 /* GOLF-74/91: the £ figure as the visitor should read it. A hotel priced
@@ -263,8 +266,8 @@ const tbDaySumHTML=idx=>{const b=tripDayTotal(idx);return Object.keys(b).some(c=
    Everything else is plain tbMoney(), so this is a strict superset. */
 function tripPriceLabel(det){
   if(!det||det.total==null)return'—';
-  const cur=det.cur||'£';
-  return det.sharing?`${cur}${det.base.toFixed(0)} × ${det.guests} people = ${cur}${det.total.toFixed(0)}`:tbMoney(det.total,cur);
+  const cur=det.cur||'GBP',sym=curSym(cur);
+  return det.sharing?`${sym}${det.base.toFixed(0)} × ${det.guests} people = ${sym}${det.total.toFixed(0)}`:tbMoney(det.total,cur);
 }
 function itinLegRowHTML(l){
   if(l.type==='drive')return tbDriveCapHTML(l);
@@ -277,11 +280,11 @@ function itinLegRowHTML(l){
      new style. Build-mode rows, which have no meta line to spare, keep the
      tooltip. */
   const sharing=!!(l.detail&&l.detail.sharing);
-  const cur=(l.detail&&l.detail.cur)||'£';
+  const cur=(l.detail&&l.detail.cur)||'GBP',sym=curSym(cur);
   return`<div class="tb-day-course tb-item-${l.type}" style="cursor:default">
     <span class="tb-item-icon">${icon}</span>
     <div class="tb-item-main"><span class="tb-item-name">${esc(l.name)}</span>
-      ${sharing?`<div class="cart-region">${cur}${l.detail.base.toFixed(0)} × ${l.detail.guests} people = ${cur}${l.detail.total.toFixed(0)}</div>`:''}</div>
+      ${sharing?`<div class="cart-region">${sym}${l.detail.base.toFixed(0)} × ${l.detail.guests} people = ${sym}${l.detail.total.toFixed(0)}</div>`:''}</div>
     <span class="tb-item-price">${tbPrice(l.price,cur)}</span>
   </div>`;
 }
@@ -385,13 +388,13 @@ function tripCostLineItems(){
       const flat=it.priceType==='total'||it.priceType==='flat';
       const key=stayKey(it);
       const name=tripItemName(it);
-      const sharingBit=det.sharing?` (${det.cur}${(det.base||0).toFixed(0)} × ${det.guests} people)`:'';
+      const sharingBit=det.sharing?` (${curSym(det.cur)}${(det.base||0).toFixed(0)} × ${det.guests} people)`:'';
       if(stayGroups.has(key)){
         const row=items[stayGroups.get(key)];
         row._nights++;
         if(!flat)row.amount=(row.amount||0)+(det.total||0);
         row.label=row._nights>1
-          ? `${row._name} (${row._cur}${(row.amount/row._nights).toFixed(0)}/night × ${row._nights} nights)`
+          ? `${row._name} (${curSym(row._cur)}${(row.amount/row._nights).toFixed(0)}/night × ${row._nights} nights)`
           : row._name+sharingBit;
       }else{
         stayGroups.set(key,items.length);
@@ -402,7 +405,7 @@ function tripCostLineItems(){
       return;
     }
     let tag=gs>1?`× ${gs}`:null;
-    let label=tripItemName(it)+(det.sharing?` (${det.cur}${det.base.toFixed(0)} × ${det.guests} people)`:'');
+    let label=tripItemName(it)+(det.sharing?` (${curSym(det.cur)}${det.base.toFixed(0)} × ${det.guests} people)`:'');
     if(it.type==='golf'&&det.feeRange&&det.feeRange.confidence){
       label+=feeRangeLabel(det.feeRange);
       const confTag=FEE_CONF_TAG[det.feeRange.confidence];
@@ -496,7 +499,7 @@ function tbTripTotal(){const b=tripCostBreakdown();return moneyBucketFmt(b.grand
    line row. Group size 1 (or unset) → no second figure (it would just
    repeat the total). Stacked rather than a third column so it can't
    overflow a 360px sidebar. */
-const costPP=(v,cur,gs)=>(gs>1&&v>0)?`<span class="cost-pp">${cur}${Math.round(v/gs)} pp</span>`:'';
+const costPP=(v,cur,gs)=>(gs>1&&v>0)?`<span class="cost-pp">${curSym(cur)}${Math.round(v/gs)} pp</span>`:'';
 // GOLF-174: the same, for a currency bucket — "£735 · €760 pp".
 const costPPBucket=(b,gs)=>(gs>1&&moneyBucketCount(b))?`<span class="cost-pp">${moneyBucketFmt(moneyBucketScale(b,1/gs))} pp</span>`:'';
 function costGroupHTML(icon,label,total,items,cur){
@@ -529,7 +532,7 @@ function tbCostsBodyHTML(b,fuelRowLabel){
       ${costGroupHTML('⛳','Golf',b.golfTotal,golf,cur)}
       ${costGroupHTML('🏨','Stays',b.stayTotal,stay,cur)}
       ${costGroupHTML('📍','Stops',b.poiTotal,stop,cur)}
-      <div class="cost-fuel-row">${fuelRowLabel}<span class="cost-group-amt">${cur}${b.fuelCost.toFixed(0)}${costPP(b.fuelCost,cur,b.groupSize)}</span></div>
+      <div class="cost-fuel-row">${fuelRowLabel}<span class="cost-group-amt">${curSym(cur)}${b.fuelCost.toFixed(0)}${costPP(b.fuelCost,cur,b.groupSize)}</span></div>
     </div>
     <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?' This trip spans more than one currency, so each is totalled separately — nothing is converted.':''}</p>`;
 }

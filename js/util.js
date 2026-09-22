@@ -182,21 +182,44 @@ function archTags(s){
 const EDITS={};
 function V(i,f){return(EDITS[i]&&EDITS[i][f]!==undefined)?EDITS[i][f]:C[i][f]}
 function isEdited(i){return !!EDITS[i]&&Object.keys(EDITS[i]).length>0}
-/* Currency correctness: every course's wd/we fee text already carries its
-   own correct national symbol at data-entry time (£ for GB/NI, € for the
-   Republic of Ireland, R for South Africa) — so rather than maintaining a
-   second region→currency map that can drift from the data, the symbol is
-   read straight back out of that text. Falls back to £ (by far the most
-   common case) when neither fee field has a recognisable symbol. */
-function feeCurrencySym(s){
+/* GOLF-169: courseCurrency(i) now returns a real currency CODE
+   ('GBP'/'EUR'/'ZAR'/'USD'/'AUD'/'NZD'...), never a symbol — that's the
+   whole point of the ticket. A symbol alone can't tell AUD from NZD (both
+   "$"), so anything that needs to bucket money by currency (js/trip-geo.js
+   moneyBucket*) must key on this code, and anything that needs to *show*
+   a symbol converts the code via curSym() at the point of display.
+   Resolution order, most to least authoritative:
+     1. feeV2.currency — a real code, populated on every researched course
+        as of GOLF-171 (GOLF-120/171).
+     2. courseNation(i) (js/explore.js, loads after this file but only
+        called here at render time, same lazy-binding idiom as feeNum()/
+        feeRangeFor below) — gb→GBP, ie→EUR, za→ZAR. Good enough for any
+        course that has no feeV2 yet, with one known miss: a Northern
+        Ireland course (nation 'ie', prices in £) with no feeV2 would get
+        EUR here — caught by tier 3 below, which is exactly why that tier
+        stays in the chain instead of being retired.
+     3. The pre-GOLF-169 behaviour — sniff £/€/R out of the wd/we free
+        text — kept as the final fallback for any course tier 1+2 can't
+        place correctly (the NI case above).
+     4. GBP, same default as before this ticket. */
+const CURRENCY_SYMS={GBP:'£',EUR:'€',ZAR:'R',USD:'$',AUD:'$',NZD:'$'};
+function curSym(code){return CURRENCY_SYMS[code]||code||'£';}
+const NATION_CURRENCY={gb:'GBP',ie:'EUR',za:'ZAR'};
+function feeCurrencyCodeFromText(s){
   if(!s)return null;
-  if(/€/.test(s))return'€';
-  if(/£/.test(s))return'£';
-  if(/(^|\s)R\s?\d/.test(s))return'R';
+  if(/€/.test(s))return'EUR';
+  if(/£/.test(s))return'GBP';
+  if(/(^|\s)R\s?\d/.test(s))return'ZAR';
   return null;
 }
 function courseCurrency(i){
-  return feeCurrencySym(V(i,'wd'))||feeCurrencySym(V(i,'we'))||'£';
+  const fv=V(i,'feeV2');
+  if(fv&&fv.currency)return fv.currency;
+  if(typeof courseNation==='function'){
+    const n=courseNation(i);
+    if(n&&NATION_CURRENCY[n])return NATION_CURRENCY[n];
+  }
+  return feeCurrencyCodeFromText(V(i,'wd'))||feeCurrencyCodeFromText(V(i,'we'))||'GBP';
 }
 function editCount(){return Object.keys(EDITS).filter(isEdited).length}
 
