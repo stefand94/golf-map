@@ -1,7 +1,7 @@
 # Implementation Task
 
 **Feature:** GOLF-35 Phase B + GOLF-102 Part 2: launch golftripper.uk
-**Status:** READY (owner approved 2026-09-23)
+**Status:** IN PROGRESS. Plan signed off by the BA 2026-09-23: redirects in `functions/_middleware.js`, domains added before the push
 **Priority:** P2
 
 ## Prompt for the dev session (paste first)
@@ -35,7 +35,7 @@ Make **golftripper.uk** the live site, and keep **golf-map.pages.dev** for work 
 2. **The bare `golf-map.pages.dev`** permanently redirects to the same path on golftripper.uk. Preview subdomains (`<branch>.golf-map.pages.dev`) are **not** redirected. Note: `pages.dev` isn't in Stefan's zone, so a zone-level rule on golftripper.uk won't catch it.
 3. **Old share links keep working.** A `golf-map.pages.dev/...#share=...` link opens the same shared trip on golftripper.uk, with the hash intact.
 4. **The Worker accepts golftripper.uk.** Add it (and `www`) to `ALLOWED_ORIGINS` in `scripts/cloudflare-worker/ors-proxy.js`. Keep `golf-map.pages.dev` and its previews on the list, because previews still call the Worker.
-5. **The Worker moves to `api.golftripper.uk`,** and `ORS_PROXY_URL` in `js/ors.js` points there. The old `workers.dev` address can stay up as a fallback, which is your call.
+5. **The Worker moves to `api.golftripper.uk`,** and `ORS_PROXY_URL` in `js/ors.js` points there. **Once that's verified, the `workers.dev` address is switched off** (BA 2026-09-23); otherwise scripts could bypass the rate limit by calling it directly. This is the final step, after the burst test.
 6. **Rate limiting (GOLF-102 Part 2):** one Cloudflare rate-limiting rule on `api.golftripper.uk`, blocking a single IP that sends too many requests.
    - Size the threshold from real use. Load a 10-day trip, change days around, open hotels, and count the Worker calls it makes. A normal planner must never hit the limit.
    - Give Stefan the exact values to type in, and record them in `docs/deploying.md`.
@@ -56,7 +56,9 @@ Send him one step at a time and wait for his "done" before checking the result. 
 
 - [ ] `https://golftripper.uk` loads the live app with a valid certificate and no password prompt, and the response still carries `X-Robots-Tag: noindex`.
 - [ ] `www.golftripper.uk` and `https://golf-map.pages.dev/<any path>` both land on the matching golftripper.uk address.
-- [ ] A preview URL (`<branch>.golf-map.pages.dev`) still loads the branch build and is **not** redirected.
+- [ ] A preview URL (`<branch>.golf-map.pages.dev`) still loads the branch build and is **not** redirected, and its routing works through `api.golftripper.uk`.
+- [ ] A returning visitor, whose browser has the old service worker from golf-map.pages.dev, ends up on golftripper.uk within one reload, with no broken or blank page.
+- [ ] Once the address is switched off, `workers.dev` no longer answers.
 - [ ] An old `golf-map.pages.dev/#share=...` link opens the same trip on golftripper.uk.
 - [ ] On golftripper.uk, driving routes, place search, hotel search and heritage stops all work through `api.golftripper.uk`. Check `X-Worker-Build` to confirm the new Worker build is live.
 - [ ] The Worker answers a request from an origin that isn't on the allowlist with `Access-Control-Allow-Origin: null`.
