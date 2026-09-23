@@ -724,4 +724,11 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 - **Per person:** divide each bucket by group size and show the set
   (`£160 · €75 pp`). Inferred at first; **confirmed by the owner
   2026-09-22.**
-- **Date:** 2026-09-22 · **Affects:** GOLF-170(b), GOLF-174, GOLF-173.
+- **Separator amended 2026-09-23 (owner, during GOLF-178):** amounts in
+  different currencies are joined with **`+`**, not `·` (`€999 + £207 per
+  person`). The owner's call. It reads as "you pay this plus that", which
+  is exactly true, without implying a conversion. It applies everywhere
+  the mixed set appears, because one formatter produces all of them. A `·`
+  that separates *different kinds* of information (e.g. "3 days · €3995 +
+  £828") stays a `·`.
+- **Date:** 2026-09-22 · **Affects:** GOLF-170(b), GOLF-174, GOLF-173. GOLF-178.
