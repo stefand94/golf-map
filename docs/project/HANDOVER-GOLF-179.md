@@ -1,7 +1,7 @@
 # Implementation Task
 
 **Feature:** GOLF-179: Stop overlapping pins on the trip map
-**Status:** READY (owner approved 2026-09-23)
+**Status:** IN PROGRESS (owner approved 2026-09-23)
 **Priority:** P3 (visual polish, no data affected; BA's call)
 
 ## Objective
@@ -11,7 +11,7 @@ When the trip map is zoomed out, hotel and POI icons can sit on top of a course 
 ## Scope
 
 - The trip map in build mode, which is visible on both the **Itinerary** and **Costs** tabs.
-- The read-only `#share=` view's map. This is a BA assumption, because it draws the same stops; confirm it with the BA if it turns out to be a separate path.
+- **Not** the read-only `#share=` map: it is a separate path (`renderSharedMap()`) that draws every stop as a numbered day circle, so there is nothing to lay out. Decided 2026-09-23 (BA, option (a)); restyling the shared map would be its own ticket.
 
 ## Requirements
 
@@ -33,7 +33,7 @@ When the trip map is zoomed out, hotel and POI icons can sit on top of a course 
 - [ ] Two courses overlapping each other look exactly as they do today.
 - [ ] Tapping a moved icon opens the same popup as before.
 - [ ] The route line still meets the real location of each stop.
-- [ ] Behaviour is the same on the Itinerary tab, the Costs tab and the shared view.
+- [ ] Behaviour is the same on the Itinerary tab and the Costs tab. The shared view's map is unchanged.
 - [ ] The map works at phone width, and panning and zooming don't flicker or stutter on a trip of about 10 days.
 - [ ] There are no console errors.
 - [ ] `test_data.js`, `check_js.js`, `test_course_ids.js`, `test_fee_v2.js` and `test_currency.js` all pass.
