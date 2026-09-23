@@ -126,20 +126,22 @@ const OVERPASS_URLS = [
 // Overpass instances ask callers to identify themselves, and overpass-api.de
 // hard-rejects (406) anyone who doesn't. Contact URL included per the
 // OSM API usage-policy convention.
-const OVERPASS_UA = 'golf-map/1.0 (+https://golf-map.pages.dev; trip planner)';
+const OVERPASS_UA = 'golf-map/1.0 (+https://golftripper.uk; trip planner)';
 // A leg between two golf courses rarely needs more than a couple hundred
 // points to look like a real road at map zoom levels — cap it so the
 // response (and what ends up cached in localStorage) stays small.
 const ROUTE_MAX_POINTS = 150;
 
-// GOLF-102 Part 1 / GOLF-35 Phase A3 — CORS allowlist. Kept as one
-// clearly-labelled const so adding the real custom domain in Phase B is a
-// one-line edit (see the marker below).
+// GOLF-102 Part 1 / GOLF-35 Phase A3 — CORS allowlist. GOLF-35 Phase B
+// added golftripper.uk (the live site). golf-map.pages.dev stays: its
+// bare host now redirects to golftripper.uk, but branch previews still
+// call this Worker.
 const ALLOWED_ORIGINS = [
+  'https://golftripper.uk',
+  'https://www.golftripper.uk',
   'https://golf-map.pages.dev',
   'http://localhost',
   'http://127.0.0.1',
-  // Phase B: add the real domain here, e.g. 'https://golftripplanner.com'
 ];
 // Preview deployments get a per-branch subdomain of the same project —
 // *.golf-map.pages.dev — matched by suffix rather than enumerated.
@@ -147,8 +149,8 @@ const ALLOWED_ORIGIN_SUFFIX = '.golf-map.pages.dev';
 
 // Known limitation: this only blocks browser calls from other web pages —
 // a direct script/curl request carries no Origin header at all and isn't
-// affected by CORS either way. That gap is what Phase B rate limiting
-// (GOLF-102 Part 2, once the Worker is on the custom domain) covers.
+// affected by CORS either way. That gap is what the GOLF-102 Part 2
+// rate-limiting rule on api.golftripper.uk covers (docs/deploying.md).
 function isAllowedOrigin(origin) {
   if (!origin) return false;
   if (ALLOWED_ORIGINS.some((o) => origin === o || origin.startsWith(o + ':'))) return true;
@@ -953,11 +955,11 @@ async function logUpstreamFailure(label, orsRes) {
  *
  * To check, from anywhere (a HEAD gets the 405 path, which carries it, so
  * this costs no upstream quota):
- *   curl -sI https://geofftheworker.stefand94.workers.dev/ | grep -i x-worker-build
+ *   curl -sI https://api.golftripper.uk/ | grep -i x-worker-build
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = '525438fe67';
+const WORKER_BUILD = '7b99f36f8f';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {
@@ -982,6 +984,11 @@ function corsHeaders(request) {
     'Access-Control-Allow-Origin': isAllowedOrigin(origin) ? origin : 'null',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    // GOLF-102 Part 2: every POST here is a JSON body, so it needs a
+    // preflight, and without a max-age the browser re-sends one for almost
+    // every call. That doubles the request count against the rate-limiting
+    // rule on api.golftripper.uk. 7200 is Chrome's cap.
+    'Access-Control-Max-Age': '7200',
     'Vary': 'Origin',
   };
 }

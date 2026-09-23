@@ -10,6 +10,12 @@ name = "geofftheworker"
 main = "ors-proxy.js"
 compatibility_date = "2026-08-27"
 
+# GOLF-35B: keep in step with the repo-root wrangler.jsonc (the one git
+# deploys actually use) — see the note there.
+routes = [{ pattern = "api.golftripper.uk", custom_domain = true }]
+workers_dev = true
+preview_urls = true
+
 # ORS_API_KEY is NOT set here — it stays exactly as it is today, a
 # secret configured in the dashboard (Settings -> Variables and Secrets).
 # Connecting Git for deploys doesn't touch secrets at all.

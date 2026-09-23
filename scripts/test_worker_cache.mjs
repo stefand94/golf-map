@@ -246,6 +246,28 @@ check('route response still carries CORS',
   `acao=${r.headers.get('Access-Control-Allow-Origin')}`);
 orsRouteStub = null;
 
+/* GOLF-35B / GOLF-102 P2: the live domain is allowed, a stranger isn't, and a
+   preflight carries Max-Age so the browser doesn't re-send one per POST (each
+   preflight counts against the api.golftripper.uk rate-limiting rule). */
+const preflight = (origin) => worker.fetch(new Request('https://w.test', {
+  method: 'OPTIONS', headers: { Origin: origin },
+}), {}, ctx);
+r = await preflight('https://golftripper.uk');
+check('golftripper.uk is on the CORS allowlist',
+  r.headers.get('Access-Control-Allow-Origin') === 'https://golftripper.uk',
+  `acao=${r.headers.get('Access-Control-Allow-Origin')}`);
+check('preflight carries Access-Control-Max-Age',
+  r.headers.get('Access-Control-Max-Age') === '7200',
+  `max-age=${r.headers.get('Access-Control-Max-Age')}`);
+r = await preflight('https://some-branch.golf-map.pages.dev');
+check('previews stay on the CORS allowlist',
+  r.headers.get('Access-Control-Allow-Origin') === 'https://some-branch.golf-map.pages.dev',
+  `acao=${r.headers.get('Access-Control-Allow-Origin')}`);
+r = await preflight('https://golftripper.uk.evil.example');
+check('a look-alike origin is refused',
+  r.headers.get('Access-Control-Allow-Origin') === 'null',
+  `acao=${r.headers.get('Access-Control-Allow-Origin')}`);
+
 let failed = 0;
 for (const t of results) {
   if (!t.pass) failed++;

@@ -58,7 +58,7 @@ branch it does not consider production.
 Verify a deploy — always, and never trust the green check on its own:
 
 ```bash
-curl -sI https://geofftheworker.stefand94.workers.dev/ | grep -i x-worker-build
+curl -sI https://api.golftripper.uk/ | grep -i x-worker-build
 python3 scripts/update_worker_build.py --print
 ```
 

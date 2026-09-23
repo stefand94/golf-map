@@ -14,5 +14,14 @@
   // project that also builds this repo ignores it.
   "name": "geofftheworker",
   "main": "scripts/cloudflare-worker/ors-proxy.js",
-  "compatibility_date": "2026-08-27"
+  "compatibility_date": "2026-08-27",
+  // GOLF-35B: the Worker's public address. Declared here, not only in the
+  // dashboard, because every git deploy re-applies this file: a domain or a
+  // workers.dev switch set only in the dashboard can be silently undone by
+  // the next push. The rate-limiting rule (docs/deploying.md) only guards
+  // api.golftripper.uk, so workers.dev and the per-version preview URLs are
+  // bypasses and get switched off (false) once api.golftripper.uk is verified.
+  "routes": [{ "pattern": "api.golftripper.uk", "custom_domain": true }],
+  "workers_dev": true,
+  "preview_urls": true
 }

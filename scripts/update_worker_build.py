@@ -14,7 +14,7 @@ code live?" was answered by trust rather than by evidence.
 This hashes the Worker source and writes that hash into its WORKER_BUILD
 constant, which it returns as X-Worker-Build on every response. Then:
 
-    curl -sI https://geofftheworker.stefand94.workers.dev/ | grep -i x-worker-build
+    curl -sI https://api.golftripper.uk/ | grep -i x-worker-build
     python3 scripts/update_worker_build.py --print
 
 Same value and the deployed Worker is this source. Different and it is not.
