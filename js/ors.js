@@ -42,7 +42,7 @@ function tripDayAutoEstimate(dayIdx){
    configured yet" — every call below then returns null immediately and
    every caller already falls back to the GOLF-43 heuristic, so this is
    safe to leave blank indefinitely. */
-const ORS_PROXY_URL='https://geofftheworker.stefand94.workers.dev/';
+const ORS_PROXY_URL='https://api.golftripper.uk/'; // GOLF-35B: the Worker's custom domain (was geofftheworker.stefand94.workers.dev)
 /* GOLF-50: v2 — the cached shape gained a route field. Bumping the key
    (rather than reusing v1) means any leg cached against the pre-GOLF-50
    Worker deploy (route missing from the response entirely) can't get

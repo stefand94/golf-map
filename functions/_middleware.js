@@ -14,8 +14,28 @@
  *     including static assets, must present HTTP Basic Auth as
  *     dev / <DEV_PASSWORD> before anything is served.
  */
+/*
+ * GOLF-35 Phase B — golftripper.uk is the live site. The bare
+ * golf-map.pages.dev (the old production address) and www.golftripper.uk
+ * both 301 to the same path + query on golftripper.uk. Branch previews
+ * (<branch>.golf-map.pages.dev) are a different host, so they fall
+ * through untouched.
+ *
+ * Done here rather than as a dashboard Bulk Redirect so it lives in git
+ * and can be tested on a preview. A #share= hash never reaches the
+ * server; browsers carry it across a redirect whose Location has no hash
+ * of its own, so old share links still open the same trip.
+ */
+const CANONICAL_ORIGIN = 'https://golftripper.uk';
+const REDIRECT_HOSTS = new Set(['golf-map.pages.dev', 'www.golftripper.uk']);
+
 export async function onRequest(context) {
   const { request, env, next } = context;
+
+  const url = new URL(request.url);
+  if (REDIRECT_HOSTS.has(url.hostname)) {
+    return Response.redirect(CANONICAL_ORIGIN + url.pathname + url.search, 301);
+  }
 
   if (!env.DEV_PASSWORD) return next();
 

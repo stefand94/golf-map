@@ -14,16 +14,19 @@ archaeology, not for onboarding; grep it by ticket number).
 - Zero runtime API calls for course data — everything in `data/*.js` is
   pre-fetched once by a `scripts/*.py` script and hand-merged in. The only
   live network call is to one small Cloudflare Worker
-  (`scripts/cloudflare-worker/ors-proxy.js`, deployed at
-  `geofftheworker.stefand94.workers.dev`) that proxies OpenRouteService
+  (`scripts/cloudflare-worker/ors-proxy.js`, served at
+  `api.golftripper.uk`; the Worker's own name is `geofftheworker`) that proxies OpenRouteService
   (driving directions/geocoding) and OpenStreetMap Overpass (heritage POIs,
   hotels) so no API key ever reaches the browser.
 - All per-visitor state (trips, corrections, filters) lives in that
   browser's own `localStorage`. No accounts, no database, no server beyond
   the one stateless Worker.
-- Hosted on **Cloudflare Pages** (production = `main` branch, deployed to
-  `golf-map.pages.dev` until a custom domain is bought; every other branch
-  gets its own automatic preview URL). GitHub Pages is not used — retired
+- Hosted on **Cloudflare Pages**. Production = `main`, live at
+  **`golftripper.uk`** since GOLF-35 Phase B. `functions/_middleware.js`
+  301s the bare `golf-map.pages.dev` and `www.golftripper.uk` there
+  (path kept, and browsers keep the `#share=` hash). Every other branch still
+  gets its own un-redirected preview at `<branch>.golf-map.pages.dev`. Still
+  private: `noindex` + `robots.txt Disallow`. GitHub Pages is not used — retired
   per DEC-006, and the GitHub setting itself was finally turned off on
   2026-09-20, having quietly kept publishing `main` to
   `stefand94.github.io/golf-map/` for three weeks after the repo stopped

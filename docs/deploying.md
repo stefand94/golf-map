@@ -18,13 +18,21 @@ not repeatable from a script — see GOLF-80):
 
 Once connected, Cloudflare deploys automatically on every push:
 
-- **Production**: pushes to `main` deploy to the project's production URL
-  (custom domain, once set, or `<project-name>.pages.dev`).
+- **Production**: pushes to `main` deploy to **`https://golftripper.uk`**
+  (GOLF-35 Phase B, custom domain on the `golf-map` Pages project).
+  `functions/_middleware.js` 301s the bare `golf-map.pages.dev` and
+  `www.golftripper.uk` to the same path on golftripper.uk. Browsers carry a
+  `#share=` hash across a redirect, so old share links still open the same
+  trip. A returning visitor's old service worker on pages.dev doesn't get
+  in the way: navigations are network-first (GOLF-122), so one reload lands
+  them on golftripper.uk. Trips saved on pages.dev stay there; the new
+  domain starts empty (DEC-011).
 - **Preview**: pushes to *any other branch* automatically get their own
   preview URL, `<branch-name>.<project-name>.pages.dev` — no per-branch
   configuration needed. This is the "dev link" — use it to view/share a
   feature branch's state before merging to `main`, instead of relying on
-  a local preview only you can see.
+  a local preview only you can see. Previews are **not** redirected to
+  golftripper.uk; only the bare `golf-map.pages.dev` host is.
 
 Branch names with characters Cloudflare doesn't allow in a subdomain
 (e.g. slashes) get a sanitized/truncated preview subdomain instead of the
@@ -52,7 +60,7 @@ one. The password is never committed to the repo.
 unset for the current beta — the tester group is small and contacted
 directly, so link-only + `noindex` (below) is judged sufficient without
 the extra friction of a password. Testers get the **production URL**
-(`https://golf-map.pages.dev`, or the custom domain once Phase B lands)
+(`https://golftripper.uk`)
 directly — it's static, so there's no new link to send on every deploy.
 The gate code stays in the repo, harmless while dormant, for whenever a
 future preview/beta actually wants it.
@@ -67,13 +75,51 @@ ever turned on.
 `scripts/cloudflare-worker/ors-proxy.js`'s `ALLOWED_ORIGINS` /
 `ALLOWED_ORIGIN_SUFFIX` constants (near the top of the file) list which
 origins the Worker will answer a browser request from:
-`golf-map.pages.dev`, any `*.golf-map.pages.dev` preview subdomain, and
-`localhost`/`127.0.0.1` for local dev. Anything else gets
-`Access-Control-Allow-Origin: null`. Adding the future custom domain
-(Phase B) is a one-line addition to `ALLOWED_ORIGINS`. Rate limiting
-(Phase B / GOLF-102 Part 2) is a separate, not-yet-built piece — CORS
-alone only stops *browser* calls from other pages, not a direct
-script/curl request (which carries no `Origin` header at all).
+`golftripper.uk` and `www.golftripper.uk`, `golf-map.pages.dev`, any
+`*.golf-map.pages.dev` preview subdomain (previews still call the Worker),
+and `localhost`/`127.0.0.1` for local dev. Anything else gets
+`Access-Control-Allow-Origin: null`. CORS alone only stops *browser* calls
+from other pages, not a direct script/curl request (which carries no
+`Origin` header at all) — that is what the rate limit below is for.
+
+Every response also carries `Access-Control-Max-Age: 7200` (Chrome's cap),
+so a browser sends one preflight per two hours instead of one per POST.
+Without it, each call counted twice against the rate limit.
+
+## Worker rate limit (GOLF-102 Part 2)
+
+One Cloudflare **rate-limiting rule** on the golftripper.uk zone
+(Security → WAF → Rate limiting rules), free-plan shape:
+
+| Setting | Value |
+| --- | --- |
+| Matches | `http.host eq "api.golftripper.uk"` |
+| Counted by | IP address |
+| Threshold | **100 requests per 10 seconds** |
+| Action | Block, for 10 seconds |
+
+**How 100 was chosen** (measured 2026-09-23, localhost against the live
+Worker): a fresh 10-day trip, 2 rounds plus a hotel a day, with an empty
+cache (the same as opening a share link on a new device), fires **28 route
+calls in 0.07 s**. That is the peak. Heavy editing straight after (3 day
+moves, 4 hotel searches, 8 per-keystroke place searches) added 18 calls
+over about 15 s. Heritage stops make no Worker calls since GOLF-148. With
+Max-Age, the peak is about 30 requests. A 14-day, 4-stops-a-day trip is
+about 57. Three people opening one share link behind a single hotel Wi-Fi
+IP is about 90. So 100 is roughly 3x a real peak. If someone does hit it,
+the affected legs show the dotted straight-line fallback and retry after
+10 minutes (`ORS_FAIL_RETRY_MS`); nothing breaks.
+
+**What it doesn't do:** it stops floods, not a slow drip. 100 per 10 s
+still allows far more per day than the ORS free quota, so a patient abuser
+could drain the quota without ever tripping it. Logged under R-7 in
+`docs/project/RISKS.md`.
+
+The rule only guards `api.golftripper.uk`, so the Worker's other public
+addresses (`geofftheworker.stefand94.workers.dev` and the per-version
+preview URLs) are switched off in `wrangler.jsonc` (`workers_dev` /
+`preview_urls`). This lives in the config file, not just the dashboard,
+because every git deploy re-applies the file.
 
 ## The ORS proxy Worker (separate deployment)
 
@@ -113,7 +159,7 @@ indistinguishable from the old code — a 200 means nothing either way. Since
 GOLF-164 every response carries the source's content hash:
 
 ```bash
-curl -sI https://geofftheworker.stefand94.workers.dev/ | grep -i x-worker-build
+curl -sI https://api.golftripper.uk/ | grep -i x-worker-build
 python3 scripts/update_worker_build.py --print
 ```
 

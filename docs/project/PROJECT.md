@@ -28,10 +28,11 @@ their own browser `localStorage` (`golfmap:v1`).
   server-side.
 - All course data is **pre-fetched offline** into `data/*.js` and hand-merged
   — zero runtime API calls for course data. 557 courses (114 England Top 100).
-- Hosted on **Cloudflare Pages** (canonical, auto-deploys from `main`;
-  per-branch previews) — GitHub Pages kept live in parallel, legacy, to be
-  retired once a custom domain is confirmed stable (DEC-006). See
-  `docs/deploying.md`.
+- Hosted on **Cloudflare Pages**, live at **golftripper.uk** (GOLF-35
+  Phase B; auto-deploys from `main`; per-branch previews stay on
+  `<branch>.golf-map.pages.dev`, and the bare pages.dev address redirects to
+  golftripper.uk). The Worker is at `api.golftripper.uk`. GitHub Pages is
+  retired (DEC-006, switched off 2026-09-20). See `docs/deploying.md`.
 - Link-only for now: blanket `noindex`/`robots.txt` (GOLF-35 Phase A,
   shipped 2026-09-13) — not search-indexed, but no password gate either
   (owner decision: the small, directly-contacted beta tester group makes
