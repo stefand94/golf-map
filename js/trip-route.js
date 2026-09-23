@@ -165,7 +165,7 @@ function tripShowOrdered(order,clear=true,fit=true){
       ?{color:segColor,weight:4,opacity:.8,lineCap:'round'}
       :{color:segColor,weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(tripLayer);
   }
-  if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32],maxZoom:14});
+  if(fit&&pts.length)mapFitBounds(L.latLngBounds(pts),{padding:[32,32],maxZoom:14}); // GOLF-184
   return pts;
 }
 /* GOLF-33 note: the flat cart list (tripListHTML(), with its ▲/▼ tbMove()
@@ -573,7 +573,7 @@ function tripDrawCart(fit){
   tripClear();
   const order=tripDayOrder();
   const pts=tripShowOrdered(order,false,false);
-  if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32],maxZoom:14});
+  if(fit&&pts.length)mapFitBounds(L.latLngBounds(pts),{padding:[32,32],maxZoom:14}); // GOLF-184
 }
 /* Draws the confirmed cart route AND the not-yet-added discovery
    candidates on the map at once — tripShow()/tripShowOrdered()'s clear/fit
@@ -804,7 +804,7 @@ function tbDrawMap(fit=true){
   const pts1=tripShowOrdered(order,false,false);
   tbDrawTripItems();
   const pts=[...pts1,...pts2];
-  if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32],maxZoom:14});
+  if(fit&&pts.length)mapFitBounds(L.latLngBounds(pts),{padding:[32,32],maxZoom:14}); // GOLF-184
 }
 /* GOLF-131: refresh the Itinerary tab's nearby-course set as the map is
    panned/zoomed, so scouting an area you haven't added a stop to yet

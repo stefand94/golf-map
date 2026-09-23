@@ -54,8 +54,20 @@ document.getElementById('nation-pills').addEventListener('click',e=>{
        (>900px) ignores showMobileMap() entirely. fitBounds is deferred so
        it runs after showMobileMap()'s invalidateSize(). */
     if(typeof showMobileMap==='function')showMobileMap();
-    const pts=C.map((c,i)=>i).filter(i=>courseNation(i)===state.nation).map(i=>[C[i].lat,C[i].lng]);
-    if(pts.length)setTimeout(()=>map.fitBounds(L.latLngBounds(pts),{padding:[28,28]}),0);
+    /* GOLF-184: fit to the courses the map actually DRAWS. Without
+       courseShownOnMap() the South Africa pill fitted all 421 clubs in the
+       data file rather than the 107 zaRanked ones on the map, so the
+       camera sat well away from anything visible. mapFitBounds() parks the
+       fit if #map is still hidden (mobile first load) instead of computing
+       it against a zero-height container — showMobileMap() replays it. */
+    const pts=C.map((c,i)=>i)
+      .filter(i=>courseNation(i)===state.nation&&courseShownOnMap(i))
+      .map(i=>[C[i].lat,C[i].lng]);
+    /* animate:false — picking a country is a jump to somewhere else, not a
+       pan across the current view, and Leaflet only commits an animated
+       zoom on transitionend, which a just-revealed #map doesn't reliably
+       fire (the same reason trip-ui.js prefers fitBounds over flyTo). */
+    if(pts.length)setTimeout(()=>mapFitBounds(L.latLngBounds(pts),{padding:[28,28],animate:false}),0);
   }
 });
 function updateFilterBadges(){
@@ -276,8 +288,15 @@ document.getElementById('sort').addEventListener('change',e=>{state.sort=e.targe
 /* GOLF-84: a pan or zoom fires moveend/zoomend in bursts, and saveState()
    serialises the whole state blob to localStorage each time. The view is
    only a convenience to restore, so coalesce the writes. */
+/* GOLF-184: don't persist a view the map was never really showing. While
+   #map is display:none on mobile its Leaflet size is {x:375, y:0}, and any
+   camera move computed against that box is meaningless — saving it made
+   the bad zoom outlive the page load. mapHasSize() is always true on
+   desktop and once the mobile map has been revealed, so normal pans and
+   zooms are saved exactly as before. */
 let _viewSaveTimer=null;
 map.on('moveend zoomend',()=>{
+  if(typeof mapHasSize==='function'&&!mapHasSize())return;
   clearTimeout(_viewSaveTimer);
   _viewSaveTimer=setTimeout(saveState,400);
 });
@@ -380,7 +399,7 @@ function highlight(i){document.querySelectorAll('.card').forEach(el=>el.classLis
 function fitToResults(){
   const shown=C.map((c,i)=>i).filter(passes);
   if(!shown.length)return;
-  map.fitBounds(L.latLngBounds(shown.map(i=>[C[i].lat,C[i].lng])),{padding:[28,28]});
+  mapFitBounds(L.latLngBounds(shown.map(i=>[C[i].lat,C[i].lng])),{padding:[28,28]});
 }
 document.getElementById('fit-map').addEventListener('click',fitToResults);
 
