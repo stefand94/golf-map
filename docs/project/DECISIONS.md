@@ -4,6 +4,33 @@ _Stable IDs `DEC-nnn`. Record: decision · context · alternatives · reason ·
 date · affected features. Newest first. Full rationale for older calls lives
 in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 
+## DEC-027 — Phones get a map-first layout: full-screen map, bottom sheet, bottom tabs
+
+- **Decision:** on phones (≤ 900 px) the list ↔ map toggle is replaced by
+  a full-screen map with a draggable bottom sheet (peek / half / full)
+  and a bottom tab bar (Discover / Itinerary / Costs). A first-visit
+  frosted-glass country card replaces the bare nation gate. The course
+  filters come back behind a filter icon on every viewport, with no chips
+  on the main screen. The current visual identity is kept.
+- **Context:** owner UI review 2026-09-23 ("unintuitive and masks all the
+  cool functionality"). The toggle means list and map are never seen
+  together, the first screen shows no course, the GOLF-81 gate leaves the
+  map empty with no explanation, and the filters have been unreachable
+  since DEC-002. Spec: `GOLF-185-mobile-redesign.md`.
+- **Alternatives considered:** (a) keep the toggle and fix its worst
+  problems: smaller, but leaves list and map apart, which is the root
+  complaint; (b) fixed split screen (map top ~40%, list below):
+  cramped on small phones, with no way to give Itinerary/Costs the whole
+  screen; (c) quick-filter chips on the map: rejected by the owner in
+  favour of a single filter icon; (d) default to GB, or use geolocation,
+  on first load: owner chose the explicit country card.
+- **Reason:** the map is the product's strongest asset and should always
+  be visible. The bottom sheet is the pattern phone users already know
+  from mainstream map apps, and it keeps today's pane content intact inside it.
+- **Date:** 2026-09-23, owner · **Affects:** GOLF-185a–e, GOLF-184
+  (its map-toggle AC becomes moot), GOLF-136 / GOLF-150 C2 (pill padding
+  retired with the pill), DEC-002.
+
 ## DEC-024 — The Developer session owns `data/courses-*.js`; Daniel owns the source-and-terms question
 
 - **Decision:** for the GOLF-160/161/162/163 chain, **nobody writes
