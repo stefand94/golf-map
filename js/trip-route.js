@@ -631,27 +631,75 @@ function tbDayFallbackPoint(idx){
 function tbEmojiIcon(emoji){
   return L.divIcon({className:'tb-emoji-marker',html:`<span>${emoji}</span>`,iconSize:[24,24],iconAnchor:[12,20],popupAnchor:[0,-18]});
 }
+/* GOLF-182: a hotel booked for N nights is stored as N separate night-items
+   (one per day, js/trip-model.js), so drawing one marker per item put two
+   🏨 icons side by side for a 2-night stay — the owner's Old Course Hotel
+   report. The map wants one icon per *physical hotel*, so the merge key is
+   the hotel's identity (normalised name + point), NOT its stayId: a return
+   visit (A → B → A) is two separate stays sharing no stayId, and still has
+   to be one icon for A. Two different hotels at nearby points keep their own
+   icons because their names differ. Only hotels merge — a repeated 📍 stop is
+   a deliberate per-day entry, and the itinerary, nights and costs are
+   untouched either way (this is a map-display change only). */
+function tbHotelMapKey(name,pt){
+  return String(name||'').trim().toLowerCase().replace(/\s+/g,' ')
+    +'|'+pt.lat.toFixed(4)+'|'+pt.lng.toFixed(4);
+}
+/* "Day 3", "Days 1–3", "Days 1–2, 6" — consecutive nights collapse into a
+   range so a merged icon can still say which days it covers. */
+function tbDayListLabel(days){
+  const ds=[...new Set(days)].sort((a,b)=>a-b),parts=[];
+  for(let i=0;i<ds.length;){
+    let j=i;while(j+1<ds.length&&ds[j+1]===ds[j]+1)j++;
+    parts.push(j>i?`${ds[i]}–${ds[j]}`:String(ds[i]));
+    i=j+1;
+  }
+  return(ds.length>1?'Days ':'Day ')+parts.join(', ');
+}
 function tbDrawTripItems(){
   _tbItemMarkers=[];
+  const hotelSeen=new Map(); // map key -> the one marker entry drawn for it
   tripDays.forEach((d,idx)=>{
     let fallbackN=0;
     tripDayItems(d).forEach(it=>{
       if(it.type==='golf')return; // already drawn as a numbered route stop
       let pt=tripItemPoint(it),approx=false;
+      /* A hotel with no address of its own resolves to the day's fallback
+         point, so key it on that *pre-jitter* point: the jitter offset
+         depends on how many locationless stops that day already placed, and
+         would otherwise give the same hotel a different key each night. */
+      const basePt=pt||tbDayFallbackPoint(idx);
+      let hotelKey=null;
+      if(it.type==='hotel'&&basePt){
+        const key=tbHotelMapKey(tripItemName(it),basePt);
+        const prev=hotelSeen.get(key);
+        if(prev){prev.days.push(idx+1);return;} // same hotel, another night
+        hotelSeen.set(key,null); // claimed; the entry is filled in below
+        hotelKey=key;
+      }
       if(!pt){
-        const fb=tbDayFallbackPoint(idx);
-        if(!fb)return;
+        if(!basePt)return;
         // ~0.004° ≈ 250–450m: enough to separate stacked pins, small enough
         // to still read as "in this town".
         const a=fallbackN++*(Math.PI*2/3);
-        pt={lat:fb.lat+Math.cos(a)*0.004,lng:fb.lng+Math.sin(a)*0.006};
+        pt={lat:basePt.lat+Math.cos(a)*0.004,lng:basePt.lng+Math.sin(a)*0.006};
         approx=true;
       }
       const m=L.marker([pt.lat,pt.lng],{icon:tbEmojiIcon(it.type==='hotel'?'🏨':'📍')})
         .bindTooltip(`${esc(tripItemName(it))} — Day ${idx+1}${approx?' (approximate — no address set)':''}`,{direction:'top'})
         .addTo(tripLayer);
-      _tbItemMarkers.push({m,type:it.type,real:L.latLng(pt.lat,pt.lng)});
+      const entry={m,type:it.type,real:L.latLng(pt.lat,pt.lng)};
+      if(hotelKey){
+        entry.days=[idx+1];entry.name=tripItemName(it);entry.approx=approx;
+        hotelSeen.set(hotelKey,entry);
+      }
+      _tbItemMarkers.push(entry);
     });
+  });
+  // Re-label merged hotels once every night has been counted.
+  hotelSeen.forEach(e=>{
+    if(!e||!e.days||e.days.length<2)return;
+    e.m.setTooltipContent(`${esc(e.name)} — ${tbDayListLabel(e.days)}${e.approx?' (approximate — no address set)':''}`);
   });
   tbDeclutterTripItems();
 }
