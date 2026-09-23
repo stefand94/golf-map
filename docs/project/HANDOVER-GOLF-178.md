@@ -1,7 +1,7 @@
 # Implementation Task
 
 **Feature:** GOLF-178: Costs card toggle between per person and total
-**Status:** READY (owner approved 2026-09-23). Not started, and not queued ahead of 162/167 unless the owner says so.
+**Status:** READY (owner approved 2026-09-23). The owner is assigning a dev.
 **Priority:** P2
 
 ## Objective
