@@ -1,7 +1,7 @@
 # Implementation Task
 
 **Feature:** GOLF-179: Stop overlapping pins on the trip map
-**Status:** IN PROGRESS (owner approved 2026-09-23)
+**Status:** REVIEW — BA signed off 2026-09-23; awaiting owner go-ahead to push
 **Priority:** P3 (visual polish, no data affected; BA's call)
 
 ## Objective
