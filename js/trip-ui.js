@@ -499,17 +499,41 @@ function tbTripTotal(){const b=tripCostBreakdown();return moneyBucketFmt(b.grand
    line row. Group size 1 (or unset) → no second figure (it would just
    repeat the total). Stacked rather than a third column so it can't
    overflow a 360px sidebar. */
-const costPP=(v,cur,gs)=>(gs>1&&v>0)?`<span class="cost-pp">${curSym(cur)}${Math.round(v/gs)} pp</span>`:'';
-// GOLF-174: the same, for a currency bucket — "£735 · €760 pp".
-const costPPBucket=(b,gs)=>(gs>1&&moneyBucketCount(b))?`<span class="cost-pp">${moneyBucketFmt(moneyBucketScale(b,1/gs))} pp</span>`:'';
+/* GOLF-178 supersedes the stacked second figure: the card now shows ONE
+   figure per amount, per person or total, switched by a Per person | Total
+   control (group size > 1 only). Both figures are rendered and CSS shows
+   the one matching .cost-body[data-mode] — so the read-only #share= view
+   can flip mode without re-rendering its map, and both views keep sharing
+   this one path (GOLF-174). Per person = line total ÷ group size, rounded
+   per line; the banner divides the full trip total (never a sum of lines).
+   Not persisted: the card always opens on Per person. */
+let tbCostMode='pp';
+// A real cost that rounds to nothing per head reads "<£1", never "£0".
+const ppAmt=(v,c)=>v>0&&v<0.5?`&lt;${curSym(c)}1`:`${curSym(c)}${Math.round(v)}`;
+const costPPMoney=(v,cur,gs)=>v==null?tbMoney(v,cur):ppAmt(v/gs,cur);
+// GOLF-174 / DEC-026: per currency, never combined — "£368 · €380".
+function costPPBucketFmt(b,gs,emptyCur){
+  const keys=Object.keys(b).filter(c=>b[c]);
+  return keys.length?keys.map(c=>ppAmt(b[c]/gs,c)).join(' · '):moneyBucketFmt(b,emptyCur);
+}
+const costDual=(tot,pp,gs)=>gs>1?`<span class="cv-pp">${pp}</span><span class="cv-tot">${tot}</span>`:tot;
+const costModeNote=(mode,gs)=>mode==='pp'?'Showing cost per person':`Showing total for all ${gs} travellers`;
+function tbCostSetMode(btn,mode){
+  const body=btn.closest('.cost-body');if(!body)return;
+  tbCostMode=mode;
+  body.dataset.mode=mode;
+  body.querySelectorAll('.cost-mode-seg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
+  const note=body.querySelector('.cost-mode-note');
+  if(note)note.textContent=costModeNote(mode,+body.dataset.gs);
+}
 function costGroupHTML(icon,label,total,items,cur){
   const gs=groupSizeFor();
   const rows=items.length
-    ?items.map(x=>`<tr><td>${esc(x.label)}${x.tag?` <span class="wt">${esc(x.tag)}</span>`:''}</td><td>${tbMoney(x.amount,x.cur||cur)}${costPP(x.amount,x.cur||cur,gs)}</td></tr>`).join('')
+    ?items.map(x=>`<tr><td>${esc(x.label)}${x.tag?` <span class="wt">${esc(x.tag)}</span>`:''}</td><td>${costDual(tbMoney(x.amount,x.cur||cur),costPPMoney(x.amount,x.cur||cur,gs),gs)}</td></tr>`).join('')
     :`<tr><td colspan="2" class="hint">Nothing here yet.</td></tr>`;
   return`<details class="cost-group"><summary class="cost-group-summary">
       <span class="cost-group-label"><span class="cost-group-toggle" aria-hidden="true"></span>${icon} ${label}</span>
-      <span class="cost-group-amt">${moneyBucketFmt(total,cur)}${costPPBucket(total,gs)}</span>
+      <span class="cost-group-amt">${costDual(moneyBucketFmt(total,cur),costPPBucketFmt(total,gs,cur),gs)}</span>
     </summary>
     <table class="cost-line-table cost-group-lines">${rows}</table>
   </details>`;
@@ -518,23 +542,43 @@ function costGroupHTML(icon,label,total,items,cur){
    Costs tab and the read-only #share= twin (js/trip-share.js), which used to
    carry a copy of this markup — and so a copy of the single-currency bug.
    fuelRowLabel is the only difference between the two: a live checkbox
-   here, plain text in the shared view. With more than one currency the
-   per-person set goes on its own line, since "£1470 · €1520 · £735 · €760
-   per person" would read as one run of four numbers. */
+   here, plain text in the shared view. GOLF-178: the banner's hero figure
+   follows the mode and carries its unit in words; the other mode's figure
+   sits under it, smaller and labelled, so a screenshot can't pass one off
+   as the other. Always its own line: inline, it wrapped mid-phrase at
+   360px, and on a mixed trip "£1470 · €1520 · £368 · €380 per person"
+   would read as one run of four numbers. */
 function tbCostsBodyHTML(b,fuelRowLabel){
-  const cur=b.cur;
+  const cur=b.cur,gs=b.groupSize,multi=gs>1;
   const mixed=moneyBucketCount(b.grand)>1;
   const golf=b.items.filter(x=>x.cat==='Golf'),stay=b.items.filter(x=>x.cat==='Stay'),stop=b.items.filter(x=>x.cat==='Stop');
-  const pp=b.perPerson&&moneyBucketCount(b.perPerson)
-    ?`<span class="cost-banner-pp${mixed?' is-own-line':''}">${mixed?'':' · '}${moneyBucketFmt(b.perPerson)} per person</span>`:'';
-  return`<div class="cost-banner"><div class="cost-banner-label">Trip total${b.groupSize>1?` · ${b.groupSize} travellers`:''}</div><div class="cost-banner-amount">${moneyBucketFmt(b.grand,cur)}${pp}</div></div>
+  const totTxt=moneyBucketFmt(b.grand,cur);
+  const ppTxt=multi?costPPBucketFmt(b.grand,gs,cur):'';
+  const second=txt=>`<span class="cost-banner-pp is-own-line">${txt}</span>`;
+  /* GOLF-178: a mixed headline never breaks inside an amount, and never
+     leaves a "·" dangling at a line end — each amount is one unbreakable
+     chunk, the separator carried at the head of the next. With two
+     currencies the smaller .is-mixed size keeps it on one line at 360px. */
+  const hero=txt=>txt.split(' · ').map((t,k)=>`<span class="cost-banner-fig">${k?'· ':''}${t}</span>`).join(' ');
+  const amount=multi
+    ?`<span class="cv-pp">${hero(ppTxt)}<span class="cost-banner-unit"> per person</span>${second(`${totTxt} total`)}</span><span class="cv-tot">${hero(totTxt)}<span class="cost-banner-unit"> total</span>${second(`${ppTxt} per person`)}</span>`
+    :totTxt;
+  const mode=tbCostMode==='tot'?'tot':'pp';
+  // Control first, note after: the note's length changes with the mode, so
+  // it must never be what positions the button the viewer just tapped.
+  const control=multi?`<div class="cost-mode-row">
+      <div class="tb-seg cost-mode-seg no-print" role="group" aria-label="Show costs">${[['pp','Per person'],['tot','Total']].map(([k,l])=>
+        `<button type="button" data-mode="${k}" aria-pressed="${mode===k}" onclick="tbCostSetMode(this,'${k}')">${l}</button>`).join('')}</div>
+      <span class="cost-mode-note">${costModeNote(mode,gs)}</span></div>`:'';
+  return`<div class="cost-body"${multi?` data-mode="${mode}" data-gs="${gs}"`:''}>${control}
+    <div class="cost-banner"><div class="cost-banner-label">Trip total${multi?` · ${gs} travellers`:''}</div><div class="cost-banner-amount${mixed?' is-mixed':''}">${amount}</div></div>
     <div class="cost-card cost-groups">
       ${costGroupHTML('⛳','Golf',b.golfTotal,golf,cur)}
       ${costGroupHTML('🏨','Stays',b.stayTotal,stay,cur)}
       ${costGroupHTML('📍','Stops',b.poiTotal,stop,cur)}
-      <div class="cost-fuel-row">${fuelRowLabel}<span class="cost-group-amt">${curSym(cur)}${b.fuelCost.toFixed(0)}${costPP(b.fuelCost,cur,b.groupSize)}</span></div>
+      <div class="cost-fuel-row">${fuelRowLabel}<span class="cost-group-amt">${costDual(`${curSym(cur)}${b.fuelCost.toFixed(0)}`,costPPMoney(b.fuelCost,cur,gs),gs)}</span></div>
     </div>
-    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?' This trip spans more than one currency, so each is totalled separately — nothing is converted.':''}</p>`;
+    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?' This trip spans more than one currency, so each is totalled separately — nothing is converted.':''}</p></div>`;
 }
 function tbCostsTabHTML(){
   return tbCostsBodyHTML(tripCostBreakdown(),
@@ -989,6 +1033,7 @@ function renderTripBuilder(){
     const k=btn.dataset.tab;
     if(k==='discover'){setAppMode('plan');return;}
     tbBuildTab=k;
+    if(k==='cost')tbCostMode='pp'; // GOLF-178: the card always opens on Per person
     if(appMode!=='build')setAppMode('build');
     else{render();} // GOLF-108: render() so the course-pin layer tracks the tab (Costs/Itinerary hide it, Discover shows it)
   }));

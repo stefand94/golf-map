@@ -606,6 +606,15 @@
   /* GOLF-87: a second, smaller per-person figure alongside the hero total. */
   .cost-banner-pp{font:600 var(--fs-title) var(--font-sans);opacity:.85;font-variant-numeric:tabular-nums}
   .cost-banner-pp.is-own-line{display:block}
+  /* GOLF-178: Per person | Total. Both figures are in the markup; the
+     wrapper's data-mode picks which one shows (see tbCostsBodyHTML()). */
+  .cost-body[data-mode="pp"] .cv-tot,.cost-body[data-mode="tot"] .cv-pp{display:none}
+  .cost-banner-unit{font:600 var(--fs-title) var(--font-sans);white-space:nowrap}
+  .cost-banner-fig{white-space:nowrap}
+  .cost-banner-amount.is-mixed{font-size:28px}
+  .cost-mode-row{display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-3)}
+  .cost-mode-seg{flex:0 0 auto;flex-wrap:nowrap}
+  .cost-mode-note{flex:1 1 0;min-width:0;font-size:var(--fs-small);color:var(--stone)}
   .cost-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:var(--sp-2) var(--sp-4);margin-bottom:var(--sp-3)}
   .cost-summary-table,.cost-line-table{width:100%;border-collapse:collapse}
   .cost-summary-table td,.cost-line-table td{padding:var(--sp-3) 0;border-bottom:1px solid var(--line);font-size:var(--fs-small)}
@@ -641,11 +650,6 @@
   .cost-group-toggle::before{content:'+'}
   .cost-group[open] .cost-group-toggle::before{content:'–'}
   .cost-group-amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--ink)}
-  /* GOLF-100: the per-person figure sits under its total, right-aligned,
-     lighter — a second "column" that can't overflow a narrow sidebar. */
-  .cost-pp{display:block;font:400 var(--fs-caption)/1.35 var(--font-sans);color:var(--stone);
-    font-variant-numeric:tabular-nums;white-space:nowrap}
-  .cost-line-table td .cost-pp{text-align:right}
   /* GOLF-97: width:100% is computed against the containing block, not
      "100% minus this element's own margin" — a bare width:100% next to
      margin-left:var(--sp-5) overflowed the card by exactly that margin,

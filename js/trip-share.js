@@ -196,6 +196,7 @@ function renderSharedTrip(){
     tripDays=payload.days.map(d=>({...d,items:d.items.map(it=>({...it}))}));
     groupSize=payload.gs;
     tbIncludeFuel=true;
+    tbCostMode='pp'; // GOLF-178: a shared link always opens on Per person
     const dayCount=tripDays.length;
     const grand=tbTripTotal();
     pane.innerHTML=`<div class="shared-wrap">
