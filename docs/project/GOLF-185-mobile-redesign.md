@@ -135,9 +135,9 @@ at 375 × 812 and 430 × 932. "Desktop" = > 900 px.
 
 ### GOLF-185e — Polish
 
-- [ ] _(Wording pending GOLF-190's open question, 2026-09-24.)_ The add action is labelled "Add to trip" everywhere (buttons in the
+- [ ] The add action is labelled "Add to trip" everywhere (buttons in the
       popup/card, search results, Nearby lists). Renaming the "Your
-      wishlist" section itself is out of scope (owner, 2026-09-23).
+      wishlist" section is renamed under GOLF-190 (trip = shortlist + itinerary).
 - [ ] Map attribution is compact on phones (e.g. collapsed behind an ⓘ),
       still present and legible when opened (licence obligation).
 - [ ] No map control overlaps the course card or the country card.

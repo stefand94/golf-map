@@ -91,7 +91,7 @@ country is picked, show a few ready-made lists, e.g. "Top 100 in GB",
 "Links under £100", "Pay & play gems". Needs owner input on which lists,
 and a data check that the fields behind them are filled well enough.
 
-## GOLF-190 — Shortlist → Itinerary: one model, consistent names · P1 · DISCOVERY
+## GOLF-190 — Shortlist → Itinerary: one model, consistent names · P1 · READY
 
 **Problem:** "Plan a trip" turns into "My trip"; Discover has "Your
 wishlist"; buttons say "+ Wishlist" or "+ Add to trip"; "Build itinerary →"
@@ -101,10 +101,21 @@ moves between them. It's unclear whether the wishlist *is* the trip.
 courses you fancy, then an **itinerary** of scheduled days. Name them the
 same way everywhere: buttons, headings, empty states, share view, toasts.
 
-**OPEN QUESTION:** GOLF-185e (2026-09-23) set the add button to "Add to
-trip". Under this model the button adds to the *shortlist*. Is the button
-"Add to shortlist", or does "trip" mean shortlist + itinerary together? The
-answer rewrites 185e's first AC.
+**Answered (owner, 2026-09-24):** the button stays **"Add to trip"**.
+A *trip* is the shortlist plus the itinerary together; adding a course puts
+it on the trip's shortlist, unscheduled until it is placed on a day.
+
+**AC**
+- [ ] The whole collection is called the **trip** everywhere; its two parts
+      are the **shortlist** (courses not yet on a day) and the
+      **itinerary** (scheduled days). "Wishlist" no longer appears anywhere.
+- [ ] Every add button says "Add to trip", and adding lands the course on the
+      shortlist.
+- [ ] The page title reads the same before and after the first add (no
+      "Plan a trip" → "My trip" switch); the trip's own name, if set, is
+      what shows.
+- [ ] Headings, empty states, toasts and the shared view use the same three
+      words: trip, shortlist, itinerary.
 
 ## GOLF-191 — The map follows the trip · P2 · READY
 
