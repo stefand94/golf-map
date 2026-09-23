@@ -289,3 +289,83 @@ stopwords golf/club/course/links/country/the/estate/resort/…), require every
 token of the shorter name to appear in the longer one plus one token of ≥4
 characters — or an exact normalised equality, which is what rescues short
 names like "Rye".
+
+---
+
+# GOLF-183 deliverable 2 — the 13-course coordinate fix
+
+**Applied 2026-09-24.** Owner picked option 1: fix exactly the 13 named
+courses and nothing else. Every other row in deliverable 1 — the 1–1.5 km
+links tail, the sub-1 km "outside outline" rows, the whole of table D —
+was left alone.
+
+- **Source:** OpenStreetMap only (DEC-023). Geometry read from the OSM
+  element API (`api.openstreetmap.org/api/0.6/<element>/full.json`) and
+  Overpass; names cross-checked with Nominatim. No ORS geocoding.
+- **Rule:** prefer a `golf=clubhouse` / clubhouse building **inside** the
+  course outline, confirmed by point-in-polygon; otherwise the outline's
+  area-weighted centroid. Where neither existed, the course was left
+  unchanged — no coordinate here was inferred from anything but OSM.
+- **How it was applied:** `lat`/`lng` patched **in place**. No id touched,
+  no array rebuilt, no record reordered (GOLF-163). Each fixed record also
+  gains `coordSrc:"osm"` and `osm:"<element>"`, the existing ODbL
+  attribution trail documented in `SCHEMA.md` — flagged here because it is
+  two fields beyond a bare lat/lng change.
+- **Checks:** `test_data.js`, `check_js.js`, `test_course_ids.js` all pass
+  (879 courses, order unmoved).
+
+## Fixed — 11 courses
+
+| Nat | Course | id | Old lat,lng | New lat,lng | Moved | OSM element | From |
+|---|---|---|---|---|---|---|---|
+| ZA | Gary Player Country Club (Sun City) | `gary-player-country-club-sun-city-9076` | -25.2025, 27.0527 | -25.339780, 27.105667 | 16.17 km | [way/1516928087](https://www.openstreetmap.org/way/1516928087) | outline centroid |
+| ZA | Lost City Golf Course (Sun City) | `lost-city-golf-course-sun-city-e374` | -25.2025, 27.0527 | -25.335513, 27.089799 | 15.25 km | [way/182253893](https://www.openstreetmap.org/way/182253893) | outline centroid |
+| ZA | Wedgewood | `wedgewood-746c` | -33.7139244, 25.5207367 | -33.904477, 25.389916 | 24.39 km | [way/340684668](https://www.openstreetmap.org/way/340684668) | outline centroid |
+| ZA | Arabella Golf Club | `arabella-golf-club-b5b9` | -34.3297653, 19.0385838 | -34.316684, 19.130127 | 8.53 km | [way/49188988](https://www.openstreetmap.org/way/49188988) | outline centroid |
+| ZA | Pretoria Country Club | `pretoria-country-club-038f` | -25.760846, 28.199851 | -25.782639, 28.254092 | 5.95 km | [way/4253236](https://www.openstreetmap.org/way/4253236) | outline centroid |
+| GB | The Glen (North Berwick) | `the-glen-north-berwick-37d0` | 56.058592, -2.689567 | 56.057215, -2.703082 | 0.85 km | [way/126103264](https://www.openstreetmap.org/way/126103264) | clubhouse |
+| IE | Concra Wood | `concra-wood-golf-club-9b90` | 54.118866, -6.731274 | 54.109249, -6.701423 | 2.22 km | [way/721962532](https://www.openstreetmap.org/way/721962532) | outline centroid |
+| GB | Spey Valley | `spey-valley-42b0` | 57.1882057, -3.833783 | 57.208520, -3.800986 | 3.00 km | [relation/18996518](https://www.openstreetmap.org/relation/18996518) | outline centroid |
+| ZA | The Club at Steyn City | `the-club-at-steyn-city-d5fe` | -25.98, 27.97 | -25.971900, 27.991212 | 2.30 km | [way/75136011](https://www.openstreetmap.org/way/75136011) | manual lookup → centroid |
+| ZA | CCJ Rocklands | `ccj-rocklands-1fdc` | -26.0499477, 28.076664 | -26.182360, 28.010855 | 16.12 km | [way/46868985](https://www.openstreetmap.org/way/46868985) | manual lookup → centroid |
+| ZA | CCJ Woodmead | `ccj-woodmead-64df` | -26.0499477, 28.076664 | -26.050448, 28.079147 | 0.25 km | [way/1092337728](https://www.openstreetmap.org/way/1092337728) | clubhouse |
+
+### Per-course notes
+
+- **Gary Player Country Club (Sun City)** — `leisure=golf_course` “The Gary Player Golf Course and Country Club”. No clubhouse mapped.
+- **Lost City Golf Course (Sun City)** — `leisure=golf_course` “Lost City Golf Course”. No clubhouse mapped.
+- **Wedgewood** — `leisure=golf_course` “Wedgewood Park Country Club”.
+- **Arabella Golf Club** — `leisure=golf_course` “Arabella Country Estate”.
+- **Pretoria Country Club** — **Not** the element deliverable 1 suggested — that was way/302906986 “Pretoria West Golf”, a different club. way/4253236 carries the name exactly.
+- **The Glen (North Berwick)** — Building named “The Glen Golf Club”, confirmed inside the course outline (way/144045421) by point-in-polygon. The old point was that outline's bbox centre — on the course, but mid-links rather than at the clubhouse.
+- **Concra Wood** — `leisure=golf_course` “Concra Wood Golf Club”. No clubhouse mapped.
+- **Spey Valley** — `leisure=golf_course` “Macdonald Spey Valley Championship Golf Course”. A `golf=clubhouse` way (758176119) sits at the resort ~1.2 km south-west but is **outside** the course outline, so the rule's centroid fallback applies. The old point was on the 9-hole academy course (way/798492122), not the championship course.
+- **The Club at Steyn City** — No OSM feature carries the club's name. Five unnamed `leisure=golf_course` ways (721837174, 721913281, 722150940, 722150941, 722150942) sit inside the landuse named “Steyn City”; all five confirmed inside by point-in-polygon, and Dainfern's course confirmed outside. New point is their area-weighted centroid. `osm:` records the containing landuse, since the point comes from the set, not one way. The old point was outside the Steyn City boundary entirely.
+- **CCJ Rocklands** — OSM maps CCJ's two campuses as “Country Club Johannesburg - Woodmead” and “- Auckland Park”; nothing in OSM is tagged “Rocklands”. Woodmead is taken by the other record, so this is the Auckland Park campus by elimination within the two-campus framing. **Worth an eyeball** — it is the one row resting on that reasoning rather than on a name match.
+- **CCJ Woodmead** — `golf=clubhouse`, confirmed inside the Woodmead course outline (way/4342175). The old shared point was already inside that outline — this is a 250 m refinement, and the real fix here is that Rocklands no longer sits on top of it.
+
+## Left unchanged — 2 courses
+
+| Nat | Course | id | Current lat,lng | Why |
+|---|---|---|---|---|
+| ZA | Olivewood | `olivewood-340f` | -32.83, 28.1 | No OSM feature found. |
+| GB | The Duke's Course, St Andrews | `the-duke-s-course-st-andrews-8d81` | 56.319416, -2.844397 | Checked by hand and **not off**. |
+
+### Why, in full
+
+- **Olivewood** — No OSM feature found. Overpass name searches across South Africa and Nominatim both return nothing for “Olivewood” as a golf course (only an unrelated Pretoria shop and an Ekurhuleni residential landuse). Left unchanged rather than guessed. Still a 1 dp placeholder.
+- **The Duke's Course, St Andrews** — Checked by hand and **not off**. The point is the centre of way/411433333, a `leisure=golf_course` at Craigtoun, St Andrews — the right site. Deliverable 1's 3.6 km flag came from a bad name match against St Andrews Links Golf Academy. Note the OSM feature is named “Craigtoun Course” and tagged `operator=St Andrews Links Trust`; the naming question is a data-quality item for the club record, not a coordinate error. The record already carried `coordSrc:"osm"`/`osm:"way/411433333"` from GOLF-161, so this coordinate was OSM-sourced before this pass and is unchanged by it.
+
+## What this does and doesn't settle
+
+Sun City is fixed: its two courses were on one rounded point ~15 km north
+of the resort and are now on their own outlines, 1.8 km apart. CCJ's two
+campuses are no longer stacked on one pin. Steyn City, Wedgewood, Arabella
+and Pretoria CC all move from placeholders onto real course land.
+
+Still open after this pass: **Olivewood** is the last confirmed 1 dp
+placeholder in the data and now needs a source outside OSM (the club's own
+site, or an OSM edit). Everything else in deliverable 1 stays as reported —
+in particular table D's 69 courses with no name-matching OSM feature are
+*unassessed*, not *wrong*, and nothing in this pass touched them.
+
