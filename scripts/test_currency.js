@@ -60,6 +60,7 @@ vm.runInContext([
 ].join('\n'), sandbox, { filename: 'util-currency-slice' });
 vm.runInContext(grabFn(UTIL_SRC, 'courseCurrency'), sandbox, { filename: 'util-courseCurrency' });
 vm.runInContext([
+  grabConst(GEO_SRC, 'MONEY_JOIN'),
   grabFn(GEO_SRC, 'moneyBucketAdd'),
   grabFn(GEO_SRC, 'moneyBucketFmt'),
   grabFn(GEO_SRC, 'moneyBucketScale'),
@@ -135,7 +136,7 @@ ok('AUD and NZD share a display symbol (the whole reason codes must differ)',
     buckets.NZD === 150, buckets);
   const fmt = moneyBucketFmt(buckets);
   ok('formats as two separate "$" figures, never a combined "$250"',
-    fmt === '$100 · $150' || fmt === '$150 · $100', fmt);
+    fmt === '$100 + $150' || fmt === '$150 + $100', fmt);
   ok('never renders the wrong-arithmetic combined figure',
     !fmt.includes('$250'), fmt);
 })();

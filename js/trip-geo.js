@@ -434,7 +434,7 @@ function tripStayCurrency(d,it){
   return c||tripDayCurrency(d);
 }
 /* A running total bucketed by currency CODE — {GBP:320,EUR:150} — plus a
-   few small helpers to add to it and to render it as "£320 · €150".
+   few small helpers to add to it and to render it as "£320 + €150".
    GOLF-169: buckets must key on the real currency code, not the symbol —
    two dollar nations (AUD/NZD) share "$" and would otherwise land in the
    same bucket and silently sum. The symbol is derived only at format
@@ -447,13 +447,16 @@ function moneyBucketAdd(buckets,cur,amt){
    → '—' (a day header with nothing priced); a trip TOTAL passes its
    primary currency instead so an empty trip still reads "£0", as it did
    pre-GOLF-174. */
+/* DEC-026 (amended 2026-09-23): amounts in different currencies join with
+   "+" — a "·" separates different kinds of information, never money. */
+const MONEY_JOIN=' + ';
 function moneyBucketFmt(buckets,emptyCur){
   const keys=Object.keys(buckets).filter(c=>buckets[c]);
   if(!keys.length)return emptyCur?`${curSym(emptyCur)}0`:'—';
-  return keys.map(c=>`${curSym(c)}${buckets[c].toFixed(0)}`).join(' · ');
+  return keys.map(c=>`${curSym(c)}${buckets[c].toFixed(0)}`).join(MONEY_JOIN);
 }
 /* GOLF-174 / DEC-026: per person across currencies is each bucket divided
-   on its own — "£160 · €75 pp" — never a combined figure. */
+   on its own — "£160 + €75" — never a combined figure. */
 function moneyBucketScale(buckets,k){
   const out={};
   Object.keys(buckets).forEach(c=>{out[c]=buckets[c]*k;});

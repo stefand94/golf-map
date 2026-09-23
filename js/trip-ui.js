@@ -210,7 +210,7 @@ function tripDayLegs(dayIdx){
    labelled the result with the day's *majority* currency, so £100 + €120
    rendered as "£220": wrong arithmetic wearing the wrong symbol. Return a
    money bucket instead ({'£':100,'€':120}) and let moneyBucketFmt() render
-   it as "£100 · €120". Each leg's own `cur` comes from
+   it as "£100 + €120". Each leg's own `cur` comes from
    tripItemPriceDetail(); tripDayLegs() excludes only drives, so hotels and
    POIs are bucketed too. Single-currency days are unaffected — one bucket
    formats to exactly the string tbMoney() produced before. */
@@ -450,7 +450,7 @@ function tripCostBreakdown(){
   /* GOLF-174 / DEC-026: every total is a {[£|€|R]:amount} bucket, never a
      scalar — a trip mixing £ golf with € stays used to add the two and
      label the sum £. Each bucket is seeded with the primary currency so it
-     always renders first ("£1470 · €1520"); moneyBucketFmt() drops the
+     always renders first ("£1470 + €1520"); moneyBucketFmt() drops the
      zero. Fuel has no currency of its own (FUEL_COST_PER_MILE is £/mile)
      and keeps pricing in the primary one, as before. */
   const cur=tripPrimaryCurrency();
@@ -511,10 +511,10 @@ let tbCostMode='pp';
 // A real cost that rounds to nothing per head reads "<£1", never "£0".
 const ppAmt=(v,c)=>v>0&&v<0.5?`&lt;${curSym(c)}1`:`${curSym(c)}${Math.round(v)}`;
 const costPPMoney=(v,cur,gs)=>v==null?tbMoney(v,cur):ppAmt(v/gs,cur);
-// GOLF-174 / DEC-026: per currency, never combined — "£368 · €380".
+// GOLF-174 / DEC-026: per currency, never combined — "£368 + €380".
 function costPPBucketFmt(b,gs,emptyCur){
   const keys=Object.keys(b).filter(c=>b[c]);
-  return keys.length?keys.map(c=>ppAmt(b[c]/gs,c)).join(' · '):moneyBucketFmt(b,emptyCur);
+  return keys.length?keys.map(c=>ppAmt(b[c]/gs,c)).join(MONEY_JOIN):moneyBucketFmt(b,emptyCur);
 }
 const costDual=(tot,pp,gs)=>gs>1?`<span class="cv-pp">${pp}</span><span class="cv-tot">${tot}</span>`:tot;
 const costModeNote=(mode,gs)=>mode==='pp'?'Showing cost per person':`Showing total for all ${gs} travellers`;
@@ -546,7 +546,7 @@ function costGroupHTML(icon,label,total,items,cur){
    follows the mode and carries its unit in words; the other mode's figure
    sits under it, smaller and labelled, so a screenshot can't pass one off
    as the other. Always its own line: inline, it wrapped mid-phrase at
-   360px, and on a mixed trip "£1470 · €1520 · £368 · €380 per person"
+   360px, and on a mixed trip "£1470 + €1520 · £368 + €380 per person"
    would read as one run of four numbers. */
 function tbCostsBodyHTML(b,fuelRowLabel){
   const cur=b.cur,gs=b.groupSize,multi=gs>1;
@@ -556,10 +556,10 @@ function tbCostsBodyHTML(b,fuelRowLabel){
   const ppTxt=multi?costPPBucketFmt(b.grand,gs,cur):'';
   const second=txt=>`<span class="cost-banner-pp is-own-line">${txt}</span>`;
   /* GOLF-178: a mixed headline never breaks inside an amount, and never
-     leaves a "·" dangling at a line end — each amount is one unbreakable
+     leaves a "+" dangling at a line end — each amount is one unbreakable
      chunk, the separator carried at the head of the next. With two
      currencies the smaller .is-mixed size keeps it on one line at 360px. */
-  const hero=txt=>txt.split(' · ').map((t,k)=>`<span class="cost-banner-fig">${k?'· ':''}${t}</span>`).join(' ');
+  const hero=txt=>txt.split(MONEY_JOIN).map((t,k)=>`<span class="cost-banner-fig">${k?'+ ':''}${t}</span>`).join(' ');
   const amount=multi
     ?`<span class="cv-pp">${hero(ppTxt)}<span class="cost-banner-unit"> per person</span>${second(`${totTxt} total`)}</span><span class="cv-tot">${hero(totTxt)}<span class="cost-banner-unit"> total</span>${second(`${ppTxt} per person`)}</span>`
     :totTxt;
