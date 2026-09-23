@@ -632,6 +632,7 @@ function tbEmojiIcon(emoji){
   return L.divIcon({className:'tb-emoji-marker',html:`<span>${emoji}</span>`,iconSize:[24,24],iconAnchor:[12,20],popupAnchor:[0,-18]});
 }
 function tbDrawTripItems(){
+  _tbItemMarkers=[];
   tripDays.forEach((d,idx)=>{
     let fallbackN=0;
     tripDayItems(d).forEach(it=>{
@@ -646,12 +647,78 @@ function tbDrawTripItems(){
         pt={lat:fb.lat+Math.cos(a)*0.004,lng:fb.lng+Math.sin(a)*0.006};
         approx=true;
       }
-      L.marker([pt.lat,pt.lng],{icon:tbEmojiIcon(it.type==='hotel'?'🏨':'📍')})
+      const m=L.marker([pt.lat,pt.lng],{icon:tbEmojiIcon(it.type==='hotel'?'🏨':'📍')})
         .bindTooltip(`${esc(tripItemName(it))} — Day ${idx+1}${approx?' (approximate — no address set)':''}`,{direction:'top'})
         .addTo(tripLayer);
+      _tbItemMarkers.push({m,type:it.type,real:L.latLng(pt.lat,pt.lng)});
     });
   });
+  tbDeclutterTripItems();
 }
+/* GOLF-179: zoomed out, a 🏨/📍 icon drawn on its true point could sit
+   under a course flag (the owner's Portrush case) or under another icon.
+   Only the icon's DRAWN position changes: course pins never move, route
+   lines keep using the real point, and the marker (tooltip and all) is the
+   same object, just re-positioned. A moved icon gets a thin leader line and
+   a small dot on its real spot. */
+let _tbItemMarkers=[],_tbDeclutterLayer=null;
+const TB_DECLUTTER_MAX_PX=48; // ~two icon widths; beyond that the icon hides
+// Pixel box an icon occupies when its anchor sits at layer point p.
+function markerIconRect(icon,p){
+  const o=icon.options,sz=L.point(o.iconSize||[0,0]),an=L.point(o.iconAnchor||[sz.x/2,sz.y/2]);
+  return{l:p.x-an.x,t:p.y-an.y,r:p.x-an.x+sz.x,b:p.y-an.y+sz.y};
+}
+const rectsHit=(a,b)=>a.l<b.r&&b.l<a.r&&a.t<b.b&&b.t<a.b;
+/* The layout itself, map-agnostic so another map (e.g. the shared view)
+   could reuse it. fixed: rects that never move (course pins). items:
+   [{icon,p}] in priority order, p = real layer point. Returns, per item,
+   the layer point to draw at, or null to hide. Each item takes the
+   nearest free spot within maxPx — so earlier (higher-priority) items get
+   the nearer spots and later ones are the first to run out of room. */
+function declutterLayout(fixed,items,maxPx){
+  const placed=fixed.slice();
+  const STEPS=[0,12,18,24,30,36,42,48].filter(d=>d<=maxPx);
+  const ANGLES=[0,180,-45,-135,45,135,-90,90,-22,-158,22,158,-68,-112,68,112].map(a=>a*Math.PI/180);
+  return items.map(({icon,p})=>{
+    for(const d of STEPS){
+      for(const a of(d?ANGLES:[0])){
+        const q=L.point(p.x+Math.cos(a)*d,p.y+Math.sin(a)*d);
+        const r=markerIconRect(icon,q);
+        if(!placed.some(o=>rectsHit(o,r))){placed.push(r);return q;}
+      }
+    }
+    return null;
+  });
+}
+function tbDeclutterTripItems(){
+  if(!_tbItemMarkers.length)return;
+  if(_tbDeclutterLayer)_tbDeclutterLayer.clearLayers();
+  else _tbDeclutterLayer=L.layerGroup();
+  if(!tripLayer.hasLayer(_tbDeclutterLayer))_tbDeclutterLayer.addTo(tripLayer);
+  const mine=new Set(_tbItemMarkers.map(x=>x.m));
+  const fixed=[];
+  tripLayer.eachLayer(l=>{
+    if(l instanceof L.Marker&&!mine.has(l)&&l.options.icon)
+      fixed.push(markerIconRect(l.options.icon,map.latLngToLayerPoint(l.getLatLng())));
+  });
+  const order=[..._tbItemMarkers].sort((a,b)=>(a.type==='hotel'?0:1)-(b.type==='hotel'?0:1)); // stable: hotels first
+  const spots=declutterLayout(fixed,order.map(x=>({icon:x.m.options.icon,p:map.latLngToLayerPoint(x.real)})),TB_DECLUTTER_MAX_PX);
+  order.forEach((x,k)=>{
+    const q=spots[k];
+    if(!q){tripLayer.removeLayer(x.m);return;}
+    if(!tripLayer.hasLayer(x.m))x.m.addTo(tripLayer);
+    const at=map.layerPointToLatLng(q),moved=q.distanceTo(map.latLngToLayerPoint(x.real))>0.5;
+    x.m.setLatLng(moved?at:x.real);
+    if(moved){
+      L.polyline([x.real,at],{color:'#1B2733',weight:1.5,opacity:.6,interactive:false}).addTo(_tbDeclutterLayer);
+      L.circleMarker(x.real,{radius:3,color:'#fff',weight:1,fillColor:'#1B2733',fillOpacity:1,interactive:false}).addTo(_tbDeclutterLayer);
+    }
+  });
+}
+/* Pixel overlap only changes with zoom (a pan shifts everything equally).
+   The declutter layer doubles as the "still drawn" flag: tripClear() drops
+   it, so a stale _tbItemMarkers list can never re-add old icons. */
+map.on('zoomend',()=>{if(_tbDeclutterLayer&&tripLayer.hasLayer(_tbDeclutterLayer))tbDeclutterTripItems();});
 /* GOLF-131: `fit` defaults true (every existing caller wants the usual
    fit-to-bounds redraw) — the pan/zoom listener below passes false so a
    live nearby-course refresh doesn't fight the user's own pan by
