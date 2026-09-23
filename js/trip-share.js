@@ -252,13 +252,33 @@ function renderSharedMap(){
   L.control.layers(sharedBases,null,{position:'topright'}).addTo(m);
   const order=tripDayOrder();
   const pts=[];
-  order.forEach((stop,idx)=>{
+  /* GOLF-182: the main map merges a multi-night stay into one 🏨 icon
+     (tbDrawTripItems, js/trip-route.js); the shared map has to agree, or a
+     2-night stay shared with a friend still shows two dots. Same identity
+     key (name + point, not stayId), so a return visit A → B → A is one dot
+     for A. Only the DRAWN markers are merged and renumbered — `order` itself
+     is untouched below, so the route line, the drive legs it was computed
+     from, and the itinerary and costs beneath the map are all unchanged. */
+  const hotelDot=new Map();
+  let nDrawn=0;
+  order.forEach(stop=>{
     if(stop.lat==null||stop.lng==null)return;
+    pts.push([stop.lat,stop.lng]);
+    const key=stop.type==='hotel'?tbHotelMapKey(stop.name,stop):null;
+    if(key){
+      const prev=hotelDot.get(key);
+      if(prev){
+        prev.days.push(stop.day);
+        prev.m.setTooltipContent(`${prev.n}. ${esc(stop.name||'')} — ${tbDayListLabel(prev.days.filter(d=>d!=null))}`);
+        return;
+      }
+    }
     const day=stop.day;
     const fill=day!=null?TRIP_DAY_COLORS[(day-1)%TRIP_DAY_COLORS.length]:'#E6B400';
-    L.circleMarker([stop.lat,stop.lng],{radius:8,color:'#1B2733',weight:2,fillColor:fill,fillOpacity:1})
-      .bindTooltip(`${idx+1}. ${esc(stop.name||'')}`,{direction:'top'}).addTo(m);
-    pts.push([stop.lat,stop.lng]);
+    const n=++nDrawn;
+    const mk=L.circleMarker([stop.lat,stop.lng],{radius:8,color:'#1B2733',weight:2,fillColor:fill,fillOpacity:1})
+      .bindTooltip(`${n}. ${esc(stop.name||'')}`,{direction:'top'}).addTo(m);
+    if(key)hotelDot.set(key,{m:mk,n,days:[stop.day]});
   });
   for(let k=1;k<order.length;k++){
     const a=order[k-1],b=order[k];
