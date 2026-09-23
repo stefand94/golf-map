@@ -128,23 +128,20 @@ check('HIT reflects an allowed origin correctly',
   `acao=${r.headers.get('Access-Control-Allow-Origin')}`);
 
 // ── 6. an upstream failure must never be cached
+/* GOLF-156 removed mode:'heritage-pois', which this case used to exercise;
+   the hotels picker is the same Overpass + edge-cache path. Its own point
+   (Glasgow) so nothing cached above or below can mask the result. */
 overpassStatus = 521;
 overpassCalls = 0;
-r = await call({ mode: 'heritage-pois', point: [-2.8021, 56.3423], radius: 3000 });
+r = await call({ mode: 'hotels', point: [-4.2518, 55.8642], radius: 3000 });
 check('upstream failure returns an error', r.status === 502, `status=${r.status}`);
 overpassCalls = 0;
-r = await call({ mode: 'heritage-pois', point: [-2.8021, 56.3423], radius: 3000 });
+r = await call({ mode: 'hotels', point: [-4.2518, 55.8642], radius: 3000 });
 check('failure was NOT cached (retried upstream)', overpassCalls >= 1 && r.headers.get('X-POI-Cache') === null,
   `calls=${overpassCalls} hdr=${r.headers.get('X-POI-Cache')}`);
 overpassStatus = 200;
 
-// ── 7. heritage + hotels modes cache on their own keys
-overpassCalls = 0;
-await call({ mode: 'heritage-pois', point: [-2.8021, 56.3423], radius: 3000 });
-const afterFirst = overpassCalls;
-r = await call({ mode: 'heritage-pois', point: [-2.8021, 56.3423], radius: 3000 });
-check('heritage-pois caches', r.headers.get('X-POI-Cache') === 'HIT' && overpassCalls === afterFirst,
-  `hdr=${r.headers.get('X-POI-Cache')} calls=${overpassCalls}`);
+// ── 7. the hotels picker caches on its own key
 overpassCalls = 0;
 await call({ mode: 'hotels', point: [-2.8021, 56.3423], radius: 3000 });
 r = await call({ mode: 'hotels', point: [-2.8021, 56.3423], radius: 3000 });
