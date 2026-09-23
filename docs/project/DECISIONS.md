@@ -494,6 +494,8 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 
 ## DEC-011 — Every deploy wipes every visitor's saved trip data (no migration, no warning)
 
+- **Reaffirmed 2026-09-23 (owner, closing GOLF-165):** keep the wipe for now. It retires when accounts land (GOLF-104, likely Google sign-in), which is when trips become worth keeping. This also means the golftripper.uk move needs no trip migration.
+
 - **Decision:** on every deploy to `main`, all `localStorage` trip state
   (trips, itinerary days/items, wishlist, filters) is cleared for **every**
   visitor on their next load — not just the owner's own browser. No
