@@ -63,6 +63,7 @@ Screenshot the current Costs card for a group of 4 in two cases: a single-curren
 - Zero-build, global-scope scripts. The live Costs tab and the shared view must keep sharing one rendering path.
 - Do not touch the owner's browser localStorage. His trip data is live. Test in a separate profile or the in-app browser.
 - Commit only after the BA has signed off the screenshots.
+- **The working tree contains another ticket's uncommitted files: GOLF-162, which is parked** (`scripts/fetch_*_golf_clubs.py`, `scripts/fetch_dotgolf_clubs.py`, `scripts/diff_dotgolf_rewrite.py`, `scripts/README.md`, `docs/country-onboarding.md`). Do not commit, delete or revert them. Stage only your own files; never use `git add -A` or `git commit -a`.
 
 ## Definition of done
 
