@@ -34,8 +34,8 @@ This picks up from `HANDOVER-2026-09-22-ba-session-4.md`. The board in `docs/pro
 
 ## Waiting on Stefan
 
-1. A stop with no price yet makes the Costs card's Stops row read "£0". Is that fine, or should it say "TBC"? (Asked; no answer yet.)
-2. When `noindex` comes off (GOLF-129 / DEC-022). Not yet: the link is private.
+1. ~~"£0" vs "TBC" for an unpriced stop~~. **Answered 2026-09-23: "£0" is fine.**
+2. ~~When `noindex` comes off~~. **Answered: "when I say so".** Everything gated on that is collected in GOLF-180.
 
 ## The dev session
 

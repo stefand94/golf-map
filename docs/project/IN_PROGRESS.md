@@ -6,7 +6,7 @@ verified._
 
 ## In flight
 
-Nothing.
+Nothing. (GOLF-35B / GOLF-102 P2 shipped 2026-09-23 — see BACKLOG "Recently completed".)
 
 ## In review
 
