@@ -136,7 +136,7 @@ function tripShow(items,anchor,clear=true,fit=true,anchorRingOnly=false){
     }
     pts.push(all);
   }
-  if(fit&&pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[32,32],maxZoom:14});
+  if(fit&&pts.length)mapFitBounds(L.latLngBounds(pts),{padding:[32,32],maxZoom:14}); // GOLF-184
   return pts;
 }
 

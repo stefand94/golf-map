@@ -1021,7 +1021,7 @@ function renderTripBuilder(){
       /* fitBounds, not flyToBounds — this app's own testing notes (see the
          plan file) document flyTo's animation stalling in at least one
          environment; fitBounds jumps instantly and is never unreliable. */
-      if(pts.length)map.fitBounds(L.latLngBounds(pts),{padding:[28,28]});
+      if(pts.length)mapFitBounds(L.latLngBounds(pts),{padding:[28,28]}); // GOLF-184
     }
   });
   const shareBtn=document.getElementById('tb-share-trip');

@@ -19,6 +19,45 @@
 const startView=restoredView||{center:[54.3,-4.2],zoom:5};
 map=L.map('map',{scrollWheelZoom:true,zoomControl:false,maxZoom:19}).setView(startView.center,startView.zoom);
 L.control.zoom({position:'bottomright'}).addTo(map);
+
+/* GOLF-184: on mobile the map container is display:none behind
+   body.mob-list until showMobileMap() runs, so on a first-ever load
+   Leaflet's cached size is {x:375, y:0}. fitBounds() can't derive a zoom
+   from a zero-height box, so it settled on the caller's maxZoom (14) —
+   the map opened on one street with no courses in sight, and picking a
+   nation pill landed the same way. Worse, GOLF-84's moveend/zoomend
+   listener (js/explore.js) then persisted that zoom, so the NEXT visit
+   started there too.
+
+   Every fit now goes through mapFitBounds(). When the container has no
+   usable size the fit is parked instead of computed wrongly, and
+   showMobileMap() replays it straight after invalidateSize(), when the
+   map finally has real dimensions. Desktop never has a hidden #map, so
+   mapHasSize() is true there and this is a pass-through. */
+function mapHasSize(){
+  try{const s=map.getSize();return s.x>=40&&s.y>=40;}catch(e){return false;}
+}
+let _pendingFit=null;
+function mapFitBounds(bounds,opts){
+  if(!bounds)return;
+  if(!mapHasSize()){_pendingFit={bounds:bounds,opts:opts};return;}
+  _pendingFit=null;
+  map.fitBounds(bounds,opts);
+}
+/* Only the most recent parked fit is replayed — an unsized map may have
+   been asked to fit several times (nation pill, then tbDrawMap), and the
+   last one is the one the visitor is about to see. */
+function mapReplayPendingFit(){
+  if(!_pendingFit)return;
+  if(!mapHasSize()){_pendingFit=null;return;}
+  const p=_pendingFit;_pendingFit=null;
+  /* animate:false — the camera the visitor is about to see was never on
+     screen, so there is nothing to animate FROM, and Leaflet's zoom
+     animation only commits the new zoom on transitionend, which a freshly
+     un-hidden container doesn't reliably fire. Jump instead; the app's own
+     testing notes (js/trip-ui.js) already prefer that for the same reason. */
+  map.fitBounds(p.bounds,Object.assign({},p.opts,{animate:false}));
+}
 /* GOLF-108: the clustered "all courses" pin layer lives in its own pane
    below the overlay (route polylines, z400) and marker (trip stops, z600)
    panes. When it's shown behind an open trip — Discover always, Itinerary
@@ -422,7 +461,15 @@ function showMobileMap(noFit){
      display:none (e.g. right after tbSelect() on mobile, still on the
      list view) computed against a stale/zero-size container — re-fit
      once the map is actually visible and sized. */
-  setTimeout(()=>{map.invalidateSize();if(tripBuilderOn&&!noFit)tbDrawMap();},0);
+  setTimeout(()=>{
+    map.invalidateSize();
+    /* GOLF-184: the map is only now sized, so any fit that was parked
+       while it was hidden can finally be computed properly. One more tick:
+       invalidateSize() starts its own pan, and a fitBounds issued inside
+       that animation is swallowed. */
+    setTimeout(mapReplayPendingFit,0);
+    if(tripBuilderOn&&!noFit)tbDrawMap();
+  },0);
   /* noFit: the caller is about to centre on one thing itself (poiFocus) —
      an animated re-fit would land after it and win. */
 }
