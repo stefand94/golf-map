@@ -53,7 +53,10 @@ const POI_TOP=5, POI_MORE=20;
 /* Per-visitor UI state, not persisted (same as the old toggle). */
 let tbPoiOn=new Set();       // dayIds with "Things to see" open
 let tbPoiMore=new Set();     // dayIds showing the deeper tier
-let tbPoiGroupsOn=new Set(POI_GROUPS.map(g=>g[0]));
+/* GOLF-188: the kinds the visitor has narrowed to. Empty = show every kind,
+   so the list opens unfiltered and each tap narrows rather than hides. */
+let tbPoiGroupsSel=new Set();
+const poiGroupShown=g=>!tbPoiGroupsSel.size||tbPoiGroupsSel.has(g);
 
 /* The old live-Overpass cache is dead weight now — free the quota. */
 try{localStorage.removeItem('golfmap:heritagecache:v4');}catch(e){}
@@ -206,7 +209,7 @@ function poiForDay(dayIdx){
 function poiVisibleForDay(d){
   const idx=tripDays.indexOf(d);
   const r=poiForDay(idx);
-  const filtered=r.items.filter(p=>tbPoiGroupsOn.has(p.group));
+  const filtered=r.items.filter(p=>poiGroupShown(p.group));
   const n=tbPoiMore.has(d.id)?POI_MORE:POI_TOP;
   const items=filtered.slice(0,n);
   items.forEach(p=>poiById.set(p.id,p)); // what the list's + buttons and the pins resolve ids against
@@ -247,9 +250,11 @@ function tbPoiToggleMore(dayId){
   renderTripBuilder();tbDrawMap(false);
 }
 function tbPoiToggleGroup(g){
-  if(tbPoiGroupsOn.has(g)&&tbPoiGroupsOn.size>1)tbPoiGroupsOn.delete(g);
-  else if(tbPoiGroupsOn.has(g))tbPoiGroupsOn=new Set(POI_GROUPS.map(x=>x[0])); // last one off → back to all
-  else tbPoiGroupsOn.add(g);
+  if(tbPoiGroupsSel.has(g))tbPoiGroupsSel.delete(g);else tbPoiGroupsSel.add(g);
+  renderTripBuilder();tbDrawMap(false);
+}
+function tbPoiClearGroups(){
+  tbPoiGroupsSel.clear();
   renderTripBuilder();tbDrawMap(false);
 }
 function poiFocus(id){
@@ -273,12 +278,12 @@ function tbPoiLinkHTML(d){
 function tbPoiListHTML(d){
   if(!tbPoiOn.has(d.id))return'';
   const v=poiVisibleForDay(d);
-  const chips=`<div class="tb-sight-chips" role="group" aria-label="Kinds of places">${POI_GROUPS.map(([k,l,ic])=>
-    `<button type="button" class="tb-sight-chip" aria-pressed="${tbPoiGroupsOn.has(k)}" onclick="tbPoiToggleGroup('${k}')"><span aria-hidden="true">${ic}</span>${l}</button>`).join('')}</div>`;
+  const chips=`<div class="tb-sight-chips" role="group" aria-label="Kinds of places"><button type="button" class="tb-sight-chip" aria-pressed="${!tbPoiGroupsSel.size}" onclick="tbPoiClearGroups()">All</button>${POI_GROUPS.map(([k,l,ic])=>
+    `<button type="button" class="tb-sight-chip" aria-pressed="${tbPoiGroupsSel.has(k)}" onclick="tbPoiToggleGroup('${k}')"><span aria-hidden="true">${ic}</span>${l}</button>`).join('')}</div>`;
   let body;
   if(v.status==='loading')body=`<p class="hint tb-sight-note">Finding things to see…</p>`;
   else if(v.status==='missing'||v.status==='none')body=`<p class="hint tb-sight-note">Sights aren't available for this area yet.</p>`;
-  else if(!v.items.length)body=`<p class="hint tb-sight-note">Nothing notable within ${Math.round(POI_ROUTE_KM*0.621)} miles of this day's route${tbPoiGroupsOn.size<POI_GROUPS.length?' for these kinds of place':''}.</p>`;
+  else if(!v.items.length)body=`<p class="hint tb-sight-note">Nothing notable within ${Math.round(POI_ROUTE_KM*0.621)} miles of this day's route${tbPoiGroupsSel.size?' for these kinds of place':''}.</p>`;
   else{
     body=v.items.map(p=>{
       const g=POI_GROUP_BY_KEY[p.group];
