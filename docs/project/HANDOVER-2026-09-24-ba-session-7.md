@@ -22,9 +22,11 @@
 | 187 | Search: one ranked list, towns group courses | `golf-190-shortlist` | REVIEW, BA-checked desktop + phone. DEC-029 |
 | 185d | Filters behind an icon | `golf-190-shortlist` | REVIEW, BA-checked. DEC-029 |
 | 191 desktop | Map follows the trip | `golf-190-shortlist` | REVIEW, BA-checked. The phone half goes with 185b |
-| 192 | Nearby says how far | `golf-190-shortlist` | REVIEW, BA-checked desktop + phone (64e06d1, build 6e9befa40e). Long drive = 90 min estimated; awaiting Stefan |
+| 192 | Nearby says how far | `golf-190-shortlist` | REVIEW, BA-checked desktop + phone (64e06d1, build 6e9befa40e). DEC-030 |
 | 194 | Small polish (remove → Undo, group size into trip menu) | `golf-190-shortlist` | Gavin, next |
-| 188 | Things to see: all shown, tap to narrow | `golf-188-things-to-see` (new, cut from `golf-190-shortlist`) | REVIEW, BA-checked desktop + phone (0e7048e, build a3756bf33a) |
+| 188 | Things to see: all shown, tap to narrow | `golf-188-things-to-see` (new, cut from `golf-190-shortlist`) | REVIEW, BA-checked; owner happy. Being merged into `golf-190-shortlist` by Gavin |
+| 197 | Hotel shows twice on a golf day; "Change" adds a second hotel (from 186) | — | DISCOVERY, Stefan scoping tonight. **Blocks the release merge** |
+| 198 | Hadley Wood in the data twice | — | IDEA |
 | 189, 195 | Ready-made lists; first-visit hint | — | IDEA; wait for 185 |
 
 ## Sessions
@@ -46,9 +48,8 @@ Three branches have to come together: `golf-190-shortlist`, `golf-188-things-to-
 1. His 185a phone list. Split it into sheet-level fixes (Barry, before 185b) and cosmetic ones (batched).
 2. **Shared trips hide the shortlist:** unscheduled courses don't appear in a shared link. Should they? Could matter for GOLF-180.
 3. Still open (minor): OSM calls the Duke's "Craigtoun Course". Is our course name stale?
-4. **192:** OK with 90 min as "long drive", and with straight-line estimates (not real routes) on Nearby?
-5. Hadley Wood is in the data twice (London + Top 100). Log a clean-up ticket?
-6. Settled today: "My trip" as the default name is fine; Olivewood is left as is.
+4. **GOLF-197 scope** (Stefan, tonight). Then assign it (186 was Gavin's).
+5. Settled today: 192 per DEC-030; Hadley Wood logged as 198; "My trip" as the default name is fine; Olivewood is left as is.
 
 ## Docs state
 

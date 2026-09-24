@@ -805,3 +805,15 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   - GOLF-185d (5): the footer reads "Show N courses" / "Clear filters (N)".
     There are no quick-filter chips on the main screen.
 - **Date:** 2026-09-24 · **Affects:** GOLF-185d, GOLF-187, GOLF-121d.
+
+## DEC-030 — Nearby: long drive at 90 minutes, estimated times only
+
+- **Decision (owner, 2026-09-24):** a Nearby row gets the "long drive" tag
+  at 90 minutes or more. The drive time stays the app's straight-line
+  estimate (×1.3 detour, 38 mph), marked "~", with a tooltip saying so.
+- **Alternatives:** a miles threshold (rejected: 45 miles is an hour on a
+  motorway and half a day on South Uist); real ORS routes per row
+  (rejected for now: the list re-renders on every keystroke and pan, so
+  about five Worker calls per render for a figure that only has to say
+  "an hour or an afternoon").
+- **Date:** 2026-09-24 · **Affects:** GOLF-192.
