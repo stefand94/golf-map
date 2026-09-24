@@ -1183,6 +1183,12 @@ function renderTripBuilder(){
     /* Match the legacy js/explore.js pill: opening a nation orders its
        list by ranking. */
     if(state.nation)state.sort='rank';
+    /* The retired Explore sidebar draws its own copy of these pills and
+       only ever re-renders them from its own handler, so a pick made
+       here left the two sets disagreeing about which country is on.
+       Harmless while that markup is display:none, but it is the kind of
+       thing that comes back the moment anything reveals it. */
+    if(typeof renderNationPills==='function')renderNationPills();
     /* GOLF-125: must be render(), not renderTripBuilder()+tbDrawMap(). Only
        render() rebuilds the background course-pin layer for the new
        nation filter (it calls renderTripBuilder()+tbDrawMap() itself).

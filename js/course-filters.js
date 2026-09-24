@@ -143,8 +143,13 @@ function cfBuildPanel(){
   maxN.addEventListener('change',fromNumbers);
   cfBuilt=true;
 }
+/* The nation the dynamic rows were last built for, so cfRefresh() can
+   tell a nation change from any other re-render. undefined = never
+   built (state.nation itself is legitimately null). */
+let cfBuiltNation;
 /* The two rows whose contents depend on the nation pill. */
 function cfBuildDynamicChips(){
+  cfBuiltNation=state.nation;
   document.getElementById('cf-flag').innerHTML=
     cfFlagChips().map(([v,l])=>cfChipHTML('flag',v,l)).join('');
   const regions=state.nation?tbRegionsForNation(state.nation):REGIONS;
@@ -181,9 +186,22 @@ function cfSync(){
   const clear=document.getElementById('cf-clear');
   clear.disabled=!n;
   clear.textContent=n?`Clear filters (${n})`:'Clear filters';
+  /* GOLF-81 keeps every course hidden until a country is picked, so
+     there is no count to show and "Done" would read as if the filters
+     had simply matched nothing. Say what's actually missing. */
   const shown=state.nation?C.reduce((a,c,i)=>a+(passes(i)?1:0),0):null;
   document.getElementById('cf-done').textContent=
-    shown==null?'Done':`Show ${shown} course${shown===1?'':'s'}`;
+    shown==null?'Pick a country first':`Show ${shown} course${shown===1?'':'s'}`;
+}
+/* Called from renderTripBuilder() on every pass. Picking a country with
+   the panel open has to rescope the rows that depend on it — otherwise
+   the Area row keeps offering Kerry and Gauteng to someone who has just
+   chosen Great Britain, and the footer keeps saying "Done" because it
+   never recounted. */
+function cfRefresh(){
+  if(!cfBuilt||cfPanelEl().hidden)return;
+  if(cfBuiltNation!==state.nation)cfBuildDynamicChips();
+  cfSync();
 }
 function cfOpen(){
   cfBuildPanel();
@@ -218,4 +236,5 @@ function cfButtonHTML(){
 function cfWireButton(){
   const b=document.getElementById('tb-course-filters');
   if(b)b.addEventListener('click',cfToggle);
+  cfRefresh();
 }
