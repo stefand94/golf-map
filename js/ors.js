@@ -137,7 +137,14 @@ function orsEnsureLeg(key,a,b){
           ts:Date.now()};
         orsCacheSave(c);
         orsFailedAt.delete(key);
-        if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else if(TRIP.size){tripDrawCart(false);}
+        /* GOLF-191: fit=false. This runs when a drive-leg response comes
+           back from the Worker, which can be seconds after whatever
+           prompted it — re-fitting here yanks the camera to the whole
+           trip out of nowhere, and it was overruling the day fit that
+           adding a stop had just made. A background data arrival is not
+           a navigation. Same rule GOLF-131's pan listener already
+           follows below. */
+        if(tripBuilderOn){renderTripBuilder();tbDrawMap(false);}else if(TRIP.size){tripDrawCart(false);}
       }else{orsFailedAt.set(key,Date.now());}
     })
     .catch(()=>{ /* silent — heuristic/straight-line fallback stays in place */
@@ -336,7 +343,9 @@ function tbHotelsFor(day){
         const c=hotelsCacheLoad();
         c[key]={pois:data.pois,ts:Date.now()};
         hotelsCacheSave(c);
-        if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
+        /* GOLF-191: fit=false, same reason as the drive-leg response
+           above — the hotel list arriving must not move the camera. */
+        if(tripBuilderOn){renderTripBuilder();tbDrawMap(false);}
       }
     })
     .catch(()=>{ /* silent — on-demand only, no retry loop; panel just stays empty */ })
