@@ -498,20 +498,35 @@ function courseMarkerFor(i){
   return markers.get(i)||null;
 }
 function goToCourse(i){
-  map.closePopup();showMobileMap();
-  const fly=()=>{try{map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});}catch(e){map.setView([C[i].lat,C[i].lng],13);}};
-  const t=(typeof tripCourseMarkers!=='undefined')?tripCourseMarkers.get(i):null;
-  if(t&&t._map){fly();t.openPopup();highlight(i);drawLink(i);return;}
-  const m=markers.get(i);
-  if(!m){fly();highlight(i);drawLink(i);return;}
-  /* Out of the current scope: lend it a pin. The next render() rebuilds
-     this layer from scope, so nothing is left behind. */
-  if(!layer.hasLayer(m)){m.setIcon(pinFor(i));layer.addLayer(m);}
-  // zoomToShowLayer breaks open the cluster this marker is hiding in and
-  // then fires — plain openPopup() on a clustered marker does nothing.
-  if(layer.zoomToShowLayer)layer.zoomToShowLayer(m,()=>m.openPopup());
-  else{fly();m.openPopup();}
-  highlight(i);drawLink(i);
+  map.closePopup();
+  const wasOnList=window.innerWidth<=900&&document.body.classList.contains('mob-list');
+  showMobileMap();
+  const go=()=>{
+    const fly=()=>{try{map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});}catch(e){map.setView([C[i].lat,C[i].lng],13);}};
+    const t=(typeof tripCourseMarkers!=='undefined')?tripCourseMarkers.get(i):null;
+    if(t&&t._map){fly();t.openPopup();highlight(i);drawLink(i);return;}
+    const m=markers.get(i);
+    if(!m){fly();highlight(i);drawLink(i);return;}
+    /* Out of the current scope: lend it a pin. The next render() rebuilds
+       this layer from scope, so nothing is left behind. */
+    if(!layer.hasLayer(m)){m.setIcon(pinFor(i));layer.addLayer(m);}
+    // zoomToShowLayer breaks open the cluster this marker is hiding in and
+    // then fires — plain openPopup() on a clustered marker does nothing.
+    if(layer.zoomToShowLayer)layer.zoomToShowLayer(m,()=>m.openPopup());
+    else{fly();m.openPopup();}
+    highlight(i);drawLink(i);
+  };
+  /* GOLF-187 (mobile): coming from the list view, showMobileMap() has just
+     queued invalidateSize() + a full tbDrawMap() for the next tick, and
+     mapReplayPendingFit() for the one after. Going now would zoom a map
+     Leaflet still believes is its old size, have tripLayer rebuilt out from
+     under the marker whose popup we opened, and then be overruled by the
+     replayed trip fit — which is exactly what left a phone looking at
+     St Andrews at zoom 6 with no card. Two ticks puts this last, after
+     both. On desktop, and when the map is already showing, nothing is
+     pending and the wait would only add a visible delay. */
+  if(wasOnList)setTimeout(()=>setTimeout(go,0),0);
+  else go();
 }
 
 /* GOLF-112: a town/city picked from the unified search can now be looked
