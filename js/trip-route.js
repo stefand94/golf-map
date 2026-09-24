@@ -594,18 +594,25 @@ function tripDrawCart(fit){
    and nobody mistakes an approximate pin for a real address. */
 /* GOLF-96: the hotel-picker's real OSM candidates, shown alongside a day's
    already-added stays (tbDrawTripItems, drawn as solid 🏨 pins) — these are
-   deliberately visually distinct (a hollow ring, not a solid emoji marker)
+   deliberately visually distinct (a numbered ring, not a solid emoji marker)
    so "pick one of these" never reads as "already booked", and excluded
    from fitBounds for the same reason tbDrawPois()'s suggestions are. */
 function tbDrawHotelCandidates(){
   if(tbHotelPickerFor==null)return;
   const d=tripDays.find(d=>d.id===tbHotelPickerFor);if(!d)return;
-  const pois=tbHotelsFor(d);
+  /* GOLF-186: the same ordered list the panel renders, so the number in
+     the ring is the number in the list — a pin is only useful here if you
+     can find the row it belongs to, and vice versa. */
+  const pois=tbHotelCandidates(d);
   if(!pois)return;
   pois.forEach((p,idx)=>{
-    L.circleMarker([p.lat,p.lng],{radius:7,color:'#1b5e20',weight:2,fillColor:'#fff',fillOpacity:.85})
-      .bindTooltip(`🏨 ${esc(p.name)}${p.category?' — '+esc(p.category):''}`,{direction:'top'})
-      .on('click',()=>tbPickHotelCandidate(d.id,idx))
+    const mi=tbHotelMilesText(p.miles);
+    L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',
+      html:`<span class="tb-cand-pin">${idx+1}</span>`,
+      iconSize:[24,24],iconAnchor:[12,12],tooltipAnchor:[0,-12]})})
+      .bindTooltip(`${idx+1}. 🏨 ${esc(p.name)}${mi?' — '+esc(mi):''}${p.category?' · '+esc(p.category):''}`,{direction:'top'})
+      // GOLF-186: one tap adds it, exactly as the list row does.
+      .on('click',()=>tbAddHotelCandidate(d.id,idx))
       .addTo(tripLayer);
   });
 }

@@ -320,6 +320,83 @@ function tripHasEstimate(){
   return tripDays.some((d,idx)=>tripDayEstimated(idx));
 }
 /* Day-header total: blank for a day with nothing priced. */
+/* ── GOLF-186: the stay slot.
+
+   A golf day used to say nothing at all about where you were sleeping
+   until you found "＋ Add to Day N → 🏨 A place to stay" — two taps into a
+   menu, on the one question every golf trip has to answer for every night.
+   The slot asks it outright, sits in the same place on every golf day, and
+   once it is answered becomes the stay's own editor: nights and price are
+   changed here rather than by re-opening the add form through the row's
+   overflow menu.
+   Only the FIRST hotel on a day is the slot's subject. A day can hold more
+   than one (nothing stops it, and a moved stay can transiently produce
+   it), and the extra ones stay visible as ordinary itinerary rows — the
+   slot is the day's headline answer, not a second copy of the list. */
+function tripDayStay(d){
+  return(d.items||[]).find(it=>it.type==='hotel')||null;
+}
+function tbStayNightsStep(dayId,itemId,delta){
+  const it=tripDayFindItem(dayId,itemId);
+  if(!it)return;
+  /* tripDayResizeStay() rebuilds the stay's items from scratch (new ids),
+     so the re-render is not a nicety — the stepper's own itemId is stale
+     the moment this returns. */
+  tripDayResizeStay(dayId,itemId,(it.nights||1)+delta);
+  renderTripBuilder();tbDrawMap();
+}
+function tbStayPriceSet(dayId,itemId,el){
+  const it=tripDayFindItem(dayId,itemId);
+  if(!it||!el)return;
+  const raw=String(el.value).trim();
+  const v=raw?parseFloat(raw):NaN;
+  // A blank field means "I haven't got a price", which is a real answer:
+  // it puts the stay back on the app's estimate (GOLF-193), not on zero.
+  tripDayUpdateStop(dayId,itemId,{name:it.name,price:Number.isFinite(v)&&v>=0?v:null,lat:it.lat,lng:it.lng});
+  renderTripBuilder();tbDrawMap();
+}
+function tbStaySlotHTML(d){
+  if((d.kind||'golf')!=='golf')return'';
+  const st=tripDayStay(d);
+  if(!st)return`<div class="tb-stay-slot is-empty">
+    <button type="button" class="tb-stay-ask" onclick="tbOpenHotelPicker(${d.id})"
+      title="Show hotels near this day's golf">🏨 Where are you staying?</button>
+  </div>`;
+  const n=st.nights||1;
+  /* A stay of N nights is N items, one per day (js/trip-model.js), so the
+     slot renders on every day it covers. Only the first of them owns the
+     controls: tripDayResizeStay() re-spans a stay forward from whichever
+     day it is called on, so a "+" on night 2 would silently move the
+     booking's start date, and "Change" there would leave the remaining
+     nights pointing at the old hotel. The later nights say which night
+     they are and send you back to the first one. */
+  const stayIdx=st.stayId?tripDays.filter(dd=>(dd.items||[]).some(x=>x.stayId===st.stayId))
+    .findIndex(dd=>dd.id===d.id):0;
+  if(stayIdx>0)return`<div class="tb-stay-slot is-cont">
+    <span class="tb-stay-name" title="${esc(st.name)}">🏨 ${esc(st.name)}</span>
+    <span class="tb-stay-label">Night ${stayIdx+1} of ${n}</span>
+  </div>`;
+  const det=tripItemPriceDetail(d,st);
+  const cur=curSym(tripStayCurrency(d,st));
+  const ph=det.est&&det.base!=null?`~${cur}${Math.round(det.base)} est.`:`${cur} / night`;
+  return`<div class="tb-stay-slot">
+    <span class="tb-stay-name" title="${esc(st.name)}">🏨 ${esc(st.name)}</span>
+    <span class="tb-stay-nights">
+      <span class="tb-stay-label">Nights</span>
+      <button type="button" class="tb-step" onclick="tbStayNightsStep(${d.id},'${st.id}',-1)"
+        title="One night fewer"${n<=1?' disabled':''}>−</button>
+      <b class="tb-stay-n">${n}</b>
+      <button type="button" class="tb-step" onclick="tbStayNightsStep(${d.id},'${st.id}',1)"
+        title="One night more — fills the following day(s) with the same stay">+</button>
+    </span>
+    <input class="tb-field tb-stay-price" type="number" min="0" step="5"
+      title="What this stay costs per person, per night. Leave it blank to keep the app's estimate."
+      placeholder="${esc(ph)}" value="${st.price!=null?esc(String(st.price)):''}"
+      onchange="tbStayPriceSet(${d.id},'${st.id}',this)">
+    <button type="button" class="tb-btn is-sm is-quiet" onclick="tbOpenHotelPicker(${d.id})"
+      title="Pick a different hotel for this day">Change</button>
+  </div>`;
+}
 const tbDaySumHTML=idx=>{
   const b=tripDayTotal(idx);
   if(!Object.keys(b).some(c=>b[c]))return'';
@@ -745,6 +822,7 @@ function tbDayCardHTML(d,idx){
         ondragleave="tbDropOut(this,event);"
         ondrop="event.preventDefault();event.stopPropagation();tbDropOut(this);tbDropInDay(${d.id},null);">↓ Put it last on Day ${idx+1}</div>
       ${town?`<div class="tb-day-town">Staying near <b>${esc(town)}</b>${tbPoiLinkHTML(d)}</div>`:''}
+      ${tbStaySlotHTML(d)}
       ${tbPoiListHTML(d)}
       ${/* GOLF-96 follow-up: search bar on top, nearby candidates below —
            the form (tbAddStopFormHTML) now always opens together with the
@@ -758,7 +836,10 @@ function tbDayCardHTML(d,idx){
         <details class="tb-drop tb-add-drop">
           <summary class="tb-btn is-sm is-quiet">＋ Add to Day ${idx+1}</summary>
           <div class="tb-drop-body">
-            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbOpenHotelPicker(${d.id})">🏨 A place to stay</button>
+            ${/* GOLF-186: a golf day asks this in its own stay slot above, so
+                  offering it again here would be two doors to one room. Other
+                  day kinds have no slot and still need the entry point. */''}
+            ${kind==='golf'?'':`<button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbOpenHotelPicker(${d.id})">🏨 A place to stay</button>`}
             <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbPromptPoi(${d.id})">📍 A stop (sight, lunch…)</button>
           </div>
         </details>

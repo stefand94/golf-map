@@ -621,6 +621,36 @@
      mistaken for part of the number, nor wrap away from it. */
   .cost-est{color:var(--stone);font-weight:400;margin-right:1px;cursor:help}
   .cost-est-note{color:var(--stone);white-space:nowrap;cursor:help}
+  /* GOLF-186: the stay slot — one row per golf day, asking where you sleep. */
+  .tb-stay-slot{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;
+    margin:var(--sp-2) var(--sp-3) 0 44px;padding:var(--sp-2);
+    border:1px solid var(--line);border-radius:8px;background:var(--paper-2)}
+  .tb-stay-slot.is-empty{border-style:dashed;padding:0}
+  .tb-stay-slot.is-cont{color:var(--stone)}
+  .tb-stay-ask{display:block;width:100%;padding:var(--sp-3);border:0;background:none;
+    font:inherit;color:var(--stone);text-align:left;cursor:pointer;border-radius:8px}
+  .tb-stay-ask:hover{color:var(--ink);background:var(--accent-soft)}
+  .tb-stay-name{flex:1 1 140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .tb-stay-nights{display:inline-flex;align-items:center;gap:4px}
+  .tb-stay-label{color:var(--stone);font-size:.9em}
+  .tb-stay-n{min-width:1.2em;text-align:center}
+  .tb-step{width:32px;height:32px;border:1px solid var(--line);border-radius:6px;
+    background:var(--paper-2);font:inherit;line-height:1;cursor:pointer}
+  .tb-step:disabled{opacity:.4;cursor:default}
+  .tb-stay-price{max-width:126px}
+  /* GOLF-186: candidate rows and their matching numbered map pins. */
+  .tb-hotel-cand{display:flex;align-items:center;gap:var(--sp-2);width:100%;
+    padding:var(--sp-2);border:0;border-bottom:1px solid var(--line);
+    background:none;font:inherit;text-align:left;cursor:pointer}
+  .tb-hotel-cand:last-child{border-bottom:0}
+  .tb-hotel-cand:hover{background:var(--accent-soft)}
+  .tb-cand-num{flex:none;width:22px;height:22px;border-radius:50%;
+    background:#1b5e20;color:#fff;font-size:.8em;line-height:22px;text-align:center}
+  .tb-cand-main{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tb-cand-dist{flex:none;color:var(--stone);font-size:.9em}
+  .tb-cand-pin{display:block;width:24px;height:24px;border-radius:50%;
+    border:2px solid #1b5e20;background:#fff;color:#1b5e20;
+    font:700 12px/20px system-ui,sans-serif;text-align:center}
   .cost-banner-unit{font:600 var(--fs-title) var(--font-sans);white-space:nowrap}
   .cost-banner-fig{white-space:nowrap}
   .cost-banner-amount.is-mixed{font-size:28px}

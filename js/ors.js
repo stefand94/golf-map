@@ -366,16 +366,46 @@ function tbOpenHotelPicker(dayId){
   renderTripBuilder();tbDrawMap();
 }
 function tbCloseHotelPicker(){tbHotelPickerFor=null;tbAddStop=null;renderTripBuilder();tbDrawMap();}
-/* Picking a candidate doesn't add it immediately — it pre-fills the
-   existing add-stay form (name/coordinates), same "confirm before it's
-   real" pattern as everywhere else a search result feeds a form. The
-   nearby list stays open underneath (tbHotelPickerFor is left set) so a
-   visitor can glance at another candidate without re-opening the picker. */
-function tbPickHotelCandidate(dayId,idx){
+/* GOLF-186: one ordered list of candidates, shared by the panel rows and
+   the map pins, so "number 3 in the list" and "pin 3 on the map" are the
+   same hotel — which is the only reason the numbering is worth having.
+   Sorted by distance from the day's golf (tbPoiPoint), straight-line: the
+   point is "which of these is nearest", and a driving matrix for 30
+   candidates would be 30 Worker round-trips to reorder a list. */
+function tbHotelCandidates(day){
+  const pois=tbHotelsFor(day);
+  if(!pois)return null;
+  const pt=tbPoiPoint(day);
+  return pois.map(p=>Object.assign({},p,{
+    miles:pt?haversineMiles(pt.lat,pt.lng,p.lat,p.lng):null
+  })).sort((a,b)=>(a.miles==null?1e9:a.miles)-(b.miles==null?1e9:b.miles));
+}
+function tbHotelMilesText(m){
+  if(m==null)return'';
+  return m<10?`${m.toFixed(1)} mi`:`${Math.round(m)} mi`;
+}
+/* GOLF-186: picking a candidate used to only pre-fill the add-stay form,
+   so choosing a hotel took a tap on the row and then a tap on "Add" — the
+   second tap asking for nothing the first hadn't already said. It now adds
+   the stay outright and closes the picker; nights and price are editable in
+   place on the day's stay slot afterwards, and removing it is one menu
+   away, so there is nothing a confirm step was protecting against. Same
+   commit path as the map layer's "Add to Day N" (js/hotel-layer.js), which
+   is why both now land a visitor in identical state. */
+function tbAddHotelCandidate(dayId,idx){
   const d=tripDays.find(d=>d.id===dayId);if(!d)return;
-  const pois=tbHotelsFor(d);
-  const p=pois&&pois[idx];if(!p)return;
-  tbAddStop={dayId,itemId:null,type:'hotel',name:p.name,price:'',lat:p.lat,lng:p.lng,nights:'1'};
+  const list=tbHotelCandidates(d);
+  const p=list&&list[idx];if(!p)return;
+  /* "Change" on a day that already has a stay means swap it, not stack a
+     second hotel on the same night. tripDayUpdateStop() carries the change
+     across every night of a multi-night booking, which is what a visitor
+     means by changing where they are staying. */
+  const cur=typeof tripDayStay==='function'?tripDayStay(d):null;
+  if(cur){
+    if(!tripDayUpdateStop(dayId,cur.id,{name:p.name,price:cur.price,lat:p.lat,lng:p.lng}))return;
+  }else if(!tripDayAddStop(dayId,'hotel',p.name,null,p.lat,p.lng,1))return;
+  tbHotelPickerFor=null;
+  tbAddStop=null;
   renderTripBuilder();tbDrawMap();
 }
 /* GOLF-96 follow-up: this used to be its own boxed panel (title + Close +
@@ -390,14 +420,21 @@ function tbPickHotelCandidate(dayId,idx){
 function tbHotelPickerHTML(day){
   if(tbHotelPickerFor!==day.id)return'';
   if(!ORS_PROXY_URL)return'';
-  const pois=tbHotelsFor(day);
+  const pois=tbHotelCandidates(day);
   const body=pois==null
     ?`<p class="hint" style="margin:4px 0 0">Looking for nearby hotels…</p>`
     :!pois.length
       ?`<p class="hint" style="margin:4px 0 0">No hotels found nearby — search above instead.</p>`
-      :`<div class="tb-poi-list" style="padding-left:0">${pois.map((p,idx)=>`<div class="tb-poi-row"><span>${esc(p.name)}</span>${p.category?`<span class="wt">${esc(p.category)}</span>`:''}<button class="tb-btn is-sm is-icon" onclick="tbPickHotelCandidate(${day.id},${idx})" title="Use this hotel">＋</button></div>`).join('')}</div>`;
+      :`<div class="tb-poi-list tb-hotel-cands" style="padding-left:0">${pois.map((p,idx)=>{
+          const mi=tbHotelMilesText(p.miles);
+          return`<button type="button" class="tb-hotel-cand" onclick="tbAddHotelCandidate(${day.id},${idx})" title="Add ${esc(p.name)} to this day">
+            <span class="tb-cand-num">${idx+1}</span>
+            <span class="tb-cand-main"><span class="tb-cand-name">${esc(p.name)}</span>${p.category?`<span class="wt"> · ${esc(p.category)}</span>`:''}</span>
+            ${mi?`<span class="tb-cand-dist">${mi}</span>`:''}
+          </button>`;
+        }).join('')}</div>`;
   return`<div class="tb-hotel-picker">
-    <div class="tb-addstop-title">Nearby</div>
+    <div class="tb-addstop-title">Nearby — tap one to add it</div>
     ${body}
   </div>`;
 }
