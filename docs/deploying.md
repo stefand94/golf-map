@@ -39,6 +39,20 @@ Branch names with characters Cloudflare doesn't allow in a subdomain
 literal branch name — check the deployment's own listing in the dashboard
 if a predicted URL 404s.
 
+### Checking whether a site deploy actually reached visitors (GOLF-196)
+
+A green build and correct bytes at the origin are **not** proof — until
+`7e9ce10` a returning visitor's service worker could precache the old files
+from the browser's 4-hour HTTP cache under the new cache name. Check it in a
+real browser that had the site open before the deploy:
+
+```bash
+curl -s https://golftripper.uk/sw.js | grep -o "golfmap-shell-v5-[a-f0-9]*"
+```
+
+then, in that browser (reload once or twice), `APP_VERSION` in the console
+must equal that `CACHE_NAME`. If it doesn't, the deploy hasn't reached them.
+
 ## Dev-instance password gate (Preview only, GOLF-35 Phase A) — currently unused
 
 `functions/_middleware.js` gates every request behind HTTP Basic Auth
