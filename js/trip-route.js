@@ -441,15 +441,34 @@ function tbItinNearbyCourses(){
    "Add a course to seed nearby suggestions." rendered one under the
    other). The scope line owns that message now; this only speaks for the
    region scope, which has no scope line of its own. */
+/* GOLF-192: "Nearby" was ranking by straight-line miles and showing only
+   that, so Askernish's nearest five (114-126 mi away, most of it single
+   track and a ferry) read exactly like five courses half an hour apart.
+   Each row now carries a rough drive time next to the distance, and
+   anything past TB_LONG_DRIVE_MIN gets an explicit "long drive" tag.
+   Deliberately the same straight-line DRIVE_INEFFICIENCY/DRIVE_AVG_MPH
+   heuristic the wishlist summary and a day's fallback leg use — no ORS
+   call, because this list re-renders on every keystroke and pan, and five
+   speculative leg lookups per render is not worth a figure that only has
+   to answer "is this an hour or an afternoon?". Hence the ~ on every
+   number. */
+const TB_LONG_DRIVE_MIN=90;
+function tbNearbyDriveEstimate(pt,i){
+  const miles=haversineMiles(pt.lat,pt.lng,C[i].lat,C[i].lng);
+  return{miles,minutes:Math.max(5,Math.round((miles*DRIVE_INEFFICIENCY/DRIVE_AVG_MPH*60)/5)*5)};
+}
 function tbResultsHTML(items){
   if(!items.length)return tbDiscoveryTab==='region'?`<p class="hint">No courses in that region yet — pick one above.</p>`:'';
   const anchorPt=tbDiscoveryTab==='anchor'?tbNearbyAnchorPoint():null;
   return items.map(({i,border})=>{
-    const dist=anchorPt?` — ${haversineMiles(anchorPt.lat,anchorPt.lng,C[i].lat,C[i].lng).toFixed(1)} mi`:'';
+    const est=anchorPt?tbNearbyDriveEstimate(anchorPt,i):null;
+    const far=est&&est.minutes>=TB_LONG_DRIVE_MIN;
+    const dist=est?`${est.miles.toFixed(1)} mi · ~${fmtDriveMinutes(est.minutes)} drive · `:'';
     return`<div class="tb-row">
       <div>⛳ <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         ${border?' <span class="wt" title="Just over the border — nearest to a course in your chosen region, not itself in it">border</span>':''}
-        <div class="cart-region">${dist?dist.replace(/^ — /,''):''}${dist?' · ':''}${esc(C[i].r)} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
+        ${far?` <span class="wt far" title="Roughly ${esc(fmtDriveMinutes(est.minutes))} from ${esc(anchorPt.label||'your last stop')} — estimated from the straight-line distance, so allow more on small roads or with a ferry">long drive</span>`:''}
+        <div class="cart-region">${dist}${esc(C[i].r)} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
       <button class="tb-btn is-sm is-primary" onclick="tbSelect(${i})">＋ Add to trip</button>
     </div>`;
   }).join('');
