@@ -715,7 +715,7 @@ let groupSize=2;
 // trip field. Green fees/POI costs scale by this; since GOLF-91, hotel
 // prices scale by it too (a hotel's entered price is read as per-person,
 // see tripItemPriceDetail()) — there's no separate per-hotel guest count.
-function tripSetGroupSize(n){
+function tripSetGroupSize(n,fromId){
   const v=Math.max(1,Math.round(Number(n)||1));
   groupSize=v;
   saveState();
@@ -728,7 +728,13 @@ function tripSetGroupSize(n){
      golfers means reopening the menu three times. */
   const drop=document.getElementById('tb-trip-drop');
   const wasOpen=!!(drop&&drop.open);
-  const focusId=document.activeElement&&document.activeElement.id;
+  /* Which stepper to come back to is told to us, not inferred from
+     document.activeElement: a mouse click on a <button> does not focus it
+     in every browser, and a re-render sends focus to <body> either way,
+     which for a keyboard visitor means being dropped out of the open menu
+     entirely. activeElement is kept only as a fallback for any caller
+     that doesn't say. */
+  const focusId=fromId||(document.activeElement&&document.activeElement.id);
   renderTripBuilder();
   if(!wasOpen)return;
   const drop2=document.getElementById('tb-trip-drop');

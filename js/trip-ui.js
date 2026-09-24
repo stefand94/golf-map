@@ -1210,8 +1210,8 @@ function renderTripBuilder(){
      <details> that this same re-render would otherwise slam shut —
      tripSetGroupSize() reopens it and restores focus. */
   const gsDec=document.getElementById('tb-groupsize-dec'),gsInc=document.getElementById('tb-groupsize-inc');
-  if(gsDec)gsDec.addEventListener('click',()=>tripSetGroupSize(groupSize-1));
-  if(gsInc)gsInc.addEventListener('click',()=>tripSetGroupSize(groupSize+1));
+  if(gsDec)gsDec.addEventListener('click',()=>tripSetGroupSize(groupSize-1,'tb-groupsize-dec'));
+  if(gsInc)gsInc.addEventListener('click',()=>tripSetGroupSize(groupSize+1,'tb-groupsize-inc'));
   /* Tabs span both modes: Discover means Plan, the other two mean Build. */
   pane.querySelectorAll('.tb-tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
     const k=btn.dataset.tab;
