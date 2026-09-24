@@ -781,3 +781,27 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 - **Also settled:** the stay slot's price placeholder is always per person.
   The field takes per person per night, so it does not follow the toggle.
 - **Date:** 2026-09-24 · **Affects:** GOLF-178, GOLF-186, GOLF-193.
+
+## DEC-029 — Gavin's judgement calls on GOLF-187 and GOLF-185d accepted
+
+- **Decision (owner, 2026-09-24):** all nine calls stand.
+  - GOLF-187 (a): a place's "Courses near here" and "Add as a day" live on
+    its map card, not in the search row.
+  - GOLF-187 (b): tapping a place only shows it on the map. Re-scoping the
+    Discover list is an explicit "Courses near here".
+  - GOLF-187 (c): a town gathers courses within 15 miles. The first 10 are
+    shown, with the true count in the heading.
+  - GOLF-187 (d): tapping a search result on an empty map adopts that
+    course's nation pill. Filters the visitor set are left alone, and a
+    course they hide gets a toast.
+  - GOLF-185d (1): Area stays in the filter panel, scoped to the picked
+    nation.
+  - GOLF-185d (2): "Show only" draws only the trip-planning flags (ranked,
+    weekends, the nation's Top 100 lists). Personal and maintenance flags
+    are undrawn, but still counted and cleared.
+  - GOLF-185d (3): the Itinerary tab keeps both filter controls.
+  - GOLF-185d (4): search honours `courseShownOnMap()`, so a course with no
+    pin is not findable.
+  - GOLF-185d (5): the footer reads "Show N courses" / "Clear filters (N)".
+    There are no quick-filter chips on the main screen.
+- **Date:** 2026-09-24 · **Affects:** GOLF-185d, GOLF-187, GOLF-121d.
