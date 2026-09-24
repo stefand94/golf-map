@@ -447,7 +447,7 @@ function tbResultsHTML(items){
       <div>⛳ <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         ${border?' <span class="wt" title="Just over the border — nearest to a course in your chosen region, not itself in it">border</span>':''}
         <div class="cart-region">${dist?dist.replace(/^ — /,''):''}${dist?' · ':''}${esc(C[i].r)} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
-      <button class="tb-btn is-sm is-primary" onclick="tbSelect(${i})">＋ Wishlist</button>
+      <button class="tb-btn is-sm is-primary" onclick="tbSelect(${i})">＋ Add to trip</button>
     </div>`;
   }).join('');
 }

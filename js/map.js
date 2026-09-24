@@ -362,7 +362,7 @@ function popupHTML(i){
     <p class="note">${esc(V(i,'note'))}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${esc(club.blurb)}</span>`:''}</p>
     ${calcHTML(i)}
     <div class="actions">
-      <button class="btn primary" onclick="${TRIP.has(i)?`toggleTrip(${i})`:`tbAddToPlan(${i})`}">${TRIP.has(i)?'✓ In your trip — remove':'+ Add to trip'}</button>
+      <button class="btn primary" onclick="${TRIP.has(i)?`toggleTrip(${i})`:`tbAddToPlan(${i})`}">${TRIP.has(i)?'✓ In your trip — remove':'＋ Add to trip'}</button>
       ${site?`<a class="btn" href="${esc(escUrl(site))}" target="_blank" rel="noopener">Club website</a>`:`<a class="btn ghost" href="${esc(search)}" target="_blank" rel="noopener">Find the club site</a>`}
       ${book&&book!==site?`<a class="btn ghost" href="${esc(escUrl(book))}" target="_blank" rel="noopener">Green fees</a>`:''}
       ${club&&club.teeBooking&&club.teeBooking!==site&&club.teeBooking!==book?`<a class="btn ghost" href="${esc(escUrl(club.teeBooking))}" target="_blank" rel="noopener">Tee booking</a>`:''}

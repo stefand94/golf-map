@@ -815,6 +815,10 @@ function tripStartFresh(){
    trip) is deliberately the last item inside the menu, styled destructive
    and worded so the difference is unmissable — they are different actions
    and both stay available, per the brief. */
+/* GOLF-190: `isBuild` no longer changes what this renders — the headline
+   and the menu read the same in both modes now, which is the point. The
+   parameter stays because both callers pass it and a mode-specific item
+   here is a live possibility; nothing depends on it today. */
 function tbTripMenuHTML(isBuild){
   const list=tripListAll();
   const active=list.find(t=>t.id===activeTripId);
@@ -824,17 +828,19 @@ function tbTripMenuHTML(isBuild){
      GOLF-150: this menu is now the pane's HEADLINE rather than a toolbar
      pill. In Build mode it reads as the trip's name, big; in Plan mode
      (before there's an itinerary to name) it reads "Plan a trip" — the
-     same menu underneath, so switching/creating trips is always one tap. */
+     same menu underneath, so switching/creating trips is always one tap.
+     GOLF-190: that switch is gone. The headline read "Plan a trip" until
+     the first course landed and then became "My trip", which made it look
+     like the shortlist and the trip were two different things — the very
+     confusion this ticket exists to remove. There is only ever one trip
+     here, so it is named from the start and the name never changes out
+     from under the visitor; renaming it shows up immediately. */
   const activeName=active?active.name:'Trip';
-  /* Batch 2: "before there's an itinerary" is literal — once the trip has
-     days it's named in Plan mode too, not only in Build. */
-  isBuild=isBuild||tripDays.length>0;
-  const label=isBuild?activeName:'Plan a trip';
   return`<details class="tb-drop tb-title-drop" id="tb-trip-drop">
-    <summary title="${isBuild?esc(activeName)+' — trip menu':'Trip menu'}"><span class="tb-drop-label">${esc(label)}</span></summary>
+    <summary title="${esc(activeName)} — trip menu"><span class="tb-drop-label">${esc(activeName)}</span></summary>
     <div class="tb-drop-body">
       ${list.length>1?`<div class="tb-menu-label">Your trips</div>${rows}<div class="tb-menu-sep"></div>`:''}
-      <button type="button" class="tb-menu-item" onclick="tripRename(activeTripId)">✎ Rename${isBuild?'':` “${esc(activeName)}”`}</button>
+      <button type="button" class="tb-menu-item" onclick="tripRename(activeTripId)">✎ Rename</button>
       <button type="button" class="tb-menu-item" onclick="tripCreateNew()">＋ New trip</button>
       <button type="button" class="tb-menu-item" onclick="tripDuplicate(activeTripId)">⧉ Duplicate</button>
       ${list.length>1?`<button type="button" class="tb-menu-item is-danger" onclick="tripDelete(activeTripId)">🗑 Delete this trip</button>`:''}

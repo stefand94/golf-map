@@ -734,7 +734,7 @@ function tripDayScheduleHTML(){
   const unschedHTML=unscheduled.length?`
     <div class="tb-day tb-day-wish" ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
       ondrop="event.preventDefault();tbDropOut(this);tbDropOn(null,null);">
-      <div class="tb-day-head"><span class="tb-day-title"><span class="tb-day-title-text">Wishlist</span>
+      <div class="tb-day-head"><span class="tb-day-title"><span class="tb-day-title-text">Shortlist</span>
         <span class="tb-day-place">${unscheduled.length} course${unscheduled.length===1?'':'s'} · not on a day yet</span></span></div>
       <div class="tb-day-rule"></div>
       ${unscheduled.map(i=>tripDayCourseRowHTML(i,null)).join('')}
@@ -760,14 +760,14 @@ function tbWishlistHTML(){
   const allUnscheduled=tripUnscheduled();
   const unscheduled=state.nation?allUnscheduled.filter(i=>courseNation(i)===state.nation):allUnscheduled;
   const hidden=allUnscheduled.length-unscheduled.length;
-  const hiddenNote=hidden?`<p class="hint" style="margin:0 0 var(--sp-2)">${hidden} more course${hidden===1?'':'s'} on your wishlist from other countries — clear the country filter above to see ${hidden===1?'it':'them'}.</p>`:'';
+  const hiddenNote=hidden?`<p class="hint" style="margin:0 0 var(--sp-2)">${hidden} more course${hidden===1?'':'s'} on your shortlist from other countries — clear the country filter above to see ${hidden===1?'it':'them'}.</p>`:'';
   /* GOLF-150 W1: once every course is on a day, "Nothing on your wishlist
      yet" read like the trip had been lost. Say where the courses went. */
   const nSched=tripSeq.length-allUnscheduled.length;
   if(!unscheduled.length&&!hiddenNote&&nSched>0)
     return`<div class="tb-wish-moved"><span>✓ ${nSched} course${nSched===1?' is':'s are'} in your itinerary${tripDays.length?` across ${tripDays.length} day${tripDays.length===1?'':'s'}`:''}.</span>
       <button class="tb-btn is-sm is-primary" onclick="enterBuildMode()">View itinerary →</button></div>`;
-  if(!unscheduled.length)return hiddenNote||`<p class="hint">Nothing on your wishlist yet — add any course you fancy playing.</p>`;
+  if(!unscheduled.length)return hiddenNote||`<p class="hint">Nothing on your shortlist yet — add any course you fancy playing.</p>`;
   const rows=unscheduled.map(i=>{
     const fee=feeNumberFor(i,'wd');
     return`<div class="tb-day-course tb-item-golf" style="cursor:default">
@@ -775,11 +775,11 @@ function tbWishlistHTML(){
       <div class="tb-item-main"><a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         <div class="cart-region">${esc(C[i].r)}</div></div>
       <span class="tb-item-price">${tbPrice(fee,courseCurrency(i))}</span>
-      <div class="tb-item-actions"><button class="tb-btn is-icon is-sm is-quiet" title="Remove from wishlist"
+      <div class="tb-item-actions"><button class="tb-btn is-icon is-sm is-quiet" title="Remove from shortlist"
         onclick="toggleTrip(${i});renderTripBuilder();tbDrawMap();">✕</button></div>
     </div>`;}).join('');
   return`<div class="tb-day">
-      <div class="tb-day-head"><span class="tb-day-title"><span class="tb-day-title-text">Wishlist</span>
+      <div class="tb-day-head"><span class="tb-day-title"><span class="tb-day-title-text">Shortlist</span>
         <span class="tb-day-place">${unscheduled.length} course${unscheduled.length===1?'':'s'}</span></span>
         <button class="tb-btn is-primary is-sm" onclick="enterBuildMode()" title="Start scheduling these courses into days">Build itinerary →</button></div>
       <div class="tb-day-rule"></div>
@@ -831,7 +831,7 @@ function tbNationPillsHTML(){
     ${NATIONS.map(([k,l])=>`<button class="nation-pill" aria-pressed="${state.nation===k}" data-nation="${k}">${l}</button>`).join('')}
   </div>`;
 }
-function tbPlanHTML(){return tbDiscoverTabHTML()+`<div class="tb-section-title" style="margin-top:var(--sp-6)">Your wishlist</div>${tbWishlistHTML()}`;}
+function tbPlanHTML(){return tbDiscoverTabHTML()+`<div class="tb-section-title" style="margin-top:var(--sp-6)">Your shortlist</div>${tbWishlistHTML()}`;}
 
 /* Discover. GOLF-71: its own "Near a place" search box is gone — the one
    search bar at the top of the pane anchors the lens when you pick a

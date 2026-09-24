@@ -217,7 +217,7 @@ function tbUnifiedSearchResultsHTML(){
       <div>⛳ <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         <div class="cart-region">${esc(C[i].r)} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
       <div style="display:flex;gap:var(--sp-2);flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
-        <button class="tb-btn is-sm is-primary" onclick="tbAddToWishlist(${i})">＋ Wishlist</button>
+        <button class="tb-btn is-sm is-primary" onclick="tbAddToWishlist(${i})">＋ Add to trip</button>
         ${day?`<button class="tb-btn is-sm" onclick="tbAddToDay(${i},${day.id})">＋ Day ${tripDays.indexOf(day)+1}</button>`:''}
       </div>
     </div>`).join('');
@@ -292,7 +292,7 @@ function tripDayCourseRowHTML(i,dayId){
 /* The day list for a row's "⋯ → Move to" menu — the same choices the old
    inline <select> offered, as 44px menu rows. */
 function tbDayMenuItemsHTML(i,currentDayId){
-  return[`<button type="button" class="tb-menu-item" onclick="tbAssignCourseDay(${i},'')">${currentDayId==null?'✓':'&nbsp;&nbsp;'} Wishlist</button>`]
+  return[`<button type="button" class="tb-menu-item" onclick="tbAssignCourseDay(${i},'')">${currentDayId==null?'✓':'&nbsp;&nbsp;'} Shortlist</button>`]
     .concat(tripDays.map((d,idx)=>`<button type="button" class="tb-menu-item" onclick="tbAssignCourseDay(${i},'${d.id}')">${d.id===currentDayId?'✓':'&nbsp;&nbsp;'} Day ${idx+1}</button>`))
     .concat([`<button type="button" class="tb-menu-item" onclick="tbAssignCourseDay(${i},'new')">＋ New day</button>`]).join('');
 }
