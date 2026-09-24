@@ -57,6 +57,8 @@ const ORDER = [
   'app-mode.js',
   'trip-share.js',
   'explore.js',
+  // GOLF-185d: reuses explore.js's FEE_BANDS/feeRangeSet(), so it follows it.
+  'course-filters.js',
   'editor.js',
   'boot.js',
 ];

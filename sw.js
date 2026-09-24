@@ -116,6 +116,7 @@ const PRECACHE_URLS = [
   './js/trip-share.js',
   './js/handicap.js',
   './js/explore.js',
+  './js/course-filters.js',
   './js/editor.js',
   './js/touch-dnd.js',
   './js/boot.js',

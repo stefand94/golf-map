@@ -324,11 +324,12 @@ if(RAIL_FEATURE)['t-rail','t-lbl','t-stn'].forEach(id=>{ // GOLF-110: wiring dor
 /* GOLF-70: feeNum/distOut/rankNum moved to js/util.js — they are shared
    course metrics, not Explore-only ones, and js/util.js is evaluated ahead
    of every reader. See the note at the top of js/util.js. */
-function passes(i){const c=C[i];
-  // GOLF-81: nothing passes — map and list both stay empty — until a
-  // country pill has been picked.
-  if(!state.nation||courseNation(i)!==state.nation)return false;
-  if(!courseShownOnMap(i))return false; // GOLF-121d: SA ringfenced to the top-100
+/* GOLF-185d: the filter predicates on their own — everything passes()
+   asks EXCEPT the nation gate and this page's own search box. Split out
+   so the map (passes), the Discover lists (tbNationFilter) and the
+   unified search (tbCourseOfferable) all ask one question, which is the
+   "the map and the lists always agree" acceptance criterion. */
+function courseFilterPasses(i){const c=C[i];
   if(state.access.size&&!state.access.has(V(i,'a')))return false;
   /* GOLF-69 (item 2): the four fixed BANDS chips became a real min/max
      range. A course whose weekday fee doesn't parse to a number (feeNum
@@ -358,6 +359,13 @@ function passes(i){const c=C[i];
   if(state.flag.has('edited')&&!isEdited(i))return false;
   if(state.flag.has('played')&&!PLAYED.has(i))return false;
   if(state.flag.has('want')&&!WANT.has(i))return false;
+  return true}
+function passes(i){
+  // GOLF-81: nothing passes — map and list both stay empty — until a
+  // country pill has been picked.
+  if(!state.nation||courseNation(i)!==state.nation)return false;
+  if(!courseShownOnMap(i))return false; // GOLF-121d: SA ringfenced to the top-100
+  if(!courseFilterPasses(i))return false;
   if(state.q&&!searchMatches(i,state.q))return false;
   return true}
 

@@ -1124,10 +1124,12 @@ function renderTripBuilder(){
   const hotelsBtn=`<button type="button" class="tb-btn is-sm${tbHotelLayerOn?' is-active':''}" id="tb-hotel-layer-toggle" aria-pressed="${tbHotelLayerOn}" title="Show nearby hotels on the map as you pan and zoom. Zoom in to see pins — no price data, just location."><span>${tbHotelLayerOn?'✓ ':''}<span class="tb-lbl-long">Show hotels</span><span class="tb-lbl-short">Hotels</span></span></button>`;
   let tabChrome='';
   if(!isBuild){
-    tabChrome=`${tbNationPillsHTML()}${searchHTML}<div class="tb-toolbar">${hotelsBtn}</div>`;
+    // GOLF-185d: the course filters sit beside the search, on every viewport.
+    tabChrome=`${tbNationPillsHTML()}${searchHTML}<div class="tb-toolbar">${cfButtonHTML()}${hotelsBtn}</div>`;
   }else if(isItin){
     tabChrome=`${searchHTML}
     <div class="tb-toolbar">
+      ${cfButtonHTML()}
       ${hotelsBtn}
       <button type="button" class="tb-btn is-sm${tbShowNearby?' is-active':''}" id="tb-nearby-toggle" aria-pressed="${tbShowNearby}" title="Show other bookable courses near your trip on the map. Doesn't change your itinerary."><span>${tbShowNearby?'✓ ':''}Nearby<span class="tb-lbl-long"> courses</span></span></button>
       <details class="tb-drop tb-icon-drop${filtered?' is-on':''}" id="tb-filter-drop">
@@ -1224,6 +1226,7 @@ function renderTripBuilder(){
     if(appMode!=='build')setAppMode('build');
     else{render();} // GOLF-108: render() so the course-pin layer tracks the tab (Costs/Itinerary hide it, Discover shows it)
   }));
+  cfWireButton();
   const filterDrop=document.getElementById('tb-filter-drop');
   if(filterDrop){
     filterDrop.querySelectorAll('[data-itin-filter]').forEach(btn=>btn.addEventListener('click',()=>{tbItinFilter=btn.dataset.itinFilter;renderTripBuilder();}));

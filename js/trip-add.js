@@ -14,11 +14,13 @@
 function tbSearchResults(){
   const q=tbSearchQ.trim().toLowerCase();
   if(!q)return[];
-  return C.map((c,i)=>i).filter(i=>!TRIP.has(i)&&bookable(i)&&searchMatches(i,q)
-    // GOLF-150 (C1): the nation pills only show on Discover now, so an
-    // invisible nation filter mustn't hide courses when searching from
-    // the Itinerary tab.
-    &&(appMode==='build'||!state.nation||courseNation(i)===state.nation)).slice(0,20);
+  /* GOLF-185d: one offerable rule for both halves of the unified search —
+     the place groups below already used tbCourseOfferable(), so without
+     this a filtered-out course vanished from a town's group but survived
+     as a loose row. It carries the GOLF-150 (C1) nation rule: the nation
+     pills only show on Discover, so an invisible nation filter mustn't
+     hide courses when searching from the Itinerary tab. */
+  return C.map((c,i)=>i).filter(i=>searchMatches(i,q)&&tbCourseOfferable(i)).slice(0,20);
 }
 /* GOLF-92: place search wasn't ringfenced to the trip a visitor is
    actually planning — a South Africa trip's "add a stop" location field
@@ -233,8 +235,12 @@ function tbMatchScore(text,q){
 // The same "is this course offerable right now" rule tbSearchResults()
 // applies, so a proximity child can never be something the text search
 // would have refused to show.
+/* GOLF-185d: search now answers with the same set the map is drawing —
+   courseShownOnMap() (a SA club outside the ringfenced top-100 was
+   findable in search but had no pin) and the active filters. */
 function tbCourseOfferable(i){
-  return !TRIP.has(i)&&bookable(i)&&(appMode==='build'||!state.nation||courseNation(i)===state.nation);
+  return !TRIP.has(i)&&bookable(i)&&courseShownOnMap(i)&&courseFilterPasses(i)
+    &&(appMode==='build'||!state.nation||courseNation(i)===state.nation);
 }
 function tbUnifiedSearchModel(){
   const q=tbSearchNorm(tbSearchQ);

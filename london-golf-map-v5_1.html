@@ -664,6 +664,58 @@
   .place-pop-name{font-weight:700;margin-bottom:2px}
   .place-pop-sub{color:var(--stone);font-size:var(--fs-small);margin-bottom:var(--sp-2)}
   .place-pop-btn{display:block;width:100%;margin-top:var(--sp-1)}
+
+  /* GOLF-185d: the course filters, behind an icon. A right-hand drawer on
+     desktop, a bottom sheet on phones — the filters have never been
+     reachable on either, so both get the same panel rather than desktop
+     keeping the retired Explore sidebar. */
+  .cf-badge{margin-left:var(--sp-1);min-width:18px;padding:0 5px;border-radius:var(--radius-pill);
+    background:var(--accent);color:#fff;font:700 11px/18px var(--font-sans);text-align:center}
+  .cf-backdrop{position:fixed;inset:0;background:rgba(27,39,51,.32);z-index:1200}
+  .cf-panel{position:fixed;z-index:1201;display:flex;flex-direction:column;background:var(--paper);
+    box-shadow:var(--shadow-lg);top:0;right:0;bottom:0;width:min(400px,92vw);border-left:1px solid var(--line)}
+  .cf-panel[hidden],.cf-backdrop[hidden]{display:none}
+  .cf-head{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);
+    border-bottom:1px solid var(--line)}
+  .cf-head b{flex:1 1 auto;font-size:var(--fs-title)}
+  .cf-x{width:var(--tap);height:var(--tap);border:1px solid var(--line);border-radius:var(--radius-sm);
+    background:var(--paper);color:var(--ink);cursor:pointer;font-size:15px}
+  .cf-x:hover{background:var(--accent-soft)}
+  .cf-body{flex:1 1 auto;overflow:auto;padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-5)}
+  .cf-group{display:flex;flex-direction:column;gap:var(--sp-2)}
+  .cf-label{font:700 var(--fs-small) var(--font-sans);text-transform:uppercase;letter-spacing:.04em;color:var(--stone)}
+  .cf-chips{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+  .cf-chip{display:inline-flex;align-items:center;gap:4px;min-height:var(--tap-sm);
+    padding:var(--sp-1) var(--sp-3);border:1px solid var(--line);border-radius:var(--radius-pill);
+    background:var(--paper);color:var(--ink);font:400 var(--fs-small) var(--font-sans);cursor:pointer}
+  .cf-chip:hover{background:var(--accent-soft)}
+  .cf-chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .cf-slider{position:relative;height:28px}
+  .cf-slider input[type=range]{position:absolute;left:0;right:0;width:100%;margin:0;background:none;pointer-events:none}
+  .cf-slider input[type=range]::-webkit-slider-thumb{pointer-events:auto}
+  .cf-slider input[type=range]::-moz-range-thumb{pointer-events:auto}
+  .cf-fee-row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3);font-size:var(--fs-small)}
+  .cf-fee-row label{display:inline-flex;align-items:center;gap:4px}
+  .cf-fee-row input[type=number]{width:74px;min-height:var(--tap-sm);padding:0 var(--sp-2);
+    border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--paper);color:var(--ink)}
+  .cf-readout{color:var(--stone);font-variant-numeric:tabular-nums}
+  .cf-note{margin:0;font-size:var(--fs-small);color:var(--stone)}
+  .cf-foot{display:flex;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--line);
+    background:var(--paper-2)}
+  .cf-clear,.cf-done{min-height:var(--tap);border-radius:var(--radius-pill);cursor:pointer;
+    font:600 var(--fs-small) var(--font-sans);padding:0 var(--sp-4)}
+  .cf-clear{flex:0 0 auto;border:1px solid var(--line);background:var(--paper);color:var(--ink)}
+  .cf-clear:disabled{opacity:.45;cursor:default}
+  .cf-done{flex:1 1 auto;border:1px solid var(--accent);background:var(--accent);color:#fff}
+  @media(max-width:900px){
+    /* Bottom sheet, and never taller than the screen minus a strip of map. */
+    .cf-panel{top:auto;left:0;right:0;bottom:0;width:auto;max-height:82vh;
+      border-left:none;border-top:1px solid var(--line);
+      border-radius:var(--radius-lg) var(--radius-lg) 0 0}
+    /* The fixed "Show map" pill floats at z-index 1500 and would sit on
+       top of the sheet's own footer buttons. */
+    body.cf-open .mob-toggle{display:none}
+  }
   .cost-banner-unit{font:600 var(--fs-title) var(--font-sans);white-space:nowrap}
   .cost-banner-fig{white-space:nowrap}
   .cost-banner-amount.is-mixed{font-size:28px}
@@ -1114,5 +1166,6 @@
 <script src="js/app-mode.js"></script>
 <script src="js/trip-share.js"></script>
 <script src="js/explore.js"></script>
+<script src="js/course-filters.js"></script>
 <script src="js/editor.js"></script>
 <script src="js/boot.js"></script>
