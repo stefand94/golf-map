@@ -439,7 +439,7 @@ function tripDayCourseRowHTML(i,dayId){
   const menu=tbRowMenuHTML(
     `<div class="tb-menu-label">Move to</div>${tbDayMenuItemsHTML(i,dayId)}
      <div class="tb-menu-sep"></div>
-     <button type="button" class="tb-menu-item is-danger" onclick="toggleTrip(${i});renderTripBuilder();tbDrawMap();">🗑 Remove from trip</button>`);
+     <button type="button" class="tb-menu-item is-danger" onclick="tripRemoveCourse(${i});">🗑 Remove from trip</button>`);
   return`<div class="tb-day-course tb-item-golf" ${tbRowDragAttrs(`tbDragSetCourse(${i},event,this);`,`tbDropOn(${dayId==null?'null':dayId},${i});`)}>
     <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
     <span class="tb-item-icon">⛳</span>
@@ -494,7 +494,7 @@ function tripDayItemRowHTML(d,it){
   const menu=tbRowMenuHTML(
     (it.type==='golf'?`<div class="tb-menu-label">Move to</div>${tbDayMenuItemsHTML(it.i,d.id)}<div class="tb-menu-sep"></div>`
       :`<button type="button" class="tb-menu-item" onclick="tbEditStop(${d.id},'${it.id}')">✎ Edit</button><div class="tb-menu-sep"></div>`)+
-    `<button type="button" class="tb-menu-item is-danger" onclick="${it.type==='golf'?`toggleTrip(${it.i});`:`tripDayRemoveItem(${d.id},'${it.id}');`}renderTripBuilder();tbDrawMap();">🗑 Remove</button>`);
+    `<button type="button" class="tb-menu-item is-danger" onclick="tripRemoveItem(${d.id},'${it.id}');">🗑 Remove</button>`);
   return`<div class="tb-day-course tb-item-${it.type}" ${tbRowDragAttrs(`tbDragSetItem(${d.id},'${it.id}',event,this);`,`tbDropInDay(${d.id},'${it.id}');`)}>
     <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
     <span class="tb-item-icon">${icon}</span>

@@ -632,6 +632,63 @@ function toggleTrip(i){
      the pane is open; this covers the "pane closed" case. */
   if(!tripBuilderOn)tripDrawCart(true);
 }
+/* GOLF-194: every removal is undoable for a few seconds.
+
+   Removing is the one action in the trip pane with no confirm step and
+   no obvious way back: a mistapped ✕ on the shortlist silently dropped a
+   course, and "🗑 Remove day 3" took its hotels, its POIs and its drive
+   legs with it. Both now say what went and offer Undo in the GOLF-150
+   toast.
+
+   Undo is a whole-trip snapshot rather than an inverse of each removal,
+   because "restores it exactly" is a much bigger promise than it looks:
+   a course leaving the cart also leaves its day, moves tbAnchor and
+   tripLastAdded, and a multi-night hotel is several items across several
+   days sharing one stayId. Re-inserting those by hand would be four
+   separate reconstructions, each with its own way of being subtly wrong.
+   The multi-trip machinery already serialises exactly this state every
+   time it saves, so the snapshot is free and correct by construction.
+   Only the active trip is captured — no removal here touches another. */
+function tripUndoPoint(){
+  tripSnapshotActive();
+  return JSON.parse(JSON.stringify(trips[activeTripId]));
+}
+function tripUndoApply(snap){
+  trips[activeTripId]=JSON.parse(JSON.stringify(snap));
+  tripRestoreActive();
+  saveState();
+  tripAfterRemoveRedraw();
+}
+function tripAfterRemoveRedraw(){
+  render();
+  if(tripBuilderOn){renderTripBuilder();tbDrawMap();}else{tripDrawCart(false);}
+}
+function tripRemoveWithUndo(label,fn){
+  const snap=tripUndoPoint();
+  fn();
+  tripAfterRemoveRedraw();
+  if(typeof tbToast==='function')
+    tbToast(`Removed <b>${esc(label)}</b>`,[{label:'Undo',fn:()=>tripUndoApply(snap)}]);
+}
+function tripRemoveCourse(i){
+  if(!TRIP.has(i))return;
+  tripRemoveWithUndo(V(i,'n'),()=>toggleTrip(i));
+}
+function tripRemoveItem(dayId,itemId){
+  const d=tripDays.find(x=>x.id===dayId);
+  const it=d&&Array.isArray(d.items)?d.items.find(x=>x.id===itemId):null;
+  if(!it)return;
+  /* A golf item IS its cart entry — removing it from the day alone would
+     leave the course in the shortlist, which is not what "Remove" on an
+     itinerary row has ever meant. */
+  if(it.type==='golf')return tripRemoveCourse(it.i);
+  tripRemoveWithUndo(it.name||(it.type==='hotel'?'Hotel':'Stop'),()=>tripDayRemoveItem(dayId,itemId));
+}
+function tripRemoveDay(dayId){
+  const idx=tripDays.findIndex(d=>d.id===dayId);
+  if(idx<0)return;
+  tripRemoveWithUndo(`Day ${idx+1}`,()=>tripDayRemove(dayId));
+}
 /* Swap a cart course one place earlier/later in tripSeq. */
 function tbMove(i,dir){
   const idx=tripSeq.indexOf(i),next=idx+dir;
@@ -662,7 +719,25 @@ function tripSetGroupSize(n){
   const v=Math.max(1,Math.round(Number(n)||1));
   groupSize=v;
   saveState();
-  if(tripBuilderOn){renderTripBuilder();}
+  if(!tripBuilderOn)return;
+  /* GOLF-194: group size moved off the top of every tab and into the trip
+     menu — it is a fact about the trip, not a control worth a permanent
+     strip above the tabs. The menu is a <details>, and this re-render
+     replaces the whole pane, so note whether it was open and which
+     stepper had focus, then put both back: otherwise going from 2 to 4
+     golfers means reopening the menu three times. */
+  const drop=document.getElementById('tb-trip-drop');
+  const wasOpen=!!(drop&&drop.open);
+  const focusId=document.activeElement&&document.activeElement.id;
+  renderTripBuilder();
+  if(!wasOpen)return;
+  const drop2=document.getElementById('tb-trip-drop');
+  if(drop2)drop2.open=true;
+  /* − disables itself at one golfer, so focus falls back to + rather
+     than nowhere. */
+  const back=document.getElementById(focusId==='tb-groupsize-dec'||focusId==='tb-groupsize-inc'?focusId:'');
+  if(back&&!back.disabled)back.focus();
+  else if(focusId==='tb-groupsize-dec'){const inc=document.getElementById('tb-groupsize-inc');if(inc)inc.focus();}
 }
 function tripSnapshotActive(){
   if(!trips[activeTripId])trips[activeTripId]={name:'My trip',created:Date.now()};
@@ -842,6 +917,15 @@ function tbTripMenuHTML(isBuild){
     <summary title="${esc(activeName)} — trip menu"><span class="tb-drop-label">${esc(activeName)}</span></summary>
     <div class="tb-drop-body">
       ${list.length>1?`<div class="tb-menu-label">Your trips</div>${rows}<div class="tb-menu-sep"></div>`:''}
+      <div class="tb-menu-label">Group size</div>
+      <div class="tb-menu-row">
+        <div class="tb-group" role="group" aria-label="Group size" title="How many golfers? Green fees and stop costs scale by this; hotels keep their own per-item sharing setting.">
+          <button type="button" class="tb-group-btn" id="tb-groupsize-dec" aria-label="One fewer golfer"${groupSize<=1?' disabled':''}>−</button>
+          <span class="tb-group-val" aria-live="polite">${PERSON_ICON_SVG}<b>${groupSize}</b><span class="tb-group-unit">${groupSize===1?'golfer':'golfers'}</span></span>
+          <button type="button" class="tb-group-btn" id="tb-groupsize-inc" aria-label="One more golfer">+</button>
+        </div>
+      </div>
+      <div class="tb-menu-sep"></div>
       <button type="button" class="tb-menu-item" onclick="tripRename(activeTripId)">✎ Rename</button>
       <button type="button" class="tb-menu-item" onclick="tripCreateNew()">＋ New trip</button>
       <button type="button" class="tb-menu-item" onclick="tripDuplicate(activeTripId)">⧉ Duplicate</button>

@@ -810,7 +810,7 @@ function tbDayCardHTML(d,idx){
     :`<button type="button" class="tb-menu-item" onclick="tripDayMoveToPos(${d.id},${i})">${
         i===0?'↑ Move to Day 1':i===tripDays.length-1?`↓ Move to Day ${i+1} (last)`:`Move to Day ${i+1}`}</button>`).join(''):'';
   const menu=tbRowMenuHTML(moveItems+
-    `<button type="button" class="tb-menu-item is-danger" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">🗑 Remove day ${idx+1}</button>`);
+    `<button type="button" class="tb-menu-item is-danger" onclick="tripRemoveDay(${d.id});">🗑 Remove day ${idx+1}</button>`);
   return`
     <div class="tb-day tb-day-${kind}"
       ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
@@ -949,7 +949,7 @@ function tbWishlistHTML(){
         <div class="cart-region">${esc(C[i].r)}</div></div>
       <span class="tb-item-price">${tbDualPriceHTML(fee==null?null:fee*groupSizeFor(),courseCurrency(i))}</span>
       <div class="tb-item-actions"><button class="tb-btn is-icon is-sm is-quiet" title="Remove from shortlist"
-        onclick="toggleTrip(${i});renderTripBuilder();tbDrawMap();">✕</button></div>
+        onclick="tripRemoveCourse(${i});">✕</button></div>
     </div>`;}).join('');
   return`<div class="tb-day">
       <div class="tb-day-head"><span class="tb-day-title"><span class="tb-day-title-text">Shortlist</span>
@@ -1152,11 +1152,6 @@ function renderTripBuilder(){
         <button type="button" class="tb-btn is-icon is-sm is-quiet is-danger" id="tb-clear-trip" aria-label="Clear trip" title="Clear trip — empties this trip. Your other trips are untouched; to delete every trip use Start fresh in the trip menu."${TRIP.size||tripDays.length?'':' disabled'}>${TRASH_ICON_SVG}</button>
       </div>
       <div class="tb-head-meta">
-        <div class="tb-group" role="group" aria-label="Group size" title="How many golfers? Green fees and stop costs scale by this; hotels keep their own per-item sharing setting.">
-          <button type="button" class="tb-group-btn" id="tb-groupsize-dec" aria-label="One fewer golfer"${groupSize<=1?' disabled':''}>−</button>
-          <span class="tb-group-val" aria-live="polite">${PERSON_ICON_SVG}<b>${groupSize}</b><span class="tb-group-unit">${groupSize===1?'golfer':'golfers'}</span></span>
-          <button type="button" class="tb-group-btn" id="tb-groupsize-inc" aria-label="One more golfer">+</button>
-        </div>
         <span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${tbTripTotalHTML()}</span>
       </div>
     </header>
@@ -1211,8 +1206,12 @@ function renderTripBuilder(){
   });
   const shareBtn=document.getElementById('tb-share-trip');
   if(shareBtn)shareBtn.addEventListener('click',()=>tbShareTrip(shareBtn));
-  document.getElementById('tb-groupsize-dec').addEventListener('click',()=>tripSetGroupSize(groupSize-1));
-  document.getElementById('tb-groupsize-inc').addEventListener('click',()=>tripSetGroupSize(groupSize+1));
+  /* GOLF-194: the stepper lives in the trip menu now, so it is inside a
+     <details> that this same re-render would otherwise slam shut —
+     tripSetGroupSize() reopens it and restores focus. */
+  const gsDec=document.getElementById('tb-groupsize-dec'),gsInc=document.getElementById('tb-groupsize-inc');
+  if(gsDec)gsDec.addEventListener('click',()=>tripSetGroupSize(groupSize-1));
+  if(gsInc)gsInc.addEventListener('click',()=>tripSetGroupSize(groupSize+1));
   /* Tabs span both modes: Discover means Plan, the other two mean Build. */
   pane.querySelectorAll('.tb-tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
     const k=btn.dataset.tab;

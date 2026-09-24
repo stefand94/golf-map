@@ -311,6 +311,14 @@
   .tb-menu-item.is-danger{color:#9A3412}
   .tb-menu-item.is-danger:hover{background:#FBEEE7}
   .tb-menu-sep{height:1px;background:var(--line);margin:var(--sp-1) 0}
+  /* GOLF-194: a non-item row inside a dropdown — a control that lives in
+     the menu (the group-size stepper) rather than a thing to click once.
+     Full width, and the stepper's own unit label stays visible here even
+     at 480px, where the old header strip used to hide it for room. */
+  .tb-menu-row{display:flex;align-items:center;padding:0 var(--sp-3) var(--sp-1)}
+  .tb-menu-row>.tb-group{flex:1 1 auto}
+  .tb-menu-row .tb-group-val{flex:1 1 auto;justify-content:center}
+  .tb-menu-row .tb-group-unit{display:inline}
   /* A stop row's own "⋯" menu (move to another day / remove). Replaces the
      bare <select> + tiny ✕ that used to sit in every row — the sketch shows
      a row as name + price, and a 12px select is exactly the "small, finicky
