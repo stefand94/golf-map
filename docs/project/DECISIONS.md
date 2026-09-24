@@ -817,3 +817,14 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   about five Worker calls per render for a figure that only has to say
   "an hour or an afternoon").
 - **Date:** 2026-09-24 · **Affects:** GOLF-192.
+
+## DEC-031 — A day's hotel is one row, with its controls on it
+
+- **Decision (owner, 2026-09-24):** once a hotel is picked, it appears once:
+  its own row in the day, in day order. Nights, price and Change move onto
+  that row and the separate stay box goes. Full name shown. Change replaces
+  the hotel however the new one is picked (list or map pin).
+- **Alternative:** keep the box and hide the row (rejected: the row's
+  position is what drive legs are computed from).
+- **Date:** 2026-09-24 · **Affects:** GOLF-186, GOLF-197. Amends DEC-028 186(c): the empty
+  stay box stays the golf-day entry point, but only until a hotel is picked.

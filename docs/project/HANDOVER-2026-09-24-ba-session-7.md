@@ -25,7 +25,7 @@
 | 192 | Nearby says how far | `golf-190-shortlist` | REVIEW, BA-checked desktop + phone (64e06d1, build 6e9befa40e). DEC-030 |
 | 194 | Small polish (remove → Undo, group size into trip menu) | `golf-190-shortlist` | REVIEW, BA-checked on 2d1e1736bd |
 | 188 | Things to see: all shown, tap to narrow | `golf-188-things-to-see` (new, cut from `golf-190-shortlist`) | REVIEW, BA-checked; owner happy. Merged into `golf-190-shortlist` (build 2d1e1736bd), re-checked |
-| 197 | Hotel shows twice on a golf day; "Change" adds a second hotel (from 186) | — | DISCOVERY, Stefan scoping tonight. **Blocks the release merge** |
+| 197 | Hotel shows twice on a golf day; "Change" adds a second hotel (from 186) | `golf-190-shortlist` | READY, Gavin (DEC-031). **Blocks the release merge** |
 | 198 | Hadley Wood in the data twice | — | IDEA |
 | 189, 195 | Ready-made lists; first-visit hint | — | IDEA; wait for 185 |
 
@@ -48,7 +48,6 @@ Three branches have to come together: `golf-190-shortlist`, `golf-188-things-to-
 1. His 185a phone list. Split it into sheet-level fixes (Barry, before 185b) and cosmetic ones (batched).
 2. **Shared trips hide the shortlist:** unscheduled courses don't appear in a shared link. Should they? Could matter for GOLF-180.
 3. Still open (minor): OSM calls the Duke's "Craigtoun Course". Is our course name stale?
-4. **GOLF-197 scope** (Stefan, tonight). Then assign it (186 was Gavin's).
 5. Settled today: 192 per DEC-030; Hadley Wood logged as 198; "My trip" as the default name is fine; Olivewood is left as is.
 
 ## Docs state
