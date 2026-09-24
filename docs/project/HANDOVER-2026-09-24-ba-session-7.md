@@ -24,7 +24,7 @@
 | 191 desktop | Map follows the trip | `golf-190-shortlist` | REVIEW, BA-checked. The phone half goes with 185b |
 | 192 | Nearby says how far | `golf-190-shortlist` | Gavin, in progress. He proposes the long-drive threshold with it |
 | 194 | Small polish (remove → Undo, group size into trip menu) | `golf-190-shortlist` | Gavin, next |
-| 188 | Things to see: all shown, tap to narrow | `golf-188-things-to-see` (new, cut from `golf-190-shortlist`) | Barry, just assigned |
+| 188 | Things to see: all shown, tap to narrow | `golf-188-things-to-see` (new, cut from `golf-190-shortlist`) | REVIEW, BA-checked desktop + phone (0e7048e, build a3756bf33a) |
 | 189, 195 | Ready-made lists; first-visit hint | — | IDEA; wait for 185 |
 
 ## Sessions
