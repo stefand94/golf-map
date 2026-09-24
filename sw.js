@@ -136,7 +136,16 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => Promise.all(PRECACHE_URLS.map((url) =>
-        fetch(url).then((res) => {
+        // cache:'reload' — the shell files ship with
+        // `cache-control: public, max-age=14400`, so a bare fetch() here is
+        // answered from the browser's own HTTP cache. On the deploy that
+        // fixed GOLF-184 that produced the worst possible outcome: a cache
+        // bucket correctly named with the NEW CACHE_NAME, populated entirely
+        // with PRE-deploy bytes. Nothing ever repairs it, because the name
+        // only changes on the next deploy. Going to the network for every
+        // precache entry is the whole point of an install triggered by a
+        // content hash.
+        fetch(url, { cache: 'reload' }).then((res) => {
           // Match cache.addAll()'s fail-fast behavior: a broken precache
           // URL should fail install loudly (the browser retries later),
           // not silently ship a shell missing one of its own files.
