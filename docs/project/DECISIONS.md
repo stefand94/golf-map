@@ -761,3 +761,23 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   that separates *different kinds* of information (e.g. "3 days · €3995 +
   £828") stays a `·`.
 - **Date:** 2026-09-22 · **Affects:** GOLF-170(b), GOLF-174, GOLF-173. GOLF-178.
+
+## DEC-028 — Dev 2's judgement calls on GOLF-193 and GOLF-186 accepted
+
+- **Decision (owner, 2026-09-24):** all six calls stand.
+  - GOLF-193 (a): the Per person / Total choice is kept for the session. It
+    no longer resets when Costs is reopened, which supersedes GOLF-178's
+    reset. A page load or a shared link still starts on Per person.
+  - GOLF-193 (b): the switch stays on the Costs tab only. It changes figures
+    app-wide.
+  - GOLF-193 (c): rows carry "pp"/"total" in a tooltip, not visibly. The
+    day header above says which.
+  - GOLF-186 (a): a multi-night stay is edited on its first night. Later
+    nights read "Night N of M".
+  - GOLF-186 (b): "Change" swaps the hotel across every night of that stay.
+    It does not stack a second hotel on the same night.
+  - GOLF-186 (c): on golf days the stay slot is the only hotel entry point.
+    Non-golf days keep "A place to stay" in the Add menu.
+- **Also settled:** the stay slot's price placeholder is always per person.
+  The field takes per person per night, so it does not follow the toggle.
+- **Date:** 2026-09-24 · **Affects:** GOLF-178, GOLF-186, GOLF-193.
