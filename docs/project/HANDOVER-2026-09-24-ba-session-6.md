@@ -30,13 +30,12 @@ Before `7e9ce10`, returning visitors who had loaded the site in the previous 4 h
 
 ## Waiting on Stefan
 
-1. **Start a new developer session for GOLF-185** (the Developer session has ended). Tell it to read `GOLF-185-mobile-redesign.md` and message the BA.
 2. Olivewood (1 dp placeholder, no OSM feature): does he want a follow-up ticket using the club's own site?
 3. Optional: OSM calls the Duke's "Craigtoun Course". Is our course name stale?
 
 ## Sessions
 
-- **Developer** session has ended (its socket is gone). **GOLF-185 (185a/b/c/e, branch `mobile-sheet`) is unassigned** until Stefan starts a new dev session.
+- **Mobile redesign briefing** (`uds:/tmp/cc-socks/98223.sock`) owns **GOLF-185a → b → c → e** on branch `mobile-sheet` (previews allowed, no push to main). Review gates: the BA verifies each piece; Stefan reviews on a phone after 185a and once before the single merge. (The old Developer session has ended.)
 - **Dev 2** (`uds:/tmp/cc-socks/69292.sock`), worktree `.claude/worktrees/lucid-lumiere-1c4943`, branch `claude/lucid-lumiere-1c4943`. Did 182/183/184/196. **Now assigned (2026-09-24): GOLF-190 → 193 → 186 → 187 → 185d → 188 → 191 (desktop half) → 192 → 194**, on its own branch, previews allowed, no push to main. I cherry-picked its commits onto `main` and pushed from the main checkout. The branch itself has since been merged with origin/main by the other BA session.
 - **A second BA/UI-review session** is running (Stefan started it after finding mobile "doesn't work"). It logged GOLF-185 (mobile redesign, DEC-027, R-12) and GOLF-186–195 (`GOLF-185-mobile-redesign.md`, `GOLF-186-release-ux-pass.md`), and it **commits in this same checkout**. At handover, local `main` had its unpushed merge commit `4de45ed`. Agree with Stefan which BA owns what, so the two don't both allocate IDs or push each other's commits. Check the highest `GOLF-nnn` across all `docs/project/*.md` before minting one.
 - If a session has gone, write the handoff into `docs/project/` and tell Stefan.
