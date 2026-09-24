@@ -25,7 +25,7 @@
 | 192 | Nearby says how far | `golf-190-shortlist` | REVIEW, BA-checked desktop + phone (64e06d1, build 6e9befa40e). DEC-030 |
 | 194 | Small polish (remove → Undo, group size into trip menu) | `golf-190-shortlist` | REVIEW, BA-checked on 2d1e1736bd |
 | 188 | Things to see: all shown, tap to narrow | `golf-188-things-to-see` (new, cut from `golf-190-shortlist`) | REVIEW, BA-checked; owner happy. Merged into `golf-190-shortlist` (build 2d1e1736bd), re-checked |
-| 197 | Hotel shows twice on a golf day; "Change" adds a second hotel (from 186) | `golf-190-shortlist` | READY, Gavin (DEC-031). **Blocks the release merge** |
+| 197 | Hotel shows twice on a golf day; "Change" adds a second hotel (from 186) | `golf-190-shortlist` @ 33255fe | **Gavin reports done** (21c4fa1, build bc35b50ff1, preview deployed). BA check not yet done: see "Next for the BA". DEC-031. Blocks the release merge until checked |
 | 198 | Hadley Wood in the data twice | — | IDEA |
 | 189, 195 | Ready-made lists; first-visit hint | — | IDEA; wait for 185 |
 
@@ -50,11 +50,38 @@ Three branches have to come together: `golf-190-shortlist`, `golf-188-things-to-
 3. Still open (minor): OSM calls the Duke's "Craigtoun Course". Is our course name stale?
 5. Settled today: 192 per DEC-030; Hadley Wood logged as 198; "My trip" as the default name is fine; Olivewood is left as is.
 
+## Next for the BA
+
+1. **Check GOLF-197** on `golf-190-shortlist.golf-map.pages.dev/london-golf-map-v5_1` (reload until `APP_VERSION` = `golfmap-shell-v5-bc35b50ff1`). Test these paths on a 1-night and a 2-night stay:
+   - pick from the list;
+   - pick from a map pin;
+   - Change, then pick from the list;
+   - Change, then pick from a map pin.
+
+   Also check:
+   - the full name wraps at desktop and at 375px;
+   - later nights show "Night N of M";
+   - an empty box still shows on a golf day with no hotel;
+   - Costs and the shared view are unchanged.
+
+   If it passes, move 197 to REVIEW and update the board.
+2. **Gavin's three judgement calls, all acceptable in my view; tell Stefan:**
+   - the hotel name is bold;
+   - the "Stay" label is dropped (the 🏨 icon and the controls say it);
+   - the controls don't start a row drag.
+3. **Gavin's aside:** a second night at the same hotel shows "Drive 0 min". This predates 197. Ask Stefan whether to ticket it; the likely fix is to hide the leg.
+
+## Other work this session
+
+- **CCO executive summary:** a Claude Docs doc, https://claude.ai/code/artifact/13b3475f-4e42-4d8c-99e7-78c48de0b330. Stefan also has it as a `.md` to share. It covers features, coverage, stack and costs, eight revenue lines, commercial constraints (ranking licences, "no revenue" permissions, Esri tiles, routing quota, no accounts) and six questions for the analysis. The cost figures marked "approx." are from memory and are not verified.
+- **Board:** updated to v32 (sync `main @ 4cc3160`, release branch `a96db38`). It now needs 197's status.
+
 ## Docs state
 
 - DEC-028 (Dev 2's 193/186 calls) and DEC-029 (Gavin's 187/185d calls) were recorded. 193 has also superseded GOLF-178's Costs-tab reset.
 - `docs/deploying.md` now says to load twice after a deploy. The first load can come from the browser's own HTTP cache. Previews routinely took 2–3 reloads to show the new APP_VERSION today.
-- The board artifact (https://claude.ai/artifact/StWh629BKonxmrENCjrGNP) is **still stale**. It predates everything above.
+- DEC-030 (192: "long drive" at 90 min; straight-line estimates) and DEC-031 (197: one hotel row, Change always replaces) are recorded.
+- The board artifact (https://claude.ai/artifact/StWh629BKonxmrENCjrGNP) is current up to 197 going READY.
 
 ## Lessons from this session
 
