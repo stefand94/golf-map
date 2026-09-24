@@ -23,8 +23,8 @@
 | 185d | Filters behind an icon | `golf-190-shortlist` | REVIEW, BA-checked. DEC-029 |
 | 191 desktop | Map follows the trip | `golf-190-shortlist` | REVIEW, BA-checked. The phone half goes with 185b |
 | 192 | Nearby says how far | `golf-190-shortlist` | REVIEW, BA-checked desktop + phone (64e06d1, build 6e9befa40e). DEC-030 |
-| 194 | Small polish (remove → Undo, group size into trip menu) | `golf-190-shortlist` | Gavin, next |
-| 188 | Things to see: all shown, tap to narrow | `golf-188-things-to-see` (new, cut from `golf-190-shortlist`) | REVIEW, BA-checked; owner happy. Being merged into `golf-190-shortlist` by Gavin |
+| 194 | Small polish (remove → Undo, group size into trip menu) | `golf-190-shortlist` | REVIEW, BA-checked on 2d1e1736bd |
+| 188 | Things to see: all shown, tap to narrow | `golf-188-things-to-see` (new, cut from `golf-190-shortlist`) | REVIEW, BA-checked; owner happy. Merged into `golf-190-shortlist` (build 2d1e1736bd), re-checked |
 | 197 | Hotel shows twice on a golf day; "Change" adds a second hotel (from 186) | — | DISCOVERY, Stefan scoping tonight. **Blocks the release merge** |
 | 198 | Hadley Wood in the data twice | — | IDEA |
 | 189, 195 | Ready-made lists; first-visit hint | — | IDEA; wait for 185 |
