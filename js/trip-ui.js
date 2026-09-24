@@ -258,8 +258,73 @@ const tbMoney=(v,cur='GBP')=>v!=null?`${curSym(cur)}${v.toFixed(0)}`:'—';
    rather than a bare "–" that sat beside the ⋯ menu looking like a
    collapse control. Cost tables keep tbMoney()'s dash. */
 const tbPrice=(v,cur='GBP')=>v!=null?tbMoney(v,cur):'<span class="tb-price-tbc">TBC</span>';
+/* GOLF-193: the Per person / Total choice used to live and die inside the
+   Costs tab, so a trip could read £100 on an Itinerary day card and £50 on
+   Costs at the same time and never say which was which. The mode is now one
+   app-wide fact. Every figure outside the Costs tab renders BOTH readings
+   and CSS shows the one matching `data-cost-mode` on <body> — the same
+   trick GOLF-178 already used inside .cost-body, lifted up a level. Nothing
+   re-renders on a mode change, so the map, the open day cards and the
+   read-only #share= view all keep their state.
+   The control itself stays on the Costs tab; the AC asks for the CHOICE to
+   apply app-wide, not for the segmented control to be repeated in chrome
+   GOLF-150 already called overcrowded. */
+function tbCostModeApply(){
+  const m=tbCostMode==='tot'?'tot':'pp';
+  if(document.body)document.body.dataset.costMode=m;
+  return m;
+}
+/* Per person is the total divided by the group size — one rule for every
+   figure in the app, so a day card, the badge and the Costs tab can never
+   disagree. A single traveller has no second reading, so nothing is
+   doubled up for them. */
+function tbDualBucketHTML(b,cur,unit){
+  const gs=groupSizeFor();
+  const tot=moneyBucketFmt(b,cur);
+  if(gs<=1)return unit?`${tot}<span class="cv-unit"> ${unit.tot}</span>`:tot;
+  const pp=costPPBucketFmt(b,gs,cur);
+  return`<span class="cv-pp">${pp}${unit?`<span class="cv-unit"> ${unit.pp}</span>`:''}</span>`
+        +`<span class="cv-tot">${tot}${unit?`<span class="cv-unit"> ${unit.tot}</span>`:''}</span>`;
+}
+/* A single item's price, in both readings. Unpriced rows keep tbPrice()'s
+   "TBC" — there is nothing to show per head either. */
+function tbDualPriceHTML(v,cur){
+  const gs=groupSizeFor();
+  if(v==null)return tbPrice(v,cur);
+  if(gs<=1)return tbMoney(v,cur);
+  /* A row figure is too narrow for a visible "pp"/"total" without crowding
+     the name beside it, and the day header above it already states the
+     reading. The title carries it for anyone checking a single row, and for
+     a screen reader. */
+  return`<span class="cv-pp" title="Per person">${costPPMoney(v,cur,gs)}</span>`
+        +`<span class="cv-tot" title="Total for all ${gs} travellers">${tbMoney(v,cur)}</span>`;
+}
+/* GOLF-193: the mark for a figure the app guessed rather than read. It
+   goes on the figure itself, not only on the line that produced it, so a
+   total containing one estimate is marked too — otherwise the trip total
+   looks like a researched number. */
+const EST_TITLE='Includes an estimate the app filled in — not a quoted price';
+const estMark=on=>on?`<span class="cost-est" title="${EST_TITLE}">~</span>`:'';
+/* Does this day contain a figure the app estimated? Today that is a stay
+   with no price entered (tripItemPriceDetail sets det.est, js/trip-geo.js).
+   Driving fuel is a trip-level estimate and is handled with the trip
+   total, not here — no day card shows fuel. */
+function tripDayEstimated(dayIdx){
+  return tripDayLegs(dayIdx).some(l=>l.type!=='drive'&&l.price!=null&&l.detail&&l.detail.est);
+}
+/* Any estimate anywhere in the trip, for the figures that total everything:
+   an estimated stay on any day, or the fuel estimate while it is switched
+   on (FUEL_COST_PER_MILE is an assumed running cost, js/trip-geo.js). */
+function tripHasEstimate(){
+  if(tbIncludeFuel&&tripTotalDriveMiles()>0)return true;
+  return tripDays.some((d,idx)=>tripDayEstimated(idx));
+}
 /* Day-header total: blank for a day with nothing priced. */
-const tbDaySumHTML=idx=>{const b=tripDayTotal(idx);return Object.keys(b).some(c=>b[c])?`<span class="tb-day-sum">${moneyBucketFmt(b)}</span>`:'';};
+const tbDaySumHTML=idx=>{
+  const b=tripDayTotal(idx);
+  if(!Object.keys(b).some(c=>b[c]))return'';
+  return`<span class="tb-day-sum">${estMark(tripDayEstimated(idx))}${tbDualBucketHTML(b,undefined,{pp:'pp',tot:'total'})}</span>`;
+};
 /* GOLF-74/91: the £ figure as the visitor should read it. A hotel priced
    for more than one traveller shows its arithmetic ("£90 × 2 people = £180")
    rather than silently folding the multiplication into the trip total.
@@ -285,7 +350,7 @@ function itinLegRowHTML(l){
     <span class="tb-item-icon">${icon}</span>
     <div class="tb-item-main"><span class="tb-item-name">${esc(l.name)}</span>
       ${sharing?`<div class="cart-region">${sym}${l.detail.base.toFixed(0)} × ${l.detail.guests} people = ${sym}${l.detail.total.toFixed(0)}</div>`:''}</div>
-    <span class="tb-item-price">${tbPrice(l.price,cur)}</span>
+    <span class="tb-item-price">${estMark(!!(l.detail&&l.detail.est))}${tbDualPriceHTML(l.price,cur)}</span>
   </div>`;
 }
 function tbItinAllHTML(){
@@ -399,7 +464,11 @@ function tripCostLineItems(){
       }else{
         stayGroups.set(key,items.length);
         items.push({label:name+sharingBit,cat:'Stay',amount:det.total,day:idx+1,cur:det.cur,
-          tag:det.sharing?`× ${det.guests} people`:'estimated',
+          /* GOLF-193: was `det.sharing?'× N people':'estimated'`, which
+             tagged a price the visitor had typed as "estimated" whenever
+             the party was one (sharing is only true for gs>1). det.est is
+             the fact being described. */
+          tag:det.sharing?`× ${det.guests} people`:(det.est?'estimated':null),
           _nights:1,_name:name,_cur:det.cur});
       }
       return;
@@ -475,6 +544,15 @@ function tripCostBreakdown(){
    "Trip total" card and the shared view's pill all read this, so a mixed
    trip shows every currency everywhere (DEC-026). */
 function tbTripTotal(){const b=tripCostBreakdown();return moneyBucketFmt(b.grand,b.cur);}
+/* GOLF-193: the same headline, in both readings and marked if it contains
+   an estimate. The navbar pill, the Itinerary "Trip total" card and the
+   shared view's pill all read this, so they can never disagree about which
+   figure they are showing. tbTripTotal() stays for anywhere a bare string
+   is needed (it is what the mode-less single-traveller case renders). */
+function tbTripTotalHTML(unit){
+  const b=tripCostBreakdown();
+  return estMark(tripHasEstimate())+tbDualBucketHTML(b.grand,b.cur,unit||{pp:'pp',tot:'total'});
+}
 /* GOLF-71 copy audit. Before, this tab carried a three-sentence paragraph
    under the summary table explaining fee coverage, where stay prices come
    from, how to add one, and that fuel is a straight-line estimate. Two of
@@ -521,6 +599,11 @@ const costModeNote=(mode,gs)=>mode==='pp'?'Showing cost per person':`Showing tot
 function tbCostSetMode(btn,mode){
   const body=btn.closest('.cost-body');if(!body)return;
   tbCostMode=mode;
+  /* GOLF-193: the choice is app-wide now. Setting it on <body> reaches
+     every figure in the pane, the day cards and the shared view at once,
+     with no re-render — so the map, any open day and the scroll position
+     all survive a mode change. */
+  tbCostModeApply();
   body.dataset.mode=mode;
   body.querySelectorAll('.cost-mode-seg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
   const note=body.querySelector('.cost-mode-note');
@@ -571,12 +654,12 @@ function tbCostsBodyHTML(b,fuelRowLabel){
         `<button type="button" data-mode="${k}" aria-pressed="${mode===k}" onclick="tbCostSetMode(this,'${k}')">${l}</button>`).join('')}</div>
       <span class="cost-mode-note">${costModeNote(mode,gs)}</span></div>`:'';
   return`<div class="cost-body"${multi?` data-mode="${mode}" data-gs="${gs}"`:''}>${control}
-    <div class="cost-banner"><div class="cost-banner-label">Trip total${multi?` · ${gs} travellers`:''}</div><div class="cost-banner-amount${mixed?' is-mixed':''}">${amount}</div></div>
+    <div class="cost-banner"><div class="cost-banner-label">Trip total${multi?` · ${gs} travellers`:''}${tripHasEstimate()?` · <span class="cost-est-note" title="${EST_TITLE}">~ includes an estimate</span>`:''}</div><div class="cost-banner-amount${mixed?' is-mixed':''}">${tripHasEstimate()?estMark(true):''}${amount}</div></div>
     <div class="cost-card cost-groups">
       ${costGroupHTML('⛳','Golf',b.golfTotal,golf,cur)}
       ${costGroupHTML('🏨','Stays',b.stayTotal,stay,cur)}
       ${costGroupHTML('📍','Stops',b.poiTotal,stop,cur)}
-      <div class="cost-fuel-row">${fuelRowLabel}<span class="cost-group-amt">${costDual(`${curSym(cur)}${b.fuelCost.toFixed(0)}`,costPPMoney(b.fuelCost,cur,gs),gs)}</span></div>
+      <div class="cost-fuel-row">${fuelRowLabel}<span class="cost-group-amt">${/* its own label already reads "Fuel (est.)" — a ~ here just stutters */''}${costDual(`${curSym(cur)}${b.fuelCost.toFixed(0)}`,costPPMoney(b.fuelCost,cur,gs),gs)}</span></div>
     </div>
     <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?' This trip spans more than one currency, so each is totalled separately — nothing is converted.':''}</p></div>`;
 }
@@ -739,7 +822,6 @@ function tripDayScheduleHTML(){
       <div class="tb-day-rule"></div>
       ${unscheduled.map(i=>tripDayCourseRowHTML(i,null)).join('')}
     </div>`:'';
-  const total=tbTripTotal();
   return`${reorderHTML}${daysHTML}${unschedHTML}
     <div class="tb-day-endzone tb-day-add" style="padding-left:0"
       ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
@@ -752,7 +834,7 @@ function tripDayScheduleHTML(){
         </div>
       </details>`:''}
     </div>
-    <div class="tb-total-card"><span class="tb-total-label">Trip total</span><span class="tb-total-amount">${total}</span></div>`;
+    <div class="tb-total-card"><span class="tb-total-label">Trip total</span><span class="tb-total-amount">${tbTripTotalHTML()}</span></div>`;
 }
 
 /* Plan mode's wishlist. */
@@ -774,7 +856,7 @@ function tbWishlistHTML(){
       <span class="tb-item-icon">⛳</span>
       <div class="tb-item-main"><a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         <div class="cart-region">${esc(C[i].r)}</div></div>
-      <span class="tb-item-price">${tbPrice(fee,courseCurrency(i))}</span>
+      <span class="tb-item-price">${tbDualPriceHTML(fee==null?null:fee*groupSizeFor(),courseCurrency(i))}</span>
       <div class="tb-item-actions"><button class="tb-btn is-icon is-sm is-quiet" title="Remove from shortlist"
         onclick="toggleTrip(${i});renderTripBuilder();tbDrawMap();">✕</button></div>
     </div>`;}).join('');
@@ -919,8 +1001,12 @@ function tbMountBetaBadge(){
 }
 function renderTripBuilder(){
   const pane=document.getElementById('tb-pane');
+  /* GOLF-193: every render re-asserts the app-wide mode on <body>, so a
+     figure drawn by this pass shows the same reading as the ones already
+     on screen — including the very first render, before anyone has touched
+     the control. */
+  tbCostModeApply();
   if(tbDayShown==null||!tripDays.find(d=>d.id===tbDayShown))tbDayShown=tripDays.length?tripDays[0].id:null;
-  const total=tbTripTotal();
   const isBuild=appMode==='build';
   const activeTab=isBuild?tbBuildTab:'discover';
   const TABS=[['discover','Discover'],['itin','Itinerary'],['cost','Costs']];
@@ -978,7 +1064,7 @@ function renderTripBuilder(){
           <span class="tb-group-val" aria-live="polite">${PERSON_ICON_SVG}<b>${groupSize}</b><span class="tb-group-unit">${groupSize===1?'golfer':'golfers'}</span></span>
           <button type="button" class="tb-group-btn" id="tb-groupsize-inc" aria-label="One more golfer">+</button>
         </div>
-        <span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${total}</span>
+        <span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${tbTripTotalHTML()}</span>
       </div>
     </header>
     <div class="tb-tabs" role="tablist">${TABS.map(([k,label])=>
@@ -1033,7 +1119,13 @@ function renderTripBuilder(){
     const k=btn.dataset.tab;
     if(k==='discover'){setAppMode('plan');return;}
     tbBuildTab=k;
-    if(k==='cost')tbCostMode='pp'; // GOLF-178: the card always opens on Per person
+    /* GOLF-178 reset removed by GOLF-193: re-opening the Costs tab used to
+       force the mode back to Per person. That was harmless while the mode
+       only governed that one card, but the choice is app-wide now — picking
+       Total, glancing at the Itinerary and coming back would silently flip
+       every figure in the app back again. It still starts on Per person on
+       a page load and on a shared link (js/trip-share.js); it just stops
+       undoing the visitor's own choice mid-session. */
     if(appMode!=='build')setAppMode('build');
     else{render();} // GOLF-108: render() so the course-pin layer tracks the tab (Costs/Itinerary hide it, Discover shows it)
   }));

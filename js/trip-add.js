@@ -285,7 +285,7 @@ function tripDayCourseRowHTML(i,dayId){
       <a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
       <div class="cart-region">${esc(C[i].r)}</div>
     </div>
-    <span class="tb-item-price">${tbPrice(fee,courseCurrency(i))}</span>
+    <span class="tb-item-price">${tbDualPriceHTML(fee==null?null:fee*groupSizeFor(),courseCurrency(i))}</span>
     <div class="tb-item-actions">${menu}</div>
   </div>`;
 }
@@ -343,7 +343,7 @@ function tripDayItemRowHTML(d,it){
          column with "£90 × 2 (sharing) = £180". The full worked label still
          renders in the Itinerary tab and the Costs breakdown, which have the
          width for it. */''}
-    <span class="tb-item-price"${det.sharing?` title="${esc(priceLabel.replace(/^ · /,''))}"`:''}>${tbPrice(price,det.cur||'GBP')}</span>
+    <span class="tb-item-price"${det.sharing?` title="${esc(priceLabel.replace(/^ · /,''))}"`:''}>${estMark(!!det.est)}${tbDualPriceHTML(price,det.cur||'GBP')}</span>
     <div class="tb-item-actions">${menu}</div>
   </div>`;
 }

@@ -554,8 +554,13 @@ function tripItemPriceDetail(d,it){
       const g=gs;
       return{base:entered,guests:g,sharing:g>1,total:entered*g,cur};
     }
+    /* GOLF-193: this is the app's own regional guess, not a price anyone
+       typed or a rate anyone published — so it is flagged at the single
+       point it is produced, and every figure that contains it can say so.
+       `est` stays absent (falsy) on an entered price and on a green fee,
+       which comes from the course data. */
     const p=tripDayAccomFallback(d);
-    return{base:p,guests:1,sharing:false,total:p,cur};
+    return{base:p,guests:1,sharing:false,total:p,cur,est:p!=null};
   }
   // GOLF-87: same reasoning as the golf branch above — sharing stays false
   // for a POI, the × groupSize tag is computed separately in the consumer.

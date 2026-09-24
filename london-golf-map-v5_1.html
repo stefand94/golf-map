@@ -609,6 +609,18 @@
   /* GOLF-178: Per person | Total. Both figures are in the markup; the
      wrapper's data-mode picks which one shows (see tbCostsBodyHTML()). */
   .cost-body[data-mode="pp"] .cv-tot,.cost-body[data-mode="tot"] .cv-pp{display:none}
+  /* GOLF-193: the Per person / Total choice is app-wide, so the same
+     two-readings-one-visible trick works off <body> for every figure
+     outside the Costs tab — day headers, day rows, the trip badge, the
+     Itinerary total card and the shared view. Default to per person so a
+     page that renders before tbCostModeApply() runs never shows both. */
+  body[data-cost-mode="pp"] .cv-tot,body[data-cost-mode="tot"] .cv-pp{display:none}
+  body:not([data-cost-mode]) .cv-tot{display:none}
+  .cv-unit{font-weight:400;opacity:.72;font-size:.92em}
+  /* The estimate mark rides just ahead of its figure and must never be
+     mistaken for part of the number, nor wrap away from it. */
+  .cost-est{color:var(--stone);font-weight:400;margin-right:1px;cursor:help}
+  .cost-est-note{color:var(--stone);white-space:nowrap;cursor:help}
   .cost-banner-unit{font:600 var(--fs-title) var(--font-sans);white-space:nowrap}
   .cost-banner-fig{white-space:nowrap}
   .cost-banner-amount.is-mixed{font-size:28px}
