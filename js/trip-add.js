@@ -155,6 +155,41 @@ function tbAddPlaceToTrip(lat,lng,label){
     ...(appMode!=='build'?[{label:'Open',fn:()=>enterBuildMode()}]:[])
   ]);
 }
+/* GOLF-187: one place to forget the current query — the input's value, the
+   two result caches and the temporary map marker that belongs to them. */
+function tbClearUnifiedSearch(){
+  tbSearchQ='';
+  tbUnifiedPlaceResults=null;
+  tbPlaceAddedNote=null;
+  const el=document.getElementById('tb-unified-search');
+  if(el)el.value='';
+  if(typeof tbClearTempPlaceMarker==='function')tbClearTempPlaceMarker();
+}
+/* GOLF-187: the place card the focused-place marker opens (js/map.js).
+   Two actions, both of which used to be buttons in the search list:
+   re-scope Discover's "Nearby" to here, or make this place a day. */
+function tbPlaceCardHTML(lat,lng,label){
+  const started=tbPlaceAnchor!=null||tripDays.length>0;
+  const a=`${lat},${lng},'${String(label).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}'`;
+  return`<div class="place-pop">
+    <div class="place-pop-name">📍 ${esc(tripShortPlace(label))}</div>
+    ${label.includes(',')?`<div class="place-pop-sub">${esc(label.slice(label.indexOf(',')+1).trim())}</div>`:''}
+    <button type="button" class="tb-btn is-sm place-pop-btn" onclick="tbPlaceShowNearby(${a})">⛳ Courses near here</button>
+    <button type="button" class="tb-btn is-sm is-primary place-pop-btn" onclick="tbAddPlaceToTrip(${a})">${started?'＋ Add as a day':'Start a trip here'}</button>
+  </div>`;
+}
+/* GOLF-112 set tbPlaceAnchor as a side effect of merely focusing a place,
+   because focusing was then the only thing a place row could do. GOLF-187
+   gives the card an explicit button for it, so looking at a town on the
+   map no longer silently re-scopes the Discover list underneath. */
+function tbPlaceShowNearby(lat,lng,label){
+  tbPlaceAnchor={label,lat,lng};
+  tbDiscoveryTab='anchor';
+  if(typeof map!=='undefined'&&map)map.closePopup();
+  if(appMode!=='plan')setAppMode('plan');
+  else{renderTripBuilder();tbDrawMap();}
+  if(typeof showMobileList==='function')showMobileList();
+}
 /* GOLF-150: one transient toast (bottom of the list panel, above the mobile
    "Show map" pill). A new toast replaces the old; actions dismiss it. */
 let tbToastTimer=null;
@@ -167,62 +202,182 @@ function tbToast(html,actions=[],ms=6000){
   clearTimeout(tbToastTimer);tbToastTimer=setTimeout(tbToastHide,ms);
 }
 function tbToastHide(){const el=document.getElementById('tb-toast');if(el)el.classList.remove('is-on');clearTimeout(tbToastTimer);}
+/* ── GOLF-187: one ranked list.
+
+   Searching "st andrews" used to put ten courses above the town, which
+   came twelfth, in a separate "Towns & cities" section below the fold —
+   so the one result a visitor was actually looking for was the hardest to
+   find. Kingsbarns and Lundin sat in that list with no reason given,
+   "Saint Andrews Major" appeared twice, and course rows and place rows
+   used different verbs for the same idea.
+
+   Now there is one list, ranked. A town that has courses near it becomes
+   a group heading with those courses underneath, which is both what the
+   owner asked for and what pulls the town up the page: the courses that
+   used to outrank it are now its children, not its competitors. */
+const TB_PLACE_RADIUS_MI=15;
+const TB_PLACE_CHILDREN_MAX=10;
+function tbSearchNorm(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();}
+/* Deliberately coarse: whole-word-prefix beats substring beats nothing.
+   A finer scale would be false precision — the ORS geocoder and the course
+   names disagree about punctuation and word order far more than a few
+   points of relevance could express. */
+function tbMatchScore(text,q){
+  if(!text||!q)return 0;
+  if(text===q)return 100;
+  if(text.startsWith(q))return 80;
+  if(text.split(' ').some(w=>w.startsWith(q)))return 65;
+  if(text.includes(q))return 50;
+  return 0;
+}
+// The same "is this course offerable right now" rule tbSearchResults()
+// applies, so a proximity child can never be something the text search
+// would have refused to show.
+function tbCourseOfferable(i){
+  return !TRIP.has(i)&&bookable(i)&&(appMode==='build'||!state.nation||courseNation(i)===state.nation);
+}
+function tbUnifiedSearchModel(){
+  const q=tbSearchNorm(tbSearchQ);
+  if(!q)return null;
+  const matched=new Map();
+  tbSearchResults().forEach(i=>{
+    const nameS=tbMatchScore(tbSearchNorm(V(i,'n')),q);
+    const regS=tbMatchScore(tbSearchNorm(C[i].r),q);
+    /* Every row that isn't an outright name match says why it is here.
+       "Kingsbarns" appearing under a search for St Andrews with nothing
+       said about it was the reported complaint — it matches on a mention
+       buried in its notes, which is true but not something a visitor can
+       see. A fuzzy/notes hit scores 30: it matched something, just nothing
+       anyone would recognise as the name or the region. */
+    matched.set(i,{type:'course',i,name:!!nameS,
+      score:nameS||regS*0.7||30,
+      reason:nameS?null:(regS?`in ${C[i].r}`:`mentions "${tbSearchQ.trim()}"`)});
+  });
+  /* "Saint Andrews Major" twice was two geocoder rows for one village.
+     Two decimal places is about a kilometre — close enough that a second
+     row of the same name is the same place, far enough apart that two
+     genuinely different towns sharing a name still both show. */
+  const seen=new Set(),places=[];
+  (Array.isArray(tbUnifiedPlaceResults)?tbUnifiedPlaceResults:[]).forEach(p=>{
+    if(!isFinite(p.lat)||!isFinite(p.lng))return;
+    const short=tripShortPlace(p.label);
+    const key=tbSearchNorm(short)+'@'+p.lat.toFixed(2)+','+p.lng.toFixed(2);
+    if(seen.has(key))return;
+    seen.add(key);
+    /* A place the geocoder returned whose NAME doesn't match the query
+       (searching "st andrews" also finds Hornchurch, for its St Andrews
+       Avenue) is a weak answer, and must not climb the list on the
+       strength of how many courses happen to sit near it. */
+    const nameScore=tbMatchScore(tbSearchNorm(short),q);
+    places.push({type:'place',p,short,score:nameScore||15,named:!!nameScore,children:[],total:0});
+  });
+  /* Strongest place first, and a course belongs to only one of them — so
+     two overlapping towns don't each list the same course, and the one
+     that matched the query best gets it. */
+  places.sort((a,b)=>b.score-a.score);
+  const claimed=new Set();
+  places.forEach(pl=>{
+    const plNorm=tbSearchNorm(pl.short);
+    const kids=[];
+    C.forEach((c,i)=>{
+      if(claimed.has(i)||!tbCourseOfferable(i))return;
+      const miles=haversineMiles(pl.p.lat,pl.p.lng,c.lat,c.lng);
+      if(miles>TB_PLACE_RADIUS_MI){
+        // Far away, but named after the place ("St Andrews Major GC") —
+        // still this town's course as far as a visitor is concerned.
+        if(!matched.has(i))return;
+        if(!plNorm||!tbSearchNorm(V(i,'n')+' '+c.r).includes(plNorm))return;
+      }
+      kids.push({i,miles,hit:matched.get(i)||null});
+    });
+    // Text matches first — they are why the visitor typed what they typed —
+    // then nearest first among the rest.
+    kids.sort((a,b)=>(a.hit?0:1)-(b.hit?0:1)||a.miles-b.miles);
+    kids.forEach(k=>claimed.add(k.i));
+    pl.total=kids.length;
+    pl.children=kids.slice(0,TB_PLACE_CHILDREN_MAX).map(k=>({type:'course',i:k.i,
+      // Under a heading, "near St Andrews" is the more useful reason than
+      // whatever text the fuzzy matcher happened to hit.
+      reason:k.hit&&k.hit.name?null:`near ${pl.short}`}));
+    // A town that gathers courses is a more useful answer than any one of
+    // them, and it has just absorbed the rows that outranked it.
+    if(pl.total&&pl.named)pl.score+=15;
+  });
+  const loose=[...matched.values()].filter(e=>!claimed.has(e.i));
+  return{rows:[...places,...loose].sort((a,b)=>b.score-a.score).slice(0,20),
+         placesState:tbUnifiedPlaceResults};
+}
+/* GOLF-187: "tapping a row moves the map to it and opens its card" has a
+   precondition the search doesn't share: GOLF-81 keeps the map empty until
+   a nation pill is picked, and the Explore filters can hide a course the
+   search still deliberately offers. Without this, tapping a result on a
+   fresh load did nothing at all — there was no marker to open.
+   The nation follows the tap, because picking it is the one filter a
+   visitor hasn't consciously set. Anything they HAVE set is theirs to
+   keep, so a course still hidden by it says so rather than being
+   silently un-filtered. */
+function tbSearchGoToCourse(i){
+  if(!passes(i)){
+    const n=courseNation(i);
+    if(n&&state.nation!==n){
+      state.nation=n;
+      if(state.sort!=='rank')state.sort='rank';
+      saveState();render();
+    }
+  }
+  if(!passes(i)){
+    tbToast(`<b>${esc(V(i,'n'))}</b> is hidden by your current filters.`);
+    return;
+  }
+  goToCourse(i);
+}
+function tbSearchCourseRowHTML(e,day){
+  const i=e.i;
+  const why=e.reason?` · <span class="tb-why">${esc(e.reason)}</span>`:'';
+  return`<div class="tb-row tb-sr-row" onclick="if(!event.target.closest('button'))tbSearchGoToCourse(${i})" title="Show ${esc(V(i,'n'))} on the map">
+    <div>⛳ <a href="#" class="linkbtn" onclick="event.preventDefault();event.stopPropagation();tbSearchGoToCourse(${i})">${esc(V(i,'n'))}</a>
+      <div class="cart-region">${esc(C[i].r)} · ${ACCESS[V(i,'a')].label.toLowerCase()}${why}</div></div>
+    <div style="display:flex;gap:var(--sp-2);flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+      <button class="tb-btn is-sm is-primary" onclick="event.stopPropagation();tbAddToWishlist(${i})">＋ Add to trip</button>
+      ${day?`<button class="tb-btn is-sm" onclick="event.stopPropagation();tbAddToDay(${i},${day.id})">＋ Day ${tripDays.indexOf(day)+1}</button>`:''}
+    </div>
+  </div>`;
+}
 function tbUnifiedSearchResultsHTML(){
-  const q=tbSearchQ.trim();
-  if(!q)return'';
-  const results=tbSearchResults();
-  const places=tbUnifiedPlaceResults;
-  let html='';
-  /* GOLF-150: place results arrive ~1s after course results (async
-     geocode). They used to render ABOVE the courses, so the course list
-     jumped down just as you went to click "+ Wishlist" — and the click
-     landed on a place's "Add to trip", silently creating itinerary days.
-     Places now render BELOW courses, so a late arrival never moves
-     anything already on screen. */
-  if(places===undefined){
-    // Phase 22 fix: distinguishes "the geocode request failed" from "no
-    // matches" — both used to render as an absent Towns & cities section,
-    // making a real outage look identical to a normal empty result.
-    html+=`<div class="tb-section-title">Towns &amp; cities</div><p class="hint" style="margin:0 0 var(--sp-2)">Place search is temporarily unavailable — showing golf courses only.</p>`;
-  }else if(places&&places.length){
-    /* GOLF-82: one button per place, not two — "Start a trip here" before
-       a trip exists, "+ Add to trip" once one does (tbAddPlaceToTrip
-       handles both cases itself, see its comment above). */
-    const started=tbPlaceAnchor!=null||tripDays.length>0;
-    /* GOLF-112: the place name itself is now a link that just focuses the
-       map (fly + temporary marker, no trip change); dropping it into the
-       trip is the separate, explicit button to its right. */
-    html+=`<div class="tb-section-title">Towns &amp; cities</div>`+
-      `<p class="hint" style="margin:0 0 var(--sp-2)">Tap a place to see it on the map — or add it to your trip.</p>`+
-      places.map(p=>`<div class="tb-row">
-        <div><a href="#" class="linkbtn tb-unified-place-focus" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" title="${esc(p.label)}">📍 ${esc(tripShortPlace(p.label))}</a>
-          ${p.label.includes(',')?`<div class="cart-region">${esc(p.label.slice(p.label.indexOf(',')+1).trim())}</div>`:''}</div>
-        <div style="display:flex;gap:var(--sp-2);flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
-          <button class="tb-btn is-sm tb-unified-place-trip" data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}" title="Adds ${esc(p.label)} to your itinerary as its own day">${started?'＋ Add as a day':'Start a trip here'}</button>
-        </div>
-      </div>`).join('');
-  }
-  const placeHtml=html;html='';
-  if(!results.length){
-    if(placeHtml)return placeHtml;
-    return`<p class="hint">No places or bookable courses match "${esc(q)}".</p>`;
-  }
-  // GOLF-62: default action is "add to wishlist" (tripUnscheduled(), no
-  // day assignment); a specific day being focused in the Day tab grows a
-  // second, explicit "+ Add to Day N" button next to it — direct-to-day
-  // stays available as a deliberate power path, just not the default.
+  const raw=tbSearchQ.trim();
+  if(!raw)return'';
+  const model=tbUnifiedSearchModel();
+  if(!model)return'';
+  // GOLF-62: a focused day grows a second, explicit "+ Add to Day N".
   const day=(appMode==='build'&&tbBuildTab==='itin'&&tbDayShown!=null)?tripDays.find(d=>d.id===tbDayShown):null;
-  html+=`<div class="tb-section-title">Golf courses</div>`+
-    results.map(i=>`<div class="tb-row">
-      <div>⛳ <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
-        <div class="cart-region">${esc(C[i].r)} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
-      <div style="display:flex;gap:var(--sp-2);flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
-        <button class="tb-btn is-sm is-primary" onclick="tbAddToWishlist(${i})">＋ Add to trip</button>
-        ${day?`<button class="tb-btn is-sm" onclick="tbAddToDay(${i},${day.id})">＋ Day ${tripDays.indexOf(day)+1}</button>`:''}
-      </div>
-    </div>`).join('');
-  if(placeHtml)html+=`<div style="margin-top:var(--sp-3)">${placeHtml}</div>`;
-  return html;
+  /* Phase 22 fix, kept: undefined means the geocode request failed, [] means
+     it succeeded with nothing. A real outage must not read as "no towns
+     match", or place search looks broken rather than temporarily down. */
+  const outage=model.placesState===undefined
+    ?`<p class="hint" style="margin:0 0 var(--sp-2)">Place search is temporarily unavailable — showing golf courses only.</p>`:'';
+  if(!model.rows.length)
+    return outage||`<p class="hint">No places or bookable courses match "${esc(raw)}".</p>`;
+  const html=model.rows.map(e=>{
+    if(e.type==='course')return tbSearchCourseRowHTML(e,day);
+    const p=e.p;
+    const count=e.total?` · <span class="tb-sr-count">${e.total} course${e.total===1?'':'s'}</span>`:'';
+    const region=p.label.includes(',')?p.label.slice(p.label.indexOf(',')+1).trim():'';
+    /* GOLF-187: the row is the tap target and the place's own card carries
+       the actions (js/map.js tbFocusPlaceOnMap) — two buttons per town in
+       the list is exactly what pushed the town below the fold. */
+    const head=`<div class="tb-row tb-sr-place tb-unified-place-focus" role="button" tabindex="0"
+      data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}"
+      title="Show ${esc(e.short)} on the map">
+      <div><span class="tb-sr-place-name">📍 ${esc(e.short)}</span>${count}
+        ${region?`<div class="cart-region">${esc(region)}</div>`:''}</div>
+    </div>`;
+    const kids=e.children.length
+      ?`<div class="tb-sr-kids">${e.children.map(k=>tbSearchCourseRowHTML(k,day)).join('')}${
+          e.total>e.children.length?`<p class="hint tb-sr-more">${e.total-e.children.length} more near ${esc(e.short)} — tap the place to see them on the map.</p>`:''}</div>`
+      :'';
+    return`<div class="tb-sr-group">${head}${kids}</div>`;
+  }).join('');
+  return outage+html;
 }
 /* GOLF-33: day-by-day schedule view for the pane's cart section — a
    "move to day" select per cart course (assign/reassign/unschedule),

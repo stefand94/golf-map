@@ -104,11 +104,12 @@ function tripShowOrdered(order,clear=true,fit=true){
          below; only the on-pin number is gone. Popup/tooltip/click
          behaviour (Bug fix 2026-09-01) is unchanged. */
       tripDrawnCourses.add(stop.i);
-      L.marker([stop.lat,stop.lng],{icon:pinFor(stop.i)})
-        .bindPopup(popupHTML(stop.i),{maxWidth:340})
-        .bindTooltip(courseTooltipHTML(stop.i),{direction:'top',className:'course-tt'})
-        .on('click',()=>{highlight(stop.i);drawLink(stop.i)})
-        .addTo(tripLayer);
+      tripCourseMarkers.set(stop.i,
+        L.marker([stop.lat,stop.lng],{icon:pinFor(stop.i)})
+          .bindPopup(popupHTML(stop.i),{maxWidth:340})
+          .bindTooltip(courseTooltipHTML(stop.i),{direction:'top',className:'course-tt'})
+          .on('click',()=>{highlight(stop.i);drawLink(stop.i)})
+          .addTo(tripLayer));
     }
     pts.push([stop.lat,stop.lng]);
     /* GOLF-35: nearest-station markers make sense in the normal popup view,

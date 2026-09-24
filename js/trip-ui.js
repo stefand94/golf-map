@@ -1208,6 +1208,10 @@ function renderTripBuilder(){
   /* Tabs span both modes: Discover means Plan, the other two mean Build. */
   pane.querySelectorAll('.tb-tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
     const k=btn.dataset.tab;
+    /* GOLF-187: results used to stay open across a tab switch and sit above
+       the itinerary, so the Itinerary tab opened onto a list of search hits
+       rather than the trip. Switching tab is a change of subject. */
+    tbClearUnifiedSearch();
     if(k==='discover'){setAppMode('plan');return;}
     tbBuildTab=k;
     /* GOLF-178 reset removed by GOLF-193: re-opening the Costs tab used to
@@ -1261,29 +1265,22 @@ function renderTripBuilder(){
     onPick(){/* unreachable: `render` owns this field's results panel */}
   });
   searchResultsEl.addEventListener('click',e=>{
-    // GOLF-112: clicking the place name focuses the map (no trip change).
+    /* GOLF-187: the whole place row is the tap target now, and it does one
+       thing — put the place on the map and open its card. The two actions
+       that used to be buttons here ("Courses near here", "Add as a day")
+       live on that card (js/trip-add.js tbPlaceCardHTML), which is what
+       stopped a town costing three rows' worth of height in the list. */
     const focus=e.target.closest('.tb-unified-place-focus');
-    if(focus){
-      e.preventDefault();
-      const lat=parseFloat(focus.dataset.lat),lng=parseFloat(focus.dataset.lng),label=focus.dataset.label;
-      /* GOLF-112 bug fix: focusing a place must also re-scope Discover's
-         "Nearby" list to it (without adding a trip stop). Without this,
-         tbPlaceAnchor stays pointed at the last course added, so after
-         adding courses near City A and then focusing City B the Nearby
-         list keeps showing City A's courses. tbAddPlaceToTrip() is still
-         the only path that also creates a day. Redraw first, then fly —
-         so tbDrawMap()'s fitBounds doesn't clobber the camera focus. */
-      tbPlaceAnchor={label,lat,lng};
-      tbDiscoveryTab='anchor';
-      if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
-      tbFocusPlaceOnMap(lat,lng,label);
-      return;
-    }
-    // GOLF-82: one place action now, not two — tbAnchorTripToPlace() is gone.
-    const trip=e.target.closest('.tb-unified-place-trip');
-    if(!trip)return;
+    if(!focus)return;
     e.preventDefault();
-    tbAddPlaceToTrip(parseFloat(trip.dataset.lat),parseFloat(trip.dataset.lng),trip.dataset.label);
+    tbFocusPlaceOnMap(parseFloat(focus.dataset.lat),parseFloat(focus.dataset.lng),focus.dataset.label);
+  });
+  searchResultsEl.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'&&e.key!==' ')return;
+    const focus=e.target.closest('.tb-unified-place-focus');
+    if(!focus)return;
+    e.preventDefault();
+    tbFocusPlaceOnMap(parseFloat(focus.dataset.lat),parseFloat(focus.dataset.lng),focus.dataset.label);
   });
   }
 

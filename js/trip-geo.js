@@ -77,7 +77,13 @@ const tripLayer=L.layerGroup().addTo(map);
    course isn't drawn twice — once as its bg pin and once as the trip
    marker. Rebuilt on every tripClear() -> tbDrawMap() cycle. */
 let tripDrawnCourses=new Set();
-function tripClear(){tripLayer.clearLayers();tripDrawnCourses=new Set()}
+/* GOLF-187: index -> the course's pin ON THE TRIP LAYER. A course drawn
+   here is deliberately left out of the background cluster (GOLF-122's
+   "two pins, one course" fix), so the cluster's marker for it is not on
+   the map and opening its popup does nothing. goToCourse() needs to know
+   which of the two markers a visitor can actually see. */
+let tripCourseMarkers=new Map();
+function tripClear(){tripLayer.clearLayers();tripDrawnCourses=new Set();tripCourseMarkers=new Map()}
 /* Bug fix (2026-09-01): these discovery-candidate/anchor dots used to be
    plain L.circleMarker()s with no popup or click handler at all — visually
    a "white circle with a yellow border" (exactly what the stakeholder
@@ -109,11 +115,12 @@ function tripShow(items,anchor,clear=true,fit=true,anchorRingOnly=false){
     // own candidate pin instead of stacking into one.
     const ll=courseLatLng(i);
     tripDrawnCourses.add(i);
-    L.marker(ll,{icon:pinFor(i),opacity:border?0.5:1,title:C[i].n})
-      .bindPopup(popupHTML(i),{maxWidth:340})
-      .bindTooltip(courseTooltipHTML(i),{direction:'top',className:'course-tt'})
-      .on('click',()=>{highlight(i);drawLink(i)})
-      .addTo(tripLayer);
+    tripCourseMarkers.set(i,
+      L.marker(ll,{icon:pinFor(i),opacity:border?0.5:1,title:C[i].n})
+        .bindPopup(popupHTML(i),{maxWidth:340})
+        .bindTooltip(courseTooltipHTML(i),{direction:'top',className:'course-tt'})
+        .on('click',()=>{highlight(i);drawLink(i)})
+        .addTo(tripLayer));
     pts.push(ll);
   });
   if(anchor!=null){
@@ -128,11 +135,12 @@ function tripShow(items,anchor,clear=true,fit=true,anchorRingOnly=false){
         .addTo(tripLayer);
     }
     if(!anchorRingOnly){
-      L.marker(all,{icon:pinFor(anchor),title:C[anchor].n})
-        .bindPopup(popupHTML(anchor),{maxWidth:340})
-        .bindTooltip(courseTooltipHTML(anchor),{direction:'top',className:'course-tt'})
-        .on('click',()=>{highlight(anchor);drawLink(anchor)})
-        .addTo(tripLayer);
+      tripCourseMarkers.set(anchor,
+        L.marker(all,{icon:pinFor(anchor),title:C[anchor].n})
+          .bindPopup(popupHTML(anchor),{maxWidth:340})
+          .bindTooltip(courseTooltipHTML(anchor),{direction:'top',className:'course-tt'})
+          .on('click',()=>{highlight(anchor);drawLink(anchor)})
+          .addTo(tripLayer));
     }
     pts.push(all);
   }

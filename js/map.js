@@ -481,8 +481,38 @@ mobToggle.addEventListener('click',()=>{
   document.body.classList.contains('mob-map')?showMobileList():showMobileMap();
 });
 
-function goToCourse(i){map.closePopup();showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
-  markers.get(i).openPopup();highlight(i);drawLink(i)}
+/* GOLF-187: "tapping a search result opens its card" turned out to be three
+   different situations, and this function only ever handled one of them.
+   A course can be pinned on the TRIP layer (js/trip-geo.js / trip-route.js),
+   in which case js/explore.js deliberately leaves it out of the background
+   cluster — GOLF-122's "two pins, one course" fix — so opening the cluster's
+   marker silently did nothing, because that marker was not on the map. It
+   can be in the cluster, but collapsed inside a numbered badge, where
+   openPopup() again does nothing until the cluster is broken open. Or, with
+   the trip pane open, it can be on neither: that layer carries only the
+   courses currently in scope ("25 nearest"), and a search reaches well
+   outside that. Each case is handled, so a tap always lands somewhere. */
+function courseMarkerFor(i){
+  const t=(typeof tripCourseMarkers!=='undefined')?tripCourseMarkers.get(i):null;
+  if(t&&t._map)return t;
+  return markers.get(i)||null;
+}
+function goToCourse(i){
+  map.closePopup();showMobileMap();
+  const fly=()=>{try{map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});}catch(e){map.setView([C[i].lat,C[i].lng],13);}};
+  const t=(typeof tripCourseMarkers!=='undefined')?tripCourseMarkers.get(i):null;
+  if(t&&t._map){fly();t.openPopup();highlight(i);drawLink(i);return;}
+  const m=markers.get(i);
+  if(!m){fly();highlight(i);drawLink(i);return;}
+  /* Out of the current scope: lend it a pin. The next render() rebuilds
+     this layer from scope, so nothing is left behind. */
+  if(!layer.hasLayer(m)){m.setIcon(pinFor(i));layer.addLayer(m);}
+  // zoomToShowLayer breaks open the cluster this marker is hiding in and
+  // then fires — plain openPopup() on a clustered marker does nothing.
+  if(layer.zoomToShowLayer)layer.zoomToShowLayer(m,()=>m.openPopup());
+  else{fly();m.openPopup();}
+  highlight(i);drawLink(i);
+}
 
 /* GOLF-112: a town/city picked from the unified search can now be looked
    at on the map without being dropped into the trip. tbFocusPlaceOnMap()
@@ -502,12 +532,20 @@ function tbFocusPlaceOnMap(lat,lng,label){
   tbTempPlaceSetAt=Date.now();
   tbTempPlaceMarker=L.marker([lat,lng],{
     icon:L.divIcon({className:'tb-temp-place-pin',html:'📍',iconSize:[24,24],iconAnchor:[12,22]}),
-    keyboard:false,interactive:false,zIndexOffset:1000
+    keyboard:false,zIndexOffset:1000
   }).addTo(map);
-  if(label)tbTempPlaceMarker.bindTooltip(String(label),{direction:'top',offset:[0,-20]}).openTooltip();
+  /* GOLF-187: the marker carries the place's card, not just its name.
+     The search row used to grow two buttons of its own ("Start a trip
+     here" / "Add as a day"), which is a large part of why a town sat
+     below ten course rows — the actions moved here, where there is room
+     for them and where the place is already in front of you. */
+  if(label)tbTempPlaceMarker.bindPopup(tbPlaceCardHTML(lat,lng,label),{minWidth:200,closeButton:true});
+  if(label)tbTempPlaceMarker.bindTooltip(String(label),{direction:'top',offset:[0,-20]});
   /* flyTo's easing math needs a sized container; fall back to a plain jump
      if the map hasn't been laid out yet (mirrors tbDrawMap()'s own guard). */
   try{map.flyTo([lat,lng],12,{duration:.6});}catch(e){map.setView([lat,lng],12);}
+  // Opened after the camera move so the popup lands where the marker ends up.
+  if(label)tbTempPlaceMarker.openPopup();
 }
 /* A manual map gesture clears the temp marker — but the programmatic
    flyTo above (and showMobileMap()'s invalidateSize) also fire these
