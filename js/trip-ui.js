@@ -917,7 +917,17 @@ function tbMountBetaBadge(){
     if(dd)dd.removeAttribute('open');
   });
 }
+/* Tabs span both modes: Discover means Plan, the other two mean Build.
+   Shared by the pane's own tab row and the phone tab bar (GOLF-185a). */
+function tbGoTab(k){
+  if(k==='discover'){if(appMode!=='plan')setAppMode('plan');return;}
+  tbBuildTab=k;
+  if(k==='cost')tbCostMode='pp'; // GOLF-178: the card always opens on Per person
+  if(appMode!=='build')setAppMode('build');
+  else{render();} // GOLF-108: render() so the course-pin layer tracks the tab (Costs/Itinerary hide it, Discover shows it)
+}
 function renderTripBuilder(){
+  if(typeof mobBeforeRender==='function')mobBeforeRender(); // GOLF-185a
   const pane=document.getElementById('tb-pane');
   if(tbDayShown==null||!tripDays.find(d=>d.id===tbDayShown))tbDayShown=tripDays.length?tripDays[0].id:null;
   const total=tbTripTotal();
@@ -1028,15 +1038,7 @@ function renderTripBuilder(){
   if(shareBtn)shareBtn.addEventListener('click',()=>tbShareTrip(shareBtn));
   document.getElementById('tb-groupsize-dec').addEventListener('click',()=>tripSetGroupSize(groupSize-1));
   document.getElementById('tb-groupsize-inc').addEventListener('click',()=>tripSetGroupSize(groupSize+1));
-  /* Tabs span both modes: Discover means Plan, the other two mean Build. */
-  pane.querySelectorAll('.tb-tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
-    const k=btn.dataset.tab;
-    if(k==='discover'){setAppMode('plan');return;}
-    tbBuildTab=k;
-    if(k==='cost')tbCostMode='pp'; // GOLF-178: the card always opens on Per person
-    if(appMode!=='build')setAppMode('build');
-    else{render();} // GOLF-108: render() so the course-pin layer tracks the tab (Costs/Itinerary hide it, Discover shows it)
-  }));
+  pane.querySelectorAll('.tb-tab-btn').forEach(btn=>btn.addEventListener('click',()=>tbGoTab(btn.dataset.tab)));
   const filterDrop=document.getElementById('tb-filter-drop');
   if(filterDrop){
     filterDrop.querySelectorAll('[data-itin-filter]').forEach(btn=>btn.addEventListener('click',()=>{tbItinFilter=btn.dataset.itinFilter;renderTripBuilder();}));
@@ -1137,4 +1139,5 @@ function renderTripBuilder(){
       document.getElementById('tb-border').addEventListener('change',run);
     }
   }
+  if(typeof mobAfterRender==='function')mobAfterRender(); // GOLF-185a: phone sheet, floating search, tab bar
 }

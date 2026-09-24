@@ -1,8 +1,7 @@
 /* ============================================================
    js/map.js — the Leaflet map: basemap, rail/station layers and their
    zoom restyling, the clustered course markers, pin/popup/tooltip
-   HTML, the nearest-station link line, and the mobile list/map
-   toggle.
+   HTML, and the nearest-station link line.
 
    Loaded as a plain <script> (not a module) in the fixed order
    listed in london-golf-map-v5_1.html — top-level declarations
@@ -42,6 +41,7 @@ function mapFitBounds(bounds,opts){
   if(!bounds)return;
   if(!mapHasSize()){_pendingFit={bounds:bounds,opts:opts};return;}
   _pendingFit=null;
+  if(typeof mobFitOpts==='function')opts=mobFitOpts(opts); // GOLF-185a: fit the strip of map above the phone sheet
   map.fitBounds(bounds,opts);
 }
 /* Only the most recent parked fit is replayed — an unsized map may have
@@ -51,6 +51,7 @@ function mapReplayPendingFit(){
   if(!_pendingFit)return;
   if(!mapHasSize()){_pendingFit=null;return;}
   const p=_pendingFit;_pendingFit=null;
+  if(typeof mobFitOpts==='function')p.opts=mobFitOpts(p.opts);
   /* animate:false — the camera the visitor is about to see was never on
      screen, so there is nothing to animate FROM, and Leaflet's zoom
      animation only commits the new zoom on transitionend, which a freshly
@@ -447,39 +448,9 @@ function drawLink(i){linkLayer.clearLayers();
   if(isNR)nrStationMarker(s.lat,s.lng).addTo(linkLayer);
 }
 
-/* GOLF-19: mobile list<->map toggle (see the max-width:900px block in
-   <style> — .app stacks full-height, one of .panel/#map is display:none
-   at a time via body.mob-list/mob-map). Desktop ignores this entirely,
-   the toggle button itself is display:none above 900px. */
-const mobToggle=document.getElementById('mob-toggle');
-document.body.classList.add('mob-list');
-function showMobileMap(noFit){
-  if(window.innerWidth>900)return;
-  document.body.classList.remove('mob-list');document.body.classList.add('mob-map');
-  mobToggle.textContent='Show list';
-  /* GOLF-31: a tbDrawMap() fitBounds() that ran while #map was
-     display:none (e.g. right after tbSelect() on mobile, still on the
-     list view) computed against a stale/zero-size container — re-fit
-     once the map is actually visible and sized. */
-  setTimeout(()=>{
-    map.invalidateSize();
-    /* GOLF-184: the map is only now sized, so any fit that was parked
-       while it was hidden can finally be computed properly. One more tick:
-       invalidateSize() starts its own pan, and a fitBounds issued inside
-       that animation is swallowed. */
-    setTimeout(mapReplayPendingFit,0);
-    if(tripBuilderOn&&!noFit)tbDrawMap();
-  },0);
-  /* noFit: the caller is about to centre on one thing itself (poiFocus) —
-     an animated re-fit would land after it and win. */
-}
-function showMobileList(){
-  document.body.classList.remove('mob-map');document.body.classList.add('mob-list');
-  mobToggle.textContent='Show map';
-}
-mobToggle.addEventListener('click',()=>{
-  document.body.classList.contains('mob-map')?showMobileList():showMobileMap();
-});
+/* GOLF-19's mobile list<->map toggle is gone (GOLF-185a): on a phone the
+   map is always on screen under a bottom sheet. showMobileMap() and
+   showMobileList() now live in js/mobile-sheet.js. */
 
 function goToCourse(i){map.closePopup();showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
   markers.get(i).openPopup();highlight(i);drawLink(i)}

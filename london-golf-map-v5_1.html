@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Golf Tripper</title>
 
 <!-- GOLF-80/PWA basics: installable app shell. Progressive enhancement only
@@ -89,25 +89,11 @@
   .skip-link{position:absolute;left:8px;top:-40px;background:var(--ink);color:var(--paper-2);padding:8px 14px;border-radius:5px;font:600 12.5px var(--font-sans);text-decoration:none;z-index:3000;transition:top .12s}
   .skip-link:focus{top:8px}
   .app{display:grid;grid-template-columns:minmax(360px,420px) 1fr;height:100vh}
-  /* GOLF-19: the old fixed 50vh panel/map split clipped the panel with
-     overflow:hidden — on a real phone this made the search box, sort
-     dropdown, and every button below the filter chips completely
-     unreachable (confirmed: filters content ran ~715px tall, capped at
-     406px, no scroll). Replaced with a full-height list<->map toggle. */
-  .mob-toggle{display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:1500;
-    background:var(--ink);color:var(--paper-2);border:none;border-radius:22px;padding:12px 22px;
-    font:600 13px var(--font-sans);box-shadow:0 6px 20px rgba(0,0,0,.3);cursor:pointer}
+  /* GOLF-19's full-height list<->map toggle was replaced by GOLF-185a's
+     bottom sheet — see the "GOLF-185a" block at the end of this sheet. */
   @media (max-width:900px){
     .app{grid-template-columns:1fr;grid-template-rows:1fr}
     .panel{max-height:none}
-    body.mob-map .panel{display:none}
-    body.mob-list #map{display:none}
-    .mob-toggle{display:block}
-    /* GOLF-136: the fixed .mob-toggle pill floats over whatever the panel
-       is currently scrolled to — without this, its last lines of text
-       (seen on the Costs tab's currency disclaimer) sit permanently
-       underneath the button with no way to scroll them clear. */
-    .tb-pane{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))} /* GOLF-150 C2: pill 42px + 18px offset + breathing room */
   }
   .panel{display:flex;flex-direction:column;background:var(--paper-2);border-right:1px solid var(--line);overflow:hidden;box-shadow:6px 0 24px -12px rgba(22,36,29,.25);position:relative;z-index:10}
 
@@ -581,7 +567,6 @@
   .tb-toast-btn{flex:0 0 auto;min-height:36px;padding:0 12px;border:0;border-radius:var(--radius-sm);background:transparent;
     color:#9CC3EA;font:700 var(--fs-body) var(--font-sans);cursor:pointer}
   .tb-toast-btn:hover{background:rgba(255,255,255,.08)}
-  @media (max-width:900px){.tb-toast{bottom:calc(76px + env(safe-area-inset-bottom,0px))}}
   .tb-wish-moved{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);flex-wrap:wrap;
     padding:var(--sp-3) var(--sp-4);background:var(--accent-soft);border-radius:var(--radius-md);font:500 var(--fs-body) var(--font-sans);color:var(--ink)}
   .tb-price-tbc{font-weight:500;color:var(--stone);opacity:.8;font-size:.85em}
@@ -943,6 +928,81 @@
     a[href]{color:inherit;text-decoration:none}
     body{background:#fff}
   }
+  /* ══════════════════════════════════════════════════════════════════
+     GOLF-185a — phone layout: map-first with a bottom sheet (DEC-027).
+     The map fills the screen; .panel becomes a sheet over it, positioned
+     by js/mobile-sheet.js (inline `top`) at peek / half / full, always
+     ending at the top of the bottom tab bar. The one search bar is moved
+     into .mob-top, floating over the map. Same tokens, fonts and component
+     styles as the rest of the app: this changes layout, not the brand.
+     Kept at the end of the stylesheet so it wins over the earlier rules.
+     ══════════════════════════════════════════════════════════════════ */
+  :root{--bs-tab-h:calc(58px + env(safe-area-inset-bottom,0px));--bs-cover-bottom:0px;--bs-cover-top:0px}
+  .bs-handle,.bs-tabbar,.mob-top{display:none}
+  .map-filter-btn[hidden]{display:none}
+  @media (max-width:900px){
+    #map{position:fixed;inset:0;z-index:0}
+    .app{display:block;height:auto}
+    .panel{position:fixed;left:0;right:0;top:50%;bottom:var(--bs-tab-h);z-index:1100;border-right:none;
+      border-radius:var(--radius-xl) var(--radius-xl) 0 0;box-shadow:0 -6px 24px -8px rgba(27,39,51,.28);
+      transition:top .24s var(--ease)}
+    .panel.is-dragging{transition:none}
+    .bs-handle{display:flex;flex-direction:column;align-items:stretch;flex:0 0 auto;padding:0 var(--sp-5) var(--sp-2);
+      touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+    .bs-grip{align-self:center;width:64px;height:22px;margin:0;padding:0;border:0;background:none;cursor:grab;position:relative}
+    .bs-grip::before{content:'';position:absolute;left:14px;right:14px;top:9px;height:5px;border-radius:var(--radius-pill);background:var(--line)}
+    .bs-grip:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:var(--radius-sm)}
+    .bs-peek{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);min-height:36px;
+      font:600 var(--fs-body)/1.25 var(--font-sans);color:var(--ink)}
+    .bs-peek-text{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+    .panel>.mast{padding:var(--sp-2) var(--sp-5);box-shadow:none}
+    .tb-pane{overscroll-behavior:contain;padding-bottom:var(--sp-4)}
+    /* The pane's segmented tabs move to the bottom tab bar. */
+    .tb-tabs{display:none}
+    .tb-head{padding-top:var(--sp-3)}
+
+    /* Bottom tab bar, within thumb reach. */
+    .bs-tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:1300;height:var(--bs-tab-h);
+      padding:0 var(--sp-2) env(safe-area-inset-bottom,0px);background:#fff;border-top:1px solid var(--line);
+      box-shadow:0 -2px 12px -6px rgba(27,39,51,.18)}
+    .bs-tabbar button{flex:1 1 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+      min-height:var(--tap);border:0;background:none;color:var(--stone);cursor:pointer;
+      font:700 var(--fs-caption)/1 var(--font-sans);transition:color var(--dur) var(--ease)}
+    .bs-tabbar button[aria-selected="true"]{color:var(--accent-deep)}
+    .bs-tabbar button[aria-selected="true"] svg{stroke-width:2.4}
+    .bs-tabbar button:focus-visible{outline:2px solid var(--accent);outline-offset:-4px;border-radius:var(--radius-md)}
+
+    /* Floating search over the map. */
+    .mob-top{display:block;position:fixed;left:0;right:0;top:0;z-index:1200;pointer-events:none;
+      padding:calc(env(safe-area-inset-top,0px) + var(--sp-3)) var(--sp-3) 0}
+    .mob-search-row{display:flex;align-items:center;gap:var(--sp-2);pointer-events:auto}
+    .mob-top .tb-place-wrap.tb-search-bar-wrap{flex:1 1 auto;min-width:0;position:relative;top:auto;padding:0;background:none;box-shadow:none}
+    .mob-top .tb-search-bar{box-shadow:var(--shadow-md);font-size:16px} /* 16px: no iOS zoom-on-focus */
+    .mob-top .tb-search-bar-wrap::before{left:var(--sp-4)}
+    .mob-top .tb-search-bar-wrap::after{left:25px}
+    .mob-top .tb-search-clear{right:6px}
+    .mob-top .map-filter-btn{flex:0 0 var(--tap);box-shadow:var(--shadow-md)}
+    /* Results drop down over the map (and the sheet), never pushing the bar. */
+    .mob-top #tb-search-results{position:absolute;left:var(--sp-3);right:var(--sp-3);top:100%;margin-top:var(--sp-2);
+      max-height:calc(100dvh - var(--bs-tab-h) - 96px - env(safe-area-inset-top,0px));overflow-y:auto;overscroll-behavior:contain;
+      pointer-events:auto;background:var(--paper-2);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:var(--sp-3) var(--sp-4)}
+
+    /* Leaflet's corner controls stay in the visible strip of map. */
+    .leaflet-bottom{bottom:var(--bs-cover-bottom);transition:bottom .24s var(--ease)}
+    .leaflet-top{top:var(--bs-cover-top)}
+    /* At full there is no map strip left to hold them. */
+    .panel[data-sheet="full"]~#map .leaflet-control-container{visibility:hidden}
+
+    /* Undo toast: above the tab bar at any sheet height. fixed (not the
+       panel-relative absolute) so a sheet at peek can't clip it. */
+    .tb-toast{position:fixed;bottom:calc(var(--bs-tab-h) + var(--sp-3))}
+
+    body.shared-mode .bs-tabbar,body.shared-mode .mob-top{display:none}
+  }
+  @media (max-width:900px) and (prefers-reduced-motion:reduce){
+    .panel,.leaflet-bottom{transition:none}
+  }
+  @media print{.bs-tabbar,.mob-top{display:none !important}}
 </style>
 
 <a href="#map" class="skip-link">Skip to map</a>
@@ -1026,7 +1086,6 @@
   </aside>
   <div id="map" tabindex="-1"></div>
 </div>
-<button class="mob-toggle" id="mob-toggle" type="button">Show map</button>
 <div class="drawer" id="drawer"><div class="sheet" id="sheet"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -1057,6 +1116,7 @@
 <script src="js/trip-ui.js"></script>
 <script src="js/touch-dnd.js"></script>
 <script src="js/app-mode.js"></script>
+<script src="js/mobile-sheet.js"></script>
 <script src="js/trip-share.js"></script>
 <script src="js/explore.js"></script>
 <script src="js/editor.js"></script>

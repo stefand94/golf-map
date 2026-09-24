@@ -55,6 +55,9 @@ const ORDER = [
   'trip-ui.js',
   'touch-dnd.js',
   'app-mode.js',
+  // GOLF-185a: after trip-ui.js (FILTER_ICON_SVG, renderTripBuilder's
+  // hooks call into it) and map.js (it reads `map` at load).
+  'mobile-sheet.js',
   'trip-share.js',
   'explore.js',
   'editor.js',
