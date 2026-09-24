@@ -10,4 +10,4 @@
    Loaded as a plain <script> (not a module), before js/state.js,
    in the fixed order listed in london-golf-map-v5_1.html.
    ============================================================ */
-const APP_VERSION='golfmap-shell-v5-2d1e1736bd';
+const APP_VERSION='golfmap-shell-v5-c67173d34d';
