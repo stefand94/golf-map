@@ -378,7 +378,13 @@ function tbStaySlotHTML(d){
   </div>`;
   const det=tripItemPriceDetail(d,st);
   const cur=curSym(tripStayCurrency(d,st));
-  const ph=det.est&&det.base!=null?`~${cur}${Math.round(det.base)} est.`:`${cur} / night`;
+  /* The field takes a PER PERSON, per night figure, so its placeholder has
+     to be the per-person share of the estimate — det.total is the room. A
+     placeholder of ~£110 beside an itinerary row reading ~£55 is exactly
+     the two-figures-disagree bug GOLF-193 went and fixed. */
+  const gs=groupSizeFor();
+  const est=det.est&&det.total!=null?det.total/(gs>1?gs:1):null;
+  const ph=est!=null?`~${cur}${Math.round(est)} est.`:`${cur} / night`;
   return`<div class="tb-stay-slot">
     <span class="tb-stay-name" title="${esc(st.name)}">🏨 ${esc(st.name)}</span>
     <span class="tb-stay-nights">
@@ -674,13 +680,17 @@ function costPPBucketFmt(b,gs,emptyCur){
 const costDual=(tot,pp,gs)=>gs>1?`<span class="cv-pp">${pp}</span><span class="cv-tot">${tot}</span>`:tot;
 const costModeNote=(mode,gs)=>mode==='pp'?'Showing cost per person':`Showing total for all ${gs} travellers`;
 function tbCostSetMode(btn,mode){
-  const body=btn.closest('.cost-body');if(!body)return;
+  // Every caller is a button in the segmented control, but the mode itself
+  // is app-wide state — so a call without one sets the mode and skips only
+  // the control's own highlight, rather than throwing.
+  const body=btn&&typeof btn.closest==='function'?btn.closest('.cost-body'):null;
   tbCostMode=mode;
   /* GOLF-193: the choice is app-wide now. Setting it on <body> reaches
      every figure in the pane, the day cards and the shared view at once,
      with no re-render — so the map, any open day and the scroll position
      all survive a mode change. */
   tbCostModeApply();
+  if(!body)return;
   body.dataset.mode=mode;
   body.querySelectorAll('.cost-mode-seg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
   const note=body.querySelector('.cost-mode-note');
