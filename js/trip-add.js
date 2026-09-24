@@ -478,11 +478,24 @@ function tripDayItemRowHTML(d,it){
      line AND (on golf) implied by the fee — it now appears once, in the
      right-hand price column the sketch calls for. The meta line is the
      region for golf, and the stop kind for everything else. */
+  /* GOLF-197: a hotel row is the day's answer to "where are you staying",
+     so it carries the stay's own controls (nights, price, Change) instead
+     of the box that used to sit below the day repeating the same hotel.
+     A later night of a multi-night stay says which night it is and sends
+     you back to the first one to change anything (DEC-028 186a). */
+  const stayNight=it.type==='hotel'&&typeof tripStayNightIndex==='function'?tripStayNightIndex(d,it):0;
+  const stayN=it.nights||1;
+  const stayMeta=it.type==='hotel'
+    ?(stayNight>0
+      ?`<div class="cart-region" title="Change the hotel, its price or how many nights it runs for on night 1 of this stay">Night ${stayNight+1} of ${stayN}</div>`
+      :tbStayControlsHTML(d,it))
+    :`<div class="cart-region">Stop${noGeo?' · <span title="No location picked, so no drive time can be calculated to this stop">no location</span>':''}</div>`;
   const main=it.type==='golf'
     ?`<a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${it.i})">${esc(tripItemName(it))}</a>
        <div class="cart-region">${esc(C[it.i]?C[it.i].r:'')}${((typeof feeCartFor==='function')&&feeCartFor(it.i)||{}).status==='mandatory'?' · <span class="wt">buggy compulsory</span>':''}</div>`
     :`<span class="tb-item-name">${esc(tripItemName(it))}</span>
-       <div class="cart-region">${it.type==='hotel'?'Stay':'Stop'}${noGeo?' · <span title="No location picked, so no drive time can be calculated to this stop">no location</span>':''}</div>`;
+       ${it.type==='hotel'&&noGeo?`<div class="cart-region"><span title="No location picked, so no drive time can be calculated to this stop">no location</span></div>`:''}
+       ${stayMeta}`;
   /* Merge (GOLF-71 + GOLF-73): GOLF-73 shipped Edit as a second inline button
      beside ✕. GOLF-71 collapsed every per-row action into one overflow menu
      (and moved "move to day" out of a <select> into it), so Edit lives there

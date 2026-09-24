@@ -646,6 +646,12 @@
     background:var(--paper-2);font:inherit;line-height:1;cursor:pointer}
   .tb-step:disabled{opacity:.4;cursor:default}
   .tb-stay-price{max-width:126px}
+  /* GOLF-197: the stay's controls, on the hotel's own row. The row has the
+     whole card's width, so a long hotel name wraps here instead of being
+     ellipsised the way the fixed-width slot name was. */
+  .tb-stay-ctl{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-1);cursor:default}
+  .tb-item-hotel .tb-item-name{display:block;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+  .tb-item-hotel .tb-stay-price{max-width:110px}
   /* GOLF-186: candidate rows and their matching numbered map pins. */
   .tb-hotel-cand{display:flex;align-items:center;gap:var(--sp-2);width:100%;
     padding:var(--sp-2);border:0;border-bottom:1px solid var(--line);

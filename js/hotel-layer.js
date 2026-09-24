@@ -244,7 +244,19 @@ function tbHotelLayerAddToDay(idx){
   const sel=document.getElementById('hotel-pop-day');
   const dayId=sel?Number(sel.value):NaN;
   if(!isFinite(dayId))return;
-  if(!tripDayAddStop(dayId,'hotel',p.name,null,p.lat,p.lng,1))return;
+  /* GOLF-197: the same swap rule as the picker list (tbAddHotelCandidate,
+     js/ors.js). Only that path had it, so "Change" followed by picking a
+     hotel off the map added a second hotel to the day instead of
+     replacing the first — against DEC-028 186(b), and the source of the
+     day-with-two-hotels report. tripDayUpdateStop() carries the change
+     across every night of a multi-night booking. */
+  const d=tripDays.find(x=>x.id===dayId);
+  const cur=d&&typeof tripDayStay==='function'?tripDayStay(d):null;
+  if(cur){
+    if(!tripDayUpdateStop(dayId,cur.id,{name:p.name,price:cur.price,lat:p.lat,lng:p.lng}))return;
+    /* Picking off the map is also an answer to an open picker. */
+    if(typeof tbHotelPickerFor!=='undefined'&&tbHotelPickerFor===dayId)tbHotelPickerFor=null;
+  }else if(!tripDayAddStop(dayId,'hotel',p.name,null,p.lat,p.lng,1))return;
   map.closePopup();
   render(); // repaints the itinerary and re-tints this pin yellow
   if(typeof mapFitDay==='function')mapFitDay(dayId); // GOLF-191 (AC 2): keep the new stop and the rest of its day in view
