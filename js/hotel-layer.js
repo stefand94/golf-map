@@ -247,6 +247,7 @@ function tbHotelLayerAddToDay(idx){
   if(!tripDayAddStop(dayId,'hotel',p.name,null,p.lat,p.lng,1))return;
   map.closePopup();
   render(); // repaints the itinerary and re-tints this pin yellow
+  if(typeof mapFitDay==='function')mapFitDay(dayId); // GOLF-191 (AC 2): keep the new stop and the rest of its day in view
 }
 
 function tbHotelLayerRender(pois){

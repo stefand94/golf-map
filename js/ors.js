@@ -406,7 +406,8 @@ function tbAddHotelCandidate(dayId,idx){
   }else if(!tripDayAddStop(dayId,'hotel',p.name,null,p.lat,p.lng,1))return;
   tbHotelPickerFor=null;
   tbAddStop=null;
-  renderTripBuilder();tbDrawMap();
+  renderTripBuilder();tbDrawMap(false);
+  if(typeof mapFitDay==='function')mapFitDay(dayId); // GOLF-191 (AC 2): keep the new stop and the rest of its day in view
 }
 /* GOLF-96 follow-up: this used to be its own boxed panel (title + Close +
    a "search by name" footer button) sitting ABOVE the separate add-stay

@@ -97,7 +97,8 @@ function tbAddToDay(i,dayId){
   if(!TRIP.has(i)){TRIP.add(i);tripSeq.push(i);tripLastAdded=i;tbAnchor=i;tbPlaceAnchor=null;}
   tripDaySetCourse(i,dayId);
   tbDayShown=dayId;
-  saveState();render();renderTripBuilder();tbDrawMap();
+  saveState();render();renderTripBuilder();tbDrawMap(false);
+  if(typeof mapFitDay==='function')mapFitDay(dayId); // GOLF-191 (AC 2): keep the new stop and the rest of its day in view
 }
 /* GOLF-61: place results for the unified search bar, fetched via the same
    orsGeocode() already used for day place-fields — populated asynchronously

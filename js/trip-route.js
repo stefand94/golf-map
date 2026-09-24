@@ -815,6 +815,7 @@ function tbDrawMap(fit=true){
   tbDrawTripItems();
   const pts=[...pts1,...pts2];
   if(fit&&pts.length)mapFitBounds(L.latLngBounds(pts),{padding:[32,32],maxZoom:14}); // GOLF-184
+  if(typeof mapTripFitControlSync==='function')mapTripFitControlSync(); // GOLF-191
 }
 /* GOLF-131: refresh the Itinerary tab's nearby-course set as the map is
    panned/zoomed, so scouting an area you haven't added a stop to yet

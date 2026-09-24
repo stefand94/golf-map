@@ -302,9 +302,11 @@ function tbAddStopCommit(){
   }else{
     tripDayAddStop(s.dayId,s.type,name,price,lat,lng,nights);
   }
+  const fitDay=s.dayId;
   tbAddStop=null;
   if(typeof tbHotelPickerFor!=='undefined')tbHotelPickerFor=null;
-  renderTripBuilder();tbDrawMap();
+  renderTripBuilder();tbDrawMap(false);
+  if(typeof mapFitDay==='function')mapFitDay(fitDay); // GOLF-191 (AC 2): keep the new stop and the rest of its day in view
 }
 /* GOLF-71 copy audit: the form used to carry a two-sentence footnote
    explaining what picking a search result does for drive times. The

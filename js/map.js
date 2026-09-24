@@ -38,8 +38,22 @@ function mapHasSize(){
   try{const s=map.getSize();return s.x>=40&&s.y>=40;}catch(e){return false;}
 }
 let _pendingFit=null;
+/* GOLF-191 (AC 3): a few actions must leave the camera exactly where the
+   visitor put it. Adding a course from its own pin is the reported case
+   — the map zoomed into that course and the rest of the trip went off
+   screen. One add fans out into several redraws (render() ->
+   renderTripBuilder() -> tbDrawMap(), plus the caller's own), so rather
+   than thread a "don't fit" flag through all of them, the hold covers
+   the whole turn and lifts on the next tick. Every fit in the app goes
+   through mapFitBounds(), so this is the one place that has to know. */
+let _mapHold=false;
+function mapHoldCamera(fn){
+  _mapHold=true;
+  try{fn();}finally{setTimeout(()=>{_mapHold=false;},0);}
+}
 function mapFitBounds(bounds,opts){
   if(!bounds)return;
+  if(_mapHold)return;
   if(!mapHasSize()){_pendingFit={bounds:bounds,opts:opts};return;}
   _pendingFit=null;
   map.fitBounds(bounds,opts);
@@ -57,6 +71,47 @@ function mapReplayPendingFit(){
      un-hidden container doesn't reliably fire. Jump instead; the app's own
      testing notes (js/trip-ui.js) already prefer that for the same reason. */
   map.fitBounds(p.bounds,Object.assign({},p.opts,{animate:false}));
+}
+/* GOLF-191: one way to frame the trip, and one way to frame a day.
+   Everything that wants to show "the whole trip" — the map's own
+   control, and the mobile sheet once GOLF-185a lands — calls these
+   rather than assembling its own bounds, so the two can't drift apart.
+   A clean fit: it moves the camera and nothing else. No highlight, no
+   popup, no change to what is selected or drawn.
+   Both route through mapFitBounds(), so they inherit its parking
+   behaviour on a not-yet-sized (mobile, still hidden) map.
+   dayId null = the whole trip. Returns true if there was anything to
+   frame, so a caller can fall back. */
+/* animate:false, for the reason js/trip-ui.js and mapReplayPendingFit()
+   already give: Leaflet commits an animated zoom on transitionend, and a
+   fit issued while an earlier zoom animation is still in flight is
+   swallowed outright. Adding a stop within a second of tapping "Show
+   whole trip" reproduced it every time — the stop landed, the camera
+   never moved. A jump always arrives. */
+const MAP_TRIP_FIT_OPTS={padding:[32,32],maxZoom:14,animate:false};
+function tripFitPoints(dayId){
+  if(typeof tripDayOrder!=='function')return[];
+  /* tripDayStops() numbers days from 1; tripDayOrder() carries that
+     through as `day`, and unscheduled wishlist courses carry null. */
+  const dayNo=dayId==null?null:(typeof tripDays!=='undefined'
+    ?tripDays.findIndex(d=>d.id===dayId)+1:0);
+  if(dayId!=null&&!dayNo)return[];
+  return tripDayOrder()
+    .filter(s=>(dayNo==null||s.day===dayNo)&&isFinite(s.lat)&&isFinite(s.lng))
+    .map(s=>[s.lat,s.lng]);
+}
+function mapFitTrip(dayId,opts){
+  const pts=tripFitPoints(dayId);
+  if(!pts.length)return false;
+  mapFitBounds(L.latLngBounds(pts),Object.assign({},MAP_TRIP_FIT_OPTS,opts||{}));
+  return true;
+}
+/* Adding a stay or a stop should leave both it and the rest of that day
+   on screen (GOLF-191 AC 2) — the whole trip would be too wide to show
+   what just happened. Falls back to the whole trip for a day that has
+   nothing located yet. */
+function mapFitDay(dayId,opts){
+  return mapFitTrip(dayId,opts)||mapFitTrip(null,opts);
 }
 /* GOLF-108: the clustered "all courses" pin layer lives in its own pane
    below the overlay (route polylines, z400) and marker (trip stops, z600)
@@ -115,6 +170,25 @@ function esriBaseLayers(){
 const esriBases=esriBaseLayers();
 esriBases['Default'].addTo(map);
 L.control.layers(esriBases,null,{position:'topright'}).addTo(map);
+/* GOLF-191 (AC 1): "Show whole trip". Top-left is the only free corner —
+   zoom is bottom-right, the basemap picker top-right, and the bottom-left
+   is the tile attribution we're obliged to keep legible. Hidden whenever
+   the trip has nothing located to frame, so it never offers a no-op. */
+const mapTripFitControl=L.control({position:'topleft'});
+mapTripFitControl.onAdd=function(){
+  const el=L.DomUtil.create('div','leaflet-bar map-fit-trip');
+  el.innerHTML=`<a href="#" role="button" title="Show whole trip — frames every stop in your trip" aria-label="Show whole trip">⤢</a>`;
+  L.DomEvent.disableClickPropagation(el);
+  L.DomEvent.on(el,'click',e=>{L.DomEvent.preventDefault(e);mapFitTrip(null);});
+  return el;
+};
+mapTripFitControl.addTo(map);
+/* Called from tbDrawMap(), which runs after every change to the trip. */
+function mapTripFitControlSync(){
+  const el=mapTripFitControl.getContainer();
+  if(el)el.style.display=tripFitPoints(null).length>1?'':'none';
+}
+mapTripFitControlSync();
 
 /* GOLF-161: England and Scotland course positions are re-sourced from
    OpenStreetMap (the records carrying coordSrc:"osm"), which is ODbL and

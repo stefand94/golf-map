@@ -716,6 +716,17 @@
        top of the sheet's own footer buttons. */
     body.cf-open .mob-toggle{display:none}
   }
+
+  /* GOLF-191: the "Show whole trip" map control. Top-left — zoom is
+     bottom-right, the basemap picker top-right, the attribution
+     bottom-left. Sized to the tap minimum rather than Leaflet's 26px. */
+  /* Both selectors: Leaflet's own `.leaflet-touch .leaflet-bar a` is 30px
+     and more specific than a bare `.map-fit-trip a`, so it wins on touch
+     devices — which are exactly the ones that need the 44px target. */
+  .leaflet-bar.map-fit-trip a,.leaflet-touch .leaflet-bar.map-fit-trip a{
+    width:var(--tap);height:var(--tap);line-height:var(--tap);
+    font-size:20px;text-align:center;color:var(--ink);text-decoration:none}
+  .leaflet-bar.map-fit-trip a:hover{background:var(--accent-soft)}
   .cost-banner-unit{font:600 var(--fs-title) var(--font-sans);white-space:nowrap}
   .cost-banner-fig{white-space:nowrap}
   .cost-banner-amount.is-mixed{font-size:28px}

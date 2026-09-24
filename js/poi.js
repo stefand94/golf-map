@@ -229,6 +229,7 @@ function poiAddToDay(id,dayId){
   if(!it)return;
   if(typeof map!=='undefined')map.closePopup();
   renderTripBuilder();tbDrawMap(false);
+  if(typeof mapFitDay==='function')mapFitDay(dayId); // GOLF-191 (AC 2): keep the new stop and the rest of its day in view
   if(typeof tbToast==='function')tbToast(`Added <b>${esc(p.name)}</b> to Day ${tripDays.indexOf(d)+1}`,[
     {label:'Undo',fn:()=>{tripDayRemoveItem(dayId,it.id);renderTripBuilder();tbDrawMap(false);}}]);
 }
