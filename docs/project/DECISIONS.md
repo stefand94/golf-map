@@ -872,3 +872,14 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   on Discover (rejected: country is the top-level choice).
 - **Date:** 2026-09-29 · **Affects:** GOLF-204, 207, 208, 209, 198. Amends
   DEC-032 item 4 (desktop half).
+
+## DEC-034 — Retire `mobile-sheet`; new work branches from `main`
+
+- **Decision (owner, 2026-09-29):** `mobile-sheet` has been fully merged into
+  `main` (`7e724b1`) and is retired. The remote branch was deleted on 2026-09-29.
+  New work branches from `main`. A long-lived release branch is used again
+  only when a batch needs owner review before it ships.
+- **Alternatives:** keep `mobile-sheet` as a standing release branch.
+  Rejected: it adds a second integration point, and the 205 hook damage
+  happened on it.
+- **Date:** 2026-09-29 · **Affects:** all new work; GOLF-211 onward.
