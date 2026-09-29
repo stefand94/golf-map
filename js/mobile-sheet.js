@@ -72,6 +72,102 @@ filterBtn.setAttribute('aria-label','Filters');filterBtn.title='Filters';
 filterBtn.innerHTML=FILTER_ICON_SVG;
 filterBtn.hidden=true; // GOLF-185d unhides it once the filter panel exists
 
+/* GOLF-185c: on a phone the app opens on a country question, over a
+   blurred map, until a country is picked; after that the pick lives on as
+   a small chip beside the floating search. state.nation is saved, so the
+   card doesn't come back on reload (DEC-011's per-deploy wipe does bring it
+   back once, which is accepted). Never on a #share= link: CSS keys every
+   rule below off body:not(.shared-mode). */
+const MOB_NATION_CODE={gb:'GB',ie:'IE',za:'ZA'};
+document.body.insertAdjacentHTML('beforeend',
+  `<div class="mob-gate" id="mob-gate" hidden>
+    <div class="mob-gate-card" role="dialog" aria-modal="true" aria-labelledby="mob-gate-h">
+      <h2 id="mob-gate-h">Where are you playing?</h2>
+      <p>Pick a country to see its courses.</p>
+      <div class="mob-gate-opts"></div>
+    </div>
+  </div>`);
+const mobGate=document.getElementById('mob-gate');
+function mobGateWanted(){return mobIsPhone()&&!state.nation&&!document.body.classList.contains('shared-mode');}
+function mobGateSync(){
+  const want=mobGateWanted();
+  if(want&&mobGate.hidden){
+    /* Filled here, not at load: NATIONS lives in js/explore.js, which
+       loads after this file. */
+    const opts=mobGate.querySelector('.mob-gate-opts');
+    if(!opts.firstChild)opts.innerHTML=NATIONS.map(([k,l])=>`<button type="button" class="mob-gate-opt" data-nation="${k}">${esc(l)}</button>`).join('');
+    mobGate.classList.remove('is-leaving');
+    mobGate.hidden=false;
+    document.body.classList.add('mob-gate-on');
+    mobGate.querySelector('.mob-gate-opt').focus({preventScroll:true});
+  }else if(!want&&!mobGate.hidden&&!mobGate.classList.contains('is-leaving')){
+    mobGate.hidden=true;
+    document.body.classList.remove('mob-gate-on');
+  }
+}
+/* Picking fades the card out while the map fits the country behind it.
+   The search and sheet come back first, so GOLF-184's fit measures the
+   strip of map that will actually be visible. */
+function mobPickNation(k){
+  mobNationMenu(false);
+  if(!mobGate.hidden){
+    document.body.classList.remove('mob-gate-on');
+    const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduce)mobGate.hidden=true;
+    else{
+      mobGate.classList.add('is-leaving');
+      setTimeout(()=>{mobGate.hidden=true;mobGate.classList.remove('is-leaving');},320);
+    }
+  }
+  tbPickNation(k);
+  const chip=document.getElementById('mob-nation-chip');
+  if(chip)chip.focus({preventScroll:true});
+}
+mobGate.addEventListener('click',e=>{
+  const b=e.target.closest('[data-nation]');if(b)mobPickNation(b.dataset.nation);
+});
+/* Keep Tab inside the card while it's up: there's nothing behind it to use. */
+mobGate.addEventListener('keydown',e=>{
+  if(e.key!=='Tab')return;
+  const opts=[...mobGate.querySelectorAll('.mob-gate-opt')];
+  const i=opts.indexOf(document.activeElement);
+  if(e.shiftKey&&i<=0){e.preventDefault();opts[opts.length-1].focus();}
+  else if(!e.shiftKey&&i===opts.length-1){e.preventDefault();opts[0].focus();}
+});
+
+/* The country chip (rebuilt with the floating search on every render). */
+function mobNationChip(){
+  const box=document.createElement('div');box.className='mob-nation';
+  const cur=NATIONS.find(([k])=>k===state.nation);
+  box.innerHTML=`<button type="button" class="mob-nation-chip" id="mob-nation-chip" aria-haspopup="true" aria-expanded="false"
+      aria-controls="mob-nation-menu" aria-label="Country: ${esc(cur[1])}. Change country">${MOB_NATION_CODE[cur[0]]||esc(cur[0].toUpperCase())}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    <div class="mob-nation-menu" id="mob-nation-menu" role="menu" aria-label="Country" hidden>
+      ${NATIONS.map(([k,l])=>`<button type="button" role="menuitemradio" aria-checked="${k===state.nation}" data-nation="${k}"><b>${MOB_NATION_CODE[k]||esc(k.toUpperCase())}</b>${esc(l)}</button>`).join('')}
+    </div>`;
+  box.querySelector('.mob-nation-chip').addEventListener('click',()=>mobNationMenu(!mobNationMenuOpen()));
+  box.querySelector('.mob-nation-menu').addEventListener('click',e=>{
+    const b=e.target.closest('[data-nation]');if(!b)return;
+    if(b.dataset.nation===state.nation){mobNationMenu(false,true);return;}
+    mobPickNation(b.dataset.nation);
+  });
+  return box;
+}
+function mobNationMenuOpen(){const m=document.getElementById('mob-nation-menu');return!!m&&!m.hidden;}
+function mobNationMenu(open,refocus){
+  const m=document.getElementById('mob-nation-menu'),chip=document.getElementById('mob-nation-chip');
+  if(!m||!chip)return;
+  m.hidden=!open;
+  chip.setAttribute('aria-expanded',String(open));
+  if(open)(m.querySelector('[aria-checked="true"]')||m.querySelector('button')).focus({preventScroll:true});
+  else if(refocus)chip.focus({preventScroll:true});
+}
+document.addEventListener('click',e=>{
+  if(mobNationMenuOpen()&&!e.target.closest('.mob-nation'))mobNationMenu(false);
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&mobNationMenuOpen()){e.stopPropagation();mobNationMenu(false,true);}
+},true);
+
 /* ── Geometry ─────────────────────────────────────────────────── */
 function mobSheetTops(){
   const H=window.innerHeight;
@@ -411,6 +507,7 @@ function mobAfterRender(){
     b.setAttribute('aria-selected',String(on));
     b.tabIndex=on?0:-1;
   });
+  mobGateSync();
   if(!phone){
     mobPanel.style.top='';
     return;
@@ -432,6 +529,7 @@ function mobAfterRender(){
        is only used if a view renders no filter button. */
     const cfBtn=document.getElementById('tb-course-filters');
     if(cfBtn)cfBtn.classList.add('map-filter-btn');
+    if(state.nation&&!document.body.classList.contains('shared-mode'))row.append(mobNationChip());
     row.append(wrap,cfBtn||filterBtn);
     mobTop.append(row);
     if(results)mobTop.append(results);

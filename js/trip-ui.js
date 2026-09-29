@@ -1128,6 +1128,43 @@ function tbRegionOptionsHTML(){
     return rs.length?`<optgroup label="${esc(l)}">${rs.map(opt).join('')}</optgroup>`:'';
   }).join('');
 }
+/* The one place a country gets picked: the pane's pills (toggle, desktop)
+   and, on a phone, GOLF-185c's first-visit card and country chip
+   (js/mobile-sheet.js). null clears the pick. */
+function tbPickNation(k){
+  state.nation=k||null;
+  /* GOLF-113: drop a now-invalid region filter so switching nation
+     doesn't leave a stale By-region selection filtering the results. */
+  if(tbRegion&&state.nation&&!tbRegionsForNation(state.nation).includes(tbRegion))tbRegion='';
+  /* Match the legacy js/explore.js pill: opening a nation orders its
+     list by ranking. */
+  if(state.nation)state.sort='rank';
+  /* The retired Explore sidebar draws its own copy of these pills and
+     only ever re-renders them from its own handler, so a pick made
+     here left the two sets disagreeing about which country is on.
+     Harmless while that markup is display:none, but it is the kind of
+     thing that comes back the moment anything reveals it. */
+  if(typeof renderNationPills==='function')renderNationPills();
+  /* GOLF-125: must be render(), not renderTripBuilder()+tbDrawMap(). Only
+     render() rebuilds the background course-pin layer for the new
+     nation filter (it calls renderTripBuilder()+tbDrawMap() itself).
+     With the lighter pair, picking Ireland / South Africa from these
+     pane pills moved the camera but left the map showing the previous
+     nation's pins (or none) — the "country selected, no pins" bug. */
+  saveState();render();
+  /* GOLF-98: this pane's own pill click never actually moved the map —
+     js/explore.js's now-unreachable Explore-mode pills had this, the
+     pane's pills never picked it up. Fly to the picked nation's course
+     bounds; picking the same pill again (clearing the filter) leaves
+     the map where it is rather than snapping back out. */
+  if(state.nation&&typeof map!=='undefined'&&map){
+    const pts=C.map((c,i)=>i).filter(i=>courseNation(i)===state.nation).map(i=>[C[i].lat,C[i].lng]);
+    /* fitBounds, not flyToBounds — this app's own testing notes (see the
+       plan file) document flyTo's animation stalling in at least one
+       environment; fitBounds jumps instantly and is never unreliable. */
+    if(pts.length)mapFitBounds(L.latLngBounds(pts),{padding:[28,28]}); // GOLF-184
+  }
+}
 function tbNationPillsHTML(){
   /* GOLF-114: --nation-count drives the equal-width grid in CSS, so adding
      a nation to NATIONS redistributes the row with no style change. */
@@ -1322,38 +1359,7 @@ function renderTripBuilder(){
   if(nationPills)nationPills.addEventListener('click',e=>{
     const b=e.target.closest('[data-nation]');if(!b)return;
     const k=b.dataset.nation;
-    state.nation=state.nation===k?null:k;
-    /* GOLF-113: drop a now-invalid region filter so switching nation
-       doesn't leave a stale By-region selection filtering the results. */
-    if(tbRegion&&state.nation&&!tbRegionsForNation(state.nation).includes(tbRegion))tbRegion='';
-    /* Match the legacy js/explore.js pill: opening a nation orders its
-       list by ranking. */
-    if(state.nation)state.sort='rank';
-    /* The retired Explore sidebar draws its own copy of these pills and
-       only ever re-renders them from its own handler, so a pick made
-       here left the two sets disagreeing about which country is on.
-       Harmless while that markup is display:none, but it is the kind of
-       thing that comes back the moment anything reveals it. */
-    if(typeof renderNationPills==='function')renderNationPills();
-    /* GOLF-125: must be render(), not renderTripBuilder()+tbDrawMap(). Only
-       render() rebuilds the background course-pin layer for the new
-       nation filter (it calls renderTripBuilder()+tbDrawMap() itself).
-       With the lighter pair, picking Ireland / South Africa from these
-       pane pills moved the camera but left the map showing the previous
-       nation's pins (or none) — the "country selected, no pins" bug. */
-    saveState();render();
-    /* GOLF-98: this pane's own pill click never actually moved the map —
-       js/explore.js's now-unreachable Explore-mode pills had this, the
-       pane's pills never picked it up. Fly to the picked nation's course
-       bounds; picking the same pill again (clearing the filter) leaves
-       the map where it is rather than snapping back out. */
-    if(state.nation&&typeof map!=='undefined'&&map){
-      const pts=C.map((c,i)=>i).filter(i=>courseNation(i)===state.nation).map(i=>[C[i].lat,C[i].lng]);
-      /* fitBounds, not flyToBounds — this app's own testing notes (see the
-         plan file) document flyTo's animation stalling in at least one
-         environment; fitBounds jumps instantly and is never unreliable. */
-      if(pts.length)mapFitBounds(L.latLngBounds(pts),{padding:[28,28]}); // GOLF-184
-    }
+    tbPickNation(state.nation===k?null:k);
   });
   const shareBtn=document.getElementById('tb-share-trip');
   if(shareBtn)shareBtn.addEventListener('click',()=>tbShareTrip(shareBtn));

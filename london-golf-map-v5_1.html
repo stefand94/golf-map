@@ -1199,9 +1199,49 @@
        button. An expanded card fills the sheet, so there it keeps the usual
        spot above the tab bar — above the card would be under the search. */
     .panel[data-sheet="card"] .tb-toast{bottom:calc(var(--bs-cover-bottom) + var(--sp-3))}
+
+    /* GOLF-185c: the country question (js/mobile-sheet.js). Until it's
+       answered only the blurred map shows behind it: no search, sheet or
+       tab bar. The pane's pills give way to the chip beside the search. */
+    #tb-nation-pills{display:none}
+    .mob-gate{display:flex;position:fixed;inset:0;z-index:1400;align-items:center;justify-content:center;
+      padding:var(--sp-5) var(--sp-4);background:rgba(246,243,236,.28);
+      -webkit-backdrop-filter:blur(10px) saturate(1.1);backdrop-filter:blur(10px) saturate(1.1);
+      transition:opacity .3s var(--ease)}
+    .mob-gate[hidden],body.shared-mode .mob-gate{display:none}
+    .mob-gate-card{width:100%;max-width:360px;padding:var(--sp-6) var(--sp-5) var(--sp-5);border-radius:var(--radius-xl);
+      background:rgba(255,255,255,.78);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+      border:1px solid rgba(255,255,255,.7);box-shadow:var(--shadow-lg);text-align:center;
+      transition:transform .3s var(--ease)}
+    .mob-gate-card h2{margin:0;font:700 22px/1.2 var(--font-display);color:var(--ink)}
+    .mob-gate-card p{margin:var(--sp-2) 0 var(--sp-5);font-size:14px;color:var(--ink-soft)}
+    .mob-gate-opts{display:flex;flex-direction:column;gap:var(--sp-2)}
+    .mob-gate-opt{min-height:52px;border:1px solid var(--line);border-radius:var(--radius-lg);background:#fff;
+      color:var(--ink);font:600 16px var(--font-sans);cursor:pointer}
+    .mob-gate-opt:active{background:var(--paper-2)}
+    .mob-gate-opt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .mob-gate.is-leaving{opacity:0;pointer-events:none}
+    .mob-gate.is-leaving .mob-gate-card{transform:translateY(-24px)}
+    body.mob-gate-on:not(.shared-mode) .panel,body.mob-gate-on:not(.shared-mode) .mob-top,
+    body.mob-gate-on:not(.shared-mode) .bs-tabbar{display:none}
+
+    .mob-nation{position:relative;flex:0 0 auto}
+    .mob-nation-chip{display:inline-flex;align-items:center;justify-content:center;gap:3px;min-width:var(--tap);height:var(--tap);
+      padding:0 var(--sp-2);border:1px solid var(--line);border-radius:var(--radius-pill);background:#fff;box-shadow:var(--shadow-md);
+      color:var(--ink);font:700 14px/1 var(--font-sans);letter-spacing:.02em;cursor:pointer}
+    .mob-nation-chip svg{color:var(--stone)}
+    .mob-nation-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .mob-nation-menu{position:absolute;left:0;top:calc(100% + var(--sp-2));z-index:2;min-width:210px;padding:var(--sp-1);
+      background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg)}
+    .mob-nation-menu[hidden]{display:none}
+    .mob-nation-menu button{display:flex;align-items:center;gap:var(--sp-3);width:100%;min-height:var(--tap);padding:0 var(--sp-3);
+      border:0;border-radius:var(--radius-md);background:none;color:var(--ink);font:500 15px var(--font-sans);text-align:left;cursor:pointer}
+    .mob-nation-menu button b{min-width:24px;color:var(--stone);font-weight:700;font-size:13px}
+    .mob-nation-menu button[aria-checked="true"]{background:var(--paper-2);font-weight:700}
+    .mob-nation-menu button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
   }
   @media (max-width:900px) and (prefers-reduced-motion:reduce){
-    .panel,.leaflet-bottom,.bs-card-more svg{transition:none}
+    .panel,.leaflet-bottom,.bs-card-more svg,.mob-gate,.mob-gate-card{transition:none}
   }
   @media print{.bs-tabbar,.mob-top{display:none !important}}
 
