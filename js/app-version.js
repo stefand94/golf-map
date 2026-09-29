@@ -10,8 +10,4 @@
    Loaded as a plain <script> (not a module), before js/state.js,
    in the fixed order listed in london-golf-map-v5_1.html.
    ============================================================ */
-<<<<<<< HEAD
-const APP_VERSION='golfmap-shell-v5-3bf3d12815';
-=======
-const APP_VERSION='golfmap-shell-v5-bb6c53df07';
->>>>>>> d03313e (sw.js: auto-bump CACHE_NAME (precached content changed))
+const APP_VERSION='golfmap-shell-v5-60da7464bc';
