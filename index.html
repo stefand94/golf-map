@@ -492,7 +492,14 @@
      Placed after it, and matching on two classes, so it wins either way. */
   .tb-day-course.tb-touch-lift,.tb-day.tb-touch-lift,.tb-touch-lift{
     opacity:1;transform:scale(1.02);box-shadow:var(--shadow-dragging);
-    outline:2px solid var(--accent);outline-offset:-1px;z-index:6}
+    outline:2px solid var(--accent);outline-offset:-1px;z-index:6;
+    /* The lifted row sits directly under the finger that lifted it, so
+       without this it is what document.elementFromPoint() returns for the
+       whole drag and every drop resolves to the row being dragged. It has
+       to be invisible to hit-testing for the touch shim to see the row
+       underneath — a mouse drag has no equivalent problem because the
+       browser tracks the drop target itself. */
+    pointer-events:none}
   /* The row/card actually under the pointer lifts toward the cursor. */
   body.tb-dragging .tb-day-course.tb-drop-over,body.tb-dragging .tb-day.tb-drop-over{box-shadow:var(--shadow-dragging)}
   /* Insertion indicator: a real 3px accent line in a real gap, not a wash. */
