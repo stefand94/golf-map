@@ -370,7 +370,7 @@
   /* Header: ⠿ handle + bold title (+ place) on the left, £ total right. */
   .tb-day-head{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-2);
     font:700 var(--fs-title) var(--font-sans);color:var(--ink);
-    border-radius:var(--radius-lg) var(--radius-lg) 0 0;user-select:none;-webkit-user-select:none}
+    border-radius:var(--radius-lg) var(--radius-lg) 0 0;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
   .tb-day-title{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:var(--sp-2);overflow:hidden}
   /* "Day 3" must never be the thing that truncates — the place name absorbs
      the squeeze instead, which matters most at 375px. */
@@ -393,7 +393,7 @@
   /* A stop row. Golf reads heaviest; hotel/POI are the connective tissue. */
   .tb-day-course{position:relative;display:flex;align-items:center;gap:var(--sp-2);
     padding:var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-2);cursor:grab;
-    user-select:none;-webkit-user-select:none;border-radius:var(--radius-md);margin:2px var(--sp-2);
+    user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;border-radius:var(--radius-md);margin:2px var(--sp-2);
     background:#fff;transition:background var(--dur) var(--ease),box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease)}
   .tb-day-course:hover{background:var(--paper-2)}
   .tb-day-course:active{cursor:grabbing}
@@ -486,6 +486,13 @@
      bake the lift into the ghost instead of leaving it on the placeholder. */
   .tb-drag-src{opacity:.4;transform:scale(.98)}
   .tb-day.tb-drag-src{opacity:.45}
+  /* GOLF-215: the touch lift. A finger-held row is in your hand, so it
+     must read as raised — .tb-drag-src's fade is right for the gap a
+     mouse ghost leaves behind and wrong here, where there is no ghost.
+     Placed after it, and matching on two classes, so it wins either way. */
+  .tb-day-course.tb-touch-lift,.tb-day.tb-touch-lift,.tb-touch-lift{
+    opacity:1;transform:scale(1.02);box-shadow:var(--shadow-dragging);
+    outline:2px solid var(--accent);outline-offset:-1px;z-index:6}
   /* The row/card actually under the pointer lifts toward the cursor. */
   body.tb-dragging .tb-day-course.tb-drop-over,body.tb-dragging .tb-day.tb-drop-over{box-shadow:var(--shadow-dragging)}
   /* Insertion indicator: a real 3px accent line in a real gap, not a wash. */
