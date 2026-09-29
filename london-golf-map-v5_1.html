@@ -711,9 +711,10 @@
     .cf-panel{top:auto;left:0;right:0;bottom:0;width:auto;max-height:82vh;
       border-left:none;border-top:1px solid var(--line);
       border-radius:var(--radius-lg) var(--radius-lg) 0 0}
-    /* The fixed "Show map" pill floats at z-index 1500 and would sit on
-       top of the sheet's own footer buttons. */
-    body.cf-open .mob-toggle{display:none}
+    /* GOLF-199: the phone tab bar (GOLF-185a, z-index 1300) would sit on
+       top of the sheet's own footer buttons. This used to hide GOLF-19's
+       "Show map" pill, which 185a removed. */
+    body.cf-open .bs-tabbar{display:none}
   }
 
   /* GOLF-191: the "Show whole trip" map control. Top-left — zoom is
@@ -1120,6 +1121,9 @@
       max-height:calc(100dvh - var(--bs-tab-h) - 96px - env(safe-area-inset-top,0px));overflow-y:auto;overscroll-behavior:contain;
       pointer-events:auto;background:var(--paper-2);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:var(--sp-3) var(--sp-4)}
 
+    /* GOLF-199: tucked away while a picked result's card is on the map
+       (js/mobile-sheet.js showMobileMap); the search field brings it back. */
+    body.mob-results-off .mob-top #tb-search-results{display:none!important}
     /* Leaflet's corner controls stay in the visible strip of map. */
     .leaflet-bottom{bottom:var(--bs-cover-bottom);transition:bottom .24s var(--ease)}
     .leaflet-top{top:var(--bs-cover-top)}

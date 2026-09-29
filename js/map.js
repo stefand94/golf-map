@@ -544,7 +544,6 @@ function courseMarkerFor(i){
 }
 function goToCourse(i){
   map.closePopup();
-  const wasOnList=window.innerWidth<=900&&document.body.classList.contains('mob-list');
   showMobileMap();
   const go=()=>{
     const fly=()=>{try{map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});}catch(e){map.setView([C[i].lat,C[i].lng],13);}};
@@ -561,17 +560,10 @@ function goToCourse(i){
     else{fly();m.openPopup();}
     highlight(i);drawLink(i);
   };
-  /* GOLF-187 (mobile): coming from the list view, showMobileMap() has just
-     queued invalidateSize() + a full tbDrawMap() for the next tick, and
-     mapReplayPendingFit() for the one after. Going now would zoom a map
-     Leaflet still believes is its old size, have tripLayer rebuilt out from
-     under the marker whose popup we opened, and then be overruled by the
-     replayed trip fit — which is exactly what left a phone looking at
-     St Andrews at zoom 6 with no card. Two ticks puts this last, after
-     both. On desktop, and when the map is already showing, nothing is
-     pending and the wait would only add a visible delay. */
-  if(wasOnList)setTimeout(()=>setTimeout(go,0),0);
-  else go();
+  /* GOLF-187's two-tick wait for the old list view is gone (GOLF-199):
+     it keyed off body.mob-list, which GOLF-185a removed. The map is never
+     hidden on a phone now, so nothing is pending and it can go at once. */
+  go();
 }
 
 /* GOLF-112: a town/city picked from the unified search can now be looked

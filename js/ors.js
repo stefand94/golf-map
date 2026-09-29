@@ -368,11 +368,22 @@ function tbOpenHotelPicker(dayId){
   const d=tripDays.find(d=>d.id===dayId);if(!d)return;
   const pt=tbPoiPoint(d);
   if(!pt){tbPromptHotel(dayId);return;}
-  if(typeof showMobileMap==='function')showMobileMap();
-  if(typeof map!=='undefined'&&map)map.setView([pt.lat,pt.lng],13);
+  /* GOLF-199: on a phone the picker lives in the sheet, so "show the map"
+     (which lowers the sheet to peek) would hide it. Half keeps the list
+     and the numbered pins both in view, and the fit centres the day in
+     the strip of map above the sheet rather than behind it. */
+  if(typeof mobIsPhone==='function'&&mobIsPhone()){
+    showMobileList();
+    mapFitBounds(L.latLngBounds([pt,pt]),{maxZoom:13,animate:false});
+  }else if(typeof map!=='undefined'&&map)map.setView([pt.lat,pt.lng],13);
   tbHotelPickerFor=dayId;
   tbAddStop={dayId,itemId:null,type:'hotel',name:'',price:'',lat:null,lng:null,nights:'1'};
   renderTripBuilder();tbDrawMap();
+  /* GOLF-199: at half height the day's picker is usually below the fold. */
+  if(typeof mobIsPhone==='function'&&mobIsPhone()){
+    const pane=document.getElementById('tb-pane'),form=pane&&pane.querySelector('.tb-addstop');
+    if(form)pane.scrollTop+=form.getBoundingClientRect().top-pane.getBoundingClientRect().top-8;
+  }
 }
 function tbCloseHotelPicker(){tbHotelPickerFor=null;tbAddStop=null;renderTripBuilder();tbDrawMap();}
 /* GOLF-186: one ordered list of candidates, shared by the panel rows and

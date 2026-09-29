@@ -57,6 +57,9 @@ document.body.insertAdjacentHTML('beforeend',
     <button type="button" role="tab" data-tab="cost"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 7.5A4 4 0 0 0 9 10v8M6.5 14h7M6 18h11"/></svg><span>Costs</span></button>
   </nav>`);
 const mobTop=document.getElementById('mob-top');
+['focusin','click','input'].forEach(ev=>mobTop.addEventListener(ev,e=>{
+  if(e.target.id==='tb-unified-search')document.body.classList.remove('mob-results-off');
+}));
 const mobTabbar=document.getElementById('bs-tabbar');
 const filterBtn=document.createElement('button');
 filterBtn.type='button';filterBtn.id='filterBtn';
@@ -116,6 +119,10 @@ function mobFitOpts(opts){
    POI opened): lower the sheet so it is in view. */
 function showMobileMap(){
   if(!mobIsPhone())return;
+  /* GOLF-199: the floating results sit over the map, so a result tapped
+     from them (GOLF-187) opened its card underneath the list. Tuck them
+     away; focusing or typing in the search brings them back, query kept. */
+  document.body.classList.add('mob-results-off');
   if(mobSheetState!=='peek')mobSheetSet('peek');
   setTimeout(mapReplayPendingFit,0);
 }
@@ -238,7 +245,7 @@ function mobPeekHTML(){
     bits.push(`${n} course${n===1?'':'s'} in view`);
     if(TRIP.size)bits.push(`${TRIP.size} in trip`);
   }
-  return`<span class="bs-peek-text">${bits.join(' · ')}</span><span class="tb-pill">${tbTripTotal()}</span>`;
+  return`<span class="bs-peek-text">${bits.join(' · ')}</span><span class="tb-pill">${tbTripTotalHTML()}</span>`; // GOLF-199: 193's app-wide pp/total reading, like the other pills
 }
 function mobUpdatePeek(){
   if(!mobIsPhone())return;
@@ -270,7 +277,13 @@ function mobAfterRender(){
   const results=document.getElementById('tb-search-results');
   if(wrap){
     const row=document.createElement('div');row.className='mob-search-row';
-    row.append(wrap,filterBtn);
+    /* GOLF-199: 185d renders its filter button (#tb-course-filters) into the
+       pane's toolbar on every pass, already wired to the panel. On a phone
+       it moves out to sit beside the floating search; the placeholder slot
+       is only used if a view renders no filter button. */
+    const cfBtn=document.getElementById('tb-course-filters');
+    if(cfBtn)cfBtn.classList.add('map-filter-btn');
+    row.append(wrap,cfBtn||filterBtn);
     mobTop.append(row);
     if(results)mobTop.append(results);
   }
