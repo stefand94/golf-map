@@ -462,11 +462,12 @@ function renderNearestList(anchorIdx){
     e.stopPropagation();
     tbAddToWishlist(+b.dataset.add);
   }));
-  list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
-    const i=+el.dataset.i;showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
-    markers.get(i).openPopup();highlight(i);drawLink(i)}));
+  // GOLF-201: through goToCourse() (GOLF-187), which opens a clustered or
+  // trip-layer pin too; the old flyTo + openPopup did neither.
+  list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>goToCourse(+el.dataset.i)));
 }
 function render(){
+  const openCourse=mapOpenCourse(); // GOLF-201: both layer rebuilds below close it
   /* GOLF-31: single hook point — every existing render() call site
      (filter chips, played/want/trip toggles, corrections save, reset,
      wipeStoredState) keeps the Trip Builder pane and the mast's cart-count
@@ -503,7 +504,7 @@ function render(){
      tripLayer (tbDrawMap(), gated by the "Nearby courses" toggle) and the
      Costs tab draws just the route. The bgCoursePins pane (js/map.js)
      keeps the route/stop markers on top in Discover. */
-  if(tripBuilderOn&&appMode!=='plan'&&tripLayer.getLayers().length)return;
+  if(tripBuilderOn&&appMode!=='plan'&&tripLayer.getLayers().length){mapReopenCourse(openCourse);return;}
   let shown=C.map((c,i)=>i).filter(passes);
   const S_={region:(a,b)=>REGIONS.indexOf(C[a].r)-REGIONS.indexOf(C[b].r)||feeNum(a)-feeNum(b),
     fee:(a,b)=>feeNum(a)-feeNum(b),rank:(a,b)=>rankNum(a)-rankNum(b),
@@ -528,6 +529,7 @@ function render(){
      re-runs the bound content function, so the open popup redraws from
      current state — exactly what the old blanket setPopupContent() loop
      achieved for all 557 markers, now done for the one that needs it. */
+  mapReopenCourse(openCourse);
   refreshOpenCoursePopup();
   document.getElementById('count').textContent=`${shown.length} of ${C.length}`;
   document.getElementById('editcount').textContent=editCount();
@@ -555,7 +557,7 @@ function render(){
       <p class="cmeta"><span>${esc(a.label)}</span>
       ${stn?`<span>${esc(stn.n)} · ${esc(LINES[stn.l].n)}</span>`:near?`<span>${esc(near.n)} · ${esc(near.mi)} mi straight-line</span>`:C[i].topSouthAfrica?'':`<span style="color:var(--stone)">no close station</span>`}
       ${bestRankBadge(i)}${C[i].sweep?'<span class="wt">sweep</span>':''}${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
-  list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
-    const i=+el.dataset.i;showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
-    markers.get(i).openPopup();highlight(i);drawLink(i)}));
+  // GOLF-201: through goToCourse() (GOLF-187), which opens a clustered or
+  // trip-layer pin too; the old flyTo + openPopup did neither.
+  list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>goToCourse(+el.dataset.i)));
 }

@@ -116,9 +116,15 @@ function setAsAnchor(i){if(!TRIP.has(i))toggleTrip(i);enterTripBuilder(i)}
    off screen. The add itself is what the visitor asked for; moving the
    camera was not. mapHoldCamera() covers the whole fan-out (this
    function's own redraw plus setAppMode()'s render()). */
+/* GOLF-185b: with the camera held, nothing on screen says the add
+   happened — hence the confirmation, with a way through to the trip. */
 function tbAddToPlan(i){
   mapHoldCamera(()=>{
     tbAddToWishlist(i);
     if(appMode!=='plan')setAppMode('plan',{seedAnchor:i});
   });
+  tbToast(`Added <b>${esc(V(i,'n'))}</b>`,[{label:'View trip',fn:()=>{
+    tbGoTab('itin');
+    if(typeof mobIsPhone==='function'&&mobIsPhone())mobSheetSet('full'); // as the Itinerary tab-bar button does
+  }}]);
 }

@@ -1172,9 +1172,34 @@
     .tb-toast{position:fixed;bottom:calc(var(--bs-tab-h) + var(--sp-3))}
 
     body.shared-mode .bs-tabbar,body.shared-mode .mob-top{display:none}
+
+    /* GOLF-185b: the course card takes the sheet over while it's up
+       (js/mobile-sheet.js); the pane underneath keeps its state. */
+    body.mob-card-on .bs-peek,body.mob-card-on #tb-pane{display:none}
+    .bs-card{flex:0 0 auto;min-height:0;padding:0 var(--sp-5) var(--sp-4);outline:none}
+    .bs-card.is-more{flex:1 1 auto;overflow-y:auto;overscroll-behavior:contain}
+    .bs-card-head{display:flex;align-items:flex-start;gap:var(--sp-2)}
+    .bs-card-head h3{flex:1 1 auto;min-width:0;margin:0;font-size:19px}
+    .bs-card-x{flex:0 0 var(--tap);height:var(--tap);margin:-10px -12px 0 0;border:0;background:none;
+      color:var(--stone);font:400 26px/1 var(--font-sans);cursor:pointer;border-radius:var(--radius-md)}
+    .bs-card-x:focus-visible,.bs-card-more:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+    .bs-card-fee{margin:var(--sp-1) 0 0;font:700 var(--fs-body)/1.3 var(--font-sans);font-variant-numeric:tabular-nums;color:var(--ink)}
+    .bs-card-note{margin:var(--sp-1) 0 0;font-size:13px;line-height:1.4;color:var(--ink-soft);
+      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .bs-card.is-more .bs-card-note{display:none} /* the full note is in the body below */
+    .bs-card-acts{display:flex;align-items:center;gap:var(--sp-2);margin-top:var(--sp-3)}
+    .bs-card-acts .btn.primary{flex:1 1 auto;min-height:var(--tap);font-size:14px;order:0;flex-basis:auto}
+    .bs-card-more{flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;min-height:var(--tap);padding:0 var(--sp-2);
+      border:0;background:none;color:var(--accent-deep);font:600 13px var(--font-sans);cursor:pointer;border-radius:var(--radius-md)}
+    .bs-card-more svg{transition:transform var(--dur) var(--ease)}
+    .bs-card-more[aria-expanded="true"] svg{transform:rotate(180deg)}
+    .bs-card-body{margin-top:var(--sp-3);border-top:1px solid var(--line);padding-top:var(--sp-3)}
+    .bs-card-body .pop .note{border-top:0;padding-top:0}
+    /* The confirmation sits on the map above the card, not over its button. */
+    body.mob-card-on .tb-toast{bottom:calc(var(--bs-cover-bottom) + var(--sp-3))}
   }
   @media (max-width:900px) and (prefers-reduced-motion:reduce){
-    .panel,.leaflet-bottom{transition:none}
+    .panel,.leaflet-bottom,.bs-card-more svg{transition:none}
   }
   @media print{.bs-tabbar,.mob-top{display:none !important}}
 

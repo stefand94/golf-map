@@ -44,6 +44,10 @@ mobPanel.insertAdjacentHTML('afterbegin',
     <div class="bs-peek" id="bs-peek" aria-live="polite"></div>
   </div>`);
 const mobHandle=document.getElementById('bs-handle');
+/* GOLF-185b: the course card. On a phone a tapped pin shows its course
+   here, in the sheet, instead of in a Leaflet popup over the map. */
+mobHandle.insertAdjacentHTML('afterend','<section class="bs-card pop" id="bs-card" tabindex="-1" aria-label="Course" hidden></section>');
+const mobCard=document.getElementById('bs-card');
 
 /* Floating bar over the map: the pane's search is moved in here on phones.
    The filter button slot (GOLF-185d, Dev 2 wires it up) always sits
@@ -83,12 +87,21 @@ function mobSheetTops(){
   const half=Math.round(Math.min(peek-48,Math.max(full+120,H*0.48)));
   return{full,half,peek,H,tabH,topBar};
 }
+let mobPanelTop=0; // where the sheet is heading, not where its transition has got to
 function mobApplySheet(){
   if(!mobIsPhone()||!mobSheetState)return;
   const t=mobSheetTops();
-  mobPanel.style.top=t[mobSheetState]+'px';
-  mobPanel.dataset.sheet=mobSheetState;
-  mobSetMapInsets(t[mobSheetState],t);
+  let top=t[mobSheetState],sheet=mobSheetState;
+  /* A card sizes the sheet to itself (never above half, so the pin stays in
+     view); "Show more" takes it to full, where the card scrolls. */
+  if(mobCardI!=null){
+    top=mobCardMore?t.full:Math.max(t.half,t.H-t.tabH-mobHandle.offsetHeight-mobCard.offsetHeight);
+    sheet=mobCardMore?'full':'card';
+  }
+  mobPanelTop=top;
+  mobPanel.style.top=top+'px';
+  mobPanel.dataset.sheet=sheet;
+  mobSetMapInsets(top,t);
 }
 /* Keep Leaflet's own corner controls (zoom, layers, attribution) inside
    the visible strip of map: below the floating search, above the sheet. */
@@ -99,6 +112,7 @@ function mobSetMapInsets(top,t){
 }
 function mobSheetSet(state){
   if(!MOB_SHEET_STATES.includes(state))return;
+  mobCardDrop();
   mobSheetState=state;
   mobApplySheet();
 }
@@ -123,10 +137,127 @@ function showMobileMap(){
      from them (GOLF-187) opened its card underneath the list. Tuck them
      away; focusing or typing in the search brings them back, query kept. */
   document.body.classList.add('mob-results-off');
+  mobCardDrop();
   if(mobSheetState!=='peek')mobSheetSet('peek');
+  else mobApplySheet();
   setTimeout(mapReplayPendingFit,0);
 }
 function showMobileList(){if(mobIsPhone())mobSheetSet('half');}
+
+/* ── Course card (GOLF-185b) ──────────────────────────────────── */
+/* Compact first (DEC-032, owner item 3): name, green fee, a two-line note
+   and Add to trip — about a third of the screen. "Show more" opens the
+   rest in place: popupHTML()'s full body, so every action the popup has
+   is still here and the two can't drift apart.
+
+   Being in the sheet rather than on the map is also the phone half of
+   GOLF-201's fix: a redraw that rebuilds the marker can't close it. */
+let mobCardI=null,mobCardMore=false,mobCardPrev=null;
+function mobCardFeeHTML(i){
+  const lab=f=>String((typeof feeV2Label==='function'&&feeV2Label(i,f))||V(i,f)||'').trim();
+  const wd=lab('wd'),we=lab('we');
+  if(!wd&&!we)return'';
+  const mark=typeof estMark==='function'?estMark(feeConfWord(i)==='Estimate'):''; // GOLF-193's "~"
+  return mark+(!we||!wd||wd===we?esc(wd||we):`${esc(wd)} weekday · ${esc(we)} weekend`);
+}
+function mobCardHTML(i){
+  const fee=mobCardFeeHTML(i),note=String(V(i,'note')||'').trim(),inTrip=TRIP.has(i);
+  return`<div class="bs-card-head">
+      <h3>${esc(V(i,'n'))} ${courseBadgesHTML(i)}</h3>
+      <button type="button" class="bs-card-x" data-card="close" aria-label="Close">×</button>
+    </div>
+    ${fee?`<p class="bs-card-fee">${fee}</p>`:''}
+    ${note?`<p class="bs-card-note">${esc(note)}</p>`:''}
+    <div class="bs-card-acts">
+      <button type="button" class="btn primary" onclick="${inTrip?`tripRemoveCourse(${i})`:`tbAddToPlan(${i})`}">${inTrip?'✓ In your trip — remove':'＋ Add to trip'}</button>
+      <button type="button" class="bs-card-more" data-card="more" aria-expanded="${mobCardMore}" aria-controls="bs-card-body">${mobCardMore?'Show less':'Show more'}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+    <div class="bs-card-body" id="bs-card-body"${mobCardMore?'':' hidden'}>${popupHTML(i,{card:true})}</div>`;
+}
+function mobCardRender(){
+  const sc=mobCard.scrollTop;
+  mobCard.innerHTML=mobCardHTML(mobCardI);
+  mobCard.classList.toggle('is-more',mobCardMore);
+  mobCard.hidden=false;
+  mobCard.scrollTop=sc;
+  mobApplySheet();
+}
+function mobCardOpen(i,ll){
+  if(mobCardI==null)mobCardPrev=mobSheetState;
+  mobCardI=i;mobCardMore=false;
+  document.body.classList.add('mob-card-on');
+  mobCard.scrollTop=0;
+  mobCardRender();
+  mobCard.focus({preventScroll:true});
+  mobCardKeepInView(ll||courseLatLng(i));
+}
+/* Drop: the card goes and the caller decides the sheet height. Close: the
+   visitor dismissed it, so the sheet goes back to where it was. */
+function mobCardDrop(){
+  if(mobCardI==null)return;
+  mobCardI=null;mobCardMore=false;
+  document.body.classList.remove('mob-card-on');
+  mobCard.hidden=true;mobCard.replaceChildren();
+}
+function mobCardClose(){
+  if(mobCardI==null)return;
+  mobCardDrop();
+  mobSheetState=mobCardPrev||'half';
+  mobApplySheet();
+}
+function mobCardSetMore(on){
+  if(mobCardI==null)return;
+  mobCardMore=on;
+  if(!on)mobCard.scrollTop=0;
+  mobCardRender();
+}
+function mobCardRefresh(){if(mobCardI!=null&&mobIsPhone())mobCardRender();}
+mobCard.addEventListener('click',e=>{
+  const b=e.target.closest('[data-card]');if(!b)return;
+  if(b.dataset.card==='close')mobCardClose();
+  else mobCardSetMore(!mobCardMore);
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&mobCardI!=null&&!e.defaultPrevented)mobCardClose();});
+map.on('click',()=>{if(mobCardI!=null)mobCardClose();}); // a tap on open map; pin taps don't reach here
+/* The pin has to stay visible between the floating search and the card.
+   A fly or cluster zoom still under way would override a pan, so wait
+   for it to land. animate:false: an animated pan queued behind another
+   move is silently dropped (GOLF-191). */
+function mobCardKeepInView(ll){
+  if(!ll)return;
+  const check=()=>{
+    if(mobCardI==null)return;
+    const t=mobSheetTops(),y=map.latLngToContainerPoint(ll).y+map.getContainer().getBoundingClientRect().top;
+    const lo=t.topBar+48,hi=mobPanelTop-16; // 48: the pin is drawn above its point
+    const dy=y<lo?y-lo:y>hi?y-hi:0;
+    if(dy)map.panBy([0,dy],{animate:false});
+  };
+  const busy=map._flyToFrame||map._animatingZoom||(map._panAnim&&map._panAnim._inProgress);
+  if(busy)map.once('moveend',check);else check();
+}
+/* Every course popup is built by popupHTML(), whose root carries
+   data-course. On a phone that popup opens as the card instead — caught
+   here, before Leaflet's auto-pan moves the map for a popup that will
+   never show. Other popups (hotels, sights, places) stay on the map, but
+   auto-pan clear of the floating search and the sheet rather than under
+   them (Geoff's GOLF-199 handover). */
+const mobPopupOpenOn=L.Popup.prototype.openOn;
+L.Popup.include({openOn(m){
+  if(mobIsPhone()){
+    const src=this._source,c=this._content;
+    const html=typeof c==='function'?c(src||this):c;
+    const hit=typeof html==='string'&&/^<div class="pop" data-course="(\d+)"/.exec(html);
+    if(hit){
+      if(m&&m.closePopup)m.closePopup();
+      mobCardOpen(+hit[1],src&&src.getLatLng?src.getLatLng():null);
+      return this;
+    }
+    const t=mobSheetTops();
+    this.options.autoPanPaddingTopLeft=[12,t.topBar+12];
+    this.options.autoPanPaddingBottomRight=[12,Math.max(12,t.H-mobPanelTop+12)];
+  }
+  return mobPopupOpenOn.apply(this,arguments);
+}});
 
 /* ── Dragging ─────────────────────────────────────────────────── */
 /* Handle: drags either way; a tap moves it up one height (full → half,
@@ -155,6 +286,17 @@ function mobDragEnd(){
   if(!mobDrag)return;
   const d=mobDrag;mobDrag=null;
   mobPanel.classList.remove('is-dragging');
+  /* With a card up, the handle is the card's: a tap or an upward drag shows
+     more, a downward one shows less and then closes it. */
+  if(mobCardI!=null){
+    const top=mobPanel.getBoundingClientRect().top;
+    const up=d.moved?(d.v<-0.5||top<d.top0-40):!mobCardMore;
+    const down=d.moved?(d.v>0.5||top>d.top0+40):mobCardMore;
+    if(up)mobCardSetMore(true);
+    else if(down){if(mobCardMore)mobCardSetMore(false);else mobCardClose();}
+    else mobApplySheet();
+    return;
+  }
   if(!d.moved){
     if(d.source==='handle'){
       const k=MOB_SHEET_STATES.indexOf(mobSheetState);
@@ -296,7 +438,7 @@ function mobAfterRender(){
   }
   if(!mobSheetState)mobSheetState=appMode==='build'?'full':'half';
   mobUpdatePeek();
-  mobApplySheet();
+  if(mobCardI!=null)mobCardRender();else mobApplySheet();
 }
 
 /* Crossing the breakpoint (rotating a tablet, resizing a desktop window)
@@ -307,6 +449,7 @@ window.addEventListener('resize',()=>{
   const phone=mobIsPhone();
   if(phone!==mobWasPhone){
     mobWasPhone=phone;
+    mobCardDrop();
     if(typeof tripBuilderOn!=='undefined'&&tripBuilderOn)renderTripBuilder();
     map.invalidateSize();
     return;

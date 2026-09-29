@@ -801,6 +801,7 @@ map.on('zoomend',()=>{if(_tbDeclutterLayer&&tripLayer.hasLayer(_tbDeclutterLayer
    live nearby-course refresh doesn't fight the user's own pan by
    re-centring the map back under them. */
 function tbDrawMap(fit=true){
+  const openCourse=mapOpenCourse(); // GOLF-201: tripClear() closes it
   tripClear();
   const order=tripDayOrder();
   /* GOLF-57: discovery candidates only clutter the map while the Discover
@@ -835,6 +836,7 @@ function tbDrawMap(fit=true){
   const pts=[...pts1,...pts2];
   if(fit&&pts.length)mapFitBounds(L.latLngBounds(pts),{padding:[32,32],maxZoom:14}); // GOLF-184
   if(typeof mapTripFitControlSync==='function')mapTripFitControlSync(); // GOLF-191
+  mapReopenCourse(openCourse);
 }
 /* GOLF-131: refresh the Itinerary tab's nearby-course set as the map is
    panned/zoomed, so scouting an area you haven't added a stop to yet

@@ -392,6 +392,12 @@ function rankChips(i){const t=C[i].t100;if(!t)return'';const p=[];
    the rate is researched or "Estimate" when it's a guess; the raw wd/we
    string stays as the hover title. No feeV2 -> the plain string, boxed
    the same way. */
+/* The status badges after a course's name (edited, sweep, played/want,
+   in trip) — shared by the popup heading and the phone card. */
+function courseBadgesHTML(i){
+  const c=C[i];
+  return`${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want to play</span>':''}${TRIP.has(i)?' <span class="wt">in trip</span>':''}`;
+}
 function feeConfWord(i){
   if(!(typeof feeRangeFor==='function'&&C[i]&&C[i].feeV2))return'';
   const c=(feeRangeFor(i,'wd')||{}).confidence;
@@ -413,7 +419,11 @@ function feeBlock(i){
   return`<div class="fees"><div class="fee-box"><b>Weekday</b>${feeAmtHTML(i,'wd')}${note}</div>`
     +`<div class="fee-box"><b>Weekend</b>${feeAmtHTML(i,'we')}${note}</div></div>`;
 }
-function popupHTML(i){
+/* GOLF-185b: `card` builds the phone card's "Show more" body instead — the
+   same content minus the name and the Add button, which the card's compact
+   head already shows (js/mobile-sheet.js). data-course is how the phone
+   layout recognises a course popup and routes it into the sheet. */
+function popupHTML(i,{card=false}={}){
   const c=C[i],a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')],near=c.nearStation;
   const travel=stn?`<b style="color:${LINES[stn.l].c}">${esc(stn.n)}</b> · ${esc(LINES[stn.l].n)}${nrBadge(stn.l)} — ${esc(V(i,'walk'))}`
     :near?`<b>${esc(near.n)}</b>${nrBadge()} — ${near.mi} mi, straight-line (nearest station nationally, not a walking route)`
@@ -429,7 +439,8 @@ function popupHTML(i){
      majority of courses with no photo field, same convention as every
      other optional field in this app. */
   const photoBlock=c.photo?`<div style="width:100%;border-radius:8px;margin-bottom:8px;overflow:hidden"><img src="${esc(escUrl(c.photo.src))}" alt="${esc(V(i,'n'))}" loading="lazy" style="width:100%;height:140px;object-fit:cover;display:block"><div style="font-size:10.5px;color:var(--stone);padding:3px 2px 0">Photo: <a href="${esc(escUrl(c.photo.sourceUrl))}" target="_blank" rel="noopener">${esc(c.photo.photographer)}</a> · ${esc(c.photo.license)}</div></div>`:'';
-  return `<div class="pop">${photoBlock}${c.logo?`<div style="width:100%;height:100px;background:var(--paper);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${esc(escUrl(c.logo))}" alt="${esc(V(i,'n'))} club logo" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"></div>`:''}<h3>${esc(V(i,'n'))} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want to play</span>':''}${TRIP.has(i)?' <span class="wt">in trip</span>':''}</h3>
+  const addBtn=card?'':`<button class="btn primary" onclick="${TRIP.has(i)?`tripRemoveCourse(${i})`:`tbAddToPlan(${i})`}">${TRIP.has(i)?'✓ In your trip — remove':'＋ Add to trip'}</button>`;
+  return `<div class="pop" data-course="${i}">${photoBlock}${c.logo?`<div style="width:100%;height:100px;background:var(--paper);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${esc(escUrl(c.logo))}" alt="${esc(V(i,'n'))} club logo" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"></div>`:''}${card?'':`<h3>${esc(V(i,'n'))} ${courseBadgesHTML(i)}</h3>`}
     <p class="sub">${esc(c.r)} · ${esc(a.label)}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
     ${feeBlock(i)}
     ${(()=>{const ct=(typeof feeCartFor==='function')&&feeCartFor(i);return ct&&ct.status==='mandatory'?`<p class="note" style="color:var(--stone)">Buggy compulsory${ct.amount!=null?` — ${esc(curSym(courseCurrency(i))+Math.round(ct.amount))}${ct.per==='person'?' per person':' per cart'}`:''}, billed separately.</p>`:'';})()}
@@ -437,7 +448,7 @@ function popupHTML(i){
     <p class="note">${esc(V(i,'note'))}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${esc(club.blurb)}</span>`:''}</p>
     ${calcHTML(i)}
     <div class="actions">
-      <button class="btn primary" onclick="${TRIP.has(i)?`tripRemoveCourse(${i})`:`tbAddToPlan(${i})`}">${TRIP.has(i)?'✓ In your trip — remove':'＋ Add to trip'}</button>
+      ${addBtn}
       ${site?`<a class="btn" href="${esc(escUrl(site))}" target="_blank" rel="noopener">Club website</a>`:`<a class="btn ghost" href="${esc(search)}" target="_blank" rel="noopener">Find the club site</a>`}
       ${book&&book!==site?`<a class="btn ghost" href="${esc(escUrl(book))}" target="_blank" rel="noopener">Green fees</a>`:''}
       ${club&&club.teeBooking&&club.teeBooking!==site&&club.teeBooking!==book?`<a class="btn ghost" href="${esc(escUrl(club.teeBooking))}" target="_blank" rel="noopener">Tee booking</a>`:''}
@@ -508,6 +519,39 @@ function refreshOpenCoursePopup(){
   markers.forEach(m=>{
     if(m.isPopupOpen&&m.isPopupOpen())m.getPopup().update();
   });
+  if(typeof mobCardRefresh==='function')mobCardRefresh(); // GOLF-185b: the phone card, which is not a popup
+}
+/* GOLF-201: which course's popup is open, if any. Both redraws —
+   tbDrawMap() rebuilding tripLayer and render() refilling the cluster
+   layer — throw away the marker that owns it, and Leaflet closes a popup
+   with its marker. Since GOLF-131 a pan in Itinerary with "Nearby courses"
+   on triggers exactly that redraw, and a popup's own auto-pan is a pan: so
+   a card near the edge opened, moved the map to fit, and closed itself.
+   Each redraw notes the open course first (mapOpenCourse()) and hands it
+   back afterwards (mapReopenCourse()). */
+let mapOpenCourseI=null;
+map.on('popupopen',e=>{
+  const el=e.popup.getElement()&&e.popup.getElement().querySelector('.pop[data-course]');
+  mapOpenCourseI=el?+el.dataset.course:null;
+});
+map.on('popupclose',()=>{mapOpenCourseI=null;});
+function mapOpenCourse(){return mapOpenCourseI;}
+/* Reopens course i's popup on whichever marker now carries it — unless
+   something else opened meanwhile, or the course has gone: out of the
+   redrawn scope, folded into a cluster, or off screen. Those are real
+   reasons for the card to be gone; a redraw alone is not. */
+function mapReopenCourse(i){
+  if(i==null)return;
+  /* A tick later, not now: when the redraw came from a button inside the
+     popup (Mark played, Want to play), the redraw has just detached that
+     button, so Leaflet reads the rest of its click as a click on bare map
+     and would close whatever popup is open by then. */
+  setTimeout(()=>{
+    if(mapOpenCourseI!=null)return;
+    const m=courseMarkerFor(i);
+    if(!m||!m._map||!map.getBounds().contains(m.getLatLng()))return;
+    m.openPopup();
+  },0);
 }
 function drawLink(i){linkLayer.clearLayers();
   if(!RAIL_FEATURE)return; // GOLF-110: no course->station link line while the rail feature is hidden
