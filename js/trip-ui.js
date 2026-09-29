@@ -626,17 +626,32 @@ function tripCostBreakdown(){
   const fuelMiles=tripTotalDriveMiles();
   const fuelCost=fuelMiles*FUEL_COST_PER_MILE;
   const golfTotal=sum(golf),stayTotal=sum(stay),poiTotal=sum(poi);
+  /* GOLF-203: the trip's own "Other" lines, priced here and nowhere else.
+     `typed` is what the visitor entered; `amount` is the whole-party
+     figure every other cost line in this app is already expressed in, so
+     the Per person view's "÷ group size" needs no special case. An empty
+     amount is 0, not NaN — the line exists before it is priced. */
+  const gs=groupSizeFor();
+  const customItems=(Array.isArray(tripCustom)?tripCustom:[]).map(c=>{
+    const lcur=CURRENCY_SYMS[c.cur]?c.cur:cur;
+    const typed=(typeof c.amount==='number'&&isFinite(c.amount))?c.amount:0;
+    return{id:c.id,label:c.label||'',per:c.per==='person'?'person':'group',cur:lcur,typed,
+      amount:c.per==='person'?typed*gs:typed};
+  });
+  /* Fuel moved in here (owner item 7): it was its own row under the three
+     category groups, which made it the one cost with no home. */
+  const otherTotal={[cur]:0};
+  if(tbIncludeFuel)moneyBucketAdd(otherTotal,cur,fuelCost);
+  customItems.forEach(x=>moneyBucketAdd(otherTotal,x.cur,x.amount));
   const grand={[cur]:0};
-  [golfTotal,stayTotal,poiTotal].forEach(b=>Object.keys(b).forEach(c=>moneyBucketAdd(grand,c,b[c])));
-  if(tbIncludeFuel)moneyBucketAdd(grand,cur,fuelCost);
+  [golfTotal,stayTotal,poiTotal,otherTotal].forEach(b=>Object.keys(b).forEach(c=>moneyBucketAdd(grand,c,b[c])));
   // GOLF-87: an even per-person split of the whole trip total — golf/POI
   // are already priced per-traveller above, stays keep their own GOLF-74
   // sharing math untouched, and fuel is one shared trip cost only divided
   // here, at the very last step. Across currencies, each bucket divides on
   // its own (DEC-026).
-  const gs=groupSizeFor();
   const perPerson=gs>1?moneyBucketScale(grand,1/gs):null;
-  return{items,cur,golfTotal,golfCov:golf.filter(x=>x.amount!=null).length,golfOf:golf.length,stayTotal,poiTotal,fuelMiles,fuelCost,grand,groupSize:gs,perPerson};
+  return{items,cur,golfTotal,golfCov:golf.filter(x=>x.amount!=null).length,golfOf:golf.length,stayTotal,poiTotal,fuelMiles,fuelCost,customItems,otherTotal,grand,groupSize:gs,perPerson};
 }
 /* The headline trip total as display text — navbar pill, Itinerary's
    "Trip total" card and the shared view's pill all read this, so a mixed
@@ -726,17 +741,22 @@ function costGroupHTML(icon,label,total,items,cur){
 /* GOLF-174: the banner + category rows + coverage note, shared by the live
    Costs tab and the read-only #share= twin (js/trip-share.js), which used to
    carry a copy of this markup — and so a copy of the single-currency bug.
-   fuelRowLabel is the only difference between the two: a live checkbox
-   here, plain text in the shared view. GOLF-178: the banner's hero figure
+   `readOnly` is the only difference between the two: the shared view gets
+   plain text where the live tab has the fuel checkbox, the custom-cost
+   inputs and "+ Add a cost" (GOLF-203, which retired the old
+   fuelRowLabel string — the param is kept only so an older caller
+   passing one is harmless). GOLF-178: the banner's hero figure
    follows the mode and carries its unit in words; the other mode's figure
    sits under it, smaller and labelled, so a screenshot can't pass one off
    as the other. Always its own line: inline, it wrapped mid-phrase at
    360px, and on a mixed trip "£1470 + €1520 · £368 + €380 per person"
    would read as one run of four numbers. */
-function tbCostsBodyHTML(b,fuelRowLabel){
+/* GOLF-178's banner figure, split out for GOLF-203: typing in a custom
+   cost repaints this node in place (tbCostLiveRefresh) rather than
+   re-rendering the pane under the visitor's cursor, so both paths have to
+   build it from one place or they will drift. */
+function tbCostBannerAmountHTML(b){
   const cur=b.cur,gs=b.groupSize,multi=gs>1;
-  const mixed=moneyBucketCount(b.grand)>1;
-  const golf=b.items.filter(x=>x.cat==='Golf'),stay=b.items.filter(x=>x.cat==='Stay'),stop=b.items.filter(x=>x.cat==='Stop');
   const totTxt=moneyBucketFmt(b.grand,cur);
   const ppTxt=multi?costPPBucketFmt(b.grand,gs,cur):'';
   const second=txt=>`<span class="cost-banner-pp is-own-line">${txt}</span>`;
@@ -748,6 +768,94 @@ function tbCostsBodyHTML(b,fuelRowLabel){
   const amount=multi
     ?`<span class="cv-pp">${hero(ppTxt)}<span class="cost-banner-unit"> per person</span>${second(`${totTxt} total`)}</span><span class="cv-tot">${hero(totTxt)}<span class="cost-banner-unit"> total</span>${second(`${ppTxt} per person`)}</span>`
     :totTxt;
+  return (tripHasEstimate()?estMark(true):'')+amount;
+}
+/* GOLF-203: one custom line's own money cell — the whole-party figure and
+   the per-person one, switched by the card's mode like every other row. */
+function costCustomAmtHTML(x,gs){
+  return costDual(tbMoney(x.amount,x.cur),costPPMoney(x.amount,x.cur,gs),gs);
+}
+/* GOLF-203: "Other" — fuel plus whatever the visitor adds themselves.
+   Not costGroupHTML(): its rows are editable and it has a footer button,
+   and the read-only #share= twin renders the same rows as plain text.
+
+   Judgement call (the ticket leaves it to the dev): the per-line currency
+   picker only appears once the trip already spans more than one currency
+   — or once a line carries something other than the primary one, so a
+   line can always be changed back. A single-nation trip never sees it.
+
+   Open by default, unlike the other three: it is the only interactive
+   group, and the fuel row it absorbed used to be permanently visible. */
+function costOtherGroupHTML(b,readOnly){
+  const cur=b.cur,gs=b.groupSize;
+  const lines=b.customItems||[];
+  const mixed=moneyBucketCount(b.grand)>1||lines.some(x=>x.cur!==cur);
+  const fuelRow=`<div class="cost-fuel-row">${readOnly?'<span>⛽ Fuel (est.)</span>':
+    `<label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> ⛽ Fuel (est.)</label>`
+    }<span class="cost-group-amt">${/* its own label already reads "Fuel (est.)" — a ~ here just stutters */''}${costDual(`${curSym(cur)}${b.fuelCost.toFixed(0)}`,costPPMoney(b.fuelCost,cur,gs),gs)}</span></div>`;
+  const rows=readOnly
+    ? (lines.length?`<table class="cost-line-table cost-group-lines">${lines.map(x=>{
+        const tag=x.per==='person'&&gs>1?`× ${gs}`:null;
+        return`<tr><td>${esc(x.label.trim()||'Other cost')}${tag?` <span class="wt">${esc(tag)}</span>`:''}</td><td>${costCustomAmtHTML(x,gs)}</td></tr>`;
+      }).join('')}</table>`:'')
+    : lines.map(x=>{
+        const id=esc(x.id);
+        return`<div class="cc-row" data-cc="${id}">
+          <input class="tb-field cc-label" id="tb-cc-label-${id}" type="text" maxlength="80"
+            aria-label="What is this cost?" placeholder="Car hire" value="${esc(x.label)}"
+            oninput="tripCustomUpdate('${id}',{label:this.value})">
+          <div class="cc-row-2">
+            ${mixed?`<select class="tb-field cc-cur" aria-label="Currency"
+              onchange="tripCustomUpdate('${id}',{cur:this.value});tbCostLiveRefresh();">${
+                ['GBP','EUR','ZAR'].map(c=>`<option value="${c}"${x.cur===c?' selected':''}>${curSym(c)}</option>`).join('')
+              }</select>`:''}
+            <input class="tb-field cc-amount" type="number" min="0" step="5" inputmode="decimal"
+              aria-label="Amount in ${esc(curSym(x.cur))}" placeholder="${esc(curSym(x.cur))} amount"
+              value="${x.typed?esc(String(x.typed)):''}"
+              oninput="tripCustomUpdate('${id}',{amount:this.value});tbCostLiveRefresh();">
+            <div class="tb-seg cc-per" role="group" aria-label="Who pays this cost">${
+              [['group','Whole group'],['person','Per person']].map(([k,l])=>
+                `<button type="button" data-per="${k}" aria-pressed="${x.per===k}" onclick="tripCustomSetPer('${id}','${k}',this)">${l}</button>`).join('')
+            }</div>
+            <span class="cost-group-amt cc-amt" data-cc-amt="${id}">${costCustomAmtHTML(x,gs)}</span>
+            <button type="button" class="tb-btn is-icon is-sm is-quiet cc-del" title="Remove this cost"
+              aria-label="Remove this cost" onclick="tripCustomRemove('${id}')">✕</button>
+          </div>
+        </div>`;
+      }).join('');
+  const addBtn=readOnly?'':`<button type="button" class="tb-btn is-sm is-quiet cc-add"
+    ${lines.length>=TRIP_CUSTOM_MAX?'disabled title="That is as many as one trip can hold."':''}
+    onclick="tripCustomAdd()">+ Add a cost</button>`;
+  return`<details class="cost-group cost-other-group" open><summary class="cost-group-summary">
+      <span class="cost-group-label"><span class="cost-group-toggle" aria-hidden="true"></span>💷 Other</span>
+      <span class="cost-group-amt" data-other-amt>${costDual(moneyBucketFmt(b.otherTotal,cur),costPPBucketFmt(b.otherTotal,gs,cur),gs)}</span>
+    </summary>
+    <div class="cost-other-body">${fuelRow}${rows}${addBtn}</div>
+  </details>`;
+}
+/* GOLF-203: repaint every figure a custom-cost keystroke can move, and
+   nothing else. A full renderTripBuilder() on each input would replace the
+   very field being typed in (and on `change`, would destroy the element
+   Tab was heading for), so the money is patched in place instead. */
+function tbCostLiveRefresh(){
+  const b=tripCostBreakdown(),gs=b.groupSize,cur=b.cur;
+  const body=document.querySelector('#tb-pane .cost-body')||document.querySelector('.cost-body');
+  if(body){
+    const ban=body.querySelector('.cost-banner-amount');
+    if(ban)ban.innerHTML=tbCostBannerAmountHTML(b);
+    const oth=body.querySelector('.cost-other-group [data-other-amt]');
+    if(oth)oth.innerHTML=costDual(moneyBucketFmt(b.otherTotal,cur),costPPBucketFmt(b.otherTotal,gs,cur),gs);
+    (b.customItems||[]).forEach(x=>{
+      const cell=body.querySelector(`[data-cc-amt="${x.id}"]`);
+      if(cell)cell.innerHTML=costCustomAmtHTML(x,gs);
+    });
+  }
+  document.querySelectorAll('.js-trip-total').forEach(el=>{el.innerHTML=tbTripTotalHTML(el.dataset.unit?JSON.parse(el.dataset.unit):undefined);});
+}
+function tbCostsBodyHTML(b,fuelRowLabel,readOnly){
+  const cur=b.cur,gs=b.groupSize,multi=gs>1;
+  const mixed=moneyBucketCount(b.grand)>1;
+  const golf=b.items.filter(x=>x.cat==='Golf'),stay=b.items.filter(x=>x.cat==='Stay'),stop=b.items.filter(x=>x.cat==='Stop');
   const mode=tbCostMode==='tot'?'tot':'pp';
   // Control first, note after: the note's length changes with the mode, so
   // it must never be what positions the button the viewer just tapped.
@@ -756,18 +864,19 @@ function tbCostsBodyHTML(b,fuelRowLabel){
         `<button type="button" data-mode="${k}" aria-pressed="${mode===k}" onclick="tbCostSetMode(this,'${k}')">${l}</button>`).join('')}</div>
       <span class="cost-mode-note">${costModeNote(mode,gs)}</span></div>`:'';
   return`<div class="cost-body"${multi?` data-mode="${mode}" data-gs="${gs}"`:''}>${control}
-    <div class="cost-banner"><div class="cost-banner-label">Trip total${multi?` · ${gs} travellers`:''}${tripHasEstimate()?` · <span class="cost-est-note" title="${EST_TITLE}">~ includes an estimate</span>`:''}</div><div class="cost-banner-amount${mixed?' is-mixed':''}">${tripHasEstimate()?estMark(true):''}${amount}</div></div>
+    <div class="cost-banner"><div class="cost-banner-label">Trip total${multi?` · ${gs} travellers`:''}${tripHasEstimate()?` · <span class="cost-est-note" title="${EST_TITLE}">~ includes an estimate</span>`:''}</div><div class="cost-banner-amount${mixed?' is-mixed':''}">${tbCostBannerAmountHTML(b)}</div></div>
     <div class="cost-card cost-groups">
       ${costGroupHTML('⛳','Golf',b.golfTotal,golf,cur)}
       ${costGroupHTML('🏨','Stays',b.stayTotal,stay,cur)}
       ${costGroupHTML('📍','Stops',b.poiTotal,stop,cur)}
-      <div class="cost-fuel-row">${fuelRowLabel}<span class="cost-group-amt">${/* its own label already reads "Fuel (est.)" — a ~ here just stutters */''}${costDual(`${curSym(cur)}${b.fuelCost.toFixed(0)}`,costPPMoney(b.fuelCost,cur,gs),gs)}</span></div>
+      ${costOtherGroupHTML(b,readOnly)}
     </div>
     <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?' This trip spans more than one currency, so each is totalled separately — nothing is converted.':''}</p></div>`;
 }
 function tbCostsTabHTML(){
-  return tbCostsBodyHTML(tripCostBreakdown(),
-    `<label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel (est.)</label>`);
+  // GOLF-203: the fuel row's label moved inside costOtherGroupHTML() with
+  // the row itself, so there is nothing left to pass in here.
+  return tbCostsBodyHTML(tripCostBreakdown(),null,false);
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -940,7 +1049,7 @@ function tripDayScheduleHTML(){
         </div>
       </details>`:''}
     </div>
-    <div class="tb-total-card"><span class="tb-total-label">Trip total</span><span class="tb-total-amount">${tbTripTotalHTML()}</span></div>`;
+    <div class="tb-total-card"><span class="tb-total-label">Trip total</span><span class="tb-total-amount js-trip-total">${tbTripTotalHTML()}</span></div>`;
 }
 
 /* Plan mode's wishlist. */
@@ -1167,7 +1276,7 @@ function renderTripBuilder(){
         <button type="button" class="tb-btn is-icon is-sm is-quiet is-danger" id="tb-clear-trip" aria-label="Clear trip" title="Clear trip — empties this trip. Your other trips are untouched; to delete every trip use Start fresh in the trip menu."${TRIP.size||tripDays.length?'':' disabled'}>${TRASH_ICON_SVG}</button>
       </div>
       <div class="tb-head-meta">
-        <span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${tbTripTotalHTML()}</span>
+        <span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}<span class="js-trip-total">${tbTripTotalHTML()}</span></span>
       </div>
     </header>
     <div class="tb-tabs" role="tablist">${TABS.map(([k,label])=>

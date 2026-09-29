@@ -791,6 +791,30 @@
   .cost-group-lines{margin:0 0 var(--sp-3) var(--sp-5);width:calc(100% - var(--sp-5))}
   .cost-fuel-row{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);padding:var(--sp-3) 0}
   .cost-fuel-row .cost-fuel-toggle{padding:0}
+  /* GOLF-203: the "Other" group — fuel plus the visitor's own cost lines.
+     Two rows per line so an 80-character label never has to share width
+     with the amount, the per-person switch and the running figure; the
+     second row wraps rather than clipping at 375px. */
+  .cost-other-body{padding-bottom:var(--sp-2)}
+  .cost-other-body .cost-fuel-row{border-bottom:1px solid var(--line)}
+  .cc-row{padding:var(--sp-3) 0;border-bottom:1px solid var(--line)}
+  .cc-row-2{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);margin-top:var(--sp-2)}
+  .cc-label{width:100%}
+  .cc-cur{flex:0 0 auto;width:auto;padding-right:var(--sp-2)}
+  .cc-amount{flex:0 1 110px;min-width:88px}
+  /* order: the amount, its running figure and ✕ share one line (the
+     figure pushed to the same right-hand column as every other amount in
+     the card); the per-person switch takes the line under them, because
+     at 375px the two together are ~270px and the pane is ~250. */
+  .cc-per{order:2;flex:1 1 100%}
+  .cc-per button{font-size:var(--fs-caption)}
+  .cc-amt{order:1;margin-left:auto}
+  .cc-del{order:1;flex:0 0 auto}
+  .cc-add{margin-top:var(--sp-3)}
+  /* GOLF-200: iOS Safari zooms into any focused input under 16px, and the
+     page stays zoomed. Scoped to this ticket's own fields; the app-wide
+     sweep is GOLF-200 itself. */
+  @media (max-width:900px){.cc-row .tb-field{font-size:16px}}
   /* item-6: the Share button's inline SVG icon (SHARE_ICON_SVG) — nudged
      to sit on the text baseline rather than the glyph's own box-center. */
   .share-icon{vertical-align:-2px;margin-right:1px}
