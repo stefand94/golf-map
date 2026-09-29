@@ -933,9 +933,9 @@ function tripDayScheduleHTML(){
       ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
       ondrop="event.preventDefault();tbDropOut(this);tbDropDayAtEnd();">
       <button class="tb-btn is-primary" onclick="tbAddDayWithPlace();">＋ Add a day</button>
-      ${tripSeq.length>1?`<details class="tb-drop">
-        <summary class="tb-btn" title="Rebuilds every golf day from scratch, one course per day, in nearest-neighbour order. Free/start/end days are kept exactly where they are.">Auto schedule ▾</summary>
-        <div class="tb-drop-body">
+      ${tripSeq.length>1?`<details class="tb-drop tb-auto-drop">
+        <summary class="tb-btn" title="Rebuilds every golf day from scratch, one course per day, in nearest-neighbour order. Free/start/end days are kept exactly where they are."><span class="tb-drop-label">Auto schedule</span></summary>
+        <div class="tb-drop-body is-right">
           <button type="button" class="tb-menu-item" onclick="tripAutoOrder();renderTripBuilder();tbDrawMap();" title="Full reset: every golf day is rebuilt from scratch (one course per day, nearest-neighbour order). Free/start/end days stay in place.">Reschedule all courses (full reset)</button>
         </div>
       </details>`:''}

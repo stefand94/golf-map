@@ -413,6 +413,11 @@
   /* Day footer: the two add actions, sized as real targets. */
   .tb-day-add{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3) var(--sp-3);flex-wrap:wrap}
   .tb-day-add .tb-btn{flex:1 1 auto}
+  /* GOLF-202: .tb-drop's flex:1 1 0 let "+ Add a day" squeeze this to
+     less than its label, which then spilled out of the pill. Natural width
+     instead; the row wraps, so on a narrow screen it stacks rather than clips. */
+  .tb-day-add details.tb-auto-drop{flex:0 0 auto}
+  .tb-day-add details.tb-auto-drop>summary{width:100%}
 
   /* Collapsed day settings (kind / city / date) — hidden in a dropdown so
      the card shows the itinerary, not a form. */
