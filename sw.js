@@ -151,6 +151,13 @@ self.addEventListener('install', (event) => {
           // URL should fail install loudly (the browser retries later),
           // not silently ship a shell missing one of its own files.
           if (!res.ok) throw new Error(`Precache fetch failed for ${url}: ${res.status}`);
+          // GOLF-220: cache:'reload' gets past the browser's HTTP cache but
+          // not the edge, which can hold the previous deployment's bytes
+          // (functions/_middleware.js). Every response now says which
+          // build it came from; another build's copy fails the install and
+          // the browser retries later. No header (local dev, or a response
+          // from before GOLF-220) is taken on trust, as before.
+          if (!sameBuild(res)) throw new Error(`Precache got build ${res.headers.get('X-Build')} for ${url}, want ${BUILD}`);
           // See the v4 note up top: never let a redirected Response reach
           // the cache under a precache key, regardless of which URL or
           // why it redirected — caches.match() doesn't care what request
@@ -216,6 +223,10 @@ function stripRedirect(res) {
    Worker versions from before GOLF-210 match the full URL, miss, and fetch
    the right build too, which is what makes the change safe to roll out. */
 const BUILD = CACHE_NAME.slice(CACHE_NAME.lastIndexOf('-') + 1);
+function sameBuild(res) {
+  const b = res.headers.get('X-Build');
+  return !b || b === BUILD;
+}
 
 // GOLF-214: the app moved from /london-golf-map-v5_1 to /. The server 301s
 // the old address, but answering it here as well keeps that working
@@ -264,7 +275,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(req)
         .then((res) => stripRedirect(res).then((out) => {
-          if (out && out.ok) {
+          if (out && out.ok && sameBuild(out)) {
             const copy = out.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(key, copy));
           }
@@ -286,7 +297,7 @@ self.addEventListener('fetch', (event) => {
         // wasn't in the precache list (e.g. a data file added later
         // without a service-worker update) so it's available offline
         // on the next visit too — but only for this worker's own build.
-        if (ownBuild && out && out.ok) {
+        if (ownBuild && out && out.ok && sameBuild(out)) {
           const copy = out.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(key, copy));
         }

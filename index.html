@@ -1415,7 +1415,15 @@
      before state.js can run DEC-011's wipe against the wrong version, clear
      any other build's service-worker cache, and reload once. The session
      flag makes that once per build: if the reload didn't fix it, the page
-     carries on rather than loop. Unstamped (local dev) pages skip it. -->
+     carries on rather than loop. Unstamped (local dev) pages skip it.
+     GOLF-220: a plain reload reads the browser's HTTP cache, which can hold
+     another build's bytes under this build's ?v= URL for 4 hours. So
+     before reloading, every stamped script is refetched with
+     cache:'reload', which replaces those entries. The list comes from this
+     page's own HTML, because window.stop() leaves the tags below here
+     unparsed. The caches are cleared first, including this build's own if
+     its app-version.js is another build's: otherwise the service worker
+     would answer the refetch from it. -->
 <script>(function(){
   var tag=document.querySelector('script[src^="js/app-version.js"]');
   var want=tag&&(/[?&]v=([0-9a-f]+)/.exec(tag.getAttribute('src'))||[])[1];
@@ -1427,8 +1435,25 @@
     sessionStorage.setItem(KEY,want);
   }catch(e){return;}
   window.stop();
-  var jobs=[];
-  if(window.caches)jobs.push(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k.indexOf('golfmap-shell-')===0&&k!=='golfmap-shell-v5-'+want;}).map(function(k){return caches.delete(k);}));}));
+  var own='golfmap-shell-v5-'+want;
+  function clearCaches(){
+    if(!window.caches)return Promise.resolve();
+    return caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k.indexOf('golfmap-shell-')===0;}).map(function(k){
+      if(k!==own)return caches.delete(k);
+      // GOLF-220: this build's own cache is only kept if it really holds this build.
+      return caches.open(k).then(function(c){return c.match(new URL('js/app-version.js',location.href).href);})
+        .then(function(r){return r?r.text():'';}).then(function(t){if(t&&t.indexOf(want)<0)return caches.delete(k);});
+    }));});
+  }
+  function refetchScripts(){
+    if(!window.fetch)return Promise.resolve();
+    return fetch(location.href,{cache:'no-store'}).then(function(r){return r.text();}).then(function(html){
+      var re=/<script src="([^"?]+\?v=([0-9a-f]+))"/g,m,refetch=[];
+      while((m=re.exec(html)))if(m[2]===want)refetch.push(fetch(m[1],{cache:'reload'}).catch(function(){}));
+      return Promise.all(refetch);
+    });
+  }
+  var jobs=[clearCaches().catch(function(){}).then(refetchScripts)];
   if(navigator.serviceWorker)jobs.push(navigator.serviceWorker.getRegistration().then(function(r){return r&&r.update();}));
   Promise.all(jobs).catch(function(){}).then(function(){location.reload();});
 })();</script>

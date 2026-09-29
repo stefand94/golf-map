@@ -194,12 +194,13 @@ function tbPlaceArgs(lat,lng,label){return`${lat},${lng},'${String(label).replac
 let tbPlaceDayPick=null;
 /* The chooser itself — shared by the search row and the place card. With
    no days there's nothing to choose: the button just makes Day 1. `sel`
-   is the id the button reads the position from. */
-function tbPlaceDayControlsHTML(lat,lng,label,sel){
+   is the id the button reads the position from; `go` is the confirm
+   button's label (the search row's opener already says "Add as a day"). */
+function tbPlaceDayControlsHTML(lat,lng,label,sel,go='＋ Add as a day'){
   const a=tbPlaceArgs(lat,lng,label);
   if(!tripDays.length)return`<button type="button" class="tb-btn is-sm is-primary place-pop-btn" onclick="event.stopPropagation();tbAddPlaceToTrip(${a})">Start a trip here</button>`;
   return`<label class="tb-daypos"><span>Goes</span><select id="${sel}" class="hotel-pop-select" onclick="event.stopPropagation()">${tripDayPosOptionsHTML()}</select></label>
-    <button type="button" class="tb-btn is-sm is-primary place-pop-btn" onclick="event.stopPropagation();tbAddPlaceToTrip(${a},document.getElementById('${sel}').value)">＋ Add as a day</button>`;
+    <button type="button" class="tb-btn is-sm is-primary place-pop-btn" onclick="event.stopPropagation();tbAddPlaceToTrip(${a},document.getElementById('${sel}').value)">${go}</button>`;
 }
 /* The search row's own button: with no days it starts the trip there and
    then; otherwise it opens the chooser (default: after the last day). */
@@ -449,7 +450,7 @@ function tbUnifiedSearchResultsHTML(){
        opens a one-line chooser under the row — not the two always-on
        buttons GOLF-187 removed. */
     const pick=tbPlaceDayPick===p.lat+','+p.lng&&tripDays.length
-      ?`<div class="tb-sr-daypick">${tbPlaceDayControlsHTML(p.lat,p.lng,p.label,'tb-sr-daypos')}
+      ?`<div class="tb-sr-daypick">${tbPlaceDayControlsHTML(p.lat,p.lng,p.label,'tb-sr-daypos','Add day')}
           <button type="button" class="tb-btn is-sm is-quiet" onclick="tbPlaceDayPickToggle(null)">Cancel</button></div>`:'';
     const kids=e.children.length
       ?`<div class="tb-sr-kids">${e.children.map(k=>tbSearchCourseRowHTML(k,day)).join('')}${

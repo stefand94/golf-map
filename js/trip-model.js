@@ -88,8 +88,15 @@ function tripDayInsertAt(pos){
    row, the place card and the POI card. Values are insert positions;
    the default is after the last day. */
 function tripDayPosOptionsHTML(){
-  return tripDays.map((d,i)=>`<option value="${i+1}"${i===tripDays.length-1?' selected':''}>After Day ${i+1}${d.place?' — '+esc(tripShortPlace(d.place)):''}</option>`).join('')
+  return tripDays.map((d,i)=>`<option value="${i+1}"${i===tripDays.length-1?' selected':''}>After ${tripDayChoiceLabel(i)}</option>`).join('')
     +`<option value="0">Before Day 1</option>`;
+}
+/* "Day 1 — Castle Stuart": named by its first stop, course or place, the
+   way the reorder banner names days (tripReorderDayLabel, trip-route.js),
+   so a golf day with no place set isn't just "Day 1". */
+function tripDayChoiceLabel(i){
+  const n=tripReorderDayLabel(i);
+  return`Day ${i+1}`+(n&&n!==`Day ${i+1}`?' — '+esc(n):'');
 }
 /* GOLF-66: "+ Add day" used to drop an anonymous, placeless day at the
    bottom and leave the visitor to notice the small place box and click

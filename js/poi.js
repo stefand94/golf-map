@@ -326,7 +326,7 @@ function poiPopupHTML(id,defaultDayId){
   const g=POI_GROUP_BY_KEY[p.group];
   const head=`<div class="hotel-pop-name"><span aria-hidden="true" style="margin-right:5px">${g[2]}</span>${esc(p.name)}</div><div class="hotel-pop-cat">${esc(p.label)}</div>`;
   if(poiInTrip(p))return`<div class="hotel-pop">${head}<p class="hotel-pop-note">✓ Already in your trip</p></div>`;
-  const days=tripDays.map((d,i)=>`<option value="${d.id}"${d.id===defaultDayId?' selected':''}>Day ${i+1}${d.place?' — '+esc(tripShortPlace(d.place)):''}</option>`).join('');
+  const days=tripDays.map((d,i)=>`<option value="${d.id}"${d.id===defaultDayId?' selected':''}>${tripDayChoiceLabel(i)}</option>`).join('');
   const opts=tripDays.length
     ?`<optgroup label="A stop on">${days}</optgroup><optgroup label="Its own day">${tripDayPosOptionsHTML().replace(/value="(\d+)"/g,'value="new:$1"').replace(/ selected/g,'')}</optgroup>`
     :`<option value="new:0">New day (Day 1)</option>`;
