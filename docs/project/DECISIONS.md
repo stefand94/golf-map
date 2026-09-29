@@ -850,3 +850,25 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   search on phones too (rejected: the phone has no room for both before a
   country matters).
 - **Date:** 2026-09-29 · **Affects:** GOLF-185, GOLF-199–204.
+
+## DEC-033 — Map pills over filter menus; country is the top-level choice
+
+- **Decision (owner, 2026-09-29):**
+  1. Itinerary loses its second filter icon (Everything / Golf / Stays /
+     Stops only, Drive times). In its place are three pills: **Hotels, Courses,
+     POIs**. Each one shows or hides nearby things *not* in the trip. What's in the
+     trip always shows (GOLF-207).
+  2. On desktop the country pills sit at the top, above the Discover /
+     Itinerary / Costs tabs. Discover then reads: search → Show hotels ·
+     Show POIs. Group size and the £ total move to Itinerary, the same as the phone
+     (GOLF-208).
+  3. The country should be a focus, not a wall: near the Irish Sea, nearby
+     courses could include the other nation. This is sized first, and built only if it's small.
+     Otherwise it stays as is (GOLF-209).
+  4. St Francis Links and St Francis Bay (South Africa) are two courses, not a
+     duplicate (GOLF-198).
+- **Alternatives:** turn the filter menu's options into pills, making six pills
+  (rejected: the owner wants fewer controls); country pills only above search
+  on Discover (rejected: country is the top-level choice).
+- **Date:** 2026-09-29 · **Affects:** GOLF-204, 207, 208, 209, 198. Amends
+  DEC-032 item 4 (desktop half).
