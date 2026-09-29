@@ -851,6 +851,13 @@ function tbCostLiveRefresh(){
     });
   }
   document.querySelectorAll('.js-trip-total').forEach(el=>{el.innerHTML=tbTripTotalHTML(el.dataset.unit?JSON.parse(el.dataset.unit):undefined);});
+  /* The phone sheet's peek summary carries the same headline but lives
+     outside #tb-pane and rebuilds itself wholesale, so it needs its own
+     call rather than a .js-trip-total hook — without it the peek sat at
+     the pre-edit figure until the next reload. Nothing inside #bs-peek
+     can hold focus, so rebuilding it mid-keystroke is safe. Guarded
+     because js/mobile-sheet.js loads after this one. */
+  if(typeof mobUpdatePeek==='function')mobUpdatePeek();
 }
 function tbCostsBodyHTML(b,fuelRowLabel,readOnly){
   const cur=b.cur,gs=b.groupSize,multi=gs>1;
