@@ -258,8 +258,171 @@ const tbMoney=(v,cur='GBP')=>v!=null?`${curSym(cur)}${v.toFixed(0)}`:'—';
    rather than a bare "–" that sat beside the ⋯ menu looking like a
    collapse control. Cost tables keep tbMoney()'s dash. */
 const tbPrice=(v,cur='GBP')=>v!=null?tbMoney(v,cur):'<span class="tb-price-tbc">TBC</span>';
+/* GOLF-193: the Per person / Total choice used to live and die inside the
+   Costs tab, so a trip could read £100 on an Itinerary day card and £50 on
+   Costs at the same time and never say which was which. The mode is now one
+   app-wide fact. Every figure outside the Costs tab renders BOTH readings
+   and CSS shows the one matching `data-cost-mode` on <body> — the same
+   trick GOLF-178 already used inside .cost-body, lifted up a level. Nothing
+   re-renders on a mode change, so the map, the open day cards and the
+   read-only #share= view all keep their state.
+   The control itself stays on the Costs tab; the AC asks for the CHOICE to
+   apply app-wide, not for the segmented control to be repeated in chrome
+   GOLF-150 already called overcrowded. */
+function tbCostModeApply(){
+  const m=tbCostMode==='tot'?'tot':'pp';
+  if(document.body)document.body.dataset.costMode=m;
+  return m;
+}
+/* Per person is the total divided by the group size — one rule for every
+   figure in the app, so a day card, the badge and the Costs tab can never
+   disagree. A single traveller has no second reading, so nothing is
+   doubled up for them. */
+function tbDualBucketHTML(b,cur,unit){
+  const gs=groupSizeFor();
+  const tot=moneyBucketFmt(b,cur);
+  if(gs<=1)return unit?`${tot}<span class="cv-unit"> ${unit.tot}</span>`:tot;
+  const pp=costPPBucketFmt(b,gs,cur);
+  return`<span class="cv-pp">${pp}${unit?`<span class="cv-unit"> ${unit.pp}</span>`:''}</span>`
+        +`<span class="cv-tot">${tot}${unit?`<span class="cv-unit"> ${unit.tot}</span>`:''}</span>`;
+}
+/* A single item's price, in both readings. Unpriced rows keep tbPrice()'s
+   "TBC" — there is nothing to show per head either. */
+function tbDualPriceHTML(v,cur){
+  const gs=groupSizeFor();
+  if(v==null)return tbPrice(v,cur);
+  if(gs<=1)return tbMoney(v,cur);
+  /* A row figure is too narrow for a visible "pp"/"total" without crowding
+     the name beside it, and the day header above it already states the
+     reading. The title carries it for anyone checking a single row, and for
+     a screen reader. */
+  return`<span class="cv-pp" title="Per person">${costPPMoney(v,cur,gs)}</span>`
+        +`<span class="cv-tot" title="Total for all ${gs} travellers">${tbMoney(v,cur)}</span>`;
+}
+/* GOLF-193: the mark for a figure the app guessed rather than read. It
+   goes on the figure itself, not only on the line that produced it, so a
+   total containing one estimate is marked too — otherwise the trip total
+   looks like a researched number. */
+const EST_TITLE='Includes an estimate the app filled in — not a quoted price';
+const estMark=on=>on?`<span class="cost-est" title="${EST_TITLE}">~</span>`:'';
+/* Does this day contain a figure the app estimated? Today that is a stay
+   with no price entered (tripItemPriceDetail sets det.est, js/trip-geo.js).
+   Driving fuel is a trip-level estimate and is handled with the trip
+   total, not here — no day card shows fuel. */
+function tripDayEstimated(dayIdx){
+  return tripDayLegs(dayIdx).some(l=>l.type!=='drive'&&l.price!=null&&l.detail&&l.detail.est);
+}
+/* Any estimate anywhere in the trip, for the figures that total everything:
+   an estimated stay on any day, or the fuel estimate while it is switched
+   on (FUEL_COST_PER_MILE is an assumed running cost, js/trip-geo.js). */
+function tripHasEstimate(){
+  if(tbIncludeFuel&&tripTotalDriveMiles()>0)return true;
+  return tripDays.some((d,idx)=>tripDayEstimated(idx));
+}
 /* Day-header total: blank for a day with nothing priced. */
-const tbDaySumHTML=idx=>{const b=tripDayTotal(idx);return Object.keys(b).some(c=>b[c])?`<span class="tb-day-sum">${moneyBucketFmt(b)}</span>`:'';};
+/* ── GOLF-186: the stay slot.
+
+   A golf day used to say nothing at all about where you were sleeping
+   until you found "＋ Add to Day N → 🏨 A place to stay" — two taps into a
+   menu, on the one question every golf trip has to answer for every night.
+   The slot asks it outright, sits in the same place on every golf day, and
+   once it is answered becomes the stay's own editor: nights and price are
+   changed here rather than by re-opening the add form through the row's
+   overflow menu.
+   Only the FIRST hotel on a day is the slot's subject. A day can hold more
+   than one (nothing stops it, and a moved stay can transiently produce
+   it), and the extra ones stay visible as ordinary itinerary rows — the
+   slot is the day's headline answer, not a second copy of the list. */
+function tripDayStay(d){
+  return(d.items||[]).find(it=>it.type==='hotel')||null;
+}
+function tbStayNightsStep(dayId,itemId,delta){
+  const it=tripDayFindItem(dayId,itemId);
+  if(!it)return;
+  /* tripDayResizeStay() rebuilds the stay's items from scratch (new ids),
+     so the re-render is not a nicety — the stepper's own itemId is stale
+     the moment this returns. */
+  tripDayResizeStay(dayId,itemId,(it.nights||1)+delta);
+  renderTripBuilder();tbDrawMap();
+}
+function tbStayPriceSet(dayId,itemId,el){
+  const it=tripDayFindItem(dayId,itemId);
+  if(!it||!el)return;
+  const raw=String(el.value).trim();
+  const v=raw?parseFloat(raw):NaN;
+  // A blank field means "I haven't got a price", which is a real answer:
+  // it puts the stay back on the app's estimate (GOLF-193), not on zero.
+  tripDayUpdateStop(dayId,itemId,{name:it.name,price:Number.isFinite(v)&&v>=0?v:null,lat:it.lat,lng:it.lng});
+  renderTripBuilder();tbDrawMap();
+}
+/* GOLF-197: which night of its stay this day is, 0-based. Extracted from
+   the slot, which used to own both this and the controls. */
+function tripStayNightIndex(d,st){
+  if(!st||!st.stayId)return 0;
+  return tripDays.filter(dd=>(dd.items||[]).some(x=>x.stayId===st.stayId))
+    .findIndex(dd=>dd.id===d.id);
+}
+/* GOLF-197: the stay's controls, now rendered inside the hotel's own row
+   (js/trip-add.js) instead of in a box below the day.
+
+   The box was a second copy of something the day already listed: one
+   hotel appeared as a "Stay" row in the day order AND again in the slot,
+   and the slot's fixed-width name ellipsised anything long ("Sinnott's
+   Bar Guest R…"). Putting the controls on the row itself removes the
+   duplicate outright rather than hiding one of the two, and the row has
+   the full width of the card to wrap a name into.
+
+   Only the first night of a multi-night stay gets these: tripDayResizeStay()
+   re-spans a stay forward from whichever day it is called on, so a "+" on
+   night 2 would silently move the booking's start date, and "Change" there
+   would leave the earlier nights pointing at the old hotel (DEC-028 186a). */
+function tbStayControlsHTML(d,st){
+  const n=st.nights||1;
+  const det=tripItemPriceDetail(d,st);
+  const cur=curSym(tripStayCurrency(d,st));
+  /* The field takes a PER PERSON, per night figure, so its placeholder has
+     to be the per-person share of the estimate — det.total is the room. A
+     placeholder of ~£110 beside an itinerary row reading ~£55 is exactly
+     the two-figures-disagree bug GOLF-193 went and fixed. */
+  const gs=groupSizeFor();
+  const est=det.est&&det.total!=null?det.total/(gs>1?gs:1):null;
+  const ph=est!=null?`~${cur}${Math.round(est)} est.`:`${cur} / night`;
+  /* The row is draggable; these are not. Without this, a press inside the
+     price field starts a drag of the whole stop instead of a text
+     selection. */
+  const noDrag=`draggable="false" ondragstart="event.preventDefault();event.stopPropagation();"`;
+  return`<div class="tb-stay-ctl" ${noDrag}>
+    <span class="tb-stay-nights">
+      <span class="tb-stay-label">Nights</span>
+      <button type="button" class="tb-step" ${noDrag} onclick="tbStayNightsStep(${d.id},'${st.id}',-1)"
+        title="One night fewer"${n<=1?' disabled':''}>−</button>
+      <b class="tb-stay-n">${n}</b>
+      <button type="button" class="tb-step" ${noDrag} onclick="tbStayNightsStep(${d.id},'${st.id}',1)"
+        title="One night more — fills the following day(s) with the same stay">+</button>
+    </span>
+    <input class="tb-field tb-stay-price" type="number" min="0" step="5" ${noDrag}
+      title="What this stay costs per person, per night. Leave it blank to keep the app's estimate."
+      placeholder="${esc(ph)}" value="${st.price!=null?esc(String(st.price)):''}"
+      onchange="tbStayPriceSet(${d.id},'${st.id}',this)">
+    <button type="button" class="tb-btn is-sm is-quiet" ${noDrag} onclick="tbOpenHotelPicker(${d.id})"
+      title="Pick a different hotel — replaces it on every night of this stay">Change</button>
+  </div>`;
+}
+/* GOLF-197: the slot is now only ever the empty question. Once a hotel is
+   picked, the day's own hotel row answers it. */
+function tbStaySlotHTML(d){
+  if((d.kind||'golf')!=='golf')return'';
+  if(tripDayStay(d))return'';
+  return`<div class="tb-stay-slot is-empty">
+    <button type="button" class="tb-stay-ask" onclick="tbOpenHotelPicker(${d.id})"
+      title="Show hotels near this day's golf">🏨 Where are you staying?</button>
+  </div>`;
+}
+const tbDaySumHTML=idx=>{
+  const b=tripDayTotal(idx);
+  if(!Object.keys(b).some(c=>b[c]))return'';
+  return`<span class="tb-day-sum">${estMark(tripDayEstimated(idx))}${tbDualBucketHTML(b,undefined,{pp:'pp',tot:'total'})}</span>`;
+};
 /* GOLF-74/91: the £ figure as the visitor should read it. A hotel priced
    for more than one traveller shows its arithmetic ("£90 × 2 people = £180")
    rather than silently folding the multiplication into the trip total.
@@ -285,13 +448,13 @@ function itinLegRowHTML(l){
     <span class="tb-item-icon">${icon}</span>
     <div class="tb-item-main"><span class="tb-item-name">${esc(l.name)}</span>
       ${sharing?`<div class="cart-region">${sym}${l.detail.base.toFixed(0)} × ${l.detail.guests} people = ${sym}${l.detail.total.toFixed(0)}</div>`:''}</div>
-    <span class="tb-item-price">${tbPrice(l.price,cur)}</span>
+    <span class="tb-item-price">${estMark(!!(l.detail&&l.detail.est))}${tbDualPriceHTML(l.price,cur)}</span>
   </div>`;
 }
 function tbItinAllHTML(){
   if(!tripDays.length)return`<p class="hint">Add a day to start building your itinerary.</p>`;
   return tripDays.map((d,idx)=>{
-    const legs=tripDayLegs(idx).filter(l=>tbDriveToggle||l.type!=='drive');
+    const legs=tripDayLegs(idx);
     const dow=d.date?new Date(d.date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short'}):'';
     return`<div class="tb-day">
       <div class="tb-day-head">
@@ -305,39 +468,12 @@ function tbItinAllHTML(){
     </div>`;
   }).join('');
 }
-function tbItinGolfListHTML(){
-  const rows=[];
-  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='golf')rows.push({day:idx+1,name:tripItemName(it),price:tripItemPrice(d,it),cur:courseCurrency(it.i)});}));
-  if(!rows.length)return`<p class="hint">No golf rounds scheduled yet.</p>`;
-  return rows.map(r=>`<div class="itin-card"><div class="itin-card-kicker">Day ${r.day}</div>
-    <div class="itin-flat-row"><span class="itin-golf-name-lg">⛳ ${esc(r.name)}</span><span class="itin-golf-price-lg">${tbMoney(r.price,r.cur)}</span></div></div>`).join('');
-}
-function tbItinHotelRailHTML(){
-  const rows=[];
-  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='hotel')rows.push({day:idx+1,name:tripItemName(it),detail:tripItemPriceDetail(d,it)});}));
-  if(!rows.length)return`<p class="hint">No stays added yet.</p>`;
-  return`<div class="itin-rail">${rows.map(r=>`<div class="itin-rail-row"><div class="itin-rail-dot"></div>
-      <div class="itin-card-kicker">Day ${r.day}</div>
-      <div class="itin-flat-row"><span class="itin-hotel-name-md">🏨 ${esc(r.name)}</span><span class="itin-hotel-price-md">${tripPriceLabel(r.detail)}</span></div>
-    </div>`).join('')}</div>`;
-}
-function tbItinPoiListHTML(){
-  const rows=[];
-  // GOLF-173: the POI's own currency (from its coordinates), not the day's.
-  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='poi')rows.push({day:idx+1,name:tripItemName(it),price:tripItemPrice(d,it),cur:tripItemPriceDetail(d,it).cur});}));
-  if(!rows.length)return`<p class="hint">No stops added yet.</p>`;
-  return rows.map(r=>`<div class="itin-card"><div class="itin-card-kicker">Day ${r.day}</div>
-    <div class="itin-flat-row"><span class="itin-hotel-name-md">📍 ${esc(r.name)}</span><span class="itin-golf-price-lg">${tbMoney(r.price,r.cur)}</span></div></div>`).join('');
-}
-function tbItineraryHTML(){
-  if(!tripSeq.length&&!tripDays.some(d=>d.place||tripDayItems(d).length))
-    return`<p class="hint">Nothing in this trip yet. Search above, or hit <b>Add to trip</b> on any course.</p>`;
-  if(tbItinFilter==='golf')return tbItinGolfListHTML();
-  if(tbItinFilter==='hotel')return tbItinHotelRailHTML();
-  if(tbItinFilter==='poi')return tbItinPoiListHTML();
-  return tbItinAllHTML();
-}
-
+/* GOLF-207: the Itinerary "Show: Everything / Golf only / Stays only /
+   Stops only" filter is gone, and with it tbItinGolfListHTML(),
+   tbItinHotelRailHTML(), tbItinPoiListHTML() and the tbItineraryHTML()
+   dispatcher that chose between them — the itinerary always shows the
+   whole trip now. tbItinAllHTML() above survives because the read-only
+   share view still renders through it (js/trip-share.js). */
 /* ════════════════════════════════════════════════════════════════════
    Costs tab
    ════════════════════════════════════════════════════════════════════ */
@@ -399,7 +535,11 @@ function tripCostLineItems(){
       }else{
         stayGroups.set(key,items.length);
         items.push({label:name+sharingBit,cat:'Stay',amount:det.total,day:idx+1,cur:det.cur,
-          tag:det.sharing?`× ${det.guests} people`:'estimated',
+          /* GOLF-193: was `det.sharing?'× N people':'estimated'`, which
+             tagged a price the visitor had typed as "estimated" whenever
+             the party was one (sharing is only true for gs>1). det.est is
+             the fact being described. */
+          tag:det.sharing?`× ${det.guests} people`:(det.est?'estimated':null),
           _nights:1,_name:name,_cur:det.cur});
       }
       return;
@@ -459,22 +599,46 @@ function tripCostBreakdown(){
   const fuelMiles=tripTotalDriveMiles();
   const fuelCost=fuelMiles*FUEL_COST_PER_MILE;
   const golfTotal=sum(golf),stayTotal=sum(stay),poiTotal=sum(poi);
+  /* GOLF-203: the trip's own "Other" lines, priced here and nowhere else.
+     `typed` is what the visitor entered; `amount` is the whole-party
+     figure every other cost line in this app is already expressed in, so
+     the Per person view's "÷ group size" needs no special case. An empty
+     amount is 0, not NaN — the line exists before it is priced. */
+  const gs=groupSizeFor();
+  const customItems=(Array.isArray(tripCustom)?tripCustom:[]).map(c=>{
+    const lcur=CURRENCY_SYMS[c.cur]?c.cur:cur;
+    const typed=(typeof c.amount==='number'&&isFinite(c.amount))?c.amount:0;
+    return{id:c.id,label:c.label||'',per:c.per==='person'?'person':'group',cur:lcur,typed,
+      amount:c.per==='person'?typed*gs:typed};
+  });
+  /* Fuel moved in here (owner item 7): it was its own row under the three
+     category groups, which made it the one cost with no home. */
+  const otherTotal={[cur]:0};
+  if(tbIncludeFuel)moneyBucketAdd(otherTotal,cur,fuelCost);
+  customItems.forEach(x=>moneyBucketAdd(otherTotal,x.cur,x.amount));
   const grand={[cur]:0};
-  [golfTotal,stayTotal,poiTotal].forEach(b=>Object.keys(b).forEach(c=>moneyBucketAdd(grand,c,b[c])));
-  if(tbIncludeFuel)moneyBucketAdd(grand,cur,fuelCost);
+  [golfTotal,stayTotal,poiTotal,otherTotal].forEach(b=>Object.keys(b).forEach(c=>moneyBucketAdd(grand,c,b[c])));
   // GOLF-87: an even per-person split of the whole trip total — golf/POI
   // are already priced per-traveller above, stays keep their own GOLF-74
   // sharing math untouched, and fuel is one shared trip cost only divided
   // here, at the very last step. Across currencies, each bucket divides on
   // its own (DEC-026).
-  const gs=groupSizeFor();
   const perPerson=gs>1?moneyBucketScale(grand,1/gs):null;
-  return{items,cur,golfTotal,golfCov:golf.filter(x=>x.amount!=null).length,golfOf:golf.length,stayTotal,poiTotal,fuelMiles,fuelCost,grand,groupSize:gs,perPerson};
+  return{items,cur,golfTotal,golfCov:golf.filter(x=>x.amount!=null).length,golfOf:golf.length,stayTotal,poiTotal,fuelMiles,fuelCost,customItems,otherTotal,grand,groupSize:gs,perPerson};
 }
 /* The headline trip total as display text — navbar pill, Itinerary's
    "Trip total" card and the shared view's pill all read this, so a mixed
    trip shows every currency everywhere (DEC-026). */
 function tbTripTotal(){const b=tripCostBreakdown();return moneyBucketFmt(b.grand,b.cur);}
+/* GOLF-193: the same headline, in both readings and marked if it contains
+   an estimate. The navbar pill, the Itinerary "Trip total" card and the
+   shared view's pill all read this, so they can never disagree about which
+   figure they are showing. tbTripTotal() stays for anywhere a bare string
+   is needed (it is what the mode-less single-traveller case renders). */
+function tbTripTotalHTML(unit){
+  const b=tripCostBreakdown();
+  return estMark(tripHasEstimate())+tbDualBucketHTML(b.grand,b.cur,unit||{pp:'pp',tot:'total'});
+}
 /* GOLF-71 copy audit. Before, this tab carried a three-sentence paragraph
    under the summary table explaining fee coverage, where stay prices come
    from, how to add one, and that fuel is a straight-line estimate. Two of
@@ -519,8 +683,17 @@ function costPPBucketFmt(b,gs,emptyCur){
 const costDual=(tot,pp,gs)=>gs>1?`<span class="cv-pp">${pp}</span><span class="cv-tot">${tot}</span>`:tot;
 const costModeNote=(mode,gs)=>mode==='pp'?'Showing cost per person':`Showing total for all ${gs} travellers`;
 function tbCostSetMode(btn,mode){
-  const body=btn.closest('.cost-body');if(!body)return;
+  // Every caller is a button in the segmented control, but the mode itself
+  // is app-wide state — so a call without one sets the mode and skips only
+  // the control's own highlight, rather than throwing.
+  const body=btn&&typeof btn.closest==='function'?btn.closest('.cost-body'):null;
   tbCostMode=mode;
+  /* GOLF-193: the choice is app-wide now. Setting it on <body> reaches
+     every figure in the pane, the day cards and the shared view at once,
+     with no re-render — so the map, any open day and the scroll position
+     all survive a mode change. */
+  tbCostModeApply();
+  if(!body)return;
   body.dataset.mode=mode;
   body.querySelectorAll('.cost-mode-seg button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===mode)));
   const note=body.querySelector('.cost-mode-note');
@@ -541,17 +714,22 @@ function costGroupHTML(icon,label,total,items,cur){
 /* GOLF-174: the banner + category rows + coverage note, shared by the live
    Costs tab and the read-only #share= twin (js/trip-share.js), which used to
    carry a copy of this markup — and so a copy of the single-currency bug.
-   fuelRowLabel is the only difference between the two: a live checkbox
-   here, plain text in the shared view. GOLF-178: the banner's hero figure
+   `readOnly` is the only difference between the two: the shared view gets
+   plain text where the live tab has the fuel checkbox, the custom-cost
+   inputs and "+ Add a cost" (GOLF-203, which retired the old
+   fuelRowLabel string — the param is kept only so an older caller
+   passing one is harmless). GOLF-178: the banner's hero figure
    follows the mode and carries its unit in words; the other mode's figure
    sits under it, smaller and labelled, so a screenshot can't pass one off
    as the other. Always its own line: inline, it wrapped mid-phrase at
    360px, and on a mixed trip "£1470 + €1520 · £368 + €380 per person"
    would read as one run of four numbers. */
-function tbCostsBodyHTML(b,fuelRowLabel){
+/* GOLF-178's banner figure, split out for GOLF-203: typing in a custom
+   cost repaints this node in place (tbCostLiveRefresh) rather than
+   re-rendering the pane under the visitor's cursor, so both paths have to
+   build it from one place or they will drift. */
+function tbCostBannerAmountHTML(b){
   const cur=b.cur,gs=b.groupSize,multi=gs>1;
-  const mixed=moneyBucketCount(b.grand)>1;
-  const golf=b.items.filter(x=>x.cat==='Golf'),stay=b.items.filter(x=>x.cat==='Stay'),stop=b.items.filter(x=>x.cat==='Stop');
   const totTxt=moneyBucketFmt(b.grand,cur);
   const ppTxt=multi?costPPBucketFmt(b.grand,gs,cur):'';
   const second=txt=>`<span class="cost-banner-pp is-own-line">${txt}</span>`;
@@ -563,6 +741,101 @@ function tbCostsBodyHTML(b,fuelRowLabel){
   const amount=multi
     ?`<span class="cv-pp">${hero(ppTxt)}<span class="cost-banner-unit"> per person</span>${second(`${totTxt} total`)}</span><span class="cv-tot">${hero(totTxt)}<span class="cost-banner-unit"> total</span>${second(`${ppTxt} per person`)}</span>`
     :totTxt;
+  return (tripHasEstimate()?estMark(true):'')+amount;
+}
+/* GOLF-203: one custom line's own money cell — the whole-party figure and
+   the per-person one, switched by the card's mode like every other row. */
+function costCustomAmtHTML(x,gs){
+  return costDual(tbMoney(x.amount,x.cur),costPPMoney(x.amount,x.cur,gs),gs);
+}
+/* GOLF-203: "Other" — fuel plus whatever the visitor adds themselves.
+   Not costGroupHTML(): its rows are editable and it has a footer button,
+   and the read-only #share= twin renders the same rows as plain text.
+
+   Judgement call (the ticket leaves it to the dev): the per-line currency
+   picker only appears once the trip already spans more than one currency
+   — or once a line carries something other than the primary one, so a
+   line can always be changed back. A single-nation trip never sees it.
+
+   Open by default, unlike the other three: it is the only interactive
+   group, and the fuel row it absorbed used to be permanently visible. */
+function costOtherGroupHTML(b,readOnly){
+  const cur=b.cur,gs=b.groupSize;
+  const lines=b.customItems||[];
+  const mixed=moneyBucketCount(b.grand)>1||lines.some(x=>x.cur!==cur);
+  const fuelRow=`<div class="cost-fuel-row">${readOnly?'<span>⛽ Fuel (est.)</span>':
+    `<label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> ⛽ Fuel (est.)</label>`
+    }<span class="cost-group-amt">${/* its own label already reads "Fuel (est.)" — a ~ here just stutters */''}${costDual(`${curSym(cur)}${b.fuelCost.toFixed(0)}`,costPPMoney(b.fuelCost,cur,gs),gs)}</span></div>`;
+  const rows=readOnly
+    ? (lines.length?`<table class="cost-line-table cost-group-lines">${lines.map(x=>{
+        const tag=x.per==='person'&&gs>1?`× ${gs}`:null;
+        return`<tr><td>${esc(x.label.trim()||'Other cost')}${tag?` <span class="wt">${esc(tag)}</span>`:''}</td><td>${costCustomAmtHTML(x,gs)}</td></tr>`;
+      }).join('')}</table>`:'')
+    : lines.map(x=>{
+        const id=esc(x.id);
+        return`<div class="cc-row" data-cc="${id}">
+          <input class="tb-field cc-label" id="tb-cc-label-${id}" type="text" maxlength="80"
+            aria-label="What is this cost?" placeholder="Car hire" value="${esc(x.label)}"
+            oninput="tripCustomUpdate('${id}',{label:this.value})">
+          <div class="cc-row-2">
+            ${mixed?`<select class="tb-field cc-cur" aria-label="Currency"
+              onchange="tripCustomUpdate('${id}',{cur:this.value});tbCostLiveRefresh();">${
+                ['GBP','EUR','ZAR'].map(c=>`<option value="${c}"${x.cur===c?' selected':''}>${curSym(c)}</option>`).join('')
+              }</select>`:''}
+            <input class="tb-field cc-amount" type="number" min="0" step="5" inputmode="decimal"
+              aria-label="Amount in ${esc(curSym(x.cur))}" placeholder="${esc(curSym(x.cur))} amount"
+              value="${x.typed?esc(String(x.typed)):''}"
+              oninput="tripCustomUpdate('${id}',{amount:this.value});tbCostLiveRefresh();">
+            <div class="tb-seg cc-per" role="group" aria-label="Who pays this cost">${
+              [['group','Whole group'],['person','Per person']].map(([k,l])=>
+                `<button type="button" data-per="${k}" aria-pressed="${x.per===k}" onclick="tripCustomSetPer('${id}','${k}',this)">${l}</button>`).join('')
+            }</div>
+            <span class="cost-group-amt cc-amt" data-cc-amt="${id}">${costCustomAmtHTML(x,gs)}</span>
+            <button type="button" class="tb-btn is-icon is-sm is-quiet cc-del" title="Remove this cost"
+              aria-label="Remove this cost" onclick="tripCustomRemove('${id}')">✕</button>
+          </div>
+        </div>`;
+      }).join('');
+  const addBtn=readOnly?'':`<button type="button" class="tb-btn is-sm is-quiet cc-add"
+    ${lines.length>=TRIP_CUSTOM_MAX?'disabled title="That is as many as one trip can hold."':''}
+    onclick="tripCustomAdd()">+ Add a cost</button>`;
+  return`<details class="cost-group cost-other-group" open><summary class="cost-group-summary">
+      <span class="cost-group-label"><span class="cost-group-toggle" aria-hidden="true"></span>💷 Other</span>
+      <span class="cost-group-amt" data-other-amt>${costDual(moneyBucketFmt(b.otherTotal,cur),costPPBucketFmt(b.otherTotal,gs,cur),gs)}</span>
+    </summary>
+    <div class="cost-other-body">${fuelRow}${rows}${addBtn}</div>
+  </details>`;
+}
+/* GOLF-203: repaint every figure a custom-cost keystroke can move, and
+   nothing else. A full renderTripBuilder() on each input would replace the
+   very field being typed in (and on `change`, would destroy the element
+   Tab was heading for), so the money is patched in place instead. */
+function tbCostLiveRefresh(){
+  const b=tripCostBreakdown(),gs=b.groupSize,cur=b.cur;
+  const body=document.querySelector('#tb-pane .cost-body')||document.querySelector('.cost-body');
+  if(body){
+    const ban=body.querySelector('.cost-banner-amount');
+    if(ban)ban.innerHTML=tbCostBannerAmountHTML(b);
+    const oth=body.querySelector('.cost-other-group [data-other-amt]');
+    if(oth)oth.innerHTML=costDual(moneyBucketFmt(b.otherTotal,cur),costPPBucketFmt(b.otherTotal,gs,cur),gs);
+    (b.customItems||[]).forEach(x=>{
+      const cell=body.querySelector(`[data-cc-amt="${x.id}"]`);
+      if(cell)cell.innerHTML=costCustomAmtHTML(x,gs);
+    });
+  }
+  document.querySelectorAll('.js-trip-total').forEach(el=>{el.innerHTML=tbTripTotalHTML(el.dataset.unit?JSON.parse(el.dataset.unit):undefined);});
+  /* The phone sheet's peek summary carries the same headline but lives
+     outside #tb-pane and rebuilds itself wholesale, so it needs its own
+     call rather than a .js-trip-total hook — without it the peek sat at
+     the pre-edit figure until the next reload. Nothing inside #bs-peek
+     can hold focus, so rebuilding it mid-keystroke is safe. Guarded
+     because js/mobile-sheet.js loads after this one. */
+  if(typeof mobUpdatePeek==='function')mobUpdatePeek();
+}
+function tbCostsBodyHTML(b,fuelRowLabel,readOnly){
+  const cur=b.cur,gs=b.groupSize,multi=gs>1;
+  const mixed=moneyBucketCount(b.grand)>1;
+  const golf=b.items.filter(x=>x.cat==='Golf'),stay=b.items.filter(x=>x.cat==='Stay'),stop=b.items.filter(x=>x.cat==='Stop');
   const mode=tbCostMode==='tot'?'tot':'pp';
   // Control first, note after: the note's length changes with the mode, so
   // it must never be what positions the button the viewer just tapped.
@@ -571,28 +844,29 @@ function tbCostsBodyHTML(b,fuelRowLabel){
         `<button type="button" data-mode="${k}" aria-pressed="${mode===k}" onclick="tbCostSetMode(this,'${k}')">${l}</button>`).join('')}</div>
       <span class="cost-mode-note">${costModeNote(mode,gs)}</span></div>`:'';
   return`<div class="cost-body"${multi?` data-mode="${mode}" data-gs="${gs}"`:''}>${control}
-    <div class="cost-banner"><div class="cost-banner-label">Trip total${multi?` · ${gs} travellers`:''}</div><div class="cost-banner-amount${mixed?' is-mixed':''}">${amount}</div></div>
+    <div class="cost-banner"><div class="cost-banner-label">Trip total${multi?` · ${gs} travellers`:''}${tripHasEstimate()?` · <span class="cost-est-note" title="${EST_TITLE}">~ includes an estimate</span>`:''}</div><div class="cost-banner-amount${mixed?' is-mixed':''}">${tbCostBannerAmountHTML(b)}</div></div>
     <div class="cost-card cost-groups">
       ${costGroupHTML('⛳','Golf',b.golfTotal,golf,cur)}
       ${costGroupHTML('🏨','Stays',b.stayTotal,stay,cur)}
       ${costGroupHTML('📍','Stops',b.poiTotal,stop,cur)}
-      <div class="cost-fuel-row">${fuelRowLabel}<span class="cost-group-amt">${costDual(`${curSym(cur)}${b.fuelCost.toFixed(0)}`,costPPMoney(b.fuelCost,cur,gs),gs)}</span></div>
+      ${costOtherGroupHTML(b,readOnly)}
     </div>
     <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?' This trip spans more than one currency, so each is totalled separately — nothing is converted.':''}</p></div>`;
 }
 function tbCostsTabHTML(){
-  return tbCostsBodyHTML(tripCostBreakdown(),
-    `<label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> Fuel (est.)</label>`);
+  // GOLF-203: the fuel row's label moved inside costOtherGroupHTML() with
+  // the row itself, so there is nothing left to pass in here.
+  return tbCostsBodyHTML(tripCostBreakdown(),null,false);
 }
 
 /* ════════════════════════════════════════════════════════════════════
    Build mode's editable itinerary — the day cards from the sketch.
    ════════════════════════════════════════════════════════════════════ */
-let tbBuildTab='itin',tbItinFilter='all',tbDriveToggle=true,tbDayShown=null;
+let tbBuildTab='itin',tbDayShown=null;
 /* GOLF-108: "Show nearby courses" on the Itinerary tab map. Owner decision
    2026-09-07 — default ON; flip TB_SHOW_NEARBY_DEFAULT to change it, no
-   other code change needed. Not persisted (matches tbDriveToggle /
-   tbItinFilter — a sensible default each session).
+   other code change needed. Not persisted — a sensible default each
+   session, the same call GOLF-207's POI layer makes.
    GOLF-131 (2026-09-13): flipped to default OFF — arriving in Itinerary
    with every nearby bookable course already drawn was noisy; a tester now
    opts in, and the set itself live-updates as the map is panned (see
@@ -621,7 +895,7 @@ function tbDayCardHTML(d,idx){
   const nCourses=items.filter(it=>it.type==='golf').length;
   const byId=new Map(items.map(it=>[it.id,it]));
   const rowsHTML=tripDayLegs(idx).map(l=>{
-    if(l.type==='drive')return tbDriveToggle?tbDriveCapHTML(l):'';
+    if(l.type==='drive')return tbDriveCapHTML(l);
     const it=byId.get(l.id);
     if(!it)return'';
     /* GOLF-73: an item being edited swaps its row for the inline edit form
@@ -640,7 +914,7 @@ function tbDayCardHTML(d,idx){
     :`<button type="button" class="tb-menu-item" onclick="tripDayMoveToPos(${d.id},${i})">${
         i===0?'↑ Move to Day 1':i===tripDays.length-1?`↓ Move to Day ${i+1} (last)`:`Move to Day ${i+1}`}</button>`).join(''):'';
   const menu=tbRowMenuHTML(moveItems+
-    `<button type="button" class="tb-menu-item is-danger" onclick="tripDayRemove(${d.id});renderTripBuilder();tbDrawMap();">🗑 Remove day ${idx+1}</button>`);
+    `<button type="button" class="tb-menu-item is-danger" onclick="tripRemoveDay(${d.id});">🗑 Remove day ${idx+1}</button>`);
   return`
     <div class="tb-day tb-day-${kind}"
       ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
@@ -662,6 +936,7 @@ function tbDayCardHTML(d,idx){
         ondragleave="tbDropOut(this,event);"
         ondrop="event.preventDefault();event.stopPropagation();tbDropOut(this);tbDropInDay(${d.id},null);">↓ Put it last on Day ${idx+1}</div>
       ${town?`<div class="tb-day-town">Staying near <b>${esc(town)}</b>${tbPoiLinkHTML(d)}</div>`:''}
+      ${tbStaySlotHTML(d)}
       ${tbPoiListHTML(d)}
       ${/* GOLF-96 follow-up: search bar on top, nearby candidates below —
            the form (tbAddStopFormHTML) now always opens together with the
@@ -675,7 +950,10 @@ function tbDayCardHTML(d,idx){
         <details class="tb-drop tb-add-drop">
           <summary class="tb-btn is-sm is-quiet">＋ Add to Day ${idx+1}</summary>
           <div class="tb-drop-body">
-            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbOpenHotelPicker(${d.id})">🏨 A place to stay</button>
+            ${/* GOLF-186: a golf day asks this in its own stay slot above, so
+                  offering it again here would be two doors to one room. Other
+                  day kinds have no slot and still need the entry point. */''}
+            ${kind==='golf'?'':`<button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbOpenHotelPicker(${d.id})">🏨 A place to stay</button>`}
             <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbPromptPoi(${d.id})">📍 A stop (sight, lunch…)</button>
           </div>
         </details>
@@ -734,25 +1012,24 @@ function tripDayScheduleHTML(){
   const unschedHTML=unscheduled.length?`
     <div class="tb-day tb-day-wish" ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
       ondrop="event.preventDefault();tbDropOut(this);tbDropOn(null,null);">
-      <div class="tb-day-head"><span class="tb-day-title"><span class="tb-day-title-text">Wishlist</span>
+      <div class="tb-day-head"><span class="tb-day-title"><span class="tb-day-title-text">Shortlist</span>
         <span class="tb-day-place">${unscheduled.length} course${unscheduled.length===1?'':'s'} · not on a day yet</span></span></div>
       <div class="tb-day-rule"></div>
       ${unscheduled.map(i=>tripDayCourseRowHTML(i,null)).join('')}
     </div>`:'';
-  const total=tbTripTotal();
   return`${reorderHTML}${daysHTML}${unschedHTML}
     <div class="tb-day-endzone tb-day-add" style="padding-left:0"
       ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
       ondrop="event.preventDefault();tbDropOut(this);tbDropDayAtEnd();">
       <button class="tb-btn is-primary" onclick="tbAddDayWithPlace();">＋ Add a day</button>
-      ${tripSeq.length>1?`<details class="tb-drop">
-        <summary class="tb-btn" title="Rebuilds every golf day from scratch, one course per day, in nearest-neighbour order. Free/start/end days are kept exactly where they are.">Auto schedule ▾</summary>
-        <div class="tb-drop-body">
+      ${tripSeq.length>1?`<details class="tb-drop tb-auto-drop">
+        <summary class="tb-btn" title="Rebuilds every golf day from scratch, one course per day, in nearest-neighbour order. Free/start/end days are kept exactly where they are."><span class="tb-drop-label">Auto schedule</span></summary>
+        <div class="tb-drop-body is-right">
           <button type="button" class="tb-menu-item" onclick="tripAutoOrder();renderTripBuilder();tbDrawMap();" title="Full reset: every golf day is rebuilt from scratch (one course per day, nearest-neighbour order). Free/start/end days stay in place.">Reschedule all courses (full reset)</button>
         </div>
       </details>`:''}
     </div>
-    <div class="tb-total-card"><span class="tb-total-label">Trip total</span><span class="tb-total-amount">${total}</span></div>`;
+    <div class="tb-total-card"><span class="tb-total-label">Trip total</span><span class="tb-total-amount js-trip-total">${tbTripTotalHTML()}</span></div>`;
 }
 
 /* Plan mode's wishlist. */
@@ -760,26 +1037,26 @@ function tbWishlistHTML(){
   const allUnscheduled=tripUnscheduled();
   const unscheduled=state.nation?allUnscheduled.filter(i=>courseNation(i)===state.nation):allUnscheduled;
   const hidden=allUnscheduled.length-unscheduled.length;
-  const hiddenNote=hidden?`<p class="hint" style="margin:0 0 var(--sp-2)">${hidden} more course${hidden===1?'':'s'} on your wishlist from other countries — clear the country filter above to see ${hidden===1?'it':'them'}.</p>`:'';
+  const hiddenNote=hidden?`<p class="hint" style="margin:0 0 var(--sp-2)">${hidden} more course${hidden===1?'':'s'} on your shortlist from other countries — clear the country filter above to see ${hidden===1?'it':'them'}.</p>`:'';
   /* GOLF-150 W1: once every course is on a day, "Nothing on your wishlist
      yet" read like the trip had been lost. Say where the courses went. */
   const nSched=tripSeq.length-allUnscheduled.length;
   if(!unscheduled.length&&!hiddenNote&&nSched>0)
     return`<div class="tb-wish-moved"><span>✓ ${nSched} course${nSched===1?' is':'s are'} in your itinerary${tripDays.length?` across ${tripDays.length} day${tripDays.length===1?'':'s'}`:''}.</span>
       <button class="tb-btn is-sm is-primary" onclick="enterBuildMode()">View itinerary →</button></div>`;
-  if(!unscheduled.length)return hiddenNote||`<p class="hint">Nothing on your wishlist yet — add any course you fancy playing.</p>`;
+  if(!unscheduled.length)return hiddenNote||`<p class="hint">Nothing on your shortlist yet — add any course you fancy playing.</p>`;
   const rows=unscheduled.map(i=>{
     const fee=feeNumberFor(i,'wd');
     return`<div class="tb-day-course tb-item-golf" style="cursor:default">
       <span class="tb-item-icon">⛳</span>
       <div class="tb-item-main"><a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         <div class="cart-region">${esc(C[i].r)}</div></div>
-      <span class="tb-item-price">${tbPrice(fee,courseCurrency(i))}</span>
-      <div class="tb-item-actions"><button class="tb-btn is-icon is-sm is-quiet" title="Remove from wishlist"
-        onclick="toggleTrip(${i});renderTripBuilder();tbDrawMap();">✕</button></div>
+      <span class="tb-item-price">${tbDualPriceHTML(fee==null?null:fee*groupSizeFor(),courseCurrency(i))}</span>
+      <div class="tb-item-actions"><button class="tb-btn is-icon is-sm is-quiet" title="Remove from shortlist"
+        onclick="tripRemoveCourse(${i});">✕</button></div>
     </div>`;}).join('');
   return`<div class="tb-day">
-      <div class="tb-day-head"><span class="tb-day-title"><span class="tb-day-title-text">Wishlist</span>
+      <div class="tb-day-head"><span class="tb-day-title"><span class="tb-day-title-text">Shortlist</span>
         <span class="tb-day-place">${unscheduled.length} course${unscheduled.length===1?'':'s'}</span></span>
         <button class="tb-btn is-primary is-sm" onclick="enterBuildMode()" title="Start scheduling these courses into days">Build itinerary →</button></div>
       <div class="tb-day-rule"></div>
@@ -824,6 +1101,43 @@ function tbRegionOptionsHTML(){
     return rs.length?`<optgroup label="${esc(l)}">${rs.map(opt).join('')}</optgroup>`:'';
   }).join('');
 }
+/* The one place a country gets picked: the pane's pills (toggle, desktop)
+   and, on a phone, GOLF-185c's first-visit card and country chip
+   (js/mobile-sheet.js). null clears the pick. */
+function tbPickNation(k){
+  state.nation=k||null;
+  /* GOLF-113: drop a now-invalid region filter so switching nation
+     doesn't leave a stale By-region selection filtering the results. */
+  if(tbRegion&&state.nation&&!tbRegionsForNation(state.nation).includes(tbRegion))tbRegion='';
+  /* Match the legacy js/explore.js pill: opening a nation orders its
+     list by ranking. */
+  if(state.nation)state.sort='rank';
+  /* The retired Explore sidebar draws its own copy of these pills and
+     only ever re-renders them from its own handler, so a pick made
+     here left the two sets disagreeing about which country is on.
+     Harmless while that markup is display:none, but it is the kind of
+     thing that comes back the moment anything reveals it. */
+  if(typeof renderNationPills==='function')renderNationPills();
+  /* GOLF-125: must be render(), not renderTripBuilder()+tbDrawMap(). Only
+     render() rebuilds the background course-pin layer for the new
+     nation filter (it calls renderTripBuilder()+tbDrawMap() itself).
+     With the lighter pair, picking Ireland / South Africa from these
+     pane pills moved the camera but left the map showing the previous
+     nation's pins (or none) — the "country selected, no pins" bug. */
+  saveState();render();
+  /* GOLF-98: this pane's own pill click never actually moved the map —
+     js/explore.js's now-unreachable Explore-mode pills had this, the
+     pane's pills never picked it up. Fly to the picked nation's course
+     bounds; picking the same pill again (clearing the filter) leaves
+     the map where it is rather than snapping back out. */
+  if(state.nation&&typeof map!=='undefined'&&map){
+    const pts=C.map((c,i)=>i).filter(i=>courseNation(i)===state.nation).map(i=>[C[i].lat,C[i].lng]);
+    /* fitBounds, not flyToBounds — this app's own testing notes (see the
+       plan file) document flyTo's animation stalling in at least one
+       environment; fitBounds jumps instantly and is never unreliable. */
+    if(pts.length)mapFitBounds(L.latLngBounds(pts),{padding:[28,28]}); // GOLF-184
+  }
+}
 function tbNationPillsHTML(){
   /* GOLF-114: --nation-count drives the equal-width grid in CSS, so adding
      a nation to NATIONS redistributes the row with no style change. */
@@ -831,7 +1145,7 @@ function tbNationPillsHTML(){
     ${NATIONS.map(([k,l])=>`<button class="nation-pill" aria-pressed="${state.nation===k}" data-nation="${k}">${l}</button>`).join('')}
   </div>`;
 }
-function tbPlanHTML(){return tbDiscoverTabHTML()+`<div class="tb-section-title" style="margin-top:var(--sp-6)">Your wishlist</div>${tbWishlistHTML()}`;}
+function tbPlanHTML(){return tbDiscoverTabHTML()+`<div class="tb-section-title" style="margin-top:var(--sp-6)">Your shortlist</div>${tbWishlistHTML()}`;}
 
 /* Discover. GOLF-71: its own "Near a place" search box is gone — the one
    search bar at the top of the pane anchors the lens when you pick a
@@ -877,7 +1191,7 @@ function tbBindDropdownDismiss(){
   if(tbDismissBound)return;
   tbDismissBound=true;
   document.addEventListener('mousedown',e=>{
-    document.querySelectorAll('#tb-pane details[open].tb-drop,#tb-pane details[open].tb-rowmenu,.mast details[open].tb-beta')
+    document.querySelectorAll('#tb-pane details[open].tb-drop,#tb-pane details[open].tb-rowmenu,.mast details[open].tb-beta,#tb-pane details[open].tb-beta')
       .forEach(dd=>{if(!dd.contains(e.target))dd.removeAttribute('open');});
   });
 }
@@ -917,10 +1231,34 @@ function tbMountBetaBadge(){
     if(dd)dd.removeAttribute('open');
   });
 }
+/* Tabs span both modes: Discover means Plan, the other two mean Build.
+   Shared by the pane's own tab row and the phone tab bar (GOLF-185a). */
+function tbGoTab(k){
+  /* GOLF-187: results used to stay open across a tab switch and sit above
+     the itinerary, so the Itinerary tab opened onto a list of search hits
+     rather than the trip. Switching tab is a change of subject. */
+  tbClearUnifiedSearch();
+  if(k==='discover'){if(appMode!=='plan')setAppMode('plan');return;}
+  tbBuildTab=k;
+  /* GOLF-178 reset removed by GOLF-193: re-opening the Costs tab used to
+     force the mode back to Per person. That was harmless while the mode
+     only governed that one card, but the choice is app-wide now — picking
+     Total, glancing at the Itinerary and coming back would silently flip
+     every figure in the app back again. It still starts on Per person on
+     a page load and on a shared link (js/trip-share.js); it just stops
+     undoing the visitor's own choice mid-session. */
+  if(appMode!=='build')setAppMode('build');
+  else{render();} // GOLF-108: render() so the course-pin layer tracks the tab (Costs/Itinerary hide it, Discover shows it)
+}
 function renderTripBuilder(){
+  if(typeof mobBeforeRender==='function')mobBeforeRender(); // GOLF-185a
   const pane=document.getElementById('tb-pane');
+  /* GOLF-193: every render re-asserts the app-wide mode on <body>, so a
+     figure drawn by this pass shows the same reading as the ones already
+     on screen — including the very first render, before anyone has touched
+     the control. */
+  tbCostModeApply();
   if(tbDayShown==null||!tripDays.find(d=>d.id===tbDayShown))tbDayShown=tripDays.length?tripDays[0].id:null;
-  const total=tbTripTotal();
   const isBuild=appMode==='build';
   const activeTab=isBuild?tbBuildTab:'discover';
   const TABS=[['discover','Discover'],['itin','Itinerary'],['cost','Costs']];
@@ -935,34 +1273,36 @@ function renderTripBuilder(){
                  trip-level actions (share, clear) sit beside it as icons;
        batch 2 (W2/C1) — the tabs are the pane's primary navigation, so
                  they come straight after the header, and each tab only
-                 carries its own controls: Discover gets nations + search
-                 + hotels; Itinerary gets search + its view toggles; Costs
-                 gets nothing extra. Group size is a trip property, so it
-                 lives in the header next to the total it changes. */
-  const filtered=tbItinFilter!=='all'||!tbDriveToggle;
+                 carries its own controls.
+     GOLF-208 (DEC-033): the country is the top-level choice, so its pills
+     sit between the header and the tabs, on every tab. Discover gets
+     search + [filters] Show hotels · Show POIs; Itinerary gets search +
+     its view toggles, then group size and the £ total (moved out of the
+     header, as on a phone); Costs gets nothing extra. */
   const isItin=isBuild&&tbBuildTab==='itin';
   const searchHTML=`${tbSearchFieldHTML({id:'tb-unified-search',variant:'bar',value:tbSearchQ,
-      placeholder:isItin?'Add a course or town…':'Search courses, towns and cities…',ariaLabel:'Search courses, towns and cities'})}
+      placeholder:isItin?'Add a course or town…':tbPhoneLayout()?'Search clubs or towns':'Search courses, towns and cities…',ariaLabel:'Search courses, towns and cities'})}
     <div class="tb-section" id="tb-search-results" style="border-bottom:none;padding-top:0${tbSearchQ.trim()?'':';display:none'}">${tbSearchQ.trim()?tbUnifiedSearchResultsHTML():''}</div>`;
   const hotelsBtn=`<button type="button" class="tb-btn is-sm${tbHotelLayerOn?' is-active':''}" id="tb-hotel-layer-toggle" aria-pressed="${tbHotelLayerOn}" title="Show nearby hotels on the map as you pan and zoom. Zoom in to see pins — no price data, just location."><span>${tbHotelLayerOn?'✓ ':''}<span class="tb-lbl-long">Show hotels</span><span class="tb-lbl-short">Hotels</span></span></button>`;
+  /* GOLF-208: Show POIs drives GOLF-207's POI layer (Gavin's tbPoiLayerOn /
+     tbPoiLayerSet); left out until that layer exists. */
+  const poisBtn=typeof tbPoiLayerSet==='function'?`<button type="button" class="tb-btn is-sm${tbPoiLayerOn?' is-active':''}" id="tb-poi-layer-toggle" aria-pressed="${!!tbPoiLayerOn}" title="Show places to see near the map view. Zoom in to see pins."><span>${tbPoiLayerOn?'✓ ':''}<span class="tb-lbl-long">Show POIs</span><span class="tb-lbl-short">POIs</span></span></button>`:'';
   let tabChrome='';
   if(!isBuild){
-    tabChrome=`${tbNationPillsHTML()}${searchHTML}<div class="tb-toolbar">${hotelsBtn}</div>`;
+    // GOLF-185d: the course filters sit beside the search, on every viewport.
+    tabChrome=`${searchHTML}<div class="tb-toolbar">${cfButtonHTML()}${hotelsBtn}${poisBtn}</div>`;
   }else if(isItin){
+    /* GOLF-207: Hotels · Courses · POIs, three map-layer pills of the same
+       shape, in place of the old second filter icon. What's in the trip and
+       its drive legs are always shown now, so the only thing these change is
+       what extra sits on the map. Short labels keep the row on one line at
+       375px (see .tb-lbl-long/.tb-lbl-short). */
     tabChrome=`${searchHTML}
     <div class="tb-toolbar">
+      ${cfButtonHTML()}
       ${hotelsBtn}
-      <button type="button" class="tb-btn is-sm${tbShowNearby?' is-active':''}" id="tb-nearby-toggle" aria-pressed="${tbShowNearby}" title="Show other bookable courses near your trip on the map. Doesn't change your itinerary."><span>${tbShowNearby?'✓ ':''}Nearby<span class="tb-lbl-long"> courses</span></span></button>
-      <details class="tb-drop tb-icon-drop${filtered?' is-on':''}" id="tb-filter-drop">
-        <summary aria-label="Filters" title="Filter what this itinerary shows">${FILTER_ICON_SVG}</summary>
-        <div class="tb-drop-body is-right">
-          <div class="tb-menu-label">Show</div>
-          ${[['all','Everything'],['golf','⛳ Golf only'],['hotel','🏨 Stays only'],['poi','📍 Stops only']].map(([k,label])=>
-            `<button type="button" class="tb-menu-item" data-itin-filter="${k}">${tbItinFilter===k?'✓':'&nbsp;&nbsp;'} ${label}</button>`).join('')}
-          <div class="tb-menu-sep"></div>
-          <button type="button" class="tb-menu-item" id="tb-drive-toggle">${tbDriveToggle?'✓':'&nbsp;&nbsp;'} 🚗 Drive times</button>
-        </div>
-      </details>
+      <button type="button" class="tb-btn is-sm${tbShowNearby?' is-active':''}" id="tb-nearby-toggle" aria-pressed="${tbShowNearby}" title="Show other bookable courses near your trip on the map. Doesn't change your itinerary."><span>${tbShowNearby?'✓ ':''}<span class="tb-lbl-long">Nearby courses</span><span class="tb-lbl-short">Courses</span></span></button>
+      ${poisBtn}
     </div>`;
   }
   pane.innerHTML=`
@@ -972,23 +1312,15 @@ function renderTripBuilder(){
         <button type="button" class="tb-btn is-icon is-sm is-quiet" id="tb-share-trip" aria-label="Share trip" title="Share — copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">${SHARE_ICON_SVG}</button>
         <button type="button" class="tb-btn is-icon is-sm is-quiet is-danger" id="tb-clear-trip" aria-label="Clear trip" title="Clear trip — empties this trip. Your other trips are untouched; to delete every trip use Start fresh in the trip menu."${TRIP.size||tripDays.length?'':' disabled'}>${TRASH_ICON_SVG}</button>
       </div>
-      <div class="tb-head-meta">
-        <div class="tb-group" role="group" aria-label="Group size" title="How many golfers? Green fees and stop costs scale by this; hotels keep their own per-item sharing setting.">
-          <button type="button" class="tb-group-btn" id="tb-groupsize-dec" aria-label="One fewer golfer"${groupSize<=1?' disabled':''}>−</button>
-          <span class="tb-group-val" aria-live="polite">${PERSON_ICON_SVG}<b>${groupSize}</b><span class="tb-group-unit">${groupSize===1?'golfer':'golfers'}</span></span>
-          <button type="button" class="tb-group-btn" id="tb-groupsize-inc" aria-label="One more golfer">+</button>
-        </div>
-        <span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}${total}</span>
-      </div>
     </header>
+    ${tbNationPillsHTML()}
     <div class="tb-tabs" role="tablist">${TABS.map(([k,label])=>
       `<button class="tb-tab-btn" role="tab" data-tab="${k}" aria-pressed="${activeTab===k}">${label}</button>`).join('')}</div>
     ${tabChrome}
-    <div class="tb-tab-content">${
+    <div class="tb-tab-content">${isItin?tbItinGroupHTML():''}${
       !isBuild?tbPlanHTML()
       :tbBuildTab==='cost'?tbCostsTabHTML()
-      :tbItinFilter==='all'?tripDayScheduleHTML()
-      :tbItineraryHTML()
+      :tripDayScheduleHTML()
     }</div>`;
 
   tbMountBetaBadge();
@@ -997,51 +1329,21 @@ function renderTripBuilder(){
   if(nationPills)nationPills.addEventListener('click',e=>{
     const b=e.target.closest('[data-nation]');if(!b)return;
     const k=b.dataset.nation;
-    state.nation=state.nation===k?null:k;
-    /* GOLF-113: drop a now-invalid region filter so switching nation
-       doesn't leave a stale By-region selection filtering the results. */
-    if(tbRegion&&state.nation&&!tbRegionsForNation(state.nation).includes(tbRegion))tbRegion='';
-    /* Match the legacy js/explore.js pill: opening a nation orders its
-       list by ranking. */
-    if(state.nation)state.sort='rank';
-    /* GOLF-125: must be render(), not renderTripBuilder()+tbDrawMap(). Only
-       render() rebuilds the background course-pin layer for the new
-       nation filter (it calls renderTripBuilder()+tbDrawMap() itself).
-       With the lighter pair, picking Ireland / South Africa from these
-       pane pills moved the camera but left the map showing the previous
-       nation's pins (or none) — the "country selected, no pins" bug. */
-    saveState();render();
-    /* GOLF-98: this pane's own pill click never actually moved the map —
-       js/explore.js's now-unreachable Explore-mode pills had this, the
-       pane's pills never picked it up. Fly to the picked nation's course
-       bounds; picking the same pill again (clearing the filter) leaves
-       the map where it is rather than snapping back out. */
-    if(state.nation&&typeof map!=='undefined'&&map){
-      const pts=C.map((c,i)=>i).filter(i=>courseNation(i)===state.nation).map(i=>[C[i].lat,C[i].lng]);
-      /* fitBounds, not flyToBounds — this app's own testing notes (see the
-         plan file) document flyTo's animation stalling in at least one
-         environment; fitBounds jumps instantly and is never unreliable. */
-      if(pts.length)mapFitBounds(L.latLngBounds(pts),{padding:[28,28]}); // GOLF-184
-    }
+    tbPickNation(state.nation===k?null:k);
   });
   const shareBtn=document.getElementById('tb-share-trip');
   if(shareBtn)shareBtn.addEventListener('click',()=>tbShareTrip(shareBtn));
-  document.getElementById('tb-groupsize-dec').addEventListener('click',()=>tripSetGroupSize(groupSize-1));
-  document.getElementById('tb-groupsize-inc').addEventListener('click',()=>tripSetGroupSize(groupSize+1));
-  /* Tabs span both modes: Discover means Plan, the other two mean Build. */
-  pane.querySelectorAll('.tb-tab-btn').forEach(btn=>btn.addEventListener('click',()=>{
-    const k=btn.dataset.tab;
-    if(k==='discover'){setAppMode('plan');return;}
-    tbBuildTab=k;
-    if(k==='cost')tbCostMode='pp'; // GOLF-178: the card always opens on Per person
-    if(appMode!=='build')setAppMode('build');
-    else{render();} // GOLF-108: render() so the course-pin layer tracks the tab (Costs/Itinerary hide it, Discover shows it)
-  }));
-  const filterDrop=document.getElementById('tb-filter-drop');
-  if(filterDrop){
-    filterDrop.querySelectorAll('[data-itin-filter]').forEach(btn=>btn.addEventListener('click',()=>{tbItinFilter=btn.dataset.itinFilter;renderTripBuilder();}));
-    document.getElementById('tb-drive-toggle').addEventListener('click',()=>{tbDriveToggle=!tbDriveToggle;renderTripBuilder();});
-  }
+  /* GOLF-194: the stepper lives in the trip menu now, so it is inside a
+     <details> that this same re-render would otherwise slam shut —
+     tripSetGroupSize() reopens it and restores focus. */
+  pane.querySelectorAll('.tb-group-btn[data-gs]').forEach(b=>b.addEventListener('click',()=>tripSetGroupSize(groupSize+Number(b.dataset.gs),b.id)));
+  pane.querySelectorAll('.tb-tab-btn').forEach(btn=>btn.addEventListener('click',()=>tbGoTab(btn.dataset.tab)));
+  cfWireButton();
+  /* GOLF-207: tbPoiLayerSet() owns its own Leaflet group and moveend
+     listener (js/poi.js) and re-renders the pane itself, so this only has
+     to flip it — same shape as the hotel toggle below. */
+  const poiToggle=document.getElementById('tb-poi-layer-toggle');
+  if(poiToggle)poiToggle.addEventListener('click',()=>tbPoiLayerSet(!tbPoiLayerOn));
   const nearbyToggle=document.getElementById('tb-nearby-toggle');
   if(nearbyToggle)nearbyToggle.addEventListener('click',()=>{tbShowNearby=!tbShowNearby;render();});
   // GOLF-142: unlike tbShowNearby above, this toggle doesn't feed
@@ -1078,29 +1380,22 @@ function renderTripBuilder(){
     onPick(){/* unreachable: `render` owns this field's results panel */}
   });
   searchResultsEl.addEventListener('click',e=>{
-    // GOLF-112: clicking the place name focuses the map (no trip change).
+    /* GOLF-187: the whole place row is the tap target now, and it does one
+       thing — put the place on the map and open its card. The two actions
+       that used to be buttons here ("Courses near here", "Add as a day")
+       live on that card (js/trip-add.js tbPlaceCardHTML), which is what
+       stopped a town costing three rows' worth of height in the list. */
     const focus=e.target.closest('.tb-unified-place-focus');
-    if(focus){
-      e.preventDefault();
-      const lat=parseFloat(focus.dataset.lat),lng=parseFloat(focus.dataset.lng),label=focus.dataset.label;
-      /* GOLF-112 bug fix: focusing a place must also re-scope Discover's
-         "Nearby" list to it (without adding a trip stop). Without this,
-         tbPlaceAnchor stays pointed at the last course added, so after
-         adding courses near City A and then focusing City B the Nearby
-         list keeps showing City A's courses. tbAddPlaceToTrip() is still
-         the only path that also creates a day. Redraw first, then fly —
-         so tbDrawMap()'s fitBounds doesn't clobber the camera focus. */
-      tbPlaceAnchor={label,lat,lng};
-      tbDiscoveryTab='anchor';
-      if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
-      tbFocusPlaceOnMap(lat,lng,label);
-      return;
-    }
-    // GOLF-82: one place action now, not two — tbAnchorTripToPlace() is gone.
-    const trip=e.target.closest('.tb-unified-place-trip');
-    if(!trip)return;
+    if(!focus)return;
     e.preventDefault();
-    tbAddPlaceToTrip(parseFloat(trip.dataset.lat),parseFloat(trip.dataset.lng),trip.dataset.label);
+    tbFocusPlaceOnMap(parseFloat(focus.dataset.lat),parseFloat(focus.dataset.lng),focus.dataset.label);
+  });
+  searchResultsEl.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'&&e.key!==' ')return;
+    const focus=e.target.closest('.tb-unified-place-focus');
+    if(!focus)return;
+    e.preventDefault();
+    tbFocusPlaceOnMap(parseFloat(focus.dataset.lat),parseFloat(focus.dataset.lng),focus.dataset.label);
   });
   }
 
@@ -1137,4 +1432,5 @@ function renderTripBuilder(){
       document.getElementById('tb-border').addEventListener('change',run);
     }
   }
+  if(typeof mobAfterRender==='function')mobAfterRender(); // GOLF-185a: phone sheet, floating search, tab bar
 }

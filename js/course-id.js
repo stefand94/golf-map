@@ -79,11 +79,69 @@ function courseIndexFromLegacy(i){
    function, so there is exactly one place where an old reference is
    interpreted. */
 function courseRefDecode(ref){
+  let at;
   if(typeof ref==='string'){
-    const at=COURSE_INDEX_BY_ID.get(ref);
-    return at===undefined?null:at;
+    at=COURSE_INDEX_BY_ID.get(ref);
+    if(at===undefined)return null;
+  }else{
+    at=courseIndexFromLegacy(ref);
+    if(at===null)return null;
   }
-  return courseIndexFromLegacy(ref);
+  return courseFollowDupOf(at);
+}
+
+/* GOLF-198: a course that was in the data twice (London + Top 100) keeps
+   both records where they are — removing one would re-index C[] — and
+   the redundant one carries `dupOf: "<kept id>"`. Every reference to it,
+   id or legacy index, lands on the kept record here, so an old link or
+   saved trip opens the course that is actually shown. One hop only: the
+   test in scripts/test_course_ids.js guarantees dupOf never points at
+   another dupOf record. */
+function courseFollowDupOf(i){
+  const c=(typeof C!=='undefined')?C[i]:null;
+  if(!c||typeof c.dupOf!=='string')return i;
+  const at=COURSE_INDEX_BY_ID.get(c.dupOf);
+  return at===undefined?i:at;
+}
+
+/* GOLF-198: which record a raw reference named, before dupOf is
+   followed — so a trip holding both the old and the kept id of one
+   course can be told apart from a trip that genuinely plays the same
+   course twice. */
+function courseRefRawKey(ref){
+  if(typeof ref==='string')return ref;
+  const id=(typeof COURSE_IDS_V1!=='undefined'&&Number.isInteger(ref))?COURSE_IDS_V1[ref]:undefined;
+  return typeof id==='string'?id:'#'+ref;
+}
+
+/* GOLF-198: [ref...] -> [index...] with dupOf followed and repeats
+   dropped, first one kept (TRIP, tripSeq and a share link's seq are
+   sets in all but type). */
+function courseDecodeRefList(list){
+  const seen=new Set(),out=[];
+  list.forEach(r=>{const i=courseRefDecode(r);if(i!==null&&!seen.has(i)){seen.add(i);out.push(i);}});
+  return out;
+}
+
+/* GOLF-198: across a trip's days, a golf item that resolves to a course
+   an earlier item already holds *under a different record* is the same
+   course listed twice by the old data, not a second round — drop it and
+   keep the first, in its day and position. Two items with the same raw
+   reference are left alone: that is a real choice to play it twice.
+   `rawOf(item)` returns the item's pre-decode reference. */
+function courseDedupeAliasItems(days,rawOf){
+  const seen=new Map();
+  days.forEach(d=>{
+    if(!d||!Array.isArray(d.items))return;
+    d.items=d.items.filter(it=>{
+      if(!it||it.type!=='golf')return true;
+      const raw=courseRefRawKey(rawOf(it));
+      const prev=seen.get(it.i);
+      if(prev===undefined){seen.set(it.i,raw);return true;}
+      return prev===raw;
+    });
+  });
+  return days;
 }
 
 /* ── Applied to a saved trip entry on its way out of localStorage.
@@ -98,7 +156,7 @@ function courseRefDecode(ref){
 function courseDecodeTripEntry(t){
   if(!t||typeof t!=='object')return t;
   const out=Object.assign({},t);
-  const decodeList=(v)=>Array.isArray(v)?v.map(courseRefDecode).filter(i=>i!==null):v;
+  const decodeList=(v)=>Array.isArray(v)?courseDecodeRefList(v):v;
   out.trip=decodeList(t.trip);
   out.tripSeq=decodeList(t.tripSeq);
   if(t.tripLastAdded!==undefined&&t.tripLastAdded!==null)out.tripLastAdded=courseRefDecode(t.tripLastAdded);
@@ -111,13 +169,15 @@ function courseDecodeTripEntry(t){
         nd.items=d.items.map(it=>{
           if(!it||typeof it!=='object'||it.type!=='golf')return it;
           const i=courseRefDecode(it.i);
-          return i===null?null:Object.assign({},it,{i});
+          return i===null?null:Object.assign({},it,{i,_raw:it.i});
         }).filter(Boolean);
       }
       /* The pre-GOLF-63 shape, still migrated by tripDayMigrateItems(). */
       if(Array.isArray(d.courses))nd.courses=decodeList(d.courses);
       return nd;
     });
+    courseDedupeAliasItems(out.tripDays,it=>it._raw);
+    out.tripDays.forEach(d=>{if(d&&Array.isArray(d.items))d.items.forEach(it=>{if(it)delete it._raw;});});
   }
   return out;
 }
@@ -153,9 +213,17 @@ function courseEncodeTripEntry(t){
 function courseDecodeKeyed(obj){
   const out={};
   if(!obj||typeof obj!=='object')return out;
+  const direct=new Set();
   Object.keys(obj).forEach(k=>{
-    const i=courseRefDecode(/^\d+$/.test(k)?Number(k):k);
-    if(i!==null)out[i]=obj[k];
+    const ref=/^\d+$/.test(k)?Number(k):k;
+    const i=courseRefDecode(ref);
+    if(i===null)return;
+    /* GOLF-198: corrections saved against both records of one course —
+       the kept record's own wins over the old duplicate's. */
+    const viaDup=courseRefRawKey(ref)!==C[i].id;
+    if(viaDup&&direct.has(i))return;
+    if(!viaDup)direct.add(i);
+    out[i]=obj[k];
   });
   return out;
 }

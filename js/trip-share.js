@@ -17,10 +17,20 @@
 
 /* ── Encode: current active trip → a compact, self-contained payload ── */
 function tripBuildSharePayload(){
+  /* GOLF-203: the trip's own "Other" cost lines. Written as a NEW,
+     OPTIONAL key — omitted entirely when there are none, so a link made
+     by a trip without them is byte-for-byte what it was before this
+     shipped, and every link already in someone's hands decodes exactly
+     as it always did (tripDecodeSharePayload treats a missing `oth` as
+     "no custom costs"). No existing field changes meaning. */
+  const oth=(Array.isArray(tripCustom)?tripCustom:[]).map(c=>({
+    l:c.label||'',a:(typeof c.amount==='number'&&isFinite(c.amount))?c.amount:null,
+    p:c.per==='person'?'person':'group',c:c.cur||'GBP'}));
   return{
     v:1,
     gs:groupSize,
     nm:((trips[activeTripId]||{}).name)||null, // GOLF-115: carry the trip name so the shared view can show it in full
+    ...(oth.length?{oth}:{}),
 
     /* GOLF-163: courses travel as stable ids (`c`), not array indices.
        A share link is the one reference we can never migrate — it is a
@@ -99,7 +109,7 @@ function tbShareTrip(btn){
    ask the page to render an unbounded itinerary. Anything that doesn't
    fit is dropped; a structurally wrong payload returns null and
    renderSharedTrip()'s existing "link looks broken" fallback handles it. */
-const SHARE_MAX_DAYS=30, SHARE_MAX_ITEMS_PER_DAY=20, SHARE_MAX_STR=120;
+const SHARE_MAX_DAYS=30, SHARE_MAX_ITEMS_PER_DAY=20, SHARE_MAX_STR=120, SHARE_MAX_CUSTOM=40;
 function shareStr(v,max){
   if(typeof v!=='string')return null;
   const s=String(v).trim().slice(0,max||SHARE_MAX_STR);
@@ -122,7 +132,7 @@ function tripDecodeSharePayload(hash){
        which is what the old `C[i]` guard did too. Note this runs on
        untrusted input off the URL: courseRefDecode() is a Map lookup with
        a type check, so an arbitrary string can only ever miss. */
-    const seq=p.seq.map(courseRefDecode).filter(i=>i!==null&&C[i]).slice(0,500);
+    const seq=courseDecodeRefList(p.seq).filter(i=>C[i]).slice(0,500);
     const days=p.days.slice(0,SHARE_MAX_DAYS).map((d,idx)=>{
       if(!d||typeof d!=='object')return null;
       const items=(Array.isArray(d.items)?d.items:[]).slice(0,SHARE_MAX_ITEMS_PER_DAY).map((it,n)=>{
@@ -130,7 +140,7 @@ function tripDecodeSharePayload(hash){
         const id=shareStr(it.id,64)||('s'+idx+'-'+n);
         if(it.type==='golf'){
           const ci=courseRefDecode(it.c!==undefined?it.c:it.i);
-          return(ci!==null&&C[ci])?{id,type:'golf',i:ci}:null;
+          return(ci!==null&&C[ci])?{id,type:'golf',i:ci,_raw:it.c!==undefined?it.c:it.i}:null;
         }
         if(it.type!=='hotel'&&it.type!=='poi')return null;
         const name=shareStr(it.name,80);
@@ -159,8 +169,22 @@ function tripDecodeSharePayload(hash){
         items
       };
     }).filter(Boolean);
+    /* GOLF-198: an old link can hold both records of a course that was
+       in the data twice — keep the first, drop the other. */
+    courseDedupeAliasItems(days,it=>it._raw);
+    days.forEach(d=>d.items.forEach(it=>{delete it._raw;}));
     const gs=shareNum(p.gs,1,16);
-    return{v:1,gs:gs!=null?Math.round(gs):1,nm:shareStr(p.nm,80),seq,days};
+    /* GOLF-203 — optional, and untrusted like everything else off the
+       hash: same field-by-field rebuild, same caps. Absent on every link
+       made before this shipped, which reads as no custom costs. */
+    const oth=(Array.isArray(p.oth)?p.oth:[]).slice(0,SHARE_MAX_CUSTOM).map((c,n)=>{
+      if(!c||typeof c!=='object')return null;
+      return{id:'sc'+n,label:shareStr(c.l,80)||'',
+        amount:shareNum(c.a,0,1e6),
+        per:c.p==='person'?'person':'group',
+        cur:(typeof c.c==='string'&&CURRENCY_SYMS[c.c])?c.c:'GBP'};
+    }).filter(Boolean);
+    return{v:1,gs:gs!=null?Math.round(gs):1,nm:shareStr(p.nm,80),seq,days,oth};
   }catch(e){return null;}
 }
 
@@ -186,7 +210,7 @@ function renderSharedTrip(){
     </div></div>`;
     return;
   }
-  const savedTrip=new Set(TRIP),savedSeq=tripSeq,savedDays=tripDays,savedGS=groupSize,savedFuel=tbIncludeFuel;
+  const savedTrip=new Set(TRIP),savedSeq=tripSeq,savedDays=tripDays,savedGS=groupSize,savedFuel=tbIncludeFuel,savedCustom=tripCustom;
   try{
     /* tripDecodeSharePayload() has already rebuilt every field of this
        payload from scratch and validated it — nothing here is copied
@@ -195,13 +219,14 @@ function renderSharedTrip(){
     tripSeq=[...payload.seq];
     tripDays=payload.days.map(d=>({...d,items:d.items.map(it=>({...it}))}));
     groupSize=payload.gs;
+    tripCustom=payload.oth.map(c=>({...c})); // GOLF-203
     tbIncludeFuel=true;
     tbCostMode='pp'; // GOLF-178: a shared link always opens on Per person
+    tbCostModeApply(); // GOLF-193: ...and the whole shared view follows it
     const dayCount=tripDays.length;
-    const grand=tbTripTotal();
     pane.innerHTML=`<div class="shared-wrap">
       <div class="tb-navbar"><span class="tb-wordmark">${payload.nm?esc(payload.nm):'Shared trip'}</span>
-        <span class="tb-navbar-right"><span class="tb-pill">${dayCount?`${dayCount} day${dayCount===1?'':'s'} · `:''}${grand}</span>
+        <span class="tb-navbar-right"><span class="tb-pill">${dayCount?`${dayCount} day${dayCount===1?'':'s'} · `:''}${tbTripTotalHTML()}</span>
         <button class="tb-btn is-sm is-quiet no-print" id="shared-print" title="Opens the browser's print dialog — save as PDF from there for a nice printable itinerary.">🖨️ Print / Save as PDF</button></span></div>
       <p class="hint no-print" style="margin:var(--sp-3) var(--sp-4)">📸 <b>Frozen snapshot</b> — this shows the trip exactly as it was when the link was made. It won't update if the trip changes, and viewing it doesn't touch your own trip.</p>
       <div id="shared-map" class="no-print" style="height:320px;margin:0 var(--sp-4) var(--sp-4);border-radius:var(--radius-lg);overflow:hidden"></div>
@@ -217,7 +242,7 @@ function renderSharedTrip(){
     </div></div>`;
   }finally{
     TRIP.clear();savedTrip.forEach(i=>TRIP.add(i));
-    tripSeq=savedSeq;tripDays=savedDays;groupSize=savedGS;tbIncludeFuel=savedFuel;
+    tripSeq=savedSeq;tripDays=savedDays;groupSize=savedGS;tbIncludeFuel=savedFuel;tripCustom=savedCustom;
   }
 }
 /* A read-only twin of tbCostsTabHTML() — identical output except the fuel
@@ -229,7 +254,7 @@ function renderSharedTrip(){
    same as the live Costs tab it's a frozen snapshot of — just with a
    plain, non-interactive Fuel row instead of a checkbox. */
 function tbCostsTabReadOnlyHTML(){
-  return tbCostsBodyHTML(tripCostBreakdown(),'<span>⛽ Fuel (est.)</span>');
+  return tbCostsBodyHTML(tripCostBreakdown(),null,true);
 }
 /* A dedicated Leaflet map instance, entirely separate from the app's main
    `map`/`tripLayer` globals — reusing those (via tripDrawCart()) would

@@ -52,6 +52,13 @@ const EXPECTED_TOTAL = 879; // 2026-09-09 GOLF-121a: 557 + 322 net SA (99->421: 
 if (C.length !== EXPECTED_TOTAL) {
   fail(`C.length is ${C.length}, expected ${EXPECTED_TOTAL} — update EXPECTED_TOTAL in this script if a course was deliberately added/removed`);
 }
+// GOLF-198: what the map can show — explore.js courseShownOnMap()'s rule,
+// restated: not a dupOf record, and South Africa only where zaRanked.
+const EXPECTED_SHOWN = 560; // 565 before GOLF-198 hid 5 London/Top 100 duplicates
+const shownCount = C.filter(c => !c.dupOf && !(c.topSouthAfrica && !c.zaRanked)).length;
+if (shownCount !== EXPECTED_SHOWN) {
+  fail(`${shownCount} courses shown on the map, expected ${EXPECTED_SHOWN} — update EXPECTED_SHOWN if a course was deliberately hidden/added`);
+}
 if (C_TOP100.length !== 114) fail(`C_TOP100.length is ${C_TOP100.length}, expected 114`);
 if (C_SCOTLAND.length !== 100) fail(`C_SCOTLAND.length is ${C_SCOTLAND.length}, expected 100`);
 if (C_WALES.length !== 38) fail(`C_WALES.length is ${C_WALES.length}, expected 38`);

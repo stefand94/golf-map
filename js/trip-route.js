@@ -104,11 +104,12 @@ function tripShowOrdered(order,clear=true,fit=true){
          below; only the on-pin number is gone. Popup/tooltip/click
          behaviour (Bug fix 2026-09-01) is unchanged. */
       tripDrawnCourses.add(stop.i);
-      L.marker([stop.lat,stop.lng],{icon:pinFor(stop.i)})
-        .bindPopup(popupHTML(stop.i),{maxWidth:340})
-        .bindTooltip(courseTooltipHTML(stop.i),{direction:'top',className:'course-tt'})
-        .on('click',()=>{highlight(stop.i);drawLink(stop.i)})
-        .addTo(tripLayer);
+      tripCourseMarkers.set(stop.i,
+        L.marker([stop.lat,stop.lng],{icon:pinFor(stop.i)})
+          .bindPopup(popupHTML(stop.i),{maxWidth:340})
+          .bindTooltip(courseTooltipHTML(stop.i),{direction:'top',className:'course-tt'})
+          .on('click',()=>{highlight(stop.i);drawLink(stop.i)})
+          .addTo(tripLayer));
     }
     pts.push([stop.lat,stop.lng]);
     /* GOLF-35: nearest-station markers make sense in the normal popup view,
@@ -365,7 +366,15 @@ function tbEffectiveAnchor(){
    picking "Ireland" up top and then seeing GB courses in "Nearby" would be
    incoherent. Applied as a final filter so each scope's own logic
    (region/anchor/place ranking) is untouched. */
-function tbNationFilter(i){return(!state.nation||courseNation(i)===state.nation)&&courseShownOnMap(i);}
+/* GOLF-185d: also honours the course filters, so a filtered-out course
+   can't be offered by a Discover list that the map is no longer showing. */
+function tbNationFilter(i){return(!state.nation||courseNation(i)===state.nation)&&courseShownOnMap(i)&&courseFilterPasses(i);}
+/* GOLF-209: "Nearby" means nearby. The country is a focus, not a wall, so
+   the two distance-ranked scopes (Discover's Nearby list and the Itinerary
+   Courses layer) drop the nation gate and keep everything else: a GB trip
+   near Stranraer sees Portrush. By region, the ranked lists, Plan search
+   and the map pins still go by the country pill. */
+function tbNearbyFilter(i){return courseShownOnMap(i)&&courseFilterPasses(i);}
 /* GOLF-91: "Near a place" and "Nearby" were two tabs doing the exact same
    "nearest 5 bookable courses to a point" query, differing only in where
    the point came from (a searched place vs. the last course added) — a
@@ -396,14 +405,14 @@ function tbDiscover(){
   // Over-fetch past the 5 we'll show, since some of the nearest courses
   // overall may already be in the cart (or in a different nation) and get
   // filtered out below.
-  return nearestCoursesToPoint(pt.lat,pt.lng,5+TRIP.size).filter(({i})=>!TRIP.has(i)&&tbNationFilter(i)).slice(0,5);
+  return nearestCoursesToPoint(pt.lat,pt.lng,5+TRIP.size).filter(({i})=>!TRIP.has(i)&&tbNearbyFilter(i)).slice(0,5);
 }
 /* GOLF-108: the Itinerary tab's map shows other bookable courses near the
    trip, gated by the "Nearby courses" toggle (tbShowNearby, default OFF —
    see GOLF-131). This is the MAP only — the Discover sidebar list is
    untouched (still 5). Wider than Discover's 5: nearest TB_NEARBY_MAX
    courses within TB_NEARBY_RADIUS_MI of ANY trip course OR the current map
-   view, respecting the nation pill. Cheap — one synchronous pass over C,
+   view, ignoring the nation pill (GOLF-209). Cheap — one synchronous pass over C,
    no network. */
 const TB_NEARBY_RADIUS_MI=60,TB_NEARBY_MAX=24;
 /* GOLF-131: anchoring on trip stops alone meant panning the map to an area
@@ -415,6 +424,9 @@ const TB_NEARBY_RADIUS_MI=60,TB_NEARBY_MAX=24;
    nearby set to match whatever's on screen. */
 function tbItinNearbyAnchorPts(){
   const pts=tripSeq.filter(i=>C[i]).map(i=>({lat:C[i].lat,lng:C[i].lng}));
+  /* GOLF-209: located day stops anchor too, so a Holyhead ferry day
+     surfaces what's across the water without a course there yet. */
+  tripDays.forEach(d=>{if(Number.isFinite(d.placeLat)&&Number.isFinite(d.placeLng))pts.push({lat:d.placeLat,lng:d.placeLng});});
   if(!pts.length){const p=tbNearbyAnchorPoint();if(p)pts.push({lat:p.lat,lng:p.lng});}
   if(map)pts.push(map.getCenter());
   return pts;
@@ -424,7 +436,7 @@ function tbItinNearbyCourses(){
   if(!anchors.length)return[];
   const out=[];
   C.forEach((c,i)=>{
-    if(TRIP.has(i)||!bookable(i)||!tbNationFilter(i))return;
+    if(TRIP.has(i)||!bookable(i)||!tbNearbyFilter(i))return;
     let d=Infinity;
     for(const a of anchors){const m=haversineMiles(a.lat,a.lng,c.lat,c.lng);if(m<d)d=m;}
     if(d<=TB_NEARBY_RADIUS_MI)out.push({i,d});
@@ -438,16 +450,35 @@ function tbItinNearbyCourses(){
    "Add a course to seed nearby suggestions." rendered one under the
    other). The scope line owns that message now; this only speaks for the
    region scope, which has no scope line of its own. */
+/* GOLF-192: "Nearby" was ranking by straight-line miles and showing only
+   that, so Askernish's nearest five (114-126 mi away, most of it single
+   track and a ferry) read exactly like five courses half an hour apart.
+   Each row now carries a rough drive time next to the distance, and
+   anything past TB_LONG_DRIVE_MIN gets an explicit "long drive" tag.
+   Deliberately the same straight-line DRIVE_INEFFICIENCY/DRIVE_AVG_MPH
+   heuristic the wishlist summary and a day's fallback leg use — no ORS
+   call, because this list re-renders on every keystroke and pan, and five
+   speculative leg lookups per render is not worth a figure that only has
+   to answer "is this an hour or an afternoon?". Hence the ~ on every
+   number. */
+const TB_LONG_DRIVE_MIN=90;
+function tbNearbyDriveEstimate(pt,i){
+  const miles=haversineMiles(pt.lat,pt.lng,C[i].lat,C[i].lng);
+  return{miles,minutes:Math.max(5,Math.round((miles*DRIVE_INEFFICIENCY/DRIVE_AVG_MPH*60)/5)*5)};
+}
 function tbResultsHTML(items){
   if(!items.length)return tbDiscoveryTab==='region'?`<p class="hint">No courses in that region yet — pick one above.</p>`:'';
   const anchorPt=tbDiscoveryTab==='anchor'?tbNearbyAnchorPoint():null;
   return items.map(({i,border})=>{
-    const dist=anchorPt?` — ${haversineMiles(anchorPt.lat,anchorPt.lng,C[i].lat,C[i].lng).toFixed(1)} mi`:'';
+    const est=anchorPt?tbNearbyDriveEstimate(anchorPt,i):null;
+    const far=est&&est.minutes>=TB_LONG_DRIVE_MIN;
+    const dist=est?`${est.miles.toFixed(1)} mi · ~${fmtDriveMinutes(est.minutes)} drive · `:'';
     return`<div class="tb-row">
       <div>⛳ <a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         ${border?' <span class="wt" title="Just over the border — nearest to a course in your chosen region, not itself in it">border</span>':''}
-        <div class="cart-region">${dist?dist.replace(/^ — /,''):''}${dist?' · ':''}${esc(C[i].r)} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
-      <button class="tb-btn is-sm is-primary" onclick="tbSelect(${i})">＋ Wishlist</button>
+        ${far?` <span class="wt far" title="Roughly ${esc(fmtDriveMinutes(est.minutes))} from ${esc(anchorPt.label||'your last stop')} — estimated from the straight-line distance, so allow more on small roads or with a ferry">long drive</span>`:''}
+        <div class="cart-region">${dist}${esc(C[i].r)} · ${ACCESS[V(i,'a')].label.toLowerCase()}</div></div>
+      <button class="tb-btn is-sm is-primary" onclick="tbSelect(${i})">＋ Add to trip</button>
     </div>`;
   }).join('');
 }
@@ -594,18 +625,25 @@ function tripDrawCart(fit){
    and nobody mistakes an approximate pin for a real address. */
 /* GOLF-96: the hotel-picker's real OSM candidates, shown alongside a day's
    already-added stays (tbDrawTripItems, drawn as solid 🏨 pins) — these are
-   deliberately visually distinct (a hollow ring, not a solid emoji marker)
+   deliberately visually distinct (a numbered ring, not a solid emoji marker)
    so "pick one of these" never reads as "already booked", and excluded
    from fitBounds for the same reason tbDrawPois()'s suggestions are. */
 function tbDrawHotelCandidates(){
   if(tbHotelPickerFor==null)return;
   const d=tripDays.find(d=>d.id===tbHotelPickerFor);if(!d)return;
-  const pois=tbHotelsFor(d);
+  /* GOLF-186: the same ordered list the panel renders, so the number in
+     the ring is the number in the list — a pin is only useful here if you
+     can find the row it belongs to, and vice versa. */
+  const pois=tbHotelCandidates(d);
   if(!pois)return;
   pois.forEach((p,idx)=>{
-    L.circleMarker([p.lat,p.lng],{radius:7,color:'#1b5e20',weight:2,fillColor:'#fff',fillOpacity:.85})
-      .bindTooltip(`🏨 ${esc(p.name)}${p.category?' — '+esc(p.category):''}`,{direction:'top'})
-      .on('click',()=>tbPickHotelCandidate(d.id,idx))
+    const mi=tbHotelMilesText(p.miles);
+    L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',
+      html:`<span class="tb-cand-pin">${idx+1}</span>`,
+      iconSize:[24,24],iconAnchor:[12,12],tooltipAnchor:[0,-12]})})
+      .bindTooltip(`${idx+1}. 🏨 ${esc(p.name)}${mi?' — '+esc(mi):''}${p.category?' · '+esc(p.category):''}`,{direction:'top'})
+      // GOLF-186: one tap adds it, exactly as the list row does.
+      .on('click',()=>tbAddHotelCandidate(d.id,idx))
       .addTo(tripLayer);
   });
 }
@@ -772,6 +810,7 @@ map.on('zoomend',()=>{if(_tbDeclutterLayer&&tripLayer.hasLayer(_tbDeclutterLayer
    live nearby-course refresh doesn't fight the user's own pan by
    re-centring the map back under them. */
 function tbDrawMap(fit=true){
+  const openCourse=mapOpenCourse(); // GOLF-201: tripClear() closes it
   tripClear();
   const order=tripDayOrder();
   /* GOLF-57: discovery candidates only clutter the map while the Discover
@@ -805,6 +844,8 @@ function tbDrawMap(fit=true){
   tbDrawTripItems();
   const pts=[...pts1,...pts2];
   if(fit&&pts.length)mapFitBounds(L.latLngBounds(pts),{padding:[32,32],maxZoom:14}); // GOLF-184
+  if(typeof mapTripFitControlSync==='function')mapTripFitControlSync(); // GOLF-191
+  mapReopenCourse(openCourse);
 }
 /* GOLF-131: refresh the Itinerary tab's nearby-course set as the map is
    panned/zoomed, so scouting an area you haven't added a stop to yet

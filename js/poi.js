@@ -53,7 +53,10 @@ const POI_TOP=5, POI_MORE=20;
 /* Per-visitor UI state, not persisted (same as the old toggle). */
 let tbPoiOn=new Set();       // dayIds with "Things to see" open
 let tbPoiMore=new Set();     // dayIds showing the deeper tier
-let tbPoiGroupsOn=new Set(POI_GROUPS.map(g=>g[0]));
+/* GOLF-188: the kinds the visitor has narrowed to. Empty = show every kind,
+   so the list opens unfiltered and each tap narrows rather than hides. */
+let tbPoiGroupsSel=new Set();
+const poiGroupShown=g=>!tbPoiGroupsSel.size||tbPoiGroupsSel.has(g);
 
 /* The old live-Overpass cache is dead weight now — free the quota. */
 try{localStorage.removeItem('golfmap:heritagecache:v4');}catch(e){}
@@ -206,7 +209,7 @@ function poiForDay(dayIdx){
 function poiVisibleForDay(d){
   const idx=tripDays.indexOf(d);
   const r=poiForDay(idx);
-  const filtered=r.items.filter(p=>tbPoiGroupsOn.has(p.group));
+  const filtered=r.items.filter(p=>poiGroupShown(p.group));
   const n=tbPoiMore.has(d.id)?POI_MORE:POI_TOP;
   const items=filtered.slice(0,n);
   items.forEach(p=>poiById.set(p.id,p)); // what the list's + buttons and the pins resolve ids against
@@ -229,6 +232,7 @@ function poiAddToDay(id,dayId){
   if(!it)return;
   if(typeof map!=='undefined')map.closePopup();
   renderTripBuilder();tbDrawMap(false);
+  if(typeof mapFitDay==='function')mapFitDay(dayId); // GOLF-191 (AC 2): keep the new stop and the rest of its day in view
   if(typeof tbToast==='function')tbToast(`Added <b>${esc(p.name)}</b> to Day ${tripDays.indexOf(d)+1}`,[
     {label:'Undo',fn:()=>{tripDayRemoveItem(dayId,it.id);renderTripBuilder();tbDrawMap(false);}}]);
 }
@@ -246,9 +250,11 @@ function tbPoiToggleMore(dayId){
   renderTripBuilder();tbDrawMap(false);
 }
 function tbPoiToggleGroup(g){
-  if(tbPoiGroupsOn.has(g)&&tbPoiGroupsOn.size>1)tbPoiGroupsOn.delete(g);
-  else if(tbPoiGroupsOn.has(g))tbPoiGroupsOn=new Set(POI_GROUPS.map(x=>x[0])); // last one off → back to all
-  else tbPoiGroupsOn.add(g);
+  if(tbPoiGroupsSel.has(g))tbPoiGroupsSel.delete(g);else tbPoiGroupsSel.add(g);
+  renderTripBuilder();tbDrawMap(false);
+}
+function tbPoiClearGroups(){
+  tbPoiGroupsSel.clear();
   renderTripBuilder();tbDrawMap(false);
 }
 function poiFocus(id){
@@ -272,12 +278,12 @@ function tbPoiLinkHTML(d){
 function tbPoiListHTML(d){
   if(!tbPoiOn.has(d.id))return'';
   const v=poiVisibleForDay(d);
-  const chips=`<div class="tb-sight-chips" role="group" aria-label="Kinds of places">${POI_GROUPS.map(([k,l,ic])=>
-    `<button type="button" class="tb-sight-chip" aria-pressed="${tbPoiGroupsOn.has(k)}" onclick="tbPoiToggleGroup('${k}')"><span aria-hidden="true">${ic}</span>${l}</button>`).join('')}</div>`;
+  const chips=`<div class="tb-sight-chips" role="group" aria-label="Kinds of places"><button type="button" class="tb-sight-chip" aria-pressed="${!tbPoiGroupsSel.size}" onclick="tbPoiClearGroups()">All</button>${POI_GROUPS.map(([k,l,ic])=>
+    `<button type="button" class="tb-sight-chip" aria-pressed="${tbPoiGroupsSel.has(k)}" onclick="tbPoiToggleGroup('${k}')"><span aria-hidden="true">${ic}</span>${l}</button>`).join('')}</div>`;
   let body;
   if(v.status==='loading')body=`<p class="hint tb-sight-note">Finding things to see…</p>`;
   else if(v.status==='missing'||v.status==='none')body=`<p class="hint tb-sight-note">Sights aren't available for this area yet.</p>`;
-  else if(!v.items.length)body=`<p class="hint tb-sight-note">Nothing notable within ${Math.round(POI_ROUTE_KM*0.621)} miles of this day's route${tbPoiGroupsOn.size<POI_GROUPS.length?' for these kinds of place':''}.</p>`;
+  else if(!v.items.length)body=`<p class="hint tb-sight-note">Nothing notable within ${Math.round(POI_ROUTE_KM*0.621)} miles of this day's route${tbPoiGroupsSel.size?' for these kinds of place':''}.</p>`;
   else{
     body=v.items.map(p=>{
       const g=POI_GROUP_BY_KEY[p.group];
@@ -329,4 +335,188 @@ function tbDrawPois(){
       poiMarkers.set(p.id,m);
     });
   });
+  /* GOLF-207: the viewport layer skips anything poiMarkers already holds,
+     so it has to redraw whenever this set changes — opening a day's
+     "Things to see" must not leave the same sight pinned twice. Cheap:
+     re-renders from the last scan, no reload and no re-scan. */
+  if(tbPoiLayerOn)tbPoiLayerRender();
 }
+
+/* ── Viewport layer (GOLF-207) ───────────────────────────── */
+/* A second way to see the same dataset: instead of a corridor round one
+   day's route, every sight in whatever the map is currently showing.
+   Follows pan/zoom like GOLF-142's hotel layer (js/hotel-layer.js), whose
+   structure this mirrors deliberately — same debounce, same status pill,
+   same "off means clear and say nothing". The one real difference is that
+   there is no network: the region files are already lazy-loaded by
+   poiEnsureRegion(), so a refresh is pure local work and needs none of
+   hotel-layer's in-flight sequencing, timeout or viewport cache. */
+
+let tbPoiLayerOn=false;
+
+/* Zoom gate. Hotels use 13 because an Overpass query over a wide bbox is
+   genuinely expensive; here the only cost is clutter, so this can be far
+   wider — and it has to be, because sights are sparse and spread out in a
+   way hotels are not. At 9 a screen covers roughly the area a trip drives
+   in a day or two, which is the view someone planning a trip is actually
+   looking at. Below it the whole of England is on screen (~13k records)
+   and any capped selection would be arbitrary, so we say so instead. */
+const POI_LAYER_MIN_ZOOM=9;
+
+/* How many pins one view may draw. At the minimum zoom a view holds
+   roughly a thousand candidates, so a cap is what keeps this readable
+   rather than a wall of circles; ranked by poiRank(), so what survives
+   the cap is the highest-scoring sights, not an arbitrary slice. Zoom in
+   and the candidate count falls below the cap, so everything shows. */
+const POI_LAYER_CAP=60;
+
+/* In step with HOTEL_LAYER_DEBOUNCE_MS / GOLF-131's nearby-courses
+   listener — one pan should feel the same whichever layers are on. */
+const POI_LAYER_DEBOUNCE_MS=300;
+
+const poiLayerGroup=L.layerGroup();
+let _poiLayerTimer=null;
+/* Last ranked in-view set, kept so tbDrawPois() can re-render the layer
+   (to drop a pin that just entered the trip, or one a day's "Things to
+   see" list now owns) without redoing the scan. Held a little deeper than
+   the cap so those removals don't leave the view short. */
+let _poiLayerCandidates=[];
+
+let _poiStatusEl=null;
+function poiLayerStatusEl(){
+  if(_poiStatusEl)return _poiStatusEl;
+  _poiStatusEl=document.createElement('div');
+  /* Reuses .hotel-status's styling; .poi-status only moves it down a row
+     so the two pills stack when both layers are on. */
+  _poiStatusEl.className='hotel-status poi-status';
+  _poiStatusEl.id='poi-status';
+  _poiStatusEl.setAttribute('role','status');
+  _poiStatusEl.setAttribute('aria-live','polite');
+  _poiStatusEl.hidden=true;
+  map.getContainer().appendChild(_poiStatusEl);
+  return _poiStatusEl;
+}
+/* kind: 'loading' | 'info' | null (null hides it). No 'error' case —
+   a missing region file is recorded once by poiEnsureRegion() and simply
+   contributes nothing, exactly as it does in the day pane. */
+function tbPoiLayerStatus(kind,text){
+  const el=poiLayerStatusEl();
+  if(!kind){el.hidden=true;el.textContent='';return;}
+  el.hidden=false;
+  el.innerHTML=(kind==='loading'?'<span class="spin"></span>':'')+`<span>${esc(text)}</span>`;
+}
+
+function tbPoiLayerClear(){
+  poiLayerGroup.clearLayers();
+  _poiLayerCandidates=[];
+  if(map.hasLayer(poiLayerGroup))map.removeLayer(poiLayerGroup);
+}
+
+/* Draws from _poiLayerCandidates, skipping anything the map already shows
+   by another route: a sight that's in the trip is drawn as a stop, and one
+   in an open day's "Things to see" is drawn by tbDrawPois(). Filtering at
+   draw time rather than scan time is what lets tbDrawPois() call straight
+   back in here after it has rebuilt poiMarkers. */
+function tbPoiLayerRender(){
+  poiLayerGroup.clearLayers();
+  if(!tbPoiLayerOn)return;
+  let n=0;
+  for(const p of _poiLayerCandidates){
+    if(n>=POI_LAYER_CAP)break;
+    if(poiMarkers.has(p.id)||poiInTrip(p))continue;
+    poiById.set(p.id,p);
+    const g=POI_GROUP_BY_KEY[p.group];
+    L.circleMarker([p.lat,p.lng],{radius:6,color:g[3],weight:2,fillColor:'#fff',fillOpacity:.95})
+      .bindTooltip(`${g[2]} ${esc(p.name)} — ${esc(p.label)}`,{direction:'top'})
+      /* Built on open, like the hotel layer's: the day list and trip
+         membership both go stale the moment the trip changes. */
+      .bindPopup(()=>poiPopupHTML(p.id,poiLayerNearestDayId(p)),{minWidth:210,closeButton:true})
+      .addTo(poiLayerGroup);
+    n++;
+  }
+  if(!map.hasLayer(poiLayerGroup))poiLayerGroup.addTo(map);
+  tbPoiLayerStatus(n?null:'info','No places to see in this view');
+}
+
+/* Which day a pin's "Add to" starts on. A pane pin knows its day; a
+   viewport pin doesn't belong to one, so it offers the day that already
+   goes nearest it — which is nearly always the day you'd want a detour on.
+   The select still lists every day, so this is only a starting point.
+   Computed per popup-open, so it costs nothing until a pin is clicked. */
+function poiLayerNearestDayId(p){
+  if(!tripDays.length)return null;
+  let best=tripDays[0].id,bestD=Infinity;
+  tripDays.forEach((d,i)=>{
+    const geo=poiDayGeometry(i);
+    if(!geo)return;
+    geo.stops.concat(...geo.lines).forEach(([la,lo])=>{
+      const dd=haversineMiles(p.lat,p.lng,la,lo);
+      if(dd<bestD){bestD=dd;best=d.id;}
+    });
+  });
+  return best;
+}
+
+function tbPoiLayerRefresh(){
+  if(!tbPoiLayerOn)return;
+  if(map.getZoom()<POI_LAYER_MIN_ZOOM){
+    tbPoiLayerClear();
+    tbPoiLayerStatus('info','Zoom in to see places of interest');
+    return;
+  }
+  const b=map.getBounds();
+  const box={minLat:b.getSouth(),maxLat:b.getNorth(),minLng:b.getWest(),maxLng:b.getEast()};
+  const regions=poiRegionsForBox(box);
+  const notReady=regions.filter(r=>poiStatus[r]!=='ready'&&poiStatus[r]!=='missing');
+  if(notReady.length){
+    tbPoiLayerStatus('loading','Finding places to see…');
+    /* Each region re-enters this function when it lands. poiEnsureRegion()
+       dedupes concurrent requests and never retries a missing file, so this
+       can't loop: the second pass sees every region settled. */
+    notReady.forEach(r=>poiEnsureRegion(r).then(()=>{if(tbPoiLayerOn)tbPoiLayerRefresh();}));
+    return;
+  }
+  /* poiRank()'s tie-break wants a distance. A corridor measures from the
+     route; a viewport has no route, so it measures from the middle of the
+     view — which puts what you're looking at ahead of what's at the edge
+     when scores tie. */
+  const c=map.getCenter(),pr=poiProj(c.lat);
+  const [cx,cy]=pr(c.lat,c.lng);
+  const out=[];
+  regions.filter(r=>poiStatus[r]==='ready').forEach(r=>poiData[r].forEach(p=>{
+    if(p.lat<box.minLat||p.lat>box.maxLat||p.lng<box.minLng||p.lng>box.maxLng)return;
+    const q=pr(p.lat,p.lng),dx=q[0]-cx,dy=q[1]-cy;
+    out.push(Object.assign({},p,{dist:Math.sqrt(dx*dx+dy*dy)}));
+  }));
+  out.sort(poiRank);
+  /* Kept deeper than the cap so the draw-time filtering below (trip stops,
+     pane pins) can drop entries without thinning the view. */
+  _poiLayerCandidates=out.slice(0,POI_LAYER_CAP*3);
+  tbPoiLayerRender();
+}
+
+/* The one global toggle. Agreed with the Discover-pane work (GOLF-208) as
+   the single entry point, so a pill in either toolbar can drive the layer
+   without either side reaching into the other's state. */
+function tbPoiLayerSet(on){
+  on=!!on;
+  if(on===tbPoiLayerOn)return;
+  tbPoiLayerOn=on;
+  if(!tbPoiLayerOn){
+    clearTimeout(_poiLayerTimer);
+    tbPoiLayerClear();
+    tbPoiLayerStatus(null);
+  }else{
+    tbPoiLayerRefresh();
+  }
+  /* Repaints whichever pills are on screen (Itinerary's and Discover's) so
+     both show the same state, whichever one was clicked. */
+  if(typeof renderTripBuilder==='function')renderTripBuilder();
+}
+function tbTogglePoiLayer(){tbPoiLayerSet(!tbPoiLayerOn);}
+
+map.on('moveend zoomend',()=>{
+  if(!tbPoiLayerOn)return;
+  clearTimeout(_poiLayerTimer);
+  _poiLayerTimer=setTimeout(tbPoiLayerRefresh,POI_LAYER_DEBOUNCE_MS);
+});

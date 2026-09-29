@@ -93,6 +93,18 @@ function validateTripEntry(t){
        so group size silently reset to 2 on every reload. Validated like
        every other saved field: finite integer, clamped 1–16, default 2. */
     groupSize:(typeof t.groupSize==='number'&&isFinite(t.groupSize))?Math.min(16,Math.max(1,Math.round(t.groupSize))):2,
+    /* GOLF-203: the trip's own "Other" cost lines, validated with the same
+       defensive discipline as every other saved field — absent (every trip
+       saved before this shipped) reads as none. */
+    tripCustom:(Array.isArray(t.tripCustom)?t.tripCustom:[]).slice(0,40).map(c=>{
+      if(!c||typeof c!=='object')return null;
+      return{
+        id:(typeof c.id==='string'&&c.id)?c.id.slice(0,64):('cc'+Math.random().toString(36).slice(2,10)),
+        label:typeof c.label==='string'?c.label.slice(0,80):'',
+        amount:(typeof c.amount==='number'&&isFinite(c.amount))?Math.min(1e6,Math.max(0,c.amount)):null,
+        per:c.per==='person'?'person':'group',
+        cur:(typeof c.cur==='string'&&CURRENCY_SYMS[c.cur])?c.cur:'GBP'};
+    }).filter(Boolean),
     tripDayNextId:Math.max(0,...tripDays.map(d=>d.id))+1
   };
 }
@@ -133,6 +145,10 @@ function loadStoredState(){
   if(saved.edits)Object.assign(EDITS,courseDecodeKeyed(saved.edits));
   (saved.played||[]).forEach(r=>{const i=courseRefDecode(r);if(i!==null)PLAYED.add(i)});
   (saved.want||[]).forEach(r=>{const i=courseRefDecode(r);if(i!==null)WANT.add(i)});
+  /* GOLF-198: one course saved under both its records, marked played
+     under one and want under the other — played wins, as togglePlayed()
+     would have made it. */
+  PLAYED.forEach(i=>WANT.delete(i));
   if(deployChanged){
     // Leave `trips`/`activeTripId` at their already-initialised, empty
     // defaults (same shape tripStartFresh() resets to) and persist that

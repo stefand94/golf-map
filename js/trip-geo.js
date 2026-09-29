@@ -31,7 +31,7 @@ function haversineMiles(lat1,lng1,lat2,lng2){
    Birkdale, Royal Liverpool, Hillside, West Lancs... — is tier "limited",
    so an public/open-only definition returned zero results for exactly
    the coastal-cluster case this feature exists for. */
-function bookable(i){return['public','open','limited'].includes(V(i,'a'))}
+function bookable(i){return!C[i].dupOf&&['public','open','limited'].includes(V(i,'a'))} // GOLF-198: never auto-plan a dupOf record
 /* GOLF-27: region mode has no real geometry to hand (REGIONS is a flat
    label list), so "just over the border" is derived from actual course
    geography instead of a hand-maintained adjacency table — any bookable
@@ -77,7 +77,13 @@ const tripLayer=L.layerGroup().addTo(map);
    course isn't drawn twice — once as its bg pin and once as the trip
    marker. Rebuilt on every tripClear() -> tbDrawMap() cycle. */
 let tripDrawnCourses=new Set();
-function tripClear(){tripLayer.clearLayers();tripDrawnCourses=new Set()}
+/* GOLF-187: index -> the course's pin ON THE TRIP LAYER. A course drawn
+   here is deliberately left out of the background cluster (GOLF-122's
+   "two pins, one course" fix), so the cluster's marker for it is not on
+   the map and opening its popup does nothing. goToCourse() needs to know
+   which of the two markers a visitor can actually see. */
+let tripCourseMarkers=new Map();
+function tripClear(){tripLayer.clearLayers();tripDrawnCourses=new Set();tripCourseMarkers=new Map()}
 /* Bug fix (2026-09-01): these discovery-candidate/anchor dots used to be
    plain L.circleMarker()s with no popup or click handler at all — visually
    a "white circle with a yellow border" (exactly what the stakeholder
@@ -109,11 +115,12 @@ function tripShow(items,anchor,clear=true,fit=true,anchorRingOnly=false){
     // own candidate pin instead of stacking into one.
     const ll=courseLatLng(i);
     tripDrawnCourses.add(i);
-    L.marker(ll,{icon:pinFor(i),opacity:border?0.5:1,title:C[i].n})
-      .bindPopup(popupHTML(i),{maxWidth:340})
-      .bindTooltip(courseTooltipHTML(i),{direction:'top',className:'course-tt'})
-      .on('click',()=>{highlight(i);drawLink(i)})
-      .addTo(tripLayer);
+    tripCourseMarkers.set(i,
+      L.marker(ll,{icon:pinFor(i),opacity:border?0.5:1,title:C[i].n})
+        .bindPopup(popupHTML(i),{maxWidth:340})
+        .bindTooltip(courseTooltipHTML(i),{direction:'top',className:'course-tt'})
+        .on('click',()=>{highlight(i);drawLink(i)})
+        .addTo(tripLayer));
     pts.push(ll);
   });
   if(anchor!=null){
@@ -128,11 +135,12 @@ function tripShow(items,anchor,clear=true,fit=true,anchorRingOnly=false){
         .addTo(tripLayer);
     }
     if(!anchorRingOnly){
-      L.marker(all,{icon:pinFor(anchor),title:C[anchor].n})
-        .bindPopup(popupHTML(anchor),{maxWidth:340})
-        .bindTooltip(courseTooltipHTML(anchor),{direction:'top',className:'course-tt'})
-        .on('click',()=>{highlight(anchor);drawLink(anchor)})
-        .addTo(tripLayer);
+      tripCourseMarkers.set(anchor,
+        L.marker(all,{icon:pinFor(anchor),title:C[anchor].n})
+          .bindPopup(popupHTML(anchor),{maxWidth:340})
+          .bindTooltip(courseTooltipHTML(anchor),{direction:'top',className:'course-tt'})
+          .on('click',()=>{highlight(anchor);drawLink(anchor)})
+          .addTo(tripLayer));
     }
     pts.push(all);
   }
@@ -554,8 +562,13 @@ function tripItemPriceDetail(d,it){
       const g=gs;
       return{base:entered,guests:g,sharing:g>1,total:entered*g,cur};
     }
+    /* GOLF-193: this is the app's own regional guess, not a price anyone
+       typed or a rate anyone published — so it is flagged at the single
+       point it is produced, and every figure that contains it can say so.
+       `est` stays absent (falsy) on an entered price and on a green fee,
+       which comes from the course data. */
     const p=tripDayAccomFallback(d);
-    return{base:p,guests:1,sharing:false,total:p,cur};
+    return{base:p,guests:1,sharing:false,total:p,cur,est:p!=null};
   }
   // GOLF-87: same reasoning as the golf branch above — sharing stays false
   // for a POI, the × groupSize tag is computed separately in the consumer.

@@ -1,8 +1,7 @@
 /* ============================================================
    js/map.js — the Leaflet map: basemap, rail/station layers and their
    zoom restyling, the clustered course markers, pin/popup/tooltip
-   HTML, the nearest-station link line, and the mobile list/map
-   toggle.
+   HTML, and the nearest-station link line.
 
    Loaded as a plain <script> (not a module) in the fixed order
    listed in london-golf-map-v5_1.html — top-level declarations
@@ -38,10 +37,25 @@ function mapHasSize(){
   try{const s=map.getSize();return s.x>=40&&s.y>=40;}catch(e){return false;}
 }
 let _pendingFit=null;
+/* GOLF-191 (AC 3): a few actions must leave the camera exactly where the
+   visitor put it. Adding a course from its own pin is the reported case
+   — the map zoomed into that course and the rest of the trip went off
+   screen. One add fans out into several redraws (render() ->
+   renderTripBuilder() -> tbDrawMap(), plus the caller's own), so rather
+   than thread a "don't fit" flag through all of them, the hold covers
+   the whole turn and lifts on the next tick. Every fit in the app goes
+   through mapFitBounds(), so this is the one place that has to know. */
+let _mapHold=false;
+function mapHoldCamera(fn){
+  _mapHold=true;
+  try{fn();}finally{setTimeout(()=>{_mapHold=false;},0);}
+}
 function mapFitBounds(bounds,opts){
   if(!bounds)return;
+  if(_mapHold)return;
   if(!mapHasSize()){_pendingFit={bounds:bounds,opts:opts};return;}
   _pendingFit=null;
+  if(typeof mobFitOpts==='function')opts=mobFitOpts(opts); // GOLF-185a: fit the strip of map above the phone sheet
   map.fitBounds(bounds,opts);
 }
 /* Only the most recent parked fit is replayed — an unsized map may have
@@ -51,12 +65,54 @@ function mapReplayPendingFit(){
   if(!_pendingFit)return;
   if(!mapHasSize()){_pendingFit=null;return;}
   const p=_pendingFit;_pendingFit=null;
+  if(typeof mobFitOpts==='function')p.opts=mobFitOpts(p.opts);
   /* animate:false — the camera the visitor is about to see was never on
      screen, so there is nothing to animate FROM, and Leaflet's zoom
      animation only commits the new zoom on transitionend, which a freshly
      un-hidden container doesn't reliably fire. Jump instead; the app's own
      testing notes (js/trip-ui.js) already prefer that for the same reason. */
   map.fitBounds(p.bounds,Object.assign({},p.opts,{animate:false}));
+}
+/* GOLF-191: one way to frame the trip, and one way to frame a day.
+   Everything that wants to show "the whole trip" — the map's own
+   control, and the mobile sheet once GOLF-185a lands — calls these
+   rather than assembling its own bounds, so the two can't drift apart.
+   A clean fit: it moves the camera and nothing else. No highlight, no
+   popup, no change to what is selected or drawn.
+   Both route through mapFitBounds(), so they inherit its parking
+   behaviour on a not-yet-sized (mobile, still hidden) map.
+   dayId null = the whole trip. Returns true if there was anything to
+   frame, so a caller can fall back. */
+/* animate:false, for the reason js/trip-ui.js and mapReplayPendingFit()
+   already give: Leaflet commits an animated zoom on transitionend, and a
+   fit issued while an earlier zoom animation is still in flight is
+   swallowed outright. Adding a stop within a second of tapping "Show
+   whole trip" reproduced it every time — the stop landed, the camera
+   never moved. A jump always arrives. */
+const MAP_TRIP_FIT_OPTS={padding:[32,32],maxZoom:14,animate:false};
+function tripFitPoints(dayId){
+  if(typeof tripDayOrder!=='function')return[];
+  /* tripDayStops() numbers days from 1; tripDayOrder() carries that
+     through as `day`, and unscheduled wishlist courses carry null. */
+  const dayNo=dayId==null?null:(typeof tripDays!=='undefined'
+    ?tripDays.findIndex(d=>d.id===dayId)+1:0);
+  if(dayId!=null&&!dayNo)return[];
+  return tripDayOrder()
+    .filter(s=>(dayNo==null||s.day===dayNo)&&isFinite(s.lat)&&isFinite(s.lng))
+    .map(s=>[s.lat,s.lng]);
+}
+function mapFitTrip(dayId,opts){
+  const pts=tripFitPoints(dayId);
+  if(!pts.length)return false;
+  mapFitBounds(L.latLngBounds(pts),Object.assign({},MAP_TRIP_FIT_OPTS,opts||{}));
+  return true;
+}
+/* Adding a stay or a stop should leave both it and the rest of that day
+   on screen (GOLF-191 AC 2) — the whole trip would be too wide to show
+   what just happened. Falls back to the whole trip for a day that has
+   nothing located yet. */
+function mapFitDay(dayId,opts){
+  return mapFitTrip(dayId,opts)||mapFitTrip(null,opts);
 }
 /* GOLF-108: the clustered "all courses" pin layer lives in its own pane
    below the overlay (route polylines, z400) and marker (trip stops, z600)
@@ -115,6 +171,25 @@ function esriBaseLayers(){
 const esriBases=esriBaseLayers();
 esriBases['Default'].addTo(map);
 L.control.layers(esriBases,null,{position:'topright'}).addTo(map);
+/* GOLF-191 (AC 1): "Show whole trip". Top-left is the only free corner —
+   zoom is bottom-right, the basemap picker top-right, and the bottom-left
+   is the tile attribution we're obliged to keep legible. Hidden whenever
+   the trip has nothing located to frame, so it never offers a no-op. */
+const mapTripFitControl=L.control({position:'topleft'});
+mapTripFitControl.onAdd=function(){
+  const el=L.DomUtil.create('div','leaflet-bar map-fit-trip');
+  el.innerHTML=`<a href="#" role="button" title="Show whole trip — frames every stop in your trip" aria-label="Show whole trip">⤢</a>`;
+  L.DomEvent.disableClickPropagation(el);
+  L.DomEvent.on(el,'click',e=>{L.DomEvent.preventDefault(e);mapFitTrip(null);});
+  return el;
+};
+mapTripFitControl.addTo(map);
+/* Called from tbDrawMap(), which runs after every change to the trip. */
+function mapTripFitControlSync(){
+  const el=mapTripFitControl.getContainer();
+  if(el)el.style.display=tripFitPoints(null).length>1?'':'none';
+}
+mapTripFitControlSync();
 
 /* GOLF-161: England and Scotland course positions are re-sourced from
    OpenStreetMap (the records carrying coordSrc:"osm"), which is ODbL and
@@ -317,6 +392,12 @@ function rankChips(i){const t=C[i].t100;if(!t)return'';const p=[];
    the rate is researched or "Estimate" when it's a guess; the raw wd/we
    string stays as the hover title. No feeV2 -> the plain string, boxed
    the same way. */
+/* The status badges after a course's name (edited, sweep, played/want,
+   in trip) — shared by the popup heading and the phone card. */
+function courseBadgesHTML(i){
+  const c=C[i];
+  return`${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want to play</span>':''}${TRIP.has(i)?' <span class="wt">in trip</span>':''}`;
+}
 function feeConfWord(i){
   if(!(typeof feeRangeFor==='function'&&C[i]&&C[i].feeV2))return'';
   const c=(feeRangeFor(i,'wd')||{}).confidence;
@@ -338,7 +419,11 @@ function feeBlock(i){
   return`<div class="fees"><div class="fee-box"><b>Weekday</b>${feeAmtHTML(i,'wd')}${note}</div>`
     +`<div class="fee-box"><b>Weekend</b>${feeAmtHTML(i,'we')}${note}</div></div>`;
 }
-function popupHTML(i){
+/* GOLF-185b: `card` builds the phone card's "Show more" body instead — the
+   same content minus the name and the Add button, which the card's compact
+   head already shows (js/mobile-sheet.js). data-course is how the phone
+   layout recognises a course popup and routes it into the sheet. */
+function popupHTML(i,{card=false}={}){
   const c=C[i],a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')],near=c.nearStation;
   const travel=stn?`<b style="color:${LINES[stn.l].c}">${esc(stn.n)}</b> · ${esc(LINES[stn.l].n)}${nrBadge(stn.l)} — ${esc(V(i,'walk'))}`
     :near?`<b>${esc(near.n)}</b>${nrBadge()} — ${near.mi} mi, straight-line (nearest station nationally, not a walking route)`
@@ -354,7 +439,8 @@ function popupHTML(i){
      majority of courses with no photo field, same convention as every
      other optional field in this app. */
   const photoBlock=c.photo?`<div style="width:100%;border-radius:8px;margin-bottom:8px;overflow:hidden"><img src="${esc(escUrl(c.photo.src))}" alt="${esc(V(i,'n'))}" loading="lazy" style="width:100%;height:140px;object-fit:cover;display:block"><div style="font-size:10.5px;color:var(--stone);padding:3px 2px 0">Photo: <a href="${esc(escUrl(c.photo.sourceUrl))}" target="_blank" rel="noopener">${esc(c.photo.photographer)}</a> · ${esc(c.photo.license)}</div></div>`:'';
-  return `<div class="pop">${photoBlock}${c.logo?`<div style="width:100%;height:100px;background:var(--paper);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${esc(escUrl(c.logo))}" alt="${esc(V(i,'n'))} club logo" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"></div>`:''}<h3>${esc(V(i,'n'))} ${isEdited(i)?'<span class="edited">EDITED</span>':''}${c.sweep?' <span class="wt">sweep find</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want to play</span>':''}${TRIP.has(i)?' <span class="wt">in trip</span>':''}</h3>
+  const addBtn=card?'':`<button class="btn primary" onclick="${TRIP.has(i)?`tripRemoveCourse(${i})`:`tbAddToPlan(${i})`}">${TRIP.has(i)?'✓ In your trip — remove':'＋ Add to trip'}</button>`;
+  return `<div class="pop" data-course="${i}">${photoBlock}${c.logo?`<div style="width:100%;height:100px;background:var(--paper);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${esc(escUrl(c.logo))}" alt="${esc(V(i,'n'))} club logo" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"></div>`:''}${card?'':`<h3>${esc(V(i,'n'))} ${courseBadgesHTML(i)}</h3>`}
     <p class="sub">${esc(c.r)} · ${esc(a.label)}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
     ${feeBlock(i)}
     ${(()=>{const ct=(typeof feeCartFor==='function')&&feeCartFor(i);return ct&&ct.status==='mandatory'?`<p class="note" style="color:var(--stone)">Buggy compulsory${ct.amount!=null?` — ${esc(curSym(courseCurrency(i))+Math.round(ct.amount))}${ct.per==='person'?' per person':' per cart'}`:''}, billed separately.</p>`:'';})()}
@@ -362,7 +448,7 @@ function popupHTML(i){
     <p class="note">${esc(V(i,'note'))}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${esc(club.blurb)}</span>`:''}</p>
     ${calcHTML(i)}
     <div class="actions">
-      <button class="btn primary" onclick="${TRIP.has(i)?`toggleTrip(${i})`:`tbAddToPlan(${i})`}">${TRIP.has(i)?'✓ In your trip — remove':'+ Add to trip'}</button>
+      ${addBtn}
       ${site?`<a class="btn" href="${esc(escUrl(site))}" target="_blank" rel="noopener">Club website</a>`:`<a class="btn ghost" href="${esc(search)}" target="_blank" rel="noopener">Find the club site</a>`}
       ${book&&book!==site?`<a class="btn ghost" href="${esc(escUrl(book))}" target="_blank" rel="noopener">Green fees</a>`:''}
       ${club&&club.teeBooking&&club.teeBooking!==site&&club.teeBooking!==book?`<a class="btn ghost" href="${esc(escUrl(club.teeBooking))}" target="_blank" rel="noopener">Tee booking</a>`:''}
@@ -433,6 +519,39 @@ function refreshOpenCoursePopup(){
   markers.forEach(m=>{
     if(m.isPopupOpen&&m.isPopupOpen())m.getPopup().update();
   });
+  if(typeof mobCardRefresh==='function')mobCardRefresh(); // GOLF-185b: the phone card, which is not a popup
+}
+/* GOLF-201: which course's popup is open, if any. Both redraws —
+   tbDrawMap() rebuilding tripLayer and render() refilling the cluster
+   layer — throw away the marker that owns it, and Leaflet closes a popup
+   with its marker. Since GOLF-131 a pan in Itinerary with "Nearby courses"
+   on triggers exactly that redraw, and a popup's own auto-pan is a pan: so
+   a card near the edge opened, moved the map to fit, and closed itself.
+   Each redraw notes the open course first (mapOpenCourse()) and hands it
+   back afterwards (mapReopenCourse()). */
+let mapOpenCourseI=null;
+map.on('popupopen',e=>{
+  const el=e.popup.getElement()&&e.popup.getElement().querySelector('.pop[data-course]');
+  mapOpenCourseI=el?+el.dataset.course:null;
+});
+map.on('popupclose',()=>{mapOpenCourseI=null;});
+function mapOpenCourse(){return mapOpenCourseI;}
+/* Reopens course i's popup on whichever marker now carries it — unless
+   something else opened meanwhile, or the course has gone: out of the
+   redrawn scope, folded into a cluster, or off screen. Those are real
+   reasons for the card to be gone; a redraw alone is not. */
+function mapReopenCourse(i){
+  if(i==null)return;
+  /* A tick later, not now: when the redraw came from a button inside the
+     popup (Mark played, Want to play), the redraw has just detached that
+     button, so Leaflet reads the rest of its click as a click on bare map
+     and would close whatever popup is open by then. */
+  setTimeout(()=>{
+    if(mapOpenCourseI!=null)return;
+    const m=courseMarkerFor(i);
+    if(!m||!m._map||!map.getBounds().contains(m.getLatLng()))return;
+    m.openPopup();
+  },0);
 }
 function drawLink(i){linkLayer.clearLayers();
   if(!RAIL_FEATURE)return; // GOLF-110: no course->station link line while the rail feature is hidden
@@ -447,42 +566,49 @@ function drawLink(i){linkLayer.clearLayers();
   if(isNR)nrStationMarker(s.lat,s.lng).addTo(linkLayer);
 }
 
-/* GOLF-19: mobile list<->map toggle (see the max-width:900px block in
-   <style> — .app stacks full-height, one of .panel/#map is display:none
-   at a time via body.mob-list/mob-map). Desktop ignores this entirely,
-   the toggle button itself is display:none above 900px. */
-const mobToggle=document.getElementById('mob-toggle');
-document.body.classList.add('mob-list');
-function showMobileMap(noFit){
-  if(window.innerWidth>900)return;
-  document.body.classList.remove('mob-list');document.body.classList.add('mob-map');
-  mobToggle.textContent='Show list';
-  /* GOLF-31: a tbDrawMap() fitBounds() that ran while #map was
-     display:none (e.g. right after tbSelect() on mobile, still on the
-     list view) computed against a stale/zero-size container — re-fit
-     once the map is actually visible and sized. */
-  setTimeout(()=>{
-    map.invalidateSize();
-    /* GOLF-184: the map is only now sized, so any fit that was parked
-       while it was hidden can finally be computed properly. One more tick:
-       invalidateSize() starts its own pan, and a fitBounds issued inside
-       that animation is swallowed. */
-    setTimeout(mapReplayPendingFit,0);
-    if(tripBuilderOn&&!noFit)tbDrawMap();
-  },0);
-  /* noFit: the caller is about to centre on one thing itself (poiFocus) —
-     an animated re-fit would land after it and win. */
-}
-function showMobileList(){
-  document.body.classList.remove('mob-map');document.body.classList.add('mob-list');
-  mobToggle.textContent='Show map';
-}
-mobToggle.addEventListener('click',()=>{
-  document.body.classList.contains('mob-map')?showMobileList():showMobileMap();
-});
+/* GOLF-19's mobile list<->map toggle is gone (GOLF-185a): on a phone the
+   map is always on screen under a bottom sheet. showMobileMap() and
+   showMobileList() now live in js/mobile-sheet.js. */
 
-function goToCourse(i){map.closePopup();showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
-  markers.get(i).openPopup();highlight(i);drawLink(i)}
+/* GOLF-187: "tapping a search result opens its card" turned out to be three
+   different situations, and this function only ever handled one of them.
+   A course can be pinned on the TRIP layer (js/trip-geo.js / trip-route.js),
+   in which case js/explore.js deliberately leaves it out of the background
+   cluster — GOLF-122's "two pins, one course" fix — so opening the cluster's
+   marker silently did nothing, because that marker was not on the map. It
+   can be in the cluster, but collapsed inside a numbered badge, where
+   openPopup() again does nothing until the cluster is broken open. Or, with
+   the trip pane open, it can be on neither: that layer carries only the
+   courses currently in scope ("25 nearest"), and a search reaches well
+   outside that. Each case is handled, so a tap always lands somewhere. */
+function courseMarkerFor(i){
+  const t=(typeof tripCourseMarkers!=='undefined')?tripCourseMarkers.get(i):null;
+  if(t&&t._map)return t;
+  return markers.get(i)||null;
+}
+function goToCourse(i){
+  map.closePopup();
+  showMobileMap();
+  const go=()=>{
+    const fly=()=>{try{map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});}catch(e){map.setView([C[i].lat,C[i].lng],13);}};
+    const t=(typeof tripCourseMarkers!=='undefined')?tripCourseMarkers.get(i):null;
+    if(t&&t._map){fly();t.openPopup();highlight(i);drawLink(i);return;}
+    const m=markers.get(i);
+    if(!m){fly();highlight(i);drawLink(i);return;}
+    /* Out of the current scope: lend it a pin. The next render() rebuilds
+       this layer from scope, so nothing is left behind. */
+    if(!layer.hasLayer(m)){m.setIcon(pinFor(i));layer.addLayer(m);}
+    // zoomToShowLayer breaks open the cluster this marker is hiding in and
+    // then fires — plain openPopup() on a clustered marker does nothing.
+    if(layer.zoomToShowLayer)layer.zoomToShowLayer(m,()=>m.openPopup());
+    else{fly();m.openPopup();}
+    highlight(i);drawLink(i);
+  };
+  /* GOLF-187's two-tick wait for the old list view is gone (GOLF-199):
+     it keyed off body.mob-list, which GOLF-185a removed. The map is never
+     hidden on a phone now, so nothing is pending and it can go at once. */
+  go();
+}
 
 /* GOLF-112: a town/city picked from the unified search can now be looked
    at on the map without being dropped into the trip. tbFocusPlaceOnMap()
@@ -502,12 +628,20 @@ function tbFocusPlaceOnMap(lat,lng,label){
   tbTempPlaceSetAt=Date.now();
   tbTempPlaceMarker=L.marker([lat,lng],{
     icon:L.divIcon({className:'tb-temp-place-pin',html:'📍',iconSize:[24,24],iconAnchor:[12,22]}),
-    keyboard:false,interactive:false,zIndexOffset:1000
+    keyboard:false,zIndexOffset:1000
   }).addTo(map);
-  if(label)tbTempPlaceMarker.bindTooltip(String(label),{direction:'top',offset:[0,-20]}).openTooltip();
+  /* GOLF-187: the marker carries the place's card, not just its name.
+     The search row used to grow two buttons of its own ("Start a trip
+     here" / "Add as a day"), which is a large part of why a town sat
+     below ten course rows — the actions moved here, where there is room
+     for them and where the place is already in front of you. */
+  if(label)tbTempPlaceMarker.bindPopup(tbPlaceCardHTML(lat,lng,label),{minWidth:200,closeButton:true});
+  if(label)tbTempPlaceMarker.bindTooltip(String(label),{direction:'top',offset:[0,-20]});
   /* flyTo's easing math needs a sized container; fall back to a plain jump
      if the map hasn't been laid out yet (mirrors tbDrawMap()'s own guard). */
   try{map.flyTo([lat,lng],12,{duration:.6});}catch(e){map.setView([lat,lng],12);}
+  // Opened after the camera move so the popup lands where the marker ends up.
+  if(label)tbTempPlaceMarker.openPopup();
 }
 /* A manual map gesture clears the temp marker — but the programmatic
    flyTo above (and showMobileMap()'s invalidateSize) also fire these

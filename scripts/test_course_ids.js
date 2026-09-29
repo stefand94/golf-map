@@ -131,6 +131,34 @@ eq('keyed edits round-trip',
    s.courseDecodeKeyed(s.courseEncodeKeyed({ [a]: { wd: '£10' } })), { [a]: { wd: '£10' } });
 eq('a legacy numeric key still decodes', s.courseDecodeKeyed({ [String(b)]: { we: '£20' } }), { [b]: { we: '£20' } });
 
+// ---- 5b. GOLF-198: dupOf — a course that was in the data twice ----
+const dups = C.map((x, i) => i).filter(i => C[i].dupOf !== undefined);
+dups.forEach(i => {
+  const t = s.COURSE_INDEX_BY_ID.get(C[i].dupOf);
+  if (t === undefined) fail(`C[${i}] (${C[i].id}) dupOf "${C[i].dupOf}" names no course`);
+  else if (C[t].dupOf !== undefined) fail(`C[${i}] dupOf "${C[i].dupOf}", which is itself a dupOf record — one hop only`);
+  else if (t === i) fail(`C[${i}] dupOf itself`);
+});
+if (dups.length) {
+  const d = dups[0], k = s.COURSE_INDEX_BY_ID.get(C[d].dupOf);
+  eq('the old id opens the kept course', s.courseRefDecode(C[d].id), k);
+  eq('the old legacy index opens the kept course', s.courseRefDecode(d), k);
+  eq('the kept id still opens itself', s.courseRefDecode(C[k].id), k);
+  const both = s.courseDecodeTripEntry({ name: 'Dup', trip: [C[d].id, C[k].id], tripSeq: [C[d].id, C[k].id],
+    tripDays: [
+      { id: 1, kind: 'golf', items: [{ id: 'd1', type: 'golf', i: C[d].id }] },
+      { id: 2, kind: 'golf', items: [{ id: 'd2', type: 'golf', i: C[k].id }, { id: 'd3', type: 'golf', i: C[a].id }] },
+    ] });
+  eq('a trip holding both records keeps one course', both.trip, [k]);
+  eq('...in tripSeq too', both.tripSeq, [k]);
+  eq('...and keeps the first day item in its day', both.tripDays.map(x => x.items.map(y => y.id)), [['d1'], ['d3']]);
+  const twice = s.courseDecodeTripEntry({ name: 'Twice', trip: [C[k].id], tripSeq: [C[k].id],
+    tripDays: [{ id: 1, items: [{ id: 't1', type: 'golf', i: C[k].id }] }, { id: 2, items: [{ id: 't2', type: 'golf', i: C[k].id }] }] });
+  eq('the same course booked on two days is left alone', twice.tripDays.map(x => x.items.length), [1, 1]);
+  eq('edits: the kept record\'s own correction wins over the duplicate\'s',
+     s.courseDecodeKeyed({ [C[d].id]: { wd: 'dup' }, [C[k].id]: { wd: 'kept' } }), { [k]: { wd: 'kept' } });
+}
+
 // ---- 6. THE ONE THAT MATTERS: identity survives a reorder ----
 // Reverse C[] — a change far more violent than any re-pull would make — and
 // check that references written against the ORIGINAL order still name the
@@ -179,6 +207,18 @@ if (oldLink && newLink) {
 // A link naming a course that no longer exists drops that item rather than
 // rendering the wrong one — the failure mode this ticket is about.
 const gone = share.tripDecodeSharePayload(linkFor([{ id: 'g1', type: 'golf', c: 'deleted-course-0000' }], ['deleted-course-0000']));
+if (dups.length) {
+  const d = dups[0], k = share.COURSE_INDEX_BY_ID.get(C[d].dupOf);
+  const dupLink = share.tripDecodeSharePayload(linkFor(
+    [{ id: 'g1', type: 'golf', c: C[d].id }, { id: 'g2', type: 'golf', c: C[k].id }], [C[d].id, C[k].id]));
+  if (!dupLink) fail('GOLF-198: a link carrying a dupOf id does not decode');
+  else {
+    eq('GOLF-198: a link with the old id opens the kept course', dupLink.seq, [k]);
+    eq('GOLF-198: ...and holds it once, first position kept', dupLink.days[0].items, [{ id: 'g1', type: 'golf', i: k }]);
+  }
+  const legacyDup = share.tripDecodeSharePayload(linkFor([{ id: 'g1', type: 'golf', i: d }], [d]));
+  eq('GOLF-198: a pre-GOLF-163 link with the old index opens the kept course', legacyDup && legacyDup.seq, [k]);
+}
 if (!gone) fail('a link naming a removed course should still decode, minus that course');
 else {
   eq('a removed course drops out of seq', gone.seq, []);

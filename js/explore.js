@@ -27,7 +27,10 @@ function courseNation(i){const c=C[i];return c.topIreland?'ie':c.topSouthAfrica?
    data/courses-southafrica.js — they stay in the file (recoverable, and
    ready for a future "show all" toggle) but only entries carrying
    `zaRanked:1` surface on the map. Non-ZA nations are unaffected. */
-function courseShownOnMap(i){return!(courseNation(i)==='za'&&!C[i].zaRanked);}
+/* GOLF-198: `dupOf` marks the redundant half of a course that was in the
+   data twice — never shown, its references resolve to the kept record
+   (js/course-id.js). Everything that lists courses funnels through here. */
+function courseShownOnMap(i){return!C[i].dupOf&&!(courseNation(i)==='za'&&!C[i].zaRanked);}
 const NATIONS=[['gb','Great Britain'],['ie','Ireland'],['za','South Africa']];
 function renderNationPills(){
   document.getElementById('nation-pills').innerHTML=NATIONS.map(([k,l])=>
@@ -324,11 +327,12 @@ if(RAIL_FEATURE)['t-rail','t-lbl','t-stn'].forEach(id=>{ // GOLF-110: wiring dor
 /* GOLF-70: feeNum/distOut/rankNum moved to js/util.js — they are shared
    course metrics, not Explore-only ones, and js/util.js is evaluated ahead
    of every reader. See the note at the top of js/util.js. */
-function passes(i){const c=C[i];
-  // GOLF-81: nothing passes — map and list both stay empty — until a
-  // country pill has been picked.
-  if(!state.nation||courseNation(i)!==state.nation)return false;
-  if(!courseShownOnMap(i))return false; // GOLF-121d: SA ringfenced to the top-100
+/* GOLF-185d: the filter predicates on their own — everything passes()
+   asks EXCEPT the nation gate and this page's own search box. Split out
+   so the map (passes), the Discover lists (tbNationFilter) and the
+   unified search (tbCourseOfferable) all ask one question, which is the
+   "the map and the lists always agree" acceptance criterion. */
+function courseFilterPasses(i){const c=C[i];
   if(state.access.size&&!state.access.has(V(i,'a')))return false;
   /* GOLF-69 (item 2): the four fixed BANDS chips became a real min/max
      range. A course whose weekday fee doesn't parse to a number (feeNum
@@ -358,6 +362,13 @@ function passes(i){const c=C[i];
   if(state.flag.has('edited')&&!isEdited(i))return false;
   if(state.flag.has('played')&&!PLAYED.has(i))return false;
   if(state.flag.has('want')&&!WANT.has(i))return false;
+  return true}
+function passes(i){
+  // GOLF-81: nothing passes — map and list both stay empty — until a
+  // country pill has been picked.
+  if(!state.nation||courseNation(i)!==state.nation)return false;
+  if(!courseShownOnMap(i))return false; // GOLF-121d: SA ringfenced to the top-100
+  if(!courseFilterPasses(i))return false;
   if(state.q&&!searchMatches(i,state.q))return false;
   return true}
 
@@ -449,16 +460,17 @@ function renderNearestList(anchorIdx){
       <p class="cname">${flagSVG(ac.colour,ac.pole,15,false)}${esc(V(i,'n'))}</p>
       <span class="cfee">${esc(V(i,'wd'))}<small>${mi.toFixed(0)} mi away</small></span></div>
       <p class="cmeta"><span>${esc(ac.label)}</span><span>${esc(C[i].r)}</span>${bestRankBadge(i)}</p>
-      <p class="cmeta"><button class="btn2" data-add="${i}" style="padding:5px 10px;font-size:11px">+ Add to trip</button></p></div>`}).join('');
+      <p class="cmeta"><button class="btn2" data-add="${i}" style="padding:5px 10px;font-size:11px">＋ Add to trip</button></p></div>`}).join('');
   list.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',e=>{
     e.stopPropagation();
     tbAddToWishlist(+b.dataset.add);
   }));
-  list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
-    const i=+el.dataset.i;showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
-    markers.get(i).openPopup();highlight(i);drawLink(i)}));
+  // GOLF-201: through goToCourse() (GOLF-187), which opens a clustered or
+  // trip-layer pin too; the old flyTo + openPopup did neither.
+  list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>goToCourse(+el.dataset.i)));
 }
 function render(){
+  const openCourse=mapOpenCourse(); // GOLF-201: both layer rebuilds below close it
   /* GOLF-31: single hook point — every existing render() call site
      (filter chips, played/want/trip toggles, corrections save, reset,
      wipeStoredState) keeps the Trip Builder pane and the mast's cart-count
@@ -495,7 +507,7 @@ function render(){
      tripLayer (tbDrawMap(), gated by the "Nearby courses" toggle) and the
      Costs tab draws just the route. The bgCoursePins pane (js/map.js)
      keeps the route/stop markers on top in Discover. */
-  if(tripBuilderOn&&appMode!=='plan'&&tripLayer.getLayers().length)return;
+  if(tripBuilderOn&&appMode!=='plan'&&tripLayer.getLayers().length){mapReopenCourse(openCourse);return;}
   let shown=C.map((c,i)=>i).filter(passes);
   const S_={region:(a,b)=>REGIONS.indexOf(C[a].r)-REGIONS.indexOf(C[b].r)||feeNum(a)-feeNum(b),
     fee:(a,b)=>feeNum(a)-feeNum(b),rank:(a,b)=>rankNum(a)-rankNum(b),
@@ -520,6 +532,7 @@ function render(){
      re-runs the bound content function, so the open popup redraws from
      current state — exactly what the old blanket setPopupContent() loop
      achieved for all 557 markers, now done for the one that needs it. */
+  mapReopenCourse(openCourse);
   refreshOpenCoursePopup();
   document.getElementById('count').textContent=`${shown.length} of ${C.length}`;
   document.getElementById('editcount').textContent=editCount();
@@ -547,7 +560,7 @@ function render(){
       <p class="cmeta"><span>${esc(a.label)}</span>
       ${stn?`<span>${esc(stn.n)} · ${esc(LINES[stn.l].n)}</span>`:near?`<span>${esc(near.n)} · ${esc(near.mi)} mi straight-line</span>`:C[i].topSouthAfrica?'':`<span style="color:var(--stone)">no close station</span>`}
       ${bestRankBadge(i)}${C[i].sweep?'<span class="wt">sweep</span>':''}${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
-  list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>{
-    const i=+el.dataset.i;showMobileMap();map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});
-    markers.get(i).openPopup();highlight(i);drawLink(i)}));
+  // GOLF-201: through goToCourse() (GOLF-187), which opens a clustered or
+  // trip-layer pin too; the old flyTo + openPopup did neither.
+  list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>goToCourse(+el.dataset.i)));
 }
