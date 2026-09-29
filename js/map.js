@@ -50,9 +50,31 @@ function mapHoldCamera(fn){
   _mapHold=true;
   try{fn();}finally{setTimeout(()=>{_mapHold=false;},0);}
 }
+/* GOLF-212: Leaflet only re-measures its container on a window resize,
+   but on desktop the map's width changes without one: opening a trip
+   (body.trip-mode) widens the pane column from 420px to 680px, so at 1024
+   the map shrank to 344px while Leaflet still believed 604. Fits and
+   centres landed off to the right, and controls pinned to the right edge
+   (zoom, the hotel "Search this area" button) sat past the visible map.
+   mapSyncSize() re-measures when the box and Leaflet disagree; pan:true
+   keeps the same point in the middle, so a centre set against the stale
+   size still ends up centred. Phone layout (≤900px) is left alone: the
+   sheet code manages its own invalidateSize() and parked fits. */
+function mapSyncSize(){
+  if(typeof mobIsPhone==='function'?mobIsPhone():window.innerWidth<=900)return;
+  const el=map.getContainer(),s=map.getSize();
+  if(!el.clientWidth||!el.clientHeight)return;
+  if(el.clientWidth!==s.x||el.clientHeight!==s.y)map.invalidateSize({pan:true,animate:false});
+}
+/* Every box change (tab, mode, a panel that widens the pane, a window
+   resize) — not only the ones someone remembered to hook. */
+if(typeof ResizeObserver==='function')new ResizeObserver(mapSyncSize).observe(map.getContainer());
 function mapFitBounds(bounds,opts){
   if(!bounds)return;
   if(_mapHold)return;
+  /* A fit often runs in the same turn as the class change that resized the
+     map, before the observer above has fired: measure first. */
+  mapSyncSize();
   if(!mapHasSize()){_pendingFit={bounds:bounds,opts:opts};return;}
   _pendingFit=null;
   if(typeof mobFitOpts==='function')opts=mobFitOpts(opts); // GOLF-185a: fit the strip of map above the phone sheet
