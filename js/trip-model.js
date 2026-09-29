@@ -987,8 +987,12 @@ function tbGroupStepperHTML(idp){
           <button type="button" class="tb-group-btn" id="${idp}-inc" data-gs="1" aria-label="One more golfer">+</button>
         </div>`;
 }
+/* GOLF-208: the same row on desktop, which also carries the £ total pill
+   that used to sit in the pane header. A phone already shows the total in
+   the sheet's peek line (GOLF-185a, one £ total), so it gets no pill. */
 function tbItinGroupHTML(){
-  return`<div class="tb-itin-group"><span class="tb-itin-group-label">Group size</span>${tbGroupStepperHTML('tb-groupsize-itin')}</div>`;
+  const pill=tbPhoneLayout()?'':`<span class="tb-pill">${tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}<span class="js-trip-total">${tbTripTotalHTML()}</span></span>`;
+  return`<div class="tb-itin-group"><span class="tb-itin-group-label">Group size</span>${tbGroupStepperHTML('tb-groupsize-itin')}${pill}</div>`;
 }
 function tbTripMenuHTML(isBuild){
   const list=tripListAll();
@@ -1011,7 +1015,9 @@ function tbTripMenuHTML(isBuild){
     <summary title="${esc(activeName)} — trip menu"><span class="tb-drop-label">${esc(activeName)}</span></summary>
     <div class="tb-drop-body">
       ${list.length>1?`<div class="tb-menu-label">Your trips</div>${rows}<div class="tb-menu-sep"></div>`:''}
-      ${isBuild||!tbPhoneLayout()?`<div class="tb-menu-label">Group size</div>
+      ${/* GOLF-208: out of the header on desktop (it's on the Itinerary
+           tab now). A phone's Itinerary keeps this copy (185a call). */
+        isBuild&&tbPhoneLayout()?`<div class="tb-menu-label">Group size</div>
       <div class="tb-menu-row">${tbGroupStepperHTML('tb-groupsize')}</div>
       <div class="tb-menu-sep"></div>`:''}
       <button type="button" class="tb-menu-item" onclick="tripRename(activeTripId)">✎ Rename</button>

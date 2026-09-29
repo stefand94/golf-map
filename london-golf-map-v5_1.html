@@ -225,7 +225,12 @@
      actions as quiet icons beside it. */
   .tb-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:var(--sp-3);row-gap:var(--sp-3);
     padding:var(--sp-4) var(--sp-5) var(--sp-3)}
-  .tb-head-meta{grid-column:1/-1;display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap}
+  /* GOLF-208: Itinerary's group size row (moved out of the header), with
+     the £ total pill pushed to its right on desktop. */
+  .tb-itin-group{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-3);margin:0 0 var(--sp-3);padding:var(--sp-2) 0}
+  .tb-itin-group-label{font:600 var(--fs-caption) var(--font-sans);color:var(--stone);text-transform:uppercase;letter-spacing:.06em}
+  .tb-itin-group .tb-group-unit{display:inline}
+  .tb-itin-group>.tb-pill{margin-left:auto}
   .tb-head-actions{display:flex;align-items:center;gap:var(--sp-1)}
   .mast .tb-beta{margin-left:auto}
   .tb-head-actions .tb-btn.is-icon{color:var(--ink-soft)}
@@ -1122,12 +1127,8 @@
        masthead's "Golf Tripper" repeats what the page already is, and its
        Beta badge moves into the pane header (js/mobile-sheet.js). */
     .panel>.mast{display:none}
-    .tb-head-meta{display:none}
     .tb-head-actions .tb-beta{margin-right:var(--sp-1)}
-    .tb-itin-group{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
-      margin:0 0 var(--sp-3);padding:var(--sp-2) 0}
-    .tb-itin-group-label{font:600 var(--fs-caption) var(--font-sans);color:var(--stone);text-transform:uppercase;letter-spacing:.06em}
-    .tb-itin-group .tb-group-unit{display:inline}
+    .tb-itin-group{justify-content:space-between}
     .tb-pane{overscroll-behavior:contain;padding-bottom:var(--sp-4)}
     /* The pane's segmented tabs move to the bottom tab bar. */
     .tb-tabs{display:none}

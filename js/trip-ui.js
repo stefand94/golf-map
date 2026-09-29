@@ -1300,20 +1300,25 @@ function renderTripBuilder(){
                  trip-level actions (share, clear) sit beside it as icons;
        batch 2 (W2/C1) — the tabs are the pane's primary navigation, so
                  they come straight after the header, and each tab only
-                 carries its own controls: Discover gets nations + search
-                 + hotels; Itinerary gets search + its view toggles; Costs
-                 gets nothing extra. Group size is a trip property, so it
-                 lives in the header next to the total it changes. */
+                 carries its own controls.
+     GOLF-208 (DEC-033): the country is the top-level choice, so its pills
+     sit between the header and the tabs, on every tab. Discover gets
+     search + [filters] Show hotels · Show POIs; Itinerary gets search +
+     its view toggles, then group size and the £ total (moved out of the
+     header, as on a phone); Costs gets nothing extra. */
   const filtered=tbItinFilter!=='all'||!tbDriveToggle;
   const isItin=isBuild&&tbBuildTab==='itin';
   const searchHTML=`${tbSearchFieldHTML({id:'tb-unified-search',variant:'bar',value:tbSearchQ,
       placeholder:isItin?'Add a course or town…':tbPhoneLayout()?'Search clubs or towns':'Search courses, towns and cities…',ariaLabel:'Search courses, towns and cities'})}
     <div class="tb-section" id="tb-search-results" style="border-bottom:none;padding-top:0${tbSearchQ.trim()?'':';display:none'}">${tbSearchQ.trim()?tbUnifiedSearchResultsHTML():''}</div>`;
   const hotelsBtn=`<button type="button" class="tb-btn is-sm${tbHotelLayerOn?' is-active':''}" id="tb-hotel-layer-toggle" aria-pressed="${tbHotelLayerOn}" title="Show nearby hotels on the map as you pan and zoom. Zoom in to see pins — no price data, just location."><span>${tbHotelLayerOn?'✓ ':''}<span class="tb-lbl-long">Show hotels</span><span class="tb-lbl-short">Hotels</span></span></button>`;
+  /* GOLF-208: Show POIs drives GOLF-207's POI layer (Gavin's tbPoiLayerOn /
+     tbPoiLayerSet); left out until that layer exists. */
+  const poisBtn=typeof tbPoiLayerSet==='function'?`<button type="button" class="tb-btn is-sm${tbPoiLayerOn?' is-active':''}" id="tb-poi-layer-toggle" aria-pressed="${!!tbPoiLayerOn}" title="Show places to see near the map view. Zoom in to see pins."><span>${tbPoiLayerOn?'✓ ':''}<span class="tb-lbl-long">Show POIs</span><span class="tb-lbl-short">POIs</span></span></button>`:'';
   let tabChrome='';
   if(!isBuild){
     // GOLF-185d: the course filters sit beside the search, on every viewport.
-    tabChrome=`${tbNationPillsHTML()}${searchHTML}<div class="tb-toolbar">${cfButtonHTML()}${hotelsBtn}</div>`;
+    tabChrome=`${searchHTML}<div class="tb-toolbar">${cfButtonHTML()}${hotelsBtn}${poisBtn}</div>`;
   }else if(isItin){
     tabChrome=`${searchHTML}
     <div class="tb-toolbar">
@@ -1339,14 +1344,12 @@ function renderTripBuilder(){
         <button type="button" class="tb-btn is-icon is-sm is-quiet" id="tb-share-trip" aria-label="Share trip" title="Share — copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">${SHARE_ICON_SVG}</button>
         <button type="button" class="tb-btn is-icon is-sm is-quiet is-danger" id="tb-clear-trip" aria-label="Clear trip" title="Clear trip — empties this trip. Your other trips are untouched; to delete every trip use Start fresh in the trip menu."${TRIP.size||tripDays.length?'':' disabled'}>${TRASH_ICON_SVG}</button>
       </div>
-      <div class="tb-head-meta">
-        <span class="tb-pill">${isBuild&&tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}<span class="js-trip-total">${tbTripTotalHTML()}</span></span>
-      </div>
     </header>
+    ${tbNationPillsHTML()}
     <div class="tb-tabs" role="tablist">${TABS.map(([k,label])=>
       `<button class="tb-tab-btn" role="tab" data-tab="${k}" aria-pressed="${activeTab===k}">${label}</button>`).join('')}</div>
     ${tabChrome}
-    <div class="tb-tab-content">${isItin&&tbPhoneLayout()?tbItinGroupHTML():''}${
+    <div class="tb-tab-content">${isItin?tbItinGroupHTML():''}${
       !isBuild?tbPlanHTML()
       :tbBuildTab==='cost'?tbCostsTabHTML()
       :tbItinFilter==='all'?tripDayScheduleHTML()
@@ -1374,6 +1377,8 @@ function renderTripBuilder(){
     filterDrop.querySelectorAll('[data-itin-filter]').forEach(btn=>btn.addEventListener('click',()=>{tbItinFilter=btn.dataset.itinFilter;renderTripBuilder();}));
     document.getElementById('tb-drive-toggle').addEventListener('click',()=>{tbDriveToggle=!tbDriveToggle;renderTripBuilder();});
   }
+  const poiToggle=document.getElementById('tb-poi-layer-toggle');
+  if(poiToggle)poiToggle.addEventListener('click',()=>tbPoiLayerSet(!tbPoiLayerOn));
   const nearbyToggle=document.getElementById('tb-nearby-toggle');
   if(nearbyToggle)nearbyToggle.addEventListener('click',()=>{tbShowNearby=!tbShowNearby;render();});
   // GOLF-142: unlike tbShowNearby above, this toggle doesn't feed
