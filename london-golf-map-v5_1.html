@@ -533,7 +533,9 @@
   .tb-hotel-picker .tb-poi-list{padding:0}
   /* GOLF-211: the picker opens under "Where are you staying?"
      (.tb-stay-slot), so both halves take that box's left and right edges. */
-  .tb-addstop.is-picker,.tb-hotel-picker{margin-left:44px;margin-right:var(--sp-3)}
+  /* :has() too, so the form lines up even on a load that pairs this page
+     with a cached copy of js/trip-model.js from before is-picker existed. */
+  .tb-addstop.is-picker,.tb-addstop:has(+ .tb-hotel-picker),.tb-hotel-picker{margin-left:44px;margin-right:var(--sp-3)}
   /* GOLF-148: "Things to see" — the pre-baked sights along a day's route. */
   .tb-sights{margin:0 var(--sp-3) var(--sp-3) 44px;padding:var(--sp-2) var(--sp-3) var(--sp-3);background:var(--paper-2);
     border-radius:var(--radius-md);display:flex;flex-direction:column;gap:2px}
@@ -801,14 +803,14 @@
   .cc-label{width:100%}
   .cc-cur{flex:0 0 auto;width:auto;padding-right:var(--sp-2)}
   .cc-amount{flex:0 1 110px;min-width:88px}
-  /* order: the amount, its running figure and ✕ share one line (the
-     figure pushed to the same right-hand column as every other amount in
-     the card); the per-person switch takes the line under them, because
-     at 375px the two together are ~270px and the pane is ~250. */
-  .cc-per{order:2;flex:1 1 100%}
-  .cc-per button{font-size:var(--fs-caption)}
-  .cc-amt{order:1;margin-left:auto}
-  .cc-del{order:1;flex:0 0 auto}
+  /* The amount, then its per-person switch as a compact pill (same as the
+     Per person / Total switch above the banner), then the running figure
+     pushed to the right-hand column every other amount uses, then ✕. At
+     375px the figure and ✕ wrap to their own line, still right-aligned. */
+  .cc-per{flex:0 0 auto;flex-wrap:nowrap}
+  .cc-per button{font-size:var(--fs-caption);padding:0 var(--sp-2)}
+  .cc-amt{margin-left:auto}
+  .cc-del{flex:0 0 auto}
   .cc-add{margin-top:var(--sp-3)}
   /* No 16px floor for these fields here: GOLF-200's one app-wide rule at
      the foot of this stylesheet already covers them (it names them). */
