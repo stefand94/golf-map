@@ -87,7 +87,16 @@ for (const f of onDisk) {
 
 // 2. the HTML lists exactly the modules we know about, in order
 const html = fs.readFileSync(HTML, 'utf8');
-const listed = [...html.matchAll(/<script src="js\/([^"]+)"><\/script>/g)].map(m => m[1]);
+// GOLF-210: tags carry a ?v=<build> stamp; compare the bare file names.
+const listed = [...html.matchAll(/<script src="js\/([^"?]+)(?:\?v=[0-9a-f]*)?"><\/script>/g)].map(m => m[1]);
+// ...and every local tag carries the same one, matching sw.js's CACHE_NAME,
+// or the page asks for two builds at once and the cache split is back.
+{
+  const stamps = [...html.matchAll(/<script src="(?:js|data)\/[^"?]+(?:\?v=([0-9a-f]*))?"><\/script>/g)].map(m => m[1] || '(none)');
+  const cacheName = (fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8').match(/const CACHE_NAME = '[^']*-([0-9a-f]+)';/) || [])[1];
+  const bad = [...new Set(stamps)].filter(v => v !== cacheName);
+  if (bad.length) failures.push(`HTML script ?v= stamps ${bad.join(', ')} don't match sw.js CACHE_NAME build ${cacheName} — run python3 scripts/update_sw_cache_version.py`);
+}
 const missingFromHtml = ORDER.filter(f => !listed.includes(f));
 const extraInHtml = listed.filter(f => !ORDER.includes(f));
 const notOnDisk = ORDER.filter(f => !onDisk.includes(f));

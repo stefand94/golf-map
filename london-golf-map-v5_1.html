@@ -1367,35 +1367,59 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
-<script src="data/config.js"></script>
-<script src="data/stations.js"></script>
-<script src="data/courses-london.js"></script>
-<script src="data/courses-top100.js"></script>
-<script src="data/courses-scotland.js"></script>
-<script src="data/courses-wales.js"></script>
-<script src="data/courses-ireland.js"></script>
-<script src="data/courses-southafrica.js"></script>
-<script src="data/course-ids.js"></script>
-<script src="data/rail-geometry.js"></script>
-<script src="js/app-version.js"></script>
-<script src="js/util.js"></script>
-<script src="js/course-id.js"></script>
-<script src="js/trip-model.js"></script>
-<script src="js/state.js"></script>
-<script src="js/handicap.js"></script>
-<script src="js/map.js"></script>
-<script src="js/trip-geo.js"></script>
-<script src="js/trip-route.js"></script>
-<script src="js/trip-add.js"></script>
-<script src="js/ors.js"></script>
-<script src="js/hotel-layer.js"></script>
-<script src="js/poi.js"></script>
-<script src="js/trip-ui.js"></script>
-<script src="js/touch-dnd.js"></script>
-<script src="js/app-mode.js"></script>
-<script src="js/mobile-sheet.js"></script>
-<script src="js/trip-share.js"></script>
-<script src="js/explore.js"></script>
-<script src="js/course-filters.js"></script>
-<script src="js/editor.js"></script>
-<script src="js/boot.js"></script>
+<script src="data/config.js?v=1e03b3a538"></script>
+<script src="data/stations.js?v=1e03b3a538"></script>
+<script src="data/courses-london.js?v=1e03b3a538"></script>
+<script src="data/courses-top100.js?v=1e03b3a538"></script>
+<script src="data/courses-scotland.js?v=1e03b3a538"></script>
+<script src="data/courses-wales.js?v=1e03b3a538"></script>
+<script src="data/courses-ireland.js?v=1e03b3a538"></script>
+<script src="data/courses-southafrica.js?v=1e03b3a538"></script>
+<script src="data/course-ids.js?v=1e03b3a538"></script>
+<script src="data/rail-geometry.js?v=1e03b3a538"></script>
+<script src="js/app-version.js?v=1e03b3a538"></script>
+<!-- GOLF-210: build check. Every local script above and below carries this
+     page's build as ?v= (stamped by scripts/update_sw_cache_version.py), so
+     no cache should be able to pair this HTML with another build's JS. If one
+     still does (APP_VERSION is not the build this page asked for), stop here,
+     before state.js can run DEC-011's wipe against the wrong version, clear
+     any other build's service-worker cache, and reload once. The session
+     flag makes that once per build: if the reload didn't fix it, the page
+     carries on rather than loop. Unstamped (local dev) pages skip it. -->
+<script>(function(){
+  var tag=document.querySelector('script[src^="js/app-version.js"]');
+  var want=tag&&(/[?&]v=([0-9a-f]+)/.exec(tag.getAttribute('src'))||[])[1];
+  var have=typeof APP_VERSION==='string'?APP_VERSION.slice(APP_VERSION.lastIndexOf('-')+1):'';
+  if(!want||want===have||navigator.onLine===false)return;
+  var KEY='golfmap:buildreload';
+  try{
+    if(sessionStorage.getItem(KEY)===want){console.warn('GOLF-210: page build '+want+' still loaded app-version '+have+' after a reload; carrying on.');return;}
+    sessionStorage.setItem(KEY,want);
+  }catch(e){return;}
+  window.stop();
+  var jobs=[];
+  if(window.caches)jobs.push(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k.indexOf('golfmap-shell-')===0&&k!=='golfmap-shell-v5-'+want;}).map(function(k){return caches.delete(k);}));}));
+  if(navigator.serviceWorker)jobs.push(navigator.serviceWorker.getRegistration().then(function(r){return r&&r.update();}));
+  Promise.all(jobs).catch(function(){}).then(function(){location.reload();});
+})();</script>
+<script src="js/util.js?v=1e03b3a538"></script>
+<script src="js/course-id.js?v=1e03b3a538"></script>
+<script src="js/trip-model.js?v=1e03b3a538"></script>
+<script src="js/state.js?v=1e03b3a538"></script>
+<script src="js/handicap.js?v=1e03b3a538"></script>
+<script src="js/map.js?v=1e03b3a538"></script>
+<script src="js/trip-geo.js?v=1e03b3a538"></script>
+<script src="js/trip-route.js?v=1e03b3a538"></script>
+<script src="js/trip-add.js?v=1e03b3a538"></script>
+<script src="js/ors.js?v=1e03b3a538"></script>
+<script src="js/hotel-layer.js?v=1e03b3a538"></script>
+<script src="js/poi.js?v=1e03b3a538"></script>
+<script src="js/trip-ui.js?v=1e03b3a538"></script>
+<script src="js/touch-dnd.js?v=1e03b3a538"></script>
+<script src="js/app-mode.js?v=1e03b3a538"></script>
+<script src="js/mobile-sheet.js?v=1e03b3a538"></script>
+<script src="js/trip-share.js?v=1e03b3a538"></script>
+<script src="js/explore.js?v=1e03b3a538"></script>
+<script src="js/course-filters.js?v=1e03b3a538"></script>
+<script src="js/editor.js?v=1e03b3a538"></script>
+<script src="js/boot.js?v=1e03b3a538"></script>

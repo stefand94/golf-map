@@ -66,10 +66,14 @@ const poiData={};        // region -> inflated [{id,name,label,group,lat,lng,sco
 const poiStatus={};      // region -> 'loading' | 'ready' | 'missing'
 const poiPending={};     // region -> Promise (dedupes concurrent requests)
 let poiCatsPromise=null;
+/* GOLF-210: same ?v=<build> stamp as the page's own script tags, so a
+   returning visitor's 4-hour HTTP cache can't hand back last deploy's copy
+   and sw.js matches pois-categories.js to its precached entry. */
+const POI_BUILD=typeof APP_VERSION==='string'?APP_VERSION.slice(APP_VERSION.lastIndexOf('-')+1):'';
 function poiLoadScript(src){
   return new Promise((res,rej)=>{
     const s=document.createElement('script');
-    s.src=src;s.async=true;
+    s.src=POI_BUILD?src+'?v='+POI_BUILD:src;s.async=true;
     s.onload=()=>res();
     s.onerror=()=>{s.remove();rej(new Error('failed to load '+src));};
     document.head.appendChild(s);

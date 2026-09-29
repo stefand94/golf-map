@@ -75,7 +75,7 @@
    manifest and icons are unchanged — still cache-first, since they get
    a fresh CACHE_NAME whenever their content changes and that's what
    keeps repeat/offline loads instant. */
-const CACHE_NAME = 'golfmap-shell-v5-580a2f9934';
+const CACHE_NAME = 'golfmap-shell-v5-1e03b3a538';
 
 /* GOLF-147: hotel-layer.js (GOLF-142) and trip-share.js were both added to the
    page's <script> list without ever being added here, so the SW precached
@@ -207,21 +207,38 @@ function stripRedirect(res) {
   }));
 }
 
+/* GOLF-210: index.html asks for every local script as `?v=<build>`, the
+   last segment of CACHE_NAME (scripts/update_sw_cache_version.py stamps
+   both). Precache entries are stored without the query, so a request for
+   this worker's own build is answered from the precache by its bare path.
+   A request for a DIFFERENT build (new HTML reached us before this worker
+   was replaced) goes to the network and is never cached here: serving this
+   cache's copy is exactly the old-JS-on-new-HTML mix the stamp prevents.
+   Worker versions from before GOLF-210 match the full URL, miss, and fetch
+   the right build too, which is what makes the change safe to roll out. */
+const BUILD = CACHE_NAME.slice(CACHE_NAME.lastIndexOf('-') + 1);
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   // Only handle same-origin GETs — everything else (the ORS Worker,
   // Leaflet tiles, Google Fonts) passes straight through to the
   // network exactly as if this service worker didn't exist.
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  const url = new URL(req.url);
 
-  // GOLF-122: network-first for navigation requests (the HTML documents —
-  // './' and './london-golf-map-v5_1') so a single reload after a deploy
-  // shows fresh content. Cache-first served the stale shell instantly and
-  // the new version only took effect on the *next* load, so every deploy
-  // looked like it needed a double-reload. Everything else stays
-  // cache-first below — those files get a fresh CACHE_NAME whenever their
-  // content changes, so cache-first is both correct and what keeps
-  // repeat/offline loads instant.
+  // The cache key: the URL without its ?v= stamp (see BUILD above).
+  const reqBuild = url.searchParams.get('v');
+  url.searchParams.delete('v');
+  const key = url.href;
+  const ownBuild = !reqBuild || reqBuild === BUILD;
+
+  // GOLF-122: network-first for navigation requests (the HTML document)
+  // so a single reload after a deploy shows fresh content. Cache-first
+  // served the stale shell instantly and the new version only took effect
+  // on the *next* load, so every deploy looked like it needed a
+  // double-reload. Everything else stays cache-first below — those files
+  // get a fresh CACHE_NAME whenever their content changes, so cache-first
+  // is both correct and what keeps repeat/offline loads instant.
   // GOLF-148: the POI dataset (data/pois-*.js) is deliberately NOT in
   // PRECACHE_URLS — precaching would download every region (~450KB gz) on
   // install, defeating the lazy load. It also can't be cache-first: its
@@ -232,40 +249,42 @@ self.addEventListener('fetch', (event) => {
   // pois-categories.js is deliberately NOT matched here — it IS precached, so
   // it follows the normal cache-first path and refreshes when CACHE_NAME bumps,
   // exactly like the course data. Only the lazy region files are network-first.
-  const isPoiRegionData = /\/data\/pois-(?!categories\.js$)[a-z]+\.js$/
-    .test(new URL(req.url).pathname);
+  const isPoiRegionData = /\/data\/pois-(?!categories\.js$)[a-z]+\.js$/.test(url.pathname);
   if (req.mode === 'navigate' || isPoiRegionData) {
     event.respondWith(
       fetch(req)
         .then((res) => stripRedirect(res).then((out) => {
           if (out && out.ok) {
             const copy = out.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+            caches.open(CACHE_NAME).then((cache) => cache.put(key, copy));
           }
           return out;
         }))
         // Offline: fall back to this request's cached copy, then to the
         // canonical shell so any in-app URL still renders.
-        .catch(() => caches.match(req)
+        .catch(() => caches.match(key)
           .then((hit) => hit || (isPoiRegionData ? Response.error() : caches.match('./london-golf-map-v5_1'))))
     );
     return;
   }
 
   event.respondWith(
-    caches.match(req).then((cached) => {
+    (ownBuild ? caches.match(key) : Promise.resolve(undefined)).then((cached) => {
       if (cached) return cached;
       return fetch(req).then((res) => stripRedirect(res).then((out) => {
         // Opportunistically cache anything same-origin and OK that
         // wasn't in the precache list (e.g. a data file added later
         // without a service-worker update) so it's available offline
-        // on the next visit too.
-        if (out && out.ok) {
+        // on the next visit too — but only for this worker's own build.
+        if (ownBuild && out && out.ok) {
           const copy = out.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+          caches.open(CACHE_NAME).then((cache) => cache.put(key, copy));
         }
         return out;
-      })).catch(() => cached);
+      // Offline and asked for another build: this cache's copy is the only
+      // one there is. The page's build check (index.html) notices the
+      // mismatch and recovers once it is back online.
+      })).catch(() => caches.match(key));
     })
   );
 });

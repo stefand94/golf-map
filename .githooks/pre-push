@@ -6,35 +6,38 @@
 #   git config core.hooksPath .githooks
 # set (one-time, per clone — see scripts/README.md).
 #
-# Behaviour: recomputes sw.js's CACHE_NAME from the current content of
-# every precached file. If nothing changed, it's a silent no-op. If
-# something did, it rewrites sw.js and — since a version bump with no
-# corresponding commit would ship an uncommitted change — auto-commits
-# just that one file with a clear message, then continues the push so the
-# fix goes out in the same push rather than needing a second one.
+# Behaviour: since GOLF-205 the stamp is normally committed straight after
+# the commit that needs it, by .githooks/post-commit. This is the backstop
+# for anything that skipped that (a rebase, a merge, a clone without the
+# hooks path set). If HEAD still needs a stamp, it is committed here, and if
+# HEAD is part of this push the push is stopped: git has already fixed the
+# list of commits to send, so the stamp would otherwise ship one push late.
+# Re-running `git push` sends both.
 
 set -e
 cd "$(git rev-parse --show-toplevel)"
 
-python3 scripts/update_sw_cache_version.py
+PUSHING="$(cat)"
+OLD_HEAD="$(git rev-parse HEAD)"
+set +e
+python3 scripts/update_sw_cache_version.py --commit
+STAMP=$?
+set -e
+if [ "$STAMP" -eq 3 ]; then
+  if printf '%s\n' "$PUSHING" | grep -q " $OLD_HEAD "; then
+    echo "pre-push: HEAD needed a build-version stamp; committed it as $(git rev-parse --short HEAD)."
+    echo "          Push stopped so the stamp goes out with it. Run git push again."
+    exit 1
+  fi
+elif [ "$STAMP" -ne 0 ]; then
+  exit "$STAMP"
+fi
+
 # GOLF-164: same idea for the Cloudflare Worker — stamp a content hash into
 # it so X-Worker-Build answers "is the deployed Worker this source?" in one
 # curl. The Worker isn't precached by sw.js (different origin), so it needs
 # its own stamper rather than a line in the one above.
 python3 scripts/update_worker_build.py
-
-# GOLF-150: the stamper writes TWO files — sw.js's CACHE_NAME and
-# js/app-version.js's APP_VERSION (GOLF-132) — and they are only meaningful
-# in lockstep, since the update prompt works by comparing them. This hook
-# used to stage sw.js alone, so a push left the APP_VERSION bump behind as
-# an uncommitted change and main briefly carried mismatched versions.
-# Both files are staged together, and the check covers both so a change to
-# either one is committed.
-if ! git diff --quiet -- sw.js js/app-version.js; then
-  git add sw.js js/app-version.js
-  git commit -m "sw.js: auto-bump CACHE_NAME (precached content changed)" -q
-  echo "pre-push: sw.js CACHE_NAME + js/app-version.js APP_VERSION bumped and committed automatically."
-fi
 
 # GOLF-164: committed separately from the sw.js bump — they version different
 # things (the site's precached shell vs the Worker's source) and a push that

@@ -48,30 +48,57 @@ js/app-version.js is excluded from the hash input itself (circular
 otherwise) but IS listed in PRECACHE_URLS so it's still cached/versioned
 like every other precached file.
 
-Usage:  python3 scripts/update_sw_cache_version.py
+GOLF-210: the same digest is also stamped into the app HTML as a `?v=`
+query on every local <script src>. Cloudflare serves every .js with
+`max-age=14400`, so without it a returning visitor's browser could run
+four-hour-old JS against fresh HTML (or, with an old service worker,
+old cache-first JS against network-first HTML). A new build means new
+script URLs, which neither cache has seen. The `?v=` values are removed
+from the HTML before hashing, so the stamp never feeds its own digest.
+
+GOLF-205: the pre-push hook used to commit the stamp after git had already
+decided what to push, so the bump shipped one push late: the deploy went
+out with new files under the old version. `--commit` writes the stamp as a
+commit of its own, built from HEAD's committed files only, so nothing
+uncommitted or staged is swept into it. .githooks/post-commit runs it after
+every commit, and .githooks/pre-push runs it as a backstop that stops the
+push when it had to add a commit, so the push can be re-run with it.
+
+Usage:  python3 scripts/update_sw_cache_version.py            (stamps the working tree)
+        python3 scripts/update_sw_cache_version.py --commit   (stamps HEAD as a new commit)
 Exits non-zero only on a real error (missing file, unreadable sw.js).
+With --commit, exits 3 when it made a commit, so a hook can tell.
 """
 import hashlib
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SW_PATH = ROOT / 'sw.js'
-APP_VERSION_PATH = ROOT / 'js' / 'app-version.js'
+SW_REL = 'sw.js'
+APP_VERSION_REL = 'js/app-version.js'
+HTML_REL = 'london-golf-map-v5_1.html'
 # Excluded from the hash input for the same reason sw.js itself is: this
 # script rewrites APP_VERSION into this file, so hashing its own content
 # would be circular.
-HASH_EXCLUDED_FILES = {'js/app-version.js'}
+HASH_EXCLUDED_FILES = {APP_VERSION_REL}
 
 # PRECACHE_URLS entries are relative URLs, not always literal filesystem
-# paths — map the two exceptions by hand, everything else is a direct
+# paths — map the exceptions by hand, everything else is a direct
 # relative-path match (strip the leading './').
 URL_TO_FILE = {
-    './': 'london-golf-map-v5_1.html',           # index.html itself just meta-refreshes here
-    './london-golf-map-v5_1': 'london-golf-map-v5_1.html',
+    './': HTML_REL,           # index.html itself just meta-refreshes here
+    './london-golf-map-v5_1': HTML_REL,
 }
+
+CACHE_NAME_RE = re.compile(r"const CACHE_NAME = '([^']*)';")
+APP_VERSION_RE = re.compile(r"const APP_VERSION='([^']*)';")
+# A local script tag, with or without a ?v= stamp. External (https://) tags
+# are left alone: they are versioned by their own URLs.
+SCRIPT_TAG_RE = re.compile(r'(<script src="(?:js|data)/[^"?]+\.js)(?:\?v=[0-9a-f]*)?(")')
+
 
 def extract_precache_urls(sw_text):
     m = re.search(r'const PRECACHE_URLS\s*=\s*\[(.*?)\];', sw_text, re.S)
@@ -81,6 +108,11 @@ def extract_precache_urls(sw_text):
     if not urls:
         raise SystemExit('FAIL: PRECACHE_URLS parsed empty — check sw.js format')
     return urls
+
+
+def git(*args, **kw):
+    return subprocess.run(['git', *args], cwd=ROOT, capture_output=True, check=True, **kw).stdout
+
 
 def committed_bytes(rel):
     """The file's content at HEAD, or None if HEAD doesn't have it.
@@ -96,9 +128,15 @@ def committed_bytes(rel):
     return r.stdout if r.returncode == 0 else None
 
 
-def main():
-    sw_text = SW_PATH.read_text(encoding='utf-8')
-    urls = extract_precache_urls(sw_text)
+def unstamp_html(text):
+    return SCRIPT_TAG_RE.sub(r'\1\2', text)
+
+
+def compute_cache_name():
+    sw_blob = committed_bytes(SW_REL)
+    if sw_blob is None:
+        raise SystemExit('FAIL: sw.js is not committed at HEAD')
+    urls = extract_precache_urls(sw_blob.decode('utf-8'))
 
     h = hashlib.sha256()
     missing = []
@@ -110,6 +148,8 @@ def main():
         if blob is None:
             missing.append((url, rel))
             continue
+        if rel == HTML_REL:
+            blob = unstamp_html(blob.decode('utf-8')).encode('utf-8')
         h.update(blob)
     if missing:
         for url, rel in missing:
@@ -117,36 +157,129 @@ def main():
                   f'(a new precached file must be committed before it can be hashed)',
                   file=sys.stderr)
         sys.exit(1)
+    return f'golfmap-shell-v5-{h.hexdigest()[:10]}'
 
-    digest = h.hexdigest()[:10]
-    new_cache_name = f'golfmap-shell-v5-{digest}'
 
-    m = re.search(r"const CACHE_NAME = '([^']*)';", sw_text)
-    if not m:
-        raise SystemExit('FAIL: could not find CACHE_NAME constant in sw.js')
-    current = m.group(1)
+def stamp(rel, text, cache_name):
+    """Return `text` with this file's version stamp(s) set to cache_name.
 
-    if current == new_cache_name:
-        print(f'sw.js CACHE_NAME unchanged ({current}) — precached content has not changed.')
-        return
+    Pure text substitution, so it works the same on HEAD's copy and on a
+    working copy with unrelated edits in it."""
+    if rel == SW_REL:
+        if not CACHE_NAME_RE.search(text):
+            raise SystemExit('FAIL: could not find CACHE_NAME constant in sw.js')
+        return CACHE_NAME_RE.sub(f"const CACHE_NAME = '{cache_name}';", text, count=1)
+    if rel == APP_VERSION_REL:
+        if not APP_VERSION_RE.search(text):
+            raise SystemExit('FAIL: could not find APP_VERSION constant in js/app-version.js')
+        return APP_VERSION_RE.sub(f"const APP_VERSION='{cache_name}';", text, count=1)
+    if rel == HTML_REL:
+        if not SCRIPT_TAG_RE.search(text):
+            raise SystemExit('FAIL: found no local <script src> tags in the app HTML')
+        build = cache_name.rsplit('-', 1)[1]
+        return SCRIPT_TAG_RE.sub(rf'\1?v={build}\2', text)
+    raise ValueError(rel)
 
-    updated = sw_text.replace(f"const CACHE_NAME = '{current}';", f"const CACHE_NAME = '{new_cache_name}';", 1)
-    SW_PATH.write_text(updated, encoding='utf-8')
-    print(f'sw.js CACHE_NAME updated: {current} -> {new_cache_name}')
 
-    # GOLF-132: keep js/app-version.js's APP_VERSION in lockstep with the
-    # same digest, so the page can detect this same deploy without a
-    # runtime fetch of sw.js.
-    if not APP_VERSION_PATH.exists():
-        raise SystemExit(f'FAIL: {APP_VERSION_PATH} does not exist')
-    av_text = APP_VERSION_PATH.read_text(encoding='utf-8')
-    av_m = re.search(r"const APP_VERSION='([^']*)';", av_text)
-    if not av_m:
-        raise SystemExit('FAIL: could not find APP_VERSION constant in js/app-version.js')
-    av_current = av_m.group(1)
-    av_updated = av_text.replace(f"const APP_VERSION='{av_current}';", f"const APP_VERSION='{new_cache_name}';", 1)
-    APP_VERSION_PATH.write_text(av_updated, encoding='utf-8')
-    print(f'js/app-version.js APP_VERSION updated: {av_current} -> {new_cache_name}')
+STAMPED_FILES = (SW_REL, APP_VERSION_REL, HTML_REL)
+
+
+def stamp_working_tree(cache_name):
+    changed = []
+    for rel in STAMPED_FILES:
+        path = ROOT / rel
+        if not path.exists():
+            raise SystemExit(f'FAIL: {rel} does not exist')
+        old = path.read_text(encoding='utf-8')
+        new = stamp(rel, old, cache_name)
+        if new != old:
+            path.write_text(new, encoding='utf-8')
+            changed.append(rel)
+    return changed
+
+
+def git_path(name):
+    p = Path(git('rev-parse', '--git-path', name).decode().strip())
+    return p if p.is_absolute() else ROOT / p
+
+
+def operation_in_progress():
+    for name in ('rebase-merge', 'rebase-apply', 'MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD'):
+        if git_path(name).exists():
+            return name
+    return None
+
+
+def commit_stamp(cache_name):
+    """Commit HEAD's own files with the stamps applied, on top of HEAD.
+
+    Built with a throwaway index (read-tree HEAD, swap in the stamped blobs,
+    write-tree, commit-tree), so the commit holds exactly HEAD plus the
+    stamps: nothing staged or unstaged is swept in. Afterwards the real
+    index and working tree get the same stamps, leaving any other edits to
+    those files where they were."""
+    head = git('rev-parse', 'HEAD').decode().strip()
+    new_blobs = {}
+    for rel in STAMPED_FILES:
+        old = committed_bytes(rel)
+        if old is None:
+            raise SystemExit(f'FAIL: {rel} is not committed at HEAD')
+        new = stamp(rel, old.decode('utf-8'), cache_name).encode('utf-8')
+        if new != old:
+            new_blobs[rel] = git('hash-object', '-w', '--stdin', input=new).decode().strip()
+    if not new_blobs:
+        return None
+
+    tmp_index = str(git_path('index.golf-stamp'))
+    env = {**os.environ, 'GIT_INDEX_FILE': tmp_index}
+    try:
+        subprocess.run(['git', 'read-tree', 'HEAD'], cwd=ROOT, env=env, check=True)
+        for rel, blob in new_blobs.items():
+            mode = git('ls-tree', 'HEAD', '--', rel).decode().split()[0]
+            subprocess.run(['git', 'update-index', '--cacheinfo', f'{mode},{blob},{rel}'],
+                           cwd=ROOT, env=env, check=True)
+        tree = subprocess.run(['git', 'write-tree'], cwd=ROOT, env=env, check=True,
+                              capture_output=True).stdout.decode().strip()
+    finally:
+        if os.path.exists(tmp_index):
+            os.remove(tmp_index)
+    msg = 'sw.js: auto-bump CACHE_NAME (precached content changed)\n'
+    commit = git('commit-tree', tree, '-p', head, input=msg.encode()).decode().strip()
+    git('update-ref', '-m', 'golf-stamp: auto-bump CACHE_NAME', 'HEAD', commit, head)
+
+    # Real index: move each stamped path to the new blob only where it still
+    # held HEAD's blob, so a partly-staged change to the same file survives.
+    for rel, blob in new_blobs.items():
+        r = subprocess.run(['git', 'rev-parse', f':{rel}'], cwd=ROOT, capture_output=True)
+        if r.returncode == 0 and r.stdout.decode().strip() == git('rev-parse', f'{head}:{rel}').decode().strip():
+            mode = git('ls-tree', commit, '--', rel).decode().split()[0]
+            git('update-index', '--cacheinfo', f'{mode},{blob},{rel}')
+    stamp_working_tree(cache_name)
+    return commit
+
+
+def main():
+    cache_name = compute_cache_name()
+
+    if '--commit' in sys.argv[1:]:
+        op = operation_in_progress()
+        if op:
+            print(f'stamp: {op} in progress, not committing; the pre-push check will catch it.')
+            return 0
+        commit = commit_stamp(cache_name)
+        if not commit:
+            print(f'sw.js CACHE_NAME unchanged ({cache_name}) — precached content has not changed.')
+            return 0
+        print(f'stamp: committed {commit[:7]} — CACHE_NAME, APP_VERSION and the HTML ?v= now {cache_name}.')
+        return 3
+
+    changed = stamp_working_tree(cache_name)
+    if not changed:
+        print(f'sw.js CACHE_NAME unchanged ({cache_name}) — precached content has not changed.')
+    else:
+        print(f'stamped {cache_name} into: {", ".join(changed)}')
+    return 0
+
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

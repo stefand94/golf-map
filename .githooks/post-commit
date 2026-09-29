@@ -1,0 +1,18 @@
+#!/bin/sh
+# GOLF-205: stamp the build version right after the commit that needs it,
+# so it is already in history when `git push` decides what to send. The
+# pre-push hook used to do this, but by then git had fixed the list of
+# commits to push, so each bump shipped one push late and the deploy went
+# out with new files under the old version (the GOLF-210 mismatch).
+#
+# scripts/update_sw_cache_version.py --commit adds its own small commit
+# ("sw.js: auto-bump CACHE_NAME ...") built from HEAD's committed files
+# only, so nothing staged or unstaged is swept in. It is a no-op when no
+# precached file changed, and it stands aside during a rebase, merge or
+# cherry-pick (pre-push catches those). A post-commit hook cannot fail the
+# commit, so any error here is only printed.
+
+cd "$(git rev-parse --show-toplevel)" || exit 0
+python3 scripts/update_sw_cache_version.py --commit >/dev/null
+[ $? -eq 3 ] && echo "post-commit: build version stamped in a follow-up commit ($(git rev-parse --short HEAD))."
+exit 0
