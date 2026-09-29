@@ -22,6 +22,27 @@ function tbSearchResults(){
      hide courses when searching from the Itinerary tab. */
   return C.map((c,i)=>i).filter(i=>searchMatches(i,q)&&tbCourseOfferable(i)).slice(0,20);
 }
+/* GOLF-209: a trip that already crosses the Irish Sea (GB and Ireland
+   courses both in it), or has a course or located stop within
+   TB_NEARBY_RADIUS_MI of both nations' courses (Stranraer, Holyhead), gets
+   place search on both sides instead of one country. The fallback is the
+   Worker's unrestricted list, so no Worker change. */
+function tbTripSpansIrishSea(){
+  const nations=new Set(tripSeq.filter(i=>C[i]).map(courseNation));
+  if(nations.has('gb')&&nations.has('ie'))return true;
+  if(!nations.has('gb')&&!nations.has('ie')&&nations.size)return false;
+  const pts=tripSeq.filter(i=>C[i]).map(i=>[C[i].lat,C[i].lng]);
+  tripDays.forEach(d=>{if(Number.isFinite(d.placeLat)&&Number.isFinite(d.placeLng))pts.push([d.placeLat,d.placeLng]);});
+  return pts.some(([lat,lng])=>{
+    const near=new Set();
+    for(let i=0;i<C.length&&near.size<2;i++){
+      const n=courseNation(i);
+      if((n==='gb'||n==='ie')&&!near.has(n)&&courseShownOnMap(i)
+        &&haversineMiles(lat,lng,C[i].lat,C[i].lng)<=TB_NEARBY_RADIUS_MI)near.add(n);
+    }
+    return near.size===2;
+  });
+}
 /* GOLF-92: place search wasn't ringfenced to the trip a visitor is
    actually planning — a South Africa trip's "add a stop" location field
    queried all nations, so a South African street name could surface an
@@ -36,6 +57,7 @@ function tbSearchResults(){
    trip with nothing added), and finally unrestricted. Returns
    'GBR'/'IRL'/'ZAF'/null, matching orsGeocode()'s `country` vocabulary. */
 function tbTripCountryCode(dayId){
+  if(tbTripSpansIrishSea())return null; // GOLF-209: search both sides
   const codeFor=i=>{const n=courseNation(i);return n==='ie'?'IRL':n==='za'?'ZAF':n==='gb'?'GBR':null;};
   const day=dayId==null?null:tripDays.find(d=>d.id===dayId);
   if(day)for(const it of tripDayItems(day))if(it.type==='golf'){const c=codeFor(it.i);if(c)return c;}

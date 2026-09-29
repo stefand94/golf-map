@@ -369,6 +369,12 @@ function tbEffectiveAnchor(){
 /* GOLF-185d: also honours the course filters, so a filtered-out course
    can't be offered by a Discover list that the map is no longer showing. */
 function tbNationFilter(i){return(!state.nation||courseNation(i)===state.nation)&&courseShownOnMap(i)&&courseFilterPasses(i);}
+/* GOLF-209: "Nearby" means nearby. The country is a focus, not a wall, so
+   the two distance-ranked scopes (Discover's Nearby list and the Itinerary
+   Courses layer) drop the nation gate and keep everything else: a GB trip
+   near Stranraer sees Portrush. By region, the ranked lists, Plan search
+   and the map pins still go by the country pill. */
+function tbNearbyFilter(i){return courseShownOnMap(i)&&courseFilterPasses(i);}
 /* GOLF-91: "Near a place" and "Nearby" were two tabs doing the exact same
    "nearest 5 bookable courses to a point" query, differing only in where
    the point came from (a searched place vs. the last course added) — a
@@ -399,14 +405,14 @@ function tbDiscover(){
   // Over-fetch past the 5 we'll show, since some of the nearest courses
   // overall may already be in the cart (or in a different nation) and get
   // filtered out below.
-  return nearestCoursesToPoint(pt.lat,pt.lng,5+TRIP.size).filter(({i})=>!TRIP.has(i)&&tbNationFilter(i)).slice(0,5);
+  return nearestCoursesToPoint(pt.lat,pt.lng,5+TRIP.size).filter(({i})=>!TRIP.has(i)&&tbNearbyFilter(i)).slice(0,5);
 }
 /* GOLF-108: the Itinerary tab's map shows other bookable courses near the
    trip, gated by the "Nearby courses" toggle (tbShowNearby, default OFF —
    see GOLF-131). This is the MAP only — the Discover sidebar list is
    untouched (still 5). Wider than Discover's 5: nearest TB_NEARBY_MAX
    courses within TB_NEARBY_RADIUS_MI of ANY trip course OR the current map
-   view, respecting the nation pill. Cheap — one synchronous pass over C,
+   view, ignoring the nation pill (GOLF-209). Cheap — one synchronous pass over C,
    no network. */
 const TB_NEARBY_RADIUS_MI=60,TB_NEARBY_MAX=24;
 /* GOLF-131: anchoring on trip stops alone meant panning the map to an area
@@ -418,6 +424,9 @@ const TB_NEARBY_RADIUS_MI=60,TB_NEARBY_MAX=24;
    nearby set to match whatever's on screen. */
 function tbItinNearbyAnchorPts(){
   const pts=tripSeq.filter(i=>C[i]).map(i=>({lat:C[i].lat,lng:C[i].lng}));
+  /* GOLF-209: located day stops anchor too, so a Holyhead ferry day
+     surfaces what's across the water without a course there yet. */
+  tripDays.forEach(d=>{if(Number.isFinite(d.placeLat)&&Number.isFinite(d.placeLng))pts.push({lat:d.placeLat,lng:d.placeLng});});
   if(!pts.length){const p=tbNearbyAnchorPoint();if(p)pts.push({lat:p.lat,lng:p.lng});}
   if(map)pts.push(map.getCenter());
   return pts;
@@ -427,7 +436,7 @@ function tbItinNearbyCourses(){
   if(!anchors.length)return[];
   const out=[];
   C.forEach((c,i)=>{
-    if(TRIP.has(i)||!bookable(i)||!tbNationFilter(i))return;
+    if(TRIP.has(i)||!bookable(i)||!tbNearbyFilter(i))return;
     let d=Infinity;
     for(const a of anchors){const m=haversineMiles(a.lat,a.lng,c.lat,c.lng);if(m<d)d=m;}
     if(d<=TB_NEARBY_RADIUS_MI)out.push({i,d});
