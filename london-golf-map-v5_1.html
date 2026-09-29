@@ -802,10 +802,8 @@
   .cc-amt{order:1;margin-left:auto}
   .cc-del{order:1;flex:0 0 auto}
   .cc-add{margin-top:var(--sp-3)}
-  /* GOLF-200: iOS Safari zooms into any focused input under 16px, and the
-     page stays zoomed. Scoped to this ticket's own fields; the app-wide
-     sweep is GOLF-200 itself. */
-  @media (max-width:900px){.cc-row .tb-field{font-size:16px}}
+  /* No 16px floor for these fields here: GOLF-200's one app-wide rule at
+     the foot of this stylesheet already covers them (it names them). */
   /* item-6: the Share button's inline SVG icon (SHARE_ICON_SVG) — nudged
      to sit on the text baseline rather than the glyph's own box-center. */
   .share-icon{vertical-align:-2px;margin-right:1px}
