@@ -145,6 +145,10 @@ function loadStoredState(){
   if(saved.edits)Object.assign(EDITS,courseDecodeKeyed(saved.edits));
   (saved.played||[]).forEach(r=>{const i=courseRefDecode(r);if(i!==null)PLAYED.add(i)});
   (saved.want||[]).forEach(r=>{const i=courseRefDecode(r);if(i!==null)WANT.add(i)});
+  /* GOLF-198: one course saved under both its records, marked played
+     under one and want under the other — played wins, as togglePlayed()
+     would have made it. */
+  PLAYED.forEach(i=>WANT.delete(i));
   if(deployChanged){
     // Leave `trips`/`activeTripId` at their already-initialised, empty
     // defaults (same shape tripStartFresh() resets to) and persist that

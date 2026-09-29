@@ -27,7 +27,10 @@ function courseNation(i){const c=C[i];return c.topIreland?'ie':c.topSouthAfrica?
    data/courses-southafrica.js — they stay in the file (recoverable, and
    ready for a future "show all" toggle) but only entries carrying
    `zaRanked:1` surface on the map. Non-ZA nations are unaffected. */
-function courseShownOnMap(i){return!(courseNation(i)==='za'&&!C[i].zaRanked);}
+/* GOLF-198: `dupOf` marks the redundant half of a course that was in the
+   data twice — never shown, its references resolve to the kept record
+   (js/course-id.js). Everything that lists courses funnels through here. */
+function courseShownOnMap(i){return!C[i].dupOf&&!(courseNation(i)==='za'&&!C[i].zaRanked);}
 const NATIONS=[['gb','Great Britain'],['ie','Ireland'],['za','South Africa']];
 function renderNationPills(){
   document.getElementById('nation-pills').innerHTML=NATIONS.map(([k,l])=>

@@ -31,7 +31,7 @@ function haversineMiles(lat1,lng1,lat2,lng2){
    Birkdale, Royal Liverpool, Hillside, West Lancs... — is tier "limited",
    so an public/open-only definition returned zero results for exactly
    the coastal-cluster case this feature exists for. */
-function bookable(i){return['public','open','limited'].includes(V(i,'a'))}
+function bookable(i){return!C[i].dupOf&&['public','open','limited'].includes(V(i,'a'))} // GOLF-198: never auto-plan a dupOf record
 /* GOLF-27: region mode has no real geometry to hand (REGIONS is a flat
    label list), so "just over the border" is derived from actual course
    geography instead of a hand-maintained adjacency table — any bookable

@@ -132,7 +132,7 @@ function tripDecodeSharePayload(hash){
        which is what the old `C[i]` guard did too. Note this runs on
        untrusted input off the URL: courseRefDecode() is a Map lookup with
        a type check, so an arbitrary string can only ever miss. */
-    const seq=p.seq.map(courseRefDecode).filter(i=>i!==null&&C[i]).slice(0,500);
+    const seq=courseDecodeRefList(p.seq).filter(i=>C[i]).slice(0,500);
     const days=p.days.slice(0,SHARE_MAX_DAYS).map((d,idx)=>{
       if(!d||typeof d!=='object')return null;
       const items=(Array.isArray(d.items)?d.items:[]).slice(0,SHARE_MAX_ITEMS_PER_DAY).map((it,n)=>{
@@ -140,7 +140,7 @@ function tripDecodeSharePayload(hash){
         const id=shareStr(it.id,64)||('s'+idx+'-'+n);
         if(it.type==='golf'){
           const ci=courseRefDecode(it.c!==undefined?it.c:it.i);
-          return(ci!==null&&C[ci])?{id,type:'golf',i:ci}:null;
+          return(ci!==null&&C[ci])?{id,type:'golf',i:ci,_raw:it.c!==undefined?it.c:it.i}:null;
         }
         if(it.type!=='hotel'&&it.type!=='poi')return null;
         const name=shareStr(it.name,80);
@@ -169,6 +169,10 @@ function tripDecodeSharePayload(hash){
         items
       };
     }).filter(Boolean);
+    /* GOLF-198: an old link can hold both records of a course that was
+       in the data twice — keep the first, drop the other. */
+    courseDedupeAliasItems(days,it=>it._raw);
+    days.forEach(d=>d.items.forEach(it=>{delete it._raw;}));
     const gs=shareNum(p.gs,1,16);
     /* GOLF-203 — optional, and untrusted like everything else off the
        hash: same field-by-field rebuild, same caps. Absent on every link
