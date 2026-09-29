@@ -101,7 +101,15 @@ function tbTouchScroller(el){
    the visitor is now pointing at changes with no touch event at all. */
 function tbTouchHover(x,y){
   if(!tbTouch)return;
-  const target=tbTouchDropTarget(document.elementFromPoint(x,y));
+  /* Still over the row you picked up: no target. .tb-touch-lift is
+     pointer-events:none, so elementFromPoint() sees straight through to
+     the day behind it — which would make "lift, wiggle, release" quietly
+     move the item to the end of its own day. Releasing roughly where you
+     started should do nothing at all, so the source row's own footprint
+     is dead space for the whole drag. */
+  const sb=tbTouch.srcEl.getBoundingClientRect();
+  const target=(x>=sb.left&&x<=sb.right&&y>=sb.top&&y<=sb.bottom)
+    ? null : tbTouchDropTarget(document.elementFromPoint(x,y));
   if(target===tbTouch.overEl)return;
   if(tbTouch.overEl&&typeof tbTouch.overEl.ondragleave==='function')tbTouch.overEl.ondragleave(tbFakeDragEvent());
   if(target&&typeof target.ondragover==='function')target.ondragover(tbFakeDragEvent());
