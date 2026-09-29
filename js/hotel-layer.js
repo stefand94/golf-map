@@ -8,8 +8,8 @@
    touch — that picker's own Worker mode ('hotels') is untouched too.
 
    Off by default, not persisted (a browsing-mode preference, not trip
-   data — GOLF-142 requirement 5), matching tbShowNearby/tbDriveToggle's
-   precedent in js/trip-ui.js.
+   data — GOLF-142 requirement 5), matching tbShowNearby's precedent in
+   js/trip-ui.js and GOLF-207's POI layer in js/poi.js.
 
    Loaded as a plain <script> (not a module) after js/map.js (needs the
    global `map`) and js/ors.js (needs `ORS_PROXY_URL`, `esc`), before

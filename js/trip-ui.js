@@ -454,7 +454,7 @@ function itinLegRowHTML(l){
 function tbItinAllHTML(){
   if(!tripDays.length)return`<p class="hint">Add a day to start building your itinerary.</p>`;
   return tripDays.map((d,idx)=>{
-    const legs=tripDayLegs(idx).filter(l=>tbDriveToggle||l.type!=='drive');
+    const legs=tripDayLegs(idx);
     const dow=d.date?new Date(d.date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short'}):'';
     return`<div class="tb-day">
       <div class="tb-day-head">
@@ -468,39 +468,12 @@ function tbItinAllHTML(){
     </div>`;
   }).join('');
 }
-function tbItinGolfListHTML(){
-  const rows=[];
-  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='golf')rows.push({day:idx+1,name:tripItemName(it),price:tripItemPrice(d,it),cur:courseCurrency(it.i)});}));
-  if(!rows.length)return`<p class="hint">No golf rounds scheduled yet.</p>`;
-  return rows.map(r=>`<div class="itin-card"><div class="itin-card-kicker">Day ${r.day}</div>
-    <div class="itin-flat-row"><span class="itin-golf-name-lg">⛳ ${esc(r.name)}</span><span class="itin-golf-price-lg">${tbMoney(r.price,r.cur)}</span></div></div>`).join('');
-}
-function tbItinHotelRailHTML(){
-  const rows=[];
-  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='hotel')rows.push({day:idx+1,name:tripItemName(it),detail:tripItemPriceDetail(d,it)});}));
-  if(!rows.length)return`<p class="hint">No stays added yet.</p>`;
-  return`<div class="itin-rail">${rows.map(r=>`<div class="itin-rail-row"><div class="itin-rail-dot"></div>
-      <div class="itin-card-kicker">Day ${r.day}</div>
-      <div class="itin-flat-row"><span class="itin-hotel-name-md">🏨 ${esc(r.name)}</span><span class="itin-hotel-price-md">${tripPriceLabel(r.detail)}</span></div>
-    </div>`).join('')}</div>`;
-}
-function tbItinPoiListHTML(){
-  const rows=[];
-  // GOLF-173: the POI's own currency (from its coordinates), not the day's.
-  tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{if(it.type==='poi')rows.push({day:idx+1,name:tripItemName(it),price:tripItemPrice(d,it),cur:tripItemPriceDetail(d,it).cur});}));
-  if(!rows.length)return`<p class="hint">No stops added yet.</p>`;
-  return rows.map(r=>`<div class="itin-card"><div class="itin-card-kicker">Day ${r.day}</div>
-    <div class="itin-flat-row"><span class="itin-hotel-name-md">📍 ${esc(r.name)}</span><span class="itin-golf-price-lg">${tbMoney(r.price,r.cur)}</span></div></div>`).join('');
-}
-function tbItineraryHTML(){
-  if(!tripSeq.length&&!tripDays.some(d=>d.place||tripDayItems(d).length))
-    return`<p class="hint">Nothing in this trip yet. Search above, or hit <b>Add to trip</b> on any course.</p>`;
-  if(tbItinFilter==='golf')return tbItinGolfListHTML();
-  if(tbItinFilter==='hotel')return tbItinHotelRailHTML();
-  if(tbItinFilter==='poi')return tbItinPoiListHTML();
-  return tbItinAllHTML();
-}
-
+/* GOLF-207: the Itinerary "Show: Everything / Golf only / Stays only /
+   Stops only" filter is gone, and with it tbItinGolfListHTML(),
+   tbItinHotelRailHTML(), tbItinPoiListHTML() and the tbItineraryHTML()
+   dispatcher that chose between them — the itinerary always shows the
+   whole trip now. tbItinAllHTML() above survives because the read-only
+   share view still renders through it (js/trip-share.js). */
 /* ════════════════════════════════════════════════════════════════════
    Costs tab
    ════════════════════════════════════════════════════════════════════ */
@@ -889,11 +862,11 @@ function tbCostsTabHTML(){
 /* ════════════════════════════════════════════════════════════════════
    Build mode's editable itinerary — the day cards from the sketch.
    ════════════════════════════════════════════════════════════════════ */
-let tbBuildTab='itin',tbItinFilter='all',tbDriveToggle=true,tbDayShown=null;
+let tbBuildTab='itin',tbDayShown=null;
 /* GOLF-108: "Show nearby courses" on the Itinerary tab map. Owner decision
    2026-09-07 — default ON; flip TB_SHOW_NEARBY_DEFAULT to change it, no
-   other code change needed. Not persisted (matches tbDriveToggle /
-   tbItinFilter — a sensible default each session).
+   other code change needed. Not persisted — a sensible default each
+   session, the same call GOLF-207's POI layer makes.
    GOLF-131 (2026-09-13): flipped to default OFF — arriving in Itinerary
    with every nearby bookable course already drawn was noisy; a tester now
    opts in, and the set itself live-updates as the map is panned (see
@@ -922,7 +895,7 @@ function tbDayCardHTML(d,idx){
   const nCourses=items.filter(it=>it.type==='golf').length;
   const byId=new Map(items.map(it=>[it.id,it]));
   const rowsHTML=tripDayLegs(idx).map(l=>{
-    if(l.type==='drive')return tbDriveToggle?tbDriveCapHTML(l):'';
+    if(l.type==='drive')return tbDriveCapHTML(l);
     const it=byId.get(l.id);
     if(!it)return'';
     /* GOLF-73: an item being edited swaps its row for the inline edit form
@@ -1306,7 +1279,6 @@ function renderTripBuilder(){
      search + [filters] Show hotels · Show POIs; Itinerary gets search +
      its view toggles, then group size and the £ total (moved out of the
      header, as on a phone); Costs gets nothing extra. */
-  const filtered=tbItinFilter!=='all'||!tbDriveToggle;
   const isItin=isBuild&&tbBuildTab==='itin';
   const searchHTML=`${tbSearchFieldHTML({id:'tb-unified-search',variant:'bar',value:tbSearchQ,
       placeholder:isItin?'Add a course or town…':tbPhoneLayout()?'Search clubs or towns':'Search courses, towns and cities…',ariaLabel:'Search courses, towns and cities'})}
@@ -1320,21 +1292,17 @@ function renderTripBuilder(){
     // GOLF-185d: the course filters sit beside the search, on every viewport.
     tabChrome=`${searchHTML}<div class="tb-toolbar">${cfButtonHTML()}${hotelsBtn}${poisBtn}</div>`;
   }else if(isItin){
+    /* GOLF-207: Hotels · Courses · POIs, three map-layer pills of the same
+       shape, in place of the old second filter icon. What's in the trip and
+       its drive legs are always shown now, so the only thing these change is
+       what extra sits on the map. Short labels keep the row on one line at
+       375px (see .tb-lbl-long/.tb-lbl-short). */
     tabChrome=`${searchHTML}
     <div class="tb-toolbar">
       ${cfButtonHTML()}
       ${hotelsBtn}
-      <button type="button" class="tb-btn is-sm${tbShowNearby?' is-active':''}" id="tb-nearby-toggle" aria-pressed="${tbShowNearby}" title="Show other bookable courses near your trip on the map. Doesn't change your itinerary."><span>${tbShowNearby?'✓ ':''}Nearby<span class="tb-lbl-long"> courses</span></span></button>
-      <details class="tb-drop tb-icon-drop${filtered?' is-on':''}" id="tb-filter-drop">
-        <summary aria-label="Filters" title="Filter what this itinerary shows">${FILTER_ICON_SVG}</summary>
-        <div class="tb-drop-body is-right">
-          <div class="tb-menu-label">Show</div>
-          ${[['all','Everything'],['golf','⛳ Golf only'],['hotel','🏨 Stays only'],['poi','📍 Stops only']].map(([k,label])=>
-            `<button type="button" class="tb-menu-item" data-itin-filter="${k}">${tbItinFilter===k?'✓':'&nbsp;&nbsp;'} ${label}</button>`).join('')}
-          <div class="tb-menu-sep"></div>
-          <button type="button" class="tb-menu-item" id="tb-drive-toggle">${tbDriveToggle?'✓':'&nbsp;&nbsp;'} 🚗 Drive times</button>
-        </div>
-      </details>
+      <button type="button" class="tb-btn is-sm${tbShowNearby?' is-active':''}" id="tb-nearby-toggle" aria-pressed="${tbShowNearby}" title="Show other bookable courses near your trip on the map. Doesn't change your itinerary."><span>${tbShowNearby?'✓ ':''}<span class="tb-lbl-long">Nearby courses</span><span class="tb-lbl-short">Courses</span></span></button>
+      ${poisBtn}
     </div>`;
   }
   pane.innerHTML=`
@@ -1352,8 +1320,7 @@ function renderTripBuilder(){
     <div class="tb-tab-content">${isItin?tbItinGroupHTML():''}${
       !isBuild?tbPlanHTML()
       :tbBuildTab==='cost'?tbCostsTabHTML()
-      :tbItinFilter==='all'?tripDayScheduleHTML()
-      :tbItineraryHTML()
+      :tripDayScheduleHTML()
     }</div>`;
 
   tbMountBetaBadge();
@@ -1372,11 +1339,9 @@ function renderTripBuilder(){
   pane.querySelectorAll('.tb-group-btn[data-gs]').forEach(b=>b.addEventListener('click',()=>tripSetGroupSize(groupSize+Number(b.dataset.gs),b.id)));
   pane.querySelectorAll('.tb-tab-btn').forEach(btn=>btn.addEventListener('click',()=>tbGoTab(btn.dataset.tab)));
   cfWireButton();
-  const filterDrop=document.getElementById('tb-filter-drop');
-  if(filterDrop){
-    filterDrop.querySelectorAll('[data-itin-filter]').forEach(btn=>btn.addEventListener('click',()=>{tbItinFilter=btn.dataset.itinFilter;renderTripBuilder();}));
-    document.getElementById('tb-drive-toggle').addEventListener('click',()=>{tbDriveToggle=!tbDriveToggle;renderTripBuilder();});
-  }
+  /* GOLF-207: tbPoiLayerSet() owns its own Leaflet group and moveend
+     listener (js/poi.js) and re-renders the pane itself, so this only has
+     to flip it — same shape as the hotel toggle below. */
   const poiToggle=document.getElementById('tb-poi-layer-toggle');
   if(poiToggle)poiToggle.addEventListener('click',()=>tbPoiLayerSet(!tbPoiLayerOn));
   const nearbyToggle=document.getElementById('tb-nearby-toggle');

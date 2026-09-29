@@ -982,6 +982,9 @@
     padding:7px 14px;font-size:12.5px;color:var(--ink);
     box-shadow:var(--shadow-md);pointer-events:none;max-width:calc(100% - 24px)}
   .hotel-status[hidden]{display:none}
+  /* GOLF-207: the POI layer's own pill, stacked below the hotel one so
+     both are readable when both layers are on. */
+  .poi-status{top:52px}
   .hotel-status.is-error{border-color:#E5C7B5;color:#9A3412;background:#FBEEE7}
   .hotel-status .spin{width:12px;height:12px;flex:none;border-radius:50%;
     border:2px solid var(--line);border-top-color:var(--accent);
