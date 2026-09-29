@@ -14,7 +14,7 @@ become amendments to GOLF-185a/b/c (see `GOLF-185-mobile-redesign.md`,
 | 2 Search on the map; Discover/Itinerary/Costs buttons at the bottom | GOLF-185a (built; confirm on phone) | Barry |
 | 3 Compact course card with "Show more" | GOLF-185b (AC amended) | Barry |
 | 4 Brora's card opens, the page scrolls, the card closes | GOLF-201 | Barry |
-| 5 "Auto schedule" button spills over | GOLF-202 | Gavin |
+| 5 "Auto schedule" button spills over | GOLF-202 | Geoff (moved from Gavin) |
 | 6 Map on the home page; search hidden until a country is picked; group size out of Discover | GOLF-185a/c (AC amended) | Barry |
 | 7 Costs: "Other" category, fuel moves in, custom costs | GOLF-203 | Gavin |
 | 8 Country before search | GOLF-204 (desktop) + GOLF-185c (phone) | Geoff / Barry |
