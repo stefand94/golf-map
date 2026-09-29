@@ -710,6 +710,72 @@ function tbMove(i,dir){
 let trips={default:{name:'My trip',created:Date.now(),modified:Date.now(),trip:[],tripSeq:[],tripDays:[],tripLastAdded:null,tbAnchor:null,tripDayNextId:1,groupSize:2}};
 let activeTripId='default';
 let groupSize=2;
+/* GOLF-203: the trip's own "Other" costs — car hire, public transport,
+   caddie fees: real money the visitor knows about that no golf/stay/stop
+   row can ever carry. They belong to the TRIP, not to a day (a hire car
+   is not a Tuesday), so they ride the exact same per-trip snapshot as
+   groupSize — saved, switched, duplicated and undone for free.
+
+   `per` is the owner's DEC-032 call: 'group' = one charge for the whole
+   party, 'person' = each traveller pays it. `amount` is always what the
+   visitor typed, never the derived total — Costs multiplies by group size
+   at render time, the way hotels do (GOLF-193). An empty amount stays
+   null and counts as 0, so a line can be labelled before it is priced.
+   `cur` is only ever shown (and editable) on a trip that already spans
+   more than one currency — see costOtherGroupHTML(). */
+let tripCustom=[];
+const TRIP_CUSTOM_MAX=40, TRIP_CUSTOM_MAX_AMOUNT=1e6;
+function tripCustomNewId(){return 'cc'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function tripCustomFind(id){return tripCustom.find(c=>c.id===id)||null;}
+function tripCustomAdd(){
+  if(tripCustom.length>=TRIP_CUSTOM_MAX)return;
+  const id=tripCustomNewId();
+  tripCustom.push({id,label:'',amount:null,per:'group',cur:tripPrimaryCurrency()});
+  saveState();
+  if(!tripBuilderOn)return;
+  renderTripBuilder();
+  /* Straight into the label field: the line is empty, so anything else
+     leaves the visitor looking at a blank row wondering what to do. */
+  const el=document.getElementById('tb-cc-label-'+id);
+  if(el)el.focus();
+}
+/* Field-at-a-time so a keystroke in the label can't clobber the amount.
+   Called from oninput on every keystroke, so it deliberately does NOT
+   re-render — tbCostLiveRefresh() repaints only the figures that moved,
+   leaving the cursor where it is (see GOLF-203's note in trip-ui.js). */
+function tripCustomUpdate(id,patch){
+  const c=tripCustomFind(id);
+  if(!c)return;
+  if('label' in patch)c.label=String(patch.label==null?'':patch.label).slice(0,80);
+  if('amount' in patch){
+    const n=parseFloat(patch.amount);
+    c.amount=Number.isFinite(n)?Math.min(TRIP_CUSTOM_MAX_AMOUNT,Math.max(0,n)):null;
+  }
+  if('per' in patch)c.per=patch.per==='person'?'person':'group';
+  if('cur' in patch&&CURRENCY_SYMS[patch.cur])c.cur=patch.cur;
+  saveState();
+}
+function tripCustomSetPer(id,per,btn){
+  const c=tripCustomFind(id);
+  if(!c||c.per===per)return;
+  tripCustomUpdate(id,{per});
+  /* Same reasoning as the inputs: repaint the money, not the pane, so the
+     button the visitor just pressed keeps focus and the Costs card does
+     not scroll out from under them. */
+  const row=btn&&typeof btn.closest==='function'?btn.closest('.cc-row'):null;
+  if(row)row.querySelectorAll('.cc-per button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.per===per)));
+  if(typeof tbCostLiveRefresh==='function')tbCostLiveRefresh();
+}
+/* GOLF-194: removal is undoable everywhere else in the pane, and a typed
+   figure is exactly the kind of thing that hurts to lose to a mistap. */
+function tripCustomRemove(id){
+  const c=tripCustomFind(id);
+  if(!c)return;
+  tripRemoveWithUndo(c.label.trim()||'Other cost',()=>{
+    tripCustom=tripCustom.filter(x=>x.id!==id);
+    saveState();
+  });
+}
 // GOLF-87: how many travellers this trip is for — a trip-level fact,
 // persisted/restored through the exact same snapshot path as every other
 // trip field. Green fees/POI costs scale by this; since GOLF-91, hotel
@@ -751,6 +817,7 @@ function tripSnapshotActive(){
   t.trip=[...TRIP];t.tripSeq=[...tripSeq];t.tripDays=JSON.parse(JSON.stringify(tripDays));
   t.tripLastAdded=tripLastAdded;t.tbAnchor=tbAnchor;t.tripDayNextId=tripDayNextId;
   t.groupSize=groupSize;
+  t.tripCustom=JSON.parse(JSON.stringify(tripCustom)); // GOLF-203
   t.modified=Date.now();
 }
 function tripRestoreActive(){
@@ -764,6 +831,9 @@ function tripRestoreActive(){
   tbAnchor=t?(t.tbAnchor??null):null;
   tripDayNextId=t&&t.tripDayNextId?t.tripDayNextId:(Math.max(0,...tripDays.map(d=>d.id))+1);
   groupSize=t&&typeof t.groupSize==='number'&&t.groupSize>0?Math.round(t.groupSize):2;
+  // GOLF-203: absent on every trip saved before this shipped, and on the
+  // default/"start fresh" literals — reads as "no custom costs".
+  tripCustom=(t&&Array.isArray(t.tripCustom))?JSON.parse(JSON.stringify(t.tripCustom)):[];
 }
 /* Fresh course count per trip needs the active trip's own snapshot to be
    current, hence the snapshot call here too — cheap and idempotent. */

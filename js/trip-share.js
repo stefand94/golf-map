@@ -17,10 +17,20 @@
 
 /* ── Encode: current active trip → a compact, self-contained payload ── */
 function tripBuildSharePayload(){
+  /* GOLF-203: the trip's own "Other" cost lines. Written as a NEW,
+     OPTIONAL key — omitted entirely when there are none, so a link made
+     by a trip without them is byte-for-byte what it was before this
+     shipped, and every link already in someone's hands decodes exactly
+     as it always did (tripDecodeSharePayload treats a missing `oth` as
+     "no custom costs"). No existing field changes meaning. */
+  const oth=(Array.isArray(tripCustom)?tripCustom:[]).map(c=>({
+    l:c.label||'',a:(typeof c.amount==='number'&&isFinite(c.amount))?c.amount:null,
+    p:c.per==='person'?'person':'group',c:c.cur||'GBP'}));
   return{
     v:1,
     gs:groupSize,
     nm:((trips[activeTripId]||{}).name)||null, // GOLF-115: carry the trip name so the shared view can show it in full
+    ...(oth.length?{oth}:{}),
 
     /* GOLF-163: courses travel as stable ids (`c`), not array indices.
        A share link is the one reference we can never migrate — it is a
@@ -99,7 +109,7 @@ function tbShareTrip(btn){
    ask the page to render an unbounded itinerary. Anything that doesn't
    fit is dropped; a structurally wrong payload returns null and
    renderSharedTrip()'s existing "link looks broken" fallback handles it. */
-const SHARE_MAX_DAYS=30, SHARE_MAX_ITEMS_PER_DAY=20, SHARE_MAX_STR=120;
+const SHARE_MAX_DAYS=30, SHARE_MAX_ITEMS_PER_DAY=20, SHARE_MAX_STR=120, SHARE_MAX_CUSTOM=40;
 function shareStr(v,max){
   if(typeof v!=='string')return null;
   const s=String(v).trim().slice(0,max||SHARE_MAX_STR);
@@ -160,7 +170,17 @@ function tripDecodeSharePayload(hash){
       };
     }).filter(Boolean);
     const gs=shareNum(p.gs,1,16);
-    return{v:1,gs:gs!=null?Math.round(gs):1,nm:shareStr(p.nm,80),seq,days};
+    /* GOLF-203 — optional, and untrusted like everything else off the
+       hash: same field-by-field rebuild, same caps. Absent on every link
+       made before this shipped, which reads as no custom costs. */
+    const oth=(Array.isArray(p.oth)?p.oth:[]).slice(0,SHARE_MAX_CUSTOM).map((c,n)=>{
+      if(!c||typeof c!=='object')return null;
+      return{id:'sc'+n,label:shareStr(c.l,80)||'',
+        amount:shareNum(c.a,0,1e6),
+        per:c.p==='person'?'person':'group',
+        cur:(typeof c.c==='string'&&CURRENCY_SYMS[c.c])?c.c:'GBP'};
+    }).filter(Boolean);
+    return{v:1,gs:gs!=null?Math.round(gs):1,nm:shareStr(p.nm,80),seq,days,oth};
   }catch(e){return null;}
 }
 
@@ -186,7 +206,7 @@ function renderSharedTrip(){
     </div></div>`;
     return;
   }
-  const savedTrip=new Set(TRIP),savedSeq=tripSeq,savedDays=tripDays,savedGS=groupSize,savedFuel=tbIncludeFuel;
+  const savedTrip=new Set(TRIP),savedSeq=tripSeq,savedDays=tripDays,savedGS=groupSize,savedFuel=tbIncludeFuel,savedCustom=tripCustom;
   try{
     /* tripDecodeSharePayload() has already rebuilt every field of this
        payload from scratch and validated it — nothing here is copied
@@ -195,6 +215,7 @@ function renderSharedTrip(){
     tripSeq=[...payload.seq];
     tripDays=payload.days.map(d=>({...d,items:d.items.map(it=>({...it}))}));
     groupSize=payload.gs;
+    tripCustom=payload.oth.map(c=>({...c})); // GOLF-203
     tbIncludeFuel=true;
     tbCostMode='pp'; // GOLF-178: a shared link always opens on Per person
     tbCostModeApply(); // GOLF-193: ...and the whole shared view follows it
@@ -217,7 +238,7 @@ function renderSharedTrip(){
     </div></div>`;
   }finally{
     TRIP.clear();savedTrip.forEach(i=>TRIP.add(i));
-    tripSeq=savedSeq;tripDays=savedDays;groupSize=savedGS;tbIncludeFuel=savedFuel;
+    tripSeq=savedSeq;tripDays=savedDays;groupSize=savedGS;tbIncludeFuel=savedFuel;tripCustom=savedCustom;
   }
 }
 /* A read-only twin of tbCostsTabHTML() — identical output except the fuel
@@ -229,7 +250,7 @@ function renderSharedTrip(){
    same as the live Costs tab it's a frozen snapshot of — just with a
    plain, non-interactive Fuel row instead of a checkbox. */
 function tbCostsTabReadOnlyHTML(){
-  return tbCostsBodyHTML(tripCostBreakdown(),'<span>⛽ Fuel (est.)</span>');
+  return tbCostsBodyHTML(tripCostBreakdown(),null,true);
 }
 /* A dedicated Leaflet map instance, entirely separate from the app's main
    `map`/`tripLayer` globals — reusing those (via tripDrawCart()) would
