@@ -1195,8 +1195,10 @@
     .bs-card-more[aria-expanded="true"] svg{transform:rotate(180deg)}
     .bs-card-body{margin-top:var(--sp-3);border-top:1px solid var(--line);padding-top:var(--sp-3)}
     .bs-card-body .pop .note{border-top:0;padding-top:0}
-    /* The confirmation sits on the map above the card, not over its button. */
-    body.mob-card-on .tb-toast{bottom:calc(var(--bs-cover-bottom) + var(--sp-3))}
+    /* The confirmation sits on the map above a compact card, not over its
+       button. An expanded card fills the sheet, so there it keeps the usual
+       spot above the tab bar — above the card would be under the search. */
+    .panel[data-sheet="card"] .tb-toast{bottom:calc(var(--bs-cover-bottom) + var(--sp-3))}
   }
   @media (max-width:900px) and (prefers-reduced-motion:reduce){
     .panel,.leaflet-bottom,.bs-card-more svg{transition:none}

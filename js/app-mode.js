@@ -117,12 +117,13 @@ function setAsAnchor(i){if(!TRIP.has(i))toggleTrip(i);enterTripBuilder(i)}
    camera was not. mapHoldCamera() covers the whole fan-out (this
    function's own redraw plus setAppMode()'s render()). */
 /* GOLF-185b: with the camera held, nothing on screen says the add
-   happened — hence the confirmation, with a way through to the trip. */
+   happened — hence the confirmation, with a way through to the trip.
+   The add also no longer switches to Discover (GOLF-64 did): adding from
+   Itinerary left the visitor on a different tab from the one they were
+   using. tbAddToWishlist() still makes the course Discover's anchor, so
+   its neighbours are waiting there. */
 function tbAddToPlan(i){
-  mapHoldCamera(()=>{
-    tbAddToWishlist(i);
-    if(appMode!=='plan')setAppMode('plan',{seedAnchor:i});
-  });
+  mapHoldCamera(()=>tbAddToWishlist(i));
   tbToast(`Added <b>${esc(V(i,'n'))}</b>`,[{label:'View trip',fn:()=>{
     tbGoTab('itin');
     if(typeof mobIsPhone==='function'&&mobIsPhone())mobSheetSet('full'); // as the Itinerary tab-bar button does
