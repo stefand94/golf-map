@@ -58,7 +58,16 @@ const TB_EDGE_BAND=72;
 const TB_EDGE_MIN=2;
 const TB_EDGE_MAX=10;
 
-let tbTouch=null; // {srcEl, overEl, x, y, lastX, lastY, timer, started, scroller, raf}
+let tbTouch=null; // {id, srcEl, overEl, x, y, lastX, lastY, timer, started, scroller, raf}
+/* The one finger this gesture belongs to. Every later event is filtered
+   to it by Touch.identifier rather than taken from touches[0], because a
+   second contact reorders that list — and a stray contact is easy on a
+   phone held in the same hand that is dragging. */
+function tbTouchPoint(list){
+  if(!list||!tbTouch)return null;
+  for(let i=0;i<list.length;i++)if(list[i].identifier===tbTouch.id)return list[i];
+  return null;
+}
 
 function tbFakeDragEvent(){
   return{
@@ -99,8 +108,7 @@ function tbTouchScroller(el){
    goes with a change. Shared by touchmove and the auto-scroll frame loop,
    because scrolling moves the list under a stationary finger — the row
    the visitor is now pointing at changes with no touch event at all. */
-function tbTouchHover(x,y){
-  if(!tbTouch)return;
+function tbTouchResolve(x,y){
   /* Still over the row you picked up: no target. .tb-touch-lift is
      pointer-events:none, so elementFromPoint() sees straight through to
      the day behind it — which would make "lift, wiggle, release" quietly
@@ -108,8 +116,12 @@ function tbTouchHover(x,y){
      started should do nothing at all, so the source row's own footprint
      is dead space for the whole drag. */
   const sb=tbTouch.srcEl.getBoundingClientRect();
-  const target=(x>=sb.left&&x<=sb.right&&y>=sb.top&&y<=sb.bottom)
-    ? null : tbTouchDropTarget(document.elementFromPoint(x,y));
+  if(x>=sb.left&&x<=sb.right&&y>=sb.top&&y<=sb.bottom)return null;
+  return tbTouchDropTarget(document.elementFromPoint(x,y));
+}
+function tbTouchHover(x,y){
+  if(!tbTouch)return;
+  const target=tbTouchResolve(x,y);
   if(target===tbTouch.overEl)return;
   if(tbTouch.overEl&&typeof tbTouch.overEl.ondragleave==='function')tbTouch.overEl.ondragleave(tbFakeDragEvent());
   if(target&&typeof target.ondragover==='function')target.ondragover(tbFakeDragEvent());
@@ -157,8 +169,16 @@ function tbTouchEdgeSync(){
 function tbTouchReset(){
   if(tbTouch&&tbTouch.timer)clearTimeout(tbTouch.timer);
   tbTouchEdgeStop();
+  const lifted=!!(tbTouch&&tbTouch.started);
   tbTouch=null;
   document.querySelectorAll('.tb-touch-lift').forEach(el=>el.classList.remove('tb-touch-lift'));
+  /* GOLF-215: giving up on a LIFTED gesture used to null tbTouch and stop
+     there, leaving .tb-drop-over on the target, the dashed day outlines up
+     and tbDrag set. The drag went on looking live, and because tbDropOn()
+     no-ops on a null payload, the eventual release did nothing and the row
+     snapped back — the owner's "it won't let me drop". Tear the whole drag
+     down instead, so an abandoned drag always LOOKS abandoned. */
+  if(lifted&&typeof tbDragEnd==='function')tbDragEnd();
 }
 /* The hold completed with the finger still on the row: lift it. .tb-touch-lift
    is the "it's in your hand now" cue — on touch there is no browser drag
@@ -179,6 +199,9 @@ function tbTouchLift(){
   src.ondragstart(tbFakeDragEvent());
 }
 document.addEventListener('touchstart',e=>{
+  /* A finger landing mid-drag is not the start of anything — ignore it and
+     keep carrying the item. This used to reset the gesture outright. */
+  if(tbTouch&&tbTouch.started)return;
   tbTouchReset();
   if(e.touches.length>1)return; // pinch/second finger is never a drag
   const pane=document.getElementById('tb-pane');
@@ -187,14 +210,18 @@ document.addEventListener('touchstart',e=>{
   const src=e.target.closest('[draggable="true"]');
   if(!src||typeof src.ondragstart!=='function')return;
   const t=e.touches[0];
-  tbTouch={srcEl:src,overEl:null,x:t.clientX,y:t.clientY,lastX:t.clientX,lastY:t.clientY,
-    timer:null,started:false,scroller:null,raf:null};
+  tbTouch={id:t.identifier,srcEl:src,overEl:null,x:t.clientX,y:t.clientY,
+    lastX:t.clientX,lastY:t.clientY,timer:null,started:false,scroller:null,raf:null};
   tbTouch.timer=setTimeout(tbTouchLift,TB_HOLD_MS);
 },{passive:true});
 document.addEventListener('touchmove',e=>{
   if(!tbTouch)return;
-  if(e.touches.length>1){tbTouchReset();return;}
-  const t=e.touches[0];
+  const t=tbTouchPoint(e.touches)||tbTouchPoint(e.changedTouches);
+  if(!t){ // not our finger moving
+    if(!tbTouch.started&&e.touches.length>1)tbTouchReset(); // pinch while arming
+    return;
+  }
+  if(!tbTouch.started&&e.touches.length>1){tbTouchReset();return;}
   if(!tbTouch.started){
     /* Still arming. Any real movement means this was a swipe: drop the
        gesture and return WITHOUT preventDefault, so the list scrolls. */
@@ -206,17 +233,45 @@ document.addEventListener('touchmove',e=>{
   tbTouchHover(t.clientX,t.clientY);
   tbTouchEdgeSync(); // AC (c2): near an end of the list, bring the list to the finger
 },{passive:false});
-function tbTouchFinish(){
+function tbTouchFinish(e){
   if(!tbTouch)return;
+  if(e&&e.changedTouches&&!tbTouchPoint(e.changedTouches))return; // another finger lifted
   tbTouchEdgeStop();
   if(tbTouch.started){
+    /* Trust where the finger LEFT the glass over the target the last
+       touchmove cached: iOS can end a touch at coordinates no touchmove
+       ever reported. A fresh look that finds nothing keeps the cache
+       rather than throwing a good target away — the only way to release
+       over nothing is to have moved there, which cached null already. */
+    const t=e&&e.changedTouches&&tbTouchPoint(e.changedTouches);
+    if(t){
+      const fresh=tbTouchResolve(t.clientX,t.clientY);
+      if(fresh&&fresh!==tbTouch.overEl)tbTouchHover(t.clientX,t.clientY);
+    }
+    /* Suppress the click WebKit synthesises from this touch: it would land
+       on the drop target the item was just moved onto. */
+    if(e&&e.cancelable)e.preventDefault();
     if(tbTouch.overEl&&typeof tbTouch.overEl.ondrop==='function')tbTouch.overEl.ondrop(tbFakeDragEvent());
     else if(typeof tbTouch.srcEl.ondragend==='function')tbTouch.srcEl.ondragend(tbFakeDragEvent());
   }
   tbTouchReset();
 }
-document.addEventListener('touchend',tbTouchFinish);
+document.addEventListener('touchend',tbTouchFinish,{passive:false});
+/* A cancel COMMITS the drop at the last good target rather than abandoning
+   it. Deliberate: mobile WebKit cancels a touch sequence for reasons that
+   have nothing to do with intent, and the owner's complaint was drops that
+   did nothing, so the forgiving reading is the right one. A cancel with no
+   target under the finger still cancels, as a release there does. */
 document.addEventListener('touchcancel',tbTouchFinish);
+/* Mobile WebKit has its own long-press drag for draggable="true" elements,
+   armed by the same gesture and at roughly the same moment as ours. When it
+   won the race the two systems fought: its dragend (or our touchcancel
+   fallback) ran tbDragEnd(), which nulls tbDrag, and the drop that followed
+   hit tbDropOn()'s `if(!drag)return` and changed nothing — a live, tracking
+   highlight and a dead release, exactly as reported. -webkit-user-drag:none
+   under a coarse-pointer media query (see <style>) keeps it out; this is the
+   belt to that braces, for any engine that ignores the property. */
+document.addEventListener('dragstart',e=>{if(tbTouch)e.preventDefault();},true);
 /* A half-second hold is exactly the gesture Android uses for the
    text-selection / context menu, and iOS for its link callout. The rows
    are already user-select:none + -webkit-touch-callout:none (see
