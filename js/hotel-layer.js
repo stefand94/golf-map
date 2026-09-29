@@ -170,12 +170,23 @@ function tbHotelStatusEl(){
   map.getContainer().appendChild(_hotelStatusEl);
   return _hotelStatusEl;
 }
+/* GOLF-217: px from the map's top edge to the first free row. On a phone
+   the search bar floats over the top of the map, and a pill at top:12px
+   sat underneath it where nobody could read it. */
+function tbMapTopInset(){
+  if(typeof mobIsPhone==='function'&&mobIsPhone()&&typeof mobSheetTops==='function'){
+    const t=mobSheetTops().topBar-map.getContainer().getBoundingClientRect().top;
+    return Math.max(12,Math.round(t)+8);
+  }
+  return 12;
+}
 
 /* kind: 'loading' | 'info' | 'error' | null (null hides the pill). */
 function tbHotelLayerStatus(kind,text){
   const el=tbHotelStatusEl();
   if(!kind){el.hidden=true;el.textContent='';return;}
   el.hidden=false;
+  el.style.top=tbMapTopInset()+'px';
   el.classList.toggle('is-error',kind==='error');
   // esc() the message even though every caller passes a literal — keeps the
   // one innerHTML in this file safe if a future caller ever interpolates.
@@ -221,9 +232,13 @@ function tbHotelPopupHTML(idx){
     return `<div class="hotel-pop">${head}<p class="hotel-pop-note">✓ Already in your trip</p></div>`;
   if(!tripDays.length)
     return `<div class="hotel-pop">${head}<p class="hotel-pop-note">Add a day to your trip first, then pick a hotel.</p></div>`;
+  /* GOLF-218: "Add a stay" on Day N is the visitor saying which day they
+     are shopping for, so a pin picked while that picker is open starts on
+     Day N (still changeable). With no picker open it starts on Day 1. */
+  const want=typeof tbHotelPickerFor!=='undefined'?tbHotelPickerFor:null;
   const opts=tripDays.map((d,i)=>{
     const place=d.place?' — '+esc(d.place):'';
-    return `<option value="${d.id}">Day ${i+1}${place}</option>`;
+    return `<option value="${d.id}"${d.id===want?' selected':''}>Day ${i+1}${place}</option>`;
   }).join('');
   return `<div class="hotel-pop">${head}
     <label class="hotel-pop-row"><span>Add to</span>
@@ -254,9 +269,14 @@ function tbHotelLayerAddToDay(idx){
   const cur=d&&typeof tripDayStay==='function'?tripDayStay(d):null;
   if(cur){
     if(!tripDayUpdateStop(dayId,cur.id,{name:p.name,price:cur.price,lat:p.lat,lng:p.lng}))return;
-    /* Picking off the map is also an answer to an open picker. */
-    if(typeof tbHotelPickerFor!=='undefined'&&tbHotelPickerFor===dayId)tbHotelPickerFor=null;
   }else if(!tripDayAddStop(dayId,'hotel',p.name,null,p.lat,p.lng,1))return;
+  /* Picking off the map is also an answer to an open picker — added or
+     swapped alike (GOLF-218 d: the day context ends here, so a later
+     toolbar browse doesn't silently target this day). */
+  if(typeof tbHotelPickerFor!=='undefined'&&tbHotelPickerFor===dayId){
+    tbHotelPickerFor=null;
+    if(typeof tbAddStop!=='undefined'&&tbAddStop&&tbAddStop.dayId===dayId&&tbAddStop.type==='hotel')tbAddStop=null;
+  }
   map.closePopup();
   render(); // repaints the itinerary and re-tints this pin yellow
   if(typeof mapFitDay==='function')mapFitDay(dayId); // GOLF-191 (AC 2): keep the new stop and the rest of its day in view
@@ -265,7 +285,12 @@ function tbHotelLayerAddToDay(idx){
 function tbHotelLayerRender(pois){
   _hotelLayerLastPois=pois;
   hotelLayerGroup.clearLayers();
+  /* GOLF-217: while the picker is open its numbered pins already mark the
+     day's own hotels; a second, plain pin under each would just be noise. */
+  const numbered=_hotelSearchFor!=null&&typeof tbHotelCandidates==='function'
+    ?(tbHotelCandidates(tripDays.find(d=>d.id===_hotelSearchFor)||{})||[]):[];
   pois.forEach((p,idx)=>{
+    if(numbered.some(c=>Math.abs(c.lat-p.lat)<HOTEL_MATCH_EPS&&Math.abs(c.lng-p.lng)<HOTEL_MATCH_EPS))return;
     // p.name/p.category come straight from Overpass — escape both, same
     // as tbDrawPois()/tbDrawHotelCandidates() already do.
     L.marker([p.lat,p.lng],{icon:hotelLayerIcon(tbHotelInTrip(p))})
@@ -285,19 +310,20 @@ function tbHotelLayerRender(pois){
    added to/removed from the trip, without waiting for the next pan/zoom
    to re-fetch. Redraws from the cached last fetch — no network call. */
 function tbHotelLayerRefreshTint(){
-  if(!tbHotelLayerOn||!_hotelLayerLastPois.length)return;
+  tbHotelSearchSync(); // GOLF-217: render() is also where a picker closes
+  if(!tbHotelLayerLive()||!_hotelLayerLastPois.length)return;
   tbHotelLayerRender(_hotelLayerLastPois);
 }
 
 function tbHotelLayerFetch(){
-  if(!tbHotelLayerOn)return;
+  if(!tbHotelLayerLive())return;
   if(!ORS_PROXY_URL){tbHotelLayerStatus('error','Hotels unavailable');return;}
   /* Below the min zoom, say so instead of clearing in silence. This is the
      single most common way the layer looked broken: the app opens at zoom 5,
      so switching hotels on from the default view did nothing at all and gave
      no reason why. The threshold itself is unchanged (see HOTEL_LAYER_MIN_ZOOM) —
      widening it would only make an already-slow Overpass query slower. */
-  if(map.getZoom()<HOTEL_LAYER_MIN_ZOOM){
+  if(map.getZoom()<tbHotelMinZoom()){
     tbHotelLayerClear();
     tbHotelLayerStatus('info','Zoom in to see hotels');
     return;
@@ -315,6 +341,7 @@ function tbHotelLayerFetch(){
     _hotelLayerDrawnSeq=++_hotelLayerSeq;
     tbHotelLayerRender(cached);
     tbHotelLayerStatus(cached.length?null:'info','No hotels found here');
+    tbHotelSearchLoaded(bbox);
     return;
   }
 
@@ -322,6 +349,7 @@ function tbHotelLayerFetch(){
 
   _hotelLayerInflight++;
   tbHotelLayerStatus('loading','Finding hotels…');
+  tbHotelSearchBtn(null);
 
   const ctl=new AbortController();
   const timer=setTimeout(()=>ctl.abort(),HOTEL_LAYER_TIMEOUT_MS);
@@ -336,9 +364,9 @@ function tbHotelLayerFetch(){
          on). Throwing it away would mean re-fetching it the moment they pan
          back — which is exactly the case this cache exists for. */
       tbHotelCachePut(cacheKey,data.pois);
-      if(!tbHotelLayerOn)return;                 // switched off while in flight
+      if(!tbHotelLayerLive())return;             // switched off (or picker closed) while in flight
       if(seq<=_hotelLayerDrawnSeq)return;        // a newer response already drew
-      if(map.getZoom()<HOTEL_LAYER_MIN_ZOOM)return; // zoomed back out meanwhile
+      if(map.getZoom()<tbHotelMinZoom())return; // zoomed back out meanwhile
       /* The GOLF-142 rule dropped this response the moment the viewport moved
          at all. Against a ~17s upstream that discarded nearly every result.
          Overlap is the question that actually matters: if any part of the area
@@ -347,6 +375,7 @@ function tbHotelLayerFetch(){
       _hotelLayerDrawnSeq=seq;
       tbHotelLayerRender(data.pois);
       tbHotelLayerStatus(data.pois.length?null:'info','No hotels found here');
+      tbHotelSearchLoaded(bbox);
     })
     .catch(err=>{
       /* Deliberately louder than tbHotelsFor()'s fail-quiet
@@ -355,7 +384,7 @@ function tbHotelLayerFetch(){
          nothing on screen and no explanation. Still no retry — Overpass's
          fair-use limits (CLAUDE.md/DEC-016) make a retry storm the wrong
          response to an upstream that is already struggling. */
-      if(!tbHotelLayerOn||seq<=_hotelLayerDrawnSeq)return;
+      if(!tbHotelLayerLive()||seq<=_hotelLayerDrawnSeq)return;
       if(_hotelLayerInflight>1)return; // another attempt may still succeed
       tbHotelLayerStatus('error',err&&err.name==='AbortError'
         ?'Hotels are taking too long — try again'
@@ -364,6 +393,9 @@ function tbHotelLayerFetch(){
     .finally(()=>{
       clearTimeout(timer);
       _hotelLayerInflight--;
+      /* GOLF-217: after a failure, bring "Search this area" back so they can
+         try again (keeping the error pill); after a success it stays hidden. */
+      if(_hotelLayerInflight===0)tbHotelSearchCheck(true);
       // Clear a lingering spinner only once nothing else could still resolve.
       if(_hotelLayerInflight===0&&_hotelStatusEl&&!_hotelStatusEl.hidden
          &&_hotelStatusEl.querySelector('.spin'))tbHotelLayerStatus(null);
@@ -389,7 +421,108 @@ function tbToggleHotelLayer(){
    whenever the layer is off, so this never fires a request whose result
    would just be discarded. */
 map.on('moveend zoomend',()=>{
-  if(!tbHotelLayerOn)return;
+  if(!tbHotelLayerOn){tbHotelSearchCheck();return;} // GOLF-217: a tap fetches, a pan never does
   clearTimeout(_hotelLayerTimer);
   _hotelLayerTimer=setTimeout(tbHotelLayerFetch,HOTEL_LAYER_DEBOUNCE_MS);
 });
+
+/* ── GOLF-217: "Search this area" while the Add-a-stay picker is open.
+
+   Two sources on purpose. The picker's numbered list (js/ors.js,
+   tbHotelCandidates) is "hotels near this day", sorted by distance, and its
+   numbers only mean something for that one area. This layer is "hotels in
+   the view you are looking at". While the picker is open it reuses this
+   layer's fetch, cache, pins and add-to-day popup (which GOLF-218 points
+   at the picker's day), but only ever fetches on a tap: DEC-016 fair use.
+   The toolbar toggle's own pan-to-refetch is unchanged (out of scope).
+
+   _hotelSearchFor is the dayId the search belongs to, mirrored from
+   tbHotelPickerFor by tbHotelSearchSync() rather than set by each of the
+   half-dozen paths that open or close the picker, so none can be missed.
+   _hotelSearchAreas are the areas already loaded for it: the day's own
+   circle (the picker's list) plus every area searched since. */
+let _hotelSearchFor=null;
+/* One zoom step wider than the toolbar layer's 13: on a phone the picker
+   frames the day at 12, and a search there is a single tap rather than
+   "zoom in first". A phone view at 12 spans ~0.13°, well inside the
+   Worker's 0.6° MAX_SPAN_DEG. The toolbar layer keeps 13 (out of scope). */
+const HOTEL_SEARCH_MIN_ZOOM=12;
+function tbHotelMinZoom(){return tbHotelLayerOn||_hotelSearchFor==null?HOTEL_LAYER_MIN_ZOOM:HOTEL_SEARCH_MIN_ZOOM;}
+let _hotelSearchAreas=[];
+/* How much of the view one loaded area must cover before the button is
+   pointless. Not 100%: the picker frames its circle with padding, so the
+   view is always a little bigger than what the list loaded. */
+const HOTEL_SEARCH_COVERED=0.6;
+
+function tbHotelLayerLive(){return tbHotelLayerOn||_hotelSearchFor!=null;}
+
+function tbHotelSearchSync(){
+  const want=typeof tbHotelPickerFor!=='undefined'?tbHotelPickerFor:null;
+  if(want===_hotelSearchFor)return;
+  const was=_hotelSearchFor;
+  _hotelSearchFor=want;
+  _hotelSearchAreas=[];
+  /* Closing (or moving to another day) puts the pins back as they were:
+     the toolbar layer, if it was on, keeps its own pins and status. */
+  if(was!=null&&!tbHotelLayerOn){tbHotelLayerClear();tbHotelLayerStatus(null);}
+  if(want!=null){
+    const d=tripDays.find(x=>x.id===want);
+    const pt=d&&typeof tbPoiPoint==='function'?tbPoiPoint(d):null;
+    if(pt&&typeof HOTELS_RADIUS_M!=='undefined')_hotelSearchAreas.push(L.latLng(pt.lat,pt.lng).toBounds(HOTELS_RADIUS_M*2));
+  }
+  tbHotelSearchCheck();
+}
+
+function tbHotelSearchLoaded(bbox){
+  if(_hotelSearchFor==null)return;
+  _hotelSearchAreas.push(L.latLngBounds([bbox[0],bbox[1]],[bbox[2],bbox[3]]));
+  tbHotelSearchBtn(null);
+}
+
+function tbBoundsCoverFrac(area,view){
+  const s=Math.max(area.getSouth(),view.getSouth()),n=Math.min(area.getNorth(),view.getNorth());
+  const w=Math.max(area.getWest(),view.getWest()),e=Math.min(area.getEast(),view.getEast());
+  if(n<=s||e<=w)return 0;
+  return((n-s)*(e-w))/((view.getNorth()-view.getSouth())*(view.getEast()-view.getWest()));
+}
+
+/* Decides, after every move, whether the view needs the button. Never
+   fetches from the network; an area already in memory is drawn for free. */
+function tbHotelSearchCheck(keepStatus){
+  if(_hotelSearchFor==null||tbHotelLayerOn){tbHotelSearchBtn(null);return;}
+  if(_hotelLayerInflight>0)return; // the spinner is already saying it
+  const v=map.getBounds();
+  if(_hotelSearchAreas.some(a=>tbBoundsCoverFrac(a,v)>=HOTEL_SEARCH_COVERED)){tbHotelSearchBtn(null);return;}
+  /* Moved on from an area that had none: that message no longer applies. */
+  if(!keepStatus&&_hotelStatusEl&&!_hotelStatusEl.hidden&&!_hotelStatusEl.querySelector('.spin'))tbHotelLayerStatus(null);
+  if(map.getZoom()<tbHotelMinZoom()){tbHotelSearchBtn('zoom');return;}
+  const bbox=tbHotelSnapBbox([v.getSouth(),v.getWest(),v.getNorth(),v.getEast()]);
+  if(tbHotelCacheGet(bbox.join(','))||tbHotelCacheCovering(bbox)){tbHotelLayerFetch();return;}
+  tbHotelSearchBtn('search');
+}
+
+function tbHotelSearchHere(){
+  if(_hotelSearchFor==null||map.getZoom()<tbHotelMinZoom())return;
+  tbHotelLayerFetch();
+}
+
+let _hotelSearchBtnEl=null;
+/* kind: 'search' | 'zoom' | null (hidden). Sits one row under the status
+   pill, above Leaflet's panes and below its controls, like the pill. */
+function tbHotelSearchBtn(kind){
+  if(!kind){if(_hotelSearchBtnEl)_hotelSearchBtnEl.hidden=true;return;}
+  if(!_hotelSearchBtnEl){
+    _hotelSearchBtnEl=document.createElement('button');
+    _hotelSearchBtnEl.type='button';
+    _hotelSearchBtnEl.className='hotel-search-btn';
+    _hotelSearchBtnEl.addEventListener('click',tbHotelSearchHere);
+    /* Leaflet would otherwise read the tap as a map click/drag start. */
+    L.DomEvent.disableClickPropagation(_hotelSearchBtnEl);
+    map.getContainer().appendChild(_hotelSearchBtnEl);
+  }
+  const el=_hotelSearchBtnEl;
+  el.hidden=false;
+  el.style.top=(tbMapTopInset()+40)+'px';
+  el.disabled=kind==='zoom';
+  el.textContent=kind==='zoom'?'Zoom in to search for hotels':'🏨 Search this area';
+}

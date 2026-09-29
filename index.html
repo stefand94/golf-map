@@ -1003,6 +1003,16 @@
   /* GOLF-207: the POI layer's own pill, stacked below the hotel one so
      both are readable when both layers are on. */
   .poi-status{top:52px}
+  /* GOLF-217: "Search this area", shown while the Add-a-stay picker is
+     open and the view has moved off the hotels already loaded. Top is set
+     from js (tbMapTopInset) so it clears the phone's floating search bar. */
+  .hotel-search-btn{position:absolute;left:50%;transform:translateX(-50%);z-index:450;
+    min-height:var(--tap-sm);padding:0 var(--sp-4);border:1px solid var(--line);border-radius:999px;
+    background:#fff;color:var(--accent-deep);font:600 var(--fs-small)/1 var(--font-sans);
+    box-shadow:var(--shadow-md);cursor:pointer;white-space:nowrap;max-width:calc(100% - 24px)}
+  .hotel-search-btn:hover{background:var(--accent-soft)}
+  .hotel-search-btn:disabled{color:var(--stone);cursor:default;background:#fff}
+  .hotel-search-btn[hidden]{display:none}
   .hotel-status.is-error{border-color:#E5C7B5;color:#9A3412;background:#FBEEE7}
   .hotel-status .spin{width:12px;height:12px;flex:none;border-radius:50%;
     border:2px solid var(--line);border-top-color:var(--accent);

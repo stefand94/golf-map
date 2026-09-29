@@ -840,6 +840,7 @@ function tbDrawMap(fit=true){
   }
   tbDrawPois(); // GOLF-148 (js/poi.js)
   tbDrawHotelCandidates();
+  if(typeof tbHotelSearchSync==='function')tbHotelSearchSync(); // GOLF-217: picker opened/closed → its map search follows
   const pts1=tripShowOrdered(order,false,false);
   tbDrawTripItems();
   const pts=[...pts1,...pts2];
