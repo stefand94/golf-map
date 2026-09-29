@@ -757,8 +757,16 @@ function costCustomAmtHTML(x,gs){
    — or once a line carries something other than the primary one, so a
    line can always be changed back. A single-nation trip never sees it.
 
-   Open by default, unlike the other three: it is the only interactive
-   group, and the fuel row it absorbed used to be permanently visible. */
+   GOLF-203 opened it by default, unlike the other three, on the grounds
+   that it is the only interactive group and absorbed a fuel row that used
+   to be permanently visible. GOLF-219 overrides that: the owner wants
+   Costs to open as four matching collapsed groups, the total on each
+   summary row doing the talking. It still has to stay open once the
+   visitor opens it, because a custom-cost keystroke can trigger a full
+   re-render and a group that snapped shut mid-edit would be worse than
+   either default — hence tbCostOtherOpen, which lives for the visit only
+   (remembering it across visits is explicitly out of scope). */
+let tbCostOtherOpen=false;
 function costOtherGroupHTML(b,readOnly){
   const cur=b.cur,gs=b.groupSize;
   const lines=b.customItems||[];
@@ -799,7 +807,8 @@ function costOtherGroupHTML(b,readOnly){
   const addBtn=readOnly?'':`<button type="button" class="tb-btn is-sm is-quiet cc-add"
     ${lines.length>=TRIP_CUSTOM_MAX?'disabled title="That is as many as one trip can hold."':''}
     onclick="tripCustomAdd()">+ Add a cost</button>`;
-  return`<details class="cost-group cost-other-group" open><summary class="cost-group-summary">
+  return`<details class="cost-group cost-other-group"${tbCostOtherOpen?' open':''}
+      ontoggle="tbCostOtherOpen=this.open"><summary class="cost-group-summary">
       <span class="cost-group-label"><span class="cost-group-toggle" aria-hidden="true"></span>💷 Other</span>
       <span class="cost-group-amt" data-other-amt>${costDual(moneyBucketFmt(b.otherTotal,cur),costPPBucketFmt(b.otherTotal,gs,cur),gs)}</span>
     </summary>
