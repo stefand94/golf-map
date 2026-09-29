@@ -500,6 +500,17 @@
        underneath — a mouse drag has no equivalent problem because the
        browser tracks the drop target itself. */
     pointer-events:none}
+  /* GOLF-215: on a phone, js/touch-dnd.js IS the drag system, and mobile
+     WebKit's own long-press drag for draggable="true" elements is armed by
+     the same gesture at about the same moment. Whenever it won that race the
+     two fought each other: its dragend ran tbDragEnd(), which nulls the
+     tbDrag payload, so the drop that followed hit tbDropOn()'s
+     `if(!drag)return` and silently changed nothing — the highlight tracked
+     the finger and the release did nothing. Coarse pointer only, so a
+     desktop mouse drag keeps the native path it has always used. */
+  @media (hover:none) and (pointer:coarse){
+    #tb-pane [draggable="true"]{-webkit-user-drag:none;user-drag:none}
+  }
   /* The row/card actually under the pointer lifts toward the cursor. */
   body.tb-dragging .tb-day-course.tb-drop-over,body.tb-dragging .tb-day.tb-drop-over{box-shadow:var(--shadow-dragging)}
   /* Insertion indicator: a real 3px accent line in a real gap, not a wash. */
