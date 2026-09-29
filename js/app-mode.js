@@ -45,6 +45,7 @@ function setAppMode(mode,opts){
     // its own read-only thing, not part of the live app's mode toggling.
     document.body.classList.remove('trip-mode');
     document.body.classList.add('shared-mode');
+    mapSyncSize(); // GOLF-212: the pane width just changed
     renderSharedTrip();
     return;
   }
@@ -56,6 +57,10 @@ function setAppMode(mode,opts){
   map.closePopup();
   tripBuilderOn=true;
   document.body.classList.add('trip-mode');
+  /* GOLF-212: this is what widens the pane (420 -> 680px), so re-measure
+     here — on first load too — rather than rely on the ResizeObserver,
+     which only fires on a rendered frame (a background tab gets none). */
+  mapSyncSize();
   if(opts.seedAnchor!=null)tbAnchor=opts.seedAnchor;
   if(enteringBuild)tripAutoScheduleUnscheduled();
   /* GOLF-108: render() (not just renderTripBuilder()+tbDrawMap()) so the
