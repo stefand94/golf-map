@@ -5,7 +5,7 @@
    Replaces the old "extract the inline <script> block out of the
    HTML and run node --check on it" step: since GOLF-70 the app's
    JS lives in js/*.js, loaded as plain <script src> tags in a
-   fixed order (see london-golf-map-v5_1.html).
+   fixed order (see index.html).
 
    Checks, in order:
      1. every js/*.js file parses (node --check equivalent);
@@ -25,7 +25,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const HTML = path.join(ROOT, 'london-golf-map-v5_1.html');
+const HTML = path.join(ROOT, 'index.html');
 const JSDIR = path.join(ROOT, 'js');
 
 const failures = [];

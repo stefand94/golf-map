@@ -3,7 +3,7 @@
    from the URL hash, and the initial cart draw. Must load last.
 
    Loaded as a plain <script> (not a module) in the fixed order
-   listed in london-golf-map-v5_1.html — top-level declarations
+   listed in index.html — top-level declarations
    here are global, which is what the inline onclick= handlers in
    the HTML resolve against.
    ============================================================ */

@@ -79,18 +79,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SW_REL = 'sw.js'
 APP_VERSION_REL = 'js/app-version.js'
-HTML_REL = 'london-golf-map-v5_1.html'
+HTML_REL = 'index.html'
 # Excluded from the hash input for the same reason sw.js itself is: this
 # script rewrites APP_VERSION into this file, so hashing its own content
 # would be circular.
 HASH_EXCLUDED_FILES = {APP_VERSION_REL}
 
 # PRECACHE_URLS entries are relative URLs, not always literal filesystem
-# paths — map the exceptions by hand, everything else is a direct
+# paths — map the exception by hand, everything else is a direct
 # relative-path match (strip the leading './').
 URL_TO_FILE = {
-    './': HTML_REL,           # index.html itself just meta-refreshes here
-    './london-golf-map-v5_1': HTML_REL,
+    './': HTML_REL,   # GOLF-214: the app itself is served at /
 }
 
 CACHE_NAME_RE = re.compile(r"const CACHE_NAME = '([^']*)';")

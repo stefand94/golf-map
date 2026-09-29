@@ -63,8 +63,7 @@ map position) lives in that visitor's own browser `localStorage` and
 never leaves it.
 
 ```
-london-golf-map-v5_1.html   the app (markup + CSS + JS, one file)
-index.html                  redirect to the file above, for GitHub Pages
+index.html                  the app, served at / (GOLF-214; the old /london-golf-map-v5_1 301s here)
 data/                       course, station and config data, loaded as plain <script>s
 images/clubs/               resized club logo thumbnails
 scripts/                    one-off/on-demand data-refresh scripts (see scripts/README.md)
@@ -80,7 +79,7 @@ No install, no build:
 python3 -m http.server 8934
 ```
 
-then open `http://localhost:8934/london-golf-map-v5_1.html`.
+then open `http://localhost:8934/`.
 
 ## Refreshing the data
 

@@ -3,9 +3,9 @@
 #
 #   ./scripts/serve.sh [port]
 #
-# Serves the repo root, resolves the extensionless "/london-golf-map-v5_1"
-# redirect that index.html uses (GitHub/Cloudflare Pages do this for you;
-# a plain static server does not), and opens the map in your browser.
+# Serves the repo root and opens the map (index.html, at /) in your browser.
+# Extensionless URLs resolve to their .html file, as they do on Cloudflare
+# Pages.
 #
 # Note: the ORS proxy Worker is remote, so driving times / place search /
 # hotels all work from localhost unchanged (the Worker's CORS is currently
@@ -15,7 +15,7 @@ set -euo pipefail
 
 PORT="${1:-8000}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-URL="http://localhost:${PORT}/london-golf-map-v5_1.html"
+URL="http://localhost:${PORT}/"
 
 cd "$ROOT"
 

@@ -2,7 +2,7 @@
   "name": "Golf Tripper",
   "short_name": "Golf Tripper",
   "description": "Explore, plan, and build golf trips across Britain, Ireland, and South Africa.",
-  "start_url": "./london-golf-map-v5_1",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#EDF1F4",

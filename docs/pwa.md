@@ -5,13 +5,17 @@ on top of the existing fully-static architecture — no build step, no
 framework, progressive enhancement only.
 
 - **`manifest.json`** — name, icons, start URL, `display:"standalone"`.
-  Linked via `<link rel="manifest">` in `london-golf-map-v5_1.html`'s
+  Linked via `<link rel="manifest">` in `index.html`'s
   `<head>`.
 - **`sw.js`** — a plain service worker, registered from `js/boot.js`
   after first render. **Network-first for navigation requests** (the
   HTML documents) so a single reload after a deploy shows fresh content
-  (GOLF-122), falling back to cache — then to the canonical
-  `./london-golf-map-v5_1` shell — only when offline. **Cache-first for
+  (GOLF-122), falling back to cache — then to the `./` shell — only when offline.
+  (GOLF-214 moved the app from `./london-golf-map-v5_1` to `./`; the old
+  path 301s there, from `functions/_middleware.js` online and from the SW
+  offline.) Since GOLF-210 every local script is requested as
+  `?v=<build>`; the SW answers its own build from the precache by bare
+  path and sends any other build to the network. **Cache-first for
   everything else** in the app shell (every `js/*.js`/`data/*.js` file,
   the manifest, the icons); anything else (the ORS proxy, map tiles,
   Google Fonts) passes straight through to the network untouched. A

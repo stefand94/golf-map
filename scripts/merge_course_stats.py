@@ -3,7 +3,7 @@
 GOLF-12/13: merges fetch_course_stats.py's output into a data/courses-*.js
 file as a `courseStats:{par,slope,rating}` field, which is what unlocks
 pre-filled values in the Course Handicap calculator (calcHTML() in
-london-golf-map-v5_1.html already renders manual-entry fields when this
+index.html already renders manual-entry fields when this
 is absent, so an unmatched course just keeps working as before — this
 never breaks anything, only adds data where we have it).
 

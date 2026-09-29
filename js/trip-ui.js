@@ -4,7 +4,7 @@
    wishlist, and renderTripBuilder() with all of its event wiring.
 
    Loaded as a plain <script> (not a module) in the fixed order
-   listed in london-golf-map-v5_1.html — top-level declarations
+   listed in index.html — top-level declarations
    here are global, which is what the inline onclick= handlers in
    the HTML resolve against.
    ============================================================ */
@@ -654,7 +654,7 @@ function tbTripTotalHTML(unit){
    per the stakeholder's ask ("line items as part of a hierarchy you
    expand from the grouping above it"). Reuses the .fgroup chevron
    convention already established for Explore's filter dropdowns
-   (london-golf-map-v5_1.html), just re-skinned to a label+amount row via
+   (index.html), just re-skinned to a label+amount row via
    .cost-group. */
 /* GOLF-100: every cost line is priced for the whole party (golf/POI ×
    group size, hotels per-person-per-night × group size), so the

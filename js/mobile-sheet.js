@@ -24,7 +24,7 @@
    own scroll area has to end at the tab bar, not below the screen.
 
    Loaded as a plain <script> (not a module) in the fixed order
-   listed in london-golf-map-v5_1.html.
+   listed in index.html.
    ============================================================ */
 const MOB_BREAKPOINT=900;
 function mobIsPhone(){return window.innerWidth<=MOB_BREAKPOINT;}

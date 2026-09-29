@@ -5,8 +5,9 @@
    Same no-package.json trick as test_worker_cache.mjs: copy the module to a
    .mjs in the OS temp dir and import that. Checks that the bare
    golf-map.pages.dev and www.golftripper.uk 301 to the same path + query on
-   golftripper.uk, and that golftripper.uk itself and every branch preview
-   pass straight through.
+   golftripper.uk, that golftripper.uk itself and every branch preview pass
+   straight through, and (GOLF-214) that the old /london-golf-map-v5_1
+   address 301s to / on every host.
 */
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
@@ -35,13 +36,23 @@ async function passes(url, env) {
 }
 
 await redirects('https://golf-map.pages.dev/', 'https://golftripper.uk/');
-await redirects('https://golf-map.pages.dev/london-golf-map-v5_1?x=1', 'https://golftripper.uk/london-golf-map-v5_1?x=1');
 await redirects('https://golf-map.pages.dev/sw.js', 'https://golftripper.uk/sw.js');
-await redirects('https://www.golftripper.uk/london-golf-map-v5_1', 'https://golftripper.uk/london-golf-map-v5_1');
-await passes('https://golftripper.uk/london-golf-map-v5_1');
+await redirects('https://www.golftripper.uk/js/map.js?v=1', 'https://golftripper.uk/js/map.js?v=1');
+await passes('https://golftripper.uk/');
 await passes('https://golf-150-ui.golf-map.pages.dev/');
-await passes('https://a0fe66f9.golf-map.pages.dev/london-golf-map-v5_1');
 await passes('http://localhost:8788/');
+
+// GOLF-214: the old app address lands on / on the same host, query kept
+// (the hash never reaches the server; the browser carries it over). An old
+// address on an old host goes straight to the clean URL in one hop.
+await redirects('https://golftripper.uk/london-golf-map-v5_1', 'https://golftripper.uk/');
+await redirects('https://golftripper.uk/london-golf-map-v5_1.html', 'https://golftripper.uk/');
+await redirects('https://golftripper.uk/london-golf-map-v5_1?x=1', 'https://golftripper.uk/?x=1');
+await redirects('https://golf-map.pages.dev/london-golf-map-v5_1?x=1', 'https://golftripper.uk/?x=1');
+await redirects('https://www.golftripper.uk/london-golf-map-v5_1.html', 'https://golftripper.uk/');
+await redirects('https://a0fe66f9.golf-map.pages.dev/london-golf-map-v5_1', 'https://a0fe66f9.golf-map.pages.dev/');
+await redirects('https://golf-150-ui.golf-map.pages.dev/london-golf-map-v5_1.html', 'https://golf-150-ui.golf-map.pages.dev/');
+await passes('https://golftripper.uk/london-golf-map-v5_1/extra');
 
 // The redirect runs before the (dormant) preview password gate, and the
 // gate still works on a preview when DEV_PASSWORD is set.

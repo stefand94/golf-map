@@ -1,7 +1,7 @@
 # Deploying
 
 This is a fully static site — no build step, no server-side rendering,
-no npm/build tooling. Everything the browser needs is `london-golf-map-v5_1.html`,
+no npm/build tooling. Everything the browser needs is `index.html`,
 `data/*.js`, `js/*.js`, and whatever assets they reference.
 
 ## Cloudflare Pages (dev + prod)

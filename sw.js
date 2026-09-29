@@ -70,8 +70,8 @@
    load, making every deploy look like it needed a double-reload.
    Navigation requests (req.mode === 'navigate') are now network-first:
    try the network, run the same redirect-cleanup, refresh the cache,
-   and only fall back to cache (then to the canonical
-   './london-golf-map-v5_1' shell) when offline. Scripts, data, images,
+   and only fall back to cache (then to the './' shell — GOLF-214 moved
+   the app there from './london-golf-map-v5_1') when offline. Scripts, data, images,
    manifest and icons are unchanged — still cache-first, since they get
    a fresh CACHE_NAME whenever their content changes and that's what
    keeps repeat/offline loads instant. */
@@ -95,7 +95,6 @@ const CACHE_NAME = 'golfmap-shell-v5-1e03b3a538';
    scripts/update_sw_cache_version.py parses this array textually. */
 const PRECACHE_URLS = [
   './',
-  './london-golf-map-v5_1',
   './manifest.json',
   './images/icon.svg',
   './images/icon-maskable.svg',
@@ -194,9 +193,9 @@ self.addEventListener('activate', (event) => {
 // request with a Response whose `redirected` flag is true ("Response
 // served by service worker has redirections"), and a redirected Response
 // reaching the cache is a landmine for any later navigation that matches
-// it. Cloudflare Pages serves this app's clean/extensionless URL (e.g.
-// /london-golf-map-v5_1) via an internal redirect, so fetch(req) picks
-// up that flag on first load. Scripts/data/images are unaffected by the
+// it. Cloudflare Pages answers some URLs with a redirect of its own (e.g.
+// /index.html -> /, and since GOLF-214 the old /london-golf-map-v5_1 ->
+// /), so fetch(req) can pick up that flag. Scripts/data/images are unaffected by the
 // restriction, but running them through this is harmless.
 function stripRedirect(res) {
   if (!res.redirected) return Promise.resolve(res);
@@ -218,6 +217,12 @@ function stripRedirect(res) {
    the right build too, which is what makes the change safe to roll out. */
 const BUILD = CACHE_NAME.slice(CACHE_NAME.lastIndexOf('-') + 1);
 
+// GOLF-214: the app moved from /london-golf-map-v5_1 to /. The server 301s
+// the old address, but answering it here as well keeps that working
+// offline, e.g. for a PWA installed with the old start_url. The browser
+// keeps the #trip / #share= hash across the redirect.
+const LEGACY_APP_PATH = /\/london-golf-map-v5_1(\.html)?$/;
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   // Only handle same-origin GETs — everything else (the ORS Worker,
@@ -225,6 +230,11 @@ self.addEventListener('fetch', (event) => {
   // network exactly as if this service worker didn't exist.
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   const url = new URL(req.url);
+
+  if (req.mode === 'navigate' && LEGACY_APP_PATH.test(url.pathname)) {
+    event.respondWith(Response.redirect(new URL('./', self.location).href + url.search, 301));
+    return;
+  }
 
   // The cache key: the URL without its ?v= stamp (see BUILD above).
   const reqBuild = url.searchParams.get('v');
@@ -261,9 +271,9 @@ self.addEventListener('fetch', (event) => {
           return out;
         }))
         // Offline: fall back to this request's cached copy, then to the
-        // canonical shell so any in-app URL still renders.
+        // app shell so any in-app URL still renders.
         .catch(() => caches.match(key)
-          .then((hit) => hit || (isPoiRegionData ? Response.error() : caches.match('./london-golf-map-v5_1'))))
+          .then((hit) => hit || (isPoiRegionData ? Response.error() : caches.match('./'))))
     );
     return;
   }

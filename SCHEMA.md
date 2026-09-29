@@ -2,7 +2,7 @@
 
 This documents every field used by the map's data structures, so a new course
 entry (or a new contributor) doesn't need to reverse-engineer the render code
-in `london-golf-map-v5_1.html` to know what's expected.
+in `index.html` to know what's expected.
 
 ## Top-level constants
 

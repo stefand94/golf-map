@@ -52,7 +52,7 @@ import unicodedata
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 
-# The load order the page uses (london-golf-map-v5_1.html), which is also the
+# The load order the page uses (index.html), which is also the
 # order the arrays are pushed onto C — so walking these files in this order
 # walks C from index 0. The frozen table below depends on that.
 DATA_FILES = [

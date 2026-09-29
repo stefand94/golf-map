@@ -26,16 +26,27 @@
  * server; browsers carry it across a redirect whose Location has no hash
  * of its own, so old share links still open the same trip.
  */
+/*
+ * GOLF-214 — the app moved from /london-golf-map-v5_1 to /. The old path,
+ * with or without .html, 301s to / on the same host, so previews behave the
+ * same way as production. The hash is kept for the reason given above, so
+ * old #trip and #share= links still open the same trip. An old link on an
+ * old host takes one hop, not two.
+ */
 const CANONICAL_ORIGIN = 'https://golftripper.uk';
 const REDIRECT_HOSTS = new Set(['golf-map.pages.dev', 'www.golftripper.uk']);
+const LEGACY_APP_PATH = /^\/london-golf-map-v5_1(\.html)?$/;
 
 export async function onRequest(context) {
   const { request, env, next } = context;
 
   const url = new URL(request.url);
+  const legacy = LEGACY_APP_PATH.test(url.pathname);
+  const path = legacy ? '/' : url.pathname;
   if (REDIRECT_HOSTS.has(url.hostname)) {
-    return Response.redirect(CANONICAL_ORIGIN + url.pathname + url.search, 301);
+    return Response.redirect(CANONICAL_ORIGIN + path + url.search, 301);
   }
+  if (legacy) return Response.redirect(url.origin + path + url.search, 301);
 
   if (!env.DEV_PASSWORD) return next();
 

@@ -8,6 +8,6 @@
    independently-maintained version scheme (DEC-011/GOLF-132).
 
    Loaded as a plain <script> (not a module), before js/state.js,
-   in the fixed order listed in london-golf-map-v5_1.html.
+   in the fixed order listed in index.html.
    ============================================================ */
 const APP_VERSION='golfmap-shell-v5-1e03b3a538';

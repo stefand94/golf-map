@@ -17,7 +17,7 @@ test dependency just for DOM assertions isn't worth it at this size:
 ## Where the JS lives
 
 Since GOLF-70 the app's JavaScript is no longer one inline `<script>` block in
-`london-golf-map-v5_1.html`. It lives in `js/*.js`, loaded as plain
+`index.html`. It lives in `js/*.js`, loaded as plain
 `<script src>` tags — **not** ES modules, so every top-level declaration stays
 global and the inline `onclick=` handlers in the HTML still resolve, exactly
 the way `data/*.js` already worked. **The load order is significant** and is
@@ -411,7 +411,7 @@ that touches rendering, filters, or persistence:
     scripts/test_data.js` unaffected (no data-file changes).
 
 25. **Trip Builder gets a real URL (GOLF-41).** Navigate directly to
-    `london-golf-map-v5_1.html#trip` (no clicking through the UI first) —
+    `/#trip` (no clicking through the UI first) —
     the page should load straight into the Trip Builder pane (map/list
     filters hidden, `body.trip-mode` set), not the normal course-browsing
     view. Click "Exit" — the URL's hash should clear and the browser's

@@ -10,7 +10,7 @@ archaeology, not for onboarding; grep it by ticket number).
 
 - Fully static site, zero build step, zero framework. Plain `<script src>`
   tags (non-module — inline `onclick=`/`onchange=` handlers depend on
-  global scope), loaded in a fixed order from `london-golf-map-v5_1.html`.
+  global scope), loaded in a fixed order from `index.html`.
 - Zero runtime API calls for course data — everything in `data/*.js` is
   pre-fetched once by a `scripts/*.py` script and hand-merged in. The only
   live network call is to one small Cloudflare Worker
