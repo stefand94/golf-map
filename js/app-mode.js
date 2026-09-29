@@ -110,7 +110,15 @@ function setAsAnchor(i){if(!TRIP.has(i))toggleTrip(i);enterTripBuilder(i)}
    (GOLF-62) and opens PLAN mode — the natural next question after "I like
    this course" is "what else is near it?", which is exactly what Plan mode
    answers. It never jumps straight into Build/day-scheduling. */
+/* GOLF-191 (AC 3): adding a course from its own pin used to zoom into
+   it — the new course became Discover's anchor, and the fit collapsed
+   onto it and its five nearest neighbours, taking the rest of the trip
+   off screen. The add itself is what the visitor asked for; moving the
+   camera was not. mapHoldCamera() covers the whole fan-out (this
+   function's own redraw plus setAppMode()'s render()). */
 function tbAddToPlan(i){
-  tbAddToWishlist(i);
-  if(appMode!=='plan')setAppMode('plan',{seedAnchor:i});
+  mapHoldCamera(()=>{
+    tbAddToWishlist(i);
+    if(appMode!=='plan')setAppMode('plan',{seedAnchor:i});
+  });
 }

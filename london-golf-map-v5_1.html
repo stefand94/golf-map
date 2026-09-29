@@ -297,6 +297,14 @@
   .tb-menu-item.is-danger{color:#9A3412}
   .tb-menu-item.is-danger:hover{background:#FBEEE7}
   .tb-menu-sep{height:1px;background:var(--line);margin:var(--sp-1) 0}
+  /* GOLF-194: a non-item row inside a dropdown — a control that lives in
+     the menu (the group-size stepper) rather than a thing to click once.
+     Full width, and the stepper's own unit label stays visible here even
+     at 480px, where the old header strip used to hide it for room. */
+  .tb-menu-row{display:flex;align-items:center;padding:0 var(--sp-3) var(--sp-1)}
+  .tb-menu-row>.tb-group{flex:1 1 auto}
+  .tb-menu-row .tb-group-val{flex:1 1 auto;justify-content:center}
+  .tb-menu-row .tb-group-unit{display:inline}
   /* A stop row's own "⋯" menu (move to another day / remove). Replaces the
      bare <select> + tiny ✕ that used to sit in every row — the sketch shows
      a row as name + price, and a 12px select is exactly the "small, finicky
@@ -520,7 +528,7 @@
   .tb-sight-chips::-webkit-scrollbar{display:none}
   .tb-sight-chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 10px;border:1px solid var(--line);border-radius:var(--radius-pill);
     background:#fff;color:var(--stone);font:600 var(--fs-caption) var(--font-sans);cursor:pointer}
-  .tb-sight-chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-dark)}
+  .tb-sight-chip[aria-pressed="true"]{border-color:var(--accent-dark);background:var(--accent-dark);color:#fff} /* GOLF-188: selected must read at a glance */
   .tb-sight-row{display:flex;align-items:center;gap:var(--sp-2);min-height:44px}
   .tb-sight-ico{flex:0 0 28px;height:28px;display:grid;place-items:center;border-radius:50%;font-size:14px;
     background:#fff;box-shadow:inset 0 0 0 2px var(--poi-c)}
@@ -594,6 +602,130 @@
   /* GOLF-178: Per person | Total. Both figures are in the markup; the
      wrapper's data-mode picks which one shows (see tbCostsBodyHTML()). */
   .cost-body[data-mode="pp"] .cv-tot,.cost-body[data-mode="tot"] .cv-pp{display:none}
+  /* GOLF-193: the Per person / Total choice is app-wide, so the same
+     two-readings-one-visible trick works off <body> for every figure
+     outside the Costs tab — day headers, day rows, the trip badge, the
+     Itinerary total card and the shared view. Default to per person so a
+     page that renders before tbCostModeApply() runs never shows both. */
+  body[data-cost-mode="pp"] .cv-tot,body[data-cost-mode="tot"] .cv-pp{display:none}
+  body:not([data-cost-mode]) .cv-tot{display:none}
+  .cv-unit{font-weight:400;opacity:.72;font-size:.92em}
+  /* The estimate mark rides just ahead of its figure and must never be
+     mistaken for part of the number, nor wrap away from it. */
+  .cost-est{color:var(--stone);font-weight:400;margin-right:1px;cursor:help}
+  .cost-est-note{color:var(--stone);white-space:nowrap;cursor:help}
+  /* GOLF-186: the stay slot — one row per golf day, asking where you sleep. */
+  .tb-stay-slot{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;
+    margin:var(--sp-2) var(--sp-3) 0 44px;padding:var(--sp-2);
+    border:1px solid var(--line);border-radius:8px;background:var(--paper-2)}
+  .tb-stay-slot.is-empty{border-style:dashed;padding:0}
+  .tb-stay-slot.is-cont{color:var(--stone)}
+  .tb-stay-ask{display:block;width:100%;padding:var(--sp-3);border:0;background:none;
+    font:inherit;color:var(--stone);text-align:left;cursor:pointer;border-radius:8px}
+  .tb-stay-ask:hover{color:var(--ink);background:var(--accent-soft)}
+  .tb-stay-name{flex:1 1 140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .tb-stay-nights{display:inline-flex;align-items:center;gap:4px}
+  .tb-stay-label{color:var(--stone);font-size:.9em}
+  .tb-stay-n{min-width:1.2em;text-align:center}
+  .tb-step{width:32px;height:32px;border:1px solid var(--line);border-radius:6px;
+    background:var(--paper-2);font:inherit;line-height:1;cursor:pointer}
+  .tb-step:disabled{opacity:.4;cursor:default}
+  .tb-stay-price{max-width:126px}
+  /* GOLF-197: the stay's controls, on the hotel's own row. The row has the
+     whole card's width, so a long hotel name wraps here instead of being
+     ellipsised the way the fixed-width slot name was. */
+  .tb-stay-ctl{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-1);cursor:default}
+  .tb-item-hotel .tb-item-name{display:block;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+  .tb-item-hotel .tb-stay-price{max-width:110px}
+  /* GOLF-186: candidate rows and their matching numbered map pins. */
+  .tb-hotel-cand{display:flex;align-items:center;gap:var(--sp-2);width:100%;
+    padding:var(--sp-2);border:0;border-bottom:1px solid var(--line);
+    background:none;font:inherit;text-align:left;cursor:pointer}
+  .tb-hotel-cand:last-child{border-bottom:0}
+  .tb-hotel-cand:hover{background:var(--accent-soft)}
+  .tb-cand-num{flex:none;width:22px;height:22px;border-radius:50%;
+    background:#1b5e20;color:#fff;font-size:.8em;line-height:22px;text-align:center}
+  .tb-cand-main{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tb-cand-dist{flex:none;color:var(--stone);font-size:.9em}
+  .tb-cand-pin{display:block;width:24px;height:24px;border-radius:50%;
+    border:2px solid #1b5e20;background:#fff;color:#1b5e20;
+    font:700 12px/20px system-ui,sans-serif;text-align:center}
+  /* GOLF-187: one ranked search list — towns group their courses. */
+  .tb-sr-group{margin:0 0 var(--sp-2)}
+  .tb-sr-place{cursor:pointer;align-items:center;border-radius:var(--radius-sm)}
+  .tb-sr-place:hover,.tb-sr-place:focus-visible{background:var(--accent-soft)}
+  .tb-sr-place-name{font-weight:700}
+  .tb-sr-count{color:var(--stone)}
+  .tb-sr-kids{margin-left:var(--sp-4);border-left:2px solid var(--line);padding-left:var(--sp-2)}
+  .tb-sr-more{margin:0 0 var(--sp-2);padding-left:var(--sp-1)}
+  .tb-sr-row{cursor:pointer}
+  .tb-why{font-style:italic}
+  .place-pop-name{font-weight:700;margin-bottom:2px}
+  .place-pop-sub{color:var(--stone);font-size:var(--fs-small);margin-bottom:var(--sp-2)}
+  .place-pop-btn{display:block;width:100%;margin-top:var(--sp-1)}
+
+  /* GOLF-185d: the course filters, behind an icon. A right-hand drawer on
+     desktop, a bottom sheet on phones — the filters have never been
+     reachable on either, so both get the same panel rather than desktop
+     keeping the retired Explore sidebar. */
+  .cf-badge{margin-left:var(--sp-1);min-width:18px;padding:0 5px;border-radius:var(--radius-pill);
+    background:var(--accent);color:#fff;font:700 11px/18px var(--font-sans);text-align:center}
+  .cf-backdrop{position:fixed;inset:0;background:rgba(27,39,51,.32);z-index:1200}
+  .cf-panel{position:fixed;z-index:1201;display:flex;flex-direction:column;background:var(--paper);
+    box-shadow:var(--shadow-lg);top:0;right:0;bottom:0;width:min(400px,92vw);border-left:1px solid var(--line)}
+  .cf-panel[hidden],.cf-backdrop[hidden]{display:none}
+  .cf-head{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);
+    border-bottom:1px solid var(--line)}
+  .cf-head b{flex:1 1 auto;font-size:var(--fs-title)}
+  .cf-x{width:var(--tap);height:var(--tap);border:1px solid var(--line);border-radius:var(--radius-sm);
+    background:var(--paper);color:var(--ink);cursor:pointer;font-size:15px}
+  .cf-x:hover{background:var(--accent-soft)}
+  .cf-body{flex:1 1 auto;overflow:auto;padding:var(--sp-4);display:flex;flex-direction:column;gap:var(--sp-5)}
+  .cf-group{display:flex;flex-direction:column;gap:var(--sp-2)}
+  .cf-label{font:700 var(--fs-small) var(--font-sans);text-transform:uppercase;letter-spacing:.04em;color:var(--stone)}
+  .cf-chips{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+  .cf-chip{display:inline-flex;align-items:center;gap:4px;min-height:var(--tap-sm);
+    padding:var(--sp-1) var(--sp-3);border:1px solid var(--line);border-radius:var(--radius-pill);
+    background:var(--paper);color:var(--ink);font:400 var(--fs-small) var(--font-sans);cursor:pointer}
+  .cf-chip:hover{background:var(--accent-soft)}
+  .cf-chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .cf-slider{position:relative;height:28px}
+  .cf-slider input[type=range]{position:absolute;left:0;right:0;width:100%;margin:0;background:none;pointer-events:none}
+  .cf-slider input[type=range]::-webkit-slider-thumb{pointer-events:auto}
+  .cf-slider input[type=range]::-moz-range-thumb{pointer-events:auto}
+  .cf-fee-row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3);font-size:var(--fs-small)}
+  .cf-fee-row label{display:inline-flex;align-items:center;gap:4px}
+  .cf-fee-row input[type=number]{width:74px;min-height:var(--tap-sm);padding:0 var(--sp-2);
+    border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--paper);color:var(--ink)}
+  .cf-readout{color:var(--stone);font-variant-numeric:tabular-nums}
+  .cf-note{margin:0;font-size:var(--fs-small);color:var(--stone)}
+  .cf-foot{display:flex;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--line);
+    background:var(--paper-2)}
+  .cf-clear,.cf-done{min-height:var(--tap);border-radius:var(--radius-pill);cursor:pointer;
+    font:600 var(--fs-small) var(--font-sans);padding:0 var(--sp-4)}
+  .cf-clear{flex:0 0 auto;border:1px solid var(--line);background:var(--paper);color:var(--ink)}
+  .cf-clear:disabled{opacity:.45;cursor:default}
+  .cf-done{flex:1 1 auto;border:1px solid var(--accent);background:var(--accent);color:#fff}
+  @media(max-width:900px){
+    /* Bottom sheet, and never taller than the screen minus a strip of map. */
+    .cf-panel{top:auto;left:0;right:0;bottom:0;width:auto;max-height:82vh;
+      border-left:none;border-top:1px solid var(--line);
+      border-radius:var(--radius-lg) var(--radius-lg) 0 0}
+    /* The fixed "Show map" pill floats at z-index 1500 and would sit on
+       top of the sheet's own footer buttons. */
+    body.cf-open .mob-toggle{display:none}
+  }
+
+  /* GOLF-191: the "Show whole trip" map control. Top-left — zoom is
+     bottom-right, the basemap picker top-right, the attribution
+     bottom-left. Sized to the tap minimum rather than Leaflet's 26px. */
+  /* Both selectors: Leaflet's own `.leaflet-touch .leaflet-bar a` is 30px
+     and more specific than a bare `.map-fit-trip a`, so it wins on touch
+     devices — which are exactly the ones that need the 44px target. */
+  .leaflet-bar.map-fit-trip a,.leaflet-touch .leaflet-bar.map-fit-trip a{
+    width:var(--tap);height:var(--tap);line-height:var(--tap);
+    font-size:20px;text-align:center;color:var(--ink);text-decoration:none}
+  .leaflet-bar.map-fit-trip a:hover{background:var(--accent-soft)}
   .cost-banner-unit{font:600 var(--fs-title) var(--font-sans);white-space:nowrap}
   .cost-banner-fig{white-space:nowrap}
   .cost-banner-amount.is-mixed{font-size:28px}
@@ -798,6 +930,7 @@
   .course-tt::before{display:none}
   .course-tt-name{font-weight:700;font-size:12px;line-height:1.3}
   .course-tt-meta{font-size:11px;color:var(--paper-2);opacity:.8;margin-top:1px}
+  .wt.far{background:#F6E2E2;color:#8A2B2B;white-space:nowrap}
   .wt.played{background:#DCEFDC;color:#1D6B1D}
   .wt.want{background:#F3E6D8;color:#8A5A1E}
   .edited{font-family:var(--font-mono);font-size:9px;background:#E69F00;color:#241a00;padding:2px 5px;border-radius:3px;font-weight:600}
@@ -1119,5 +1252,6 @@
 <script src="js/mobile-sheet.js"></script>
 <script src="js/trip-share.js"></script>
 <script src="js/explore.js"></script>
+<script src="js/course-filters.js"></script>
 <script src="js/editor.js"></script>
 <script src="js/boot.js"></script>

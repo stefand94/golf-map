@@ -197,11 +197,11 @@ function renderSharedTrip(){
     groupSize=payload.gs;
     tbIncludeFuel=true;
     tbCostMode='pp'; // GOLF-178: a shared link always opens on Per person
+    tbCostModeApply(); // GOLF-193: ...and the whole shared view follows it
     const dayCount=tripDays.length;
-    const grand=tbTripTotal();
     pane.innerHTML=`<div class="shared-wrap">
       <div class="tb-navbar"><span class="tb-wordmark">${payload.nm?esc(payload.nm):'Shared trip'}</span>
-        <span class="tb-navbar-right"><span class="tb-pill">${dayCount?`${dayCount} day${dayCount===1?'':'s'} · `:''}${grand}</span>
+        <span class="tb-navbar-right"><span class="tb-pill">${dayCount?`${dayCount} day${dayCount===1?'':'s'} · `:''}${tbTripTotalHTML()}</span>
         <button class="tb-btn is-sm is-quiet no-print" id="shared-print" title="Opens the browser's print dialog — save as PDF from there for a nice printable itinerary.">🖨️ Print / Save as PDF</button></span></div>
       <p class="hint no-print" style="margin:var(--sp-3) var(--sp-4)">📸 <b>Frozen snapshot</b> — this shows the trip exactly as it was when the link was made. It won't update if the trip changes, and viewing it doesn't touch your own trip.</p>
       <div id="shared-map" class="no-print" style="height:320px;margin:0 var(--sp-4) var(--sp-4);border-radius:var(--radius-lg);overflow:hidden"></div>
