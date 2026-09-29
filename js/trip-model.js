@@ -588,7 +588,10 @@ function tbDropOn(dayId,beforeRef){
        is a deliberate no-op (the row snaps back) rather than a silent
        delete of something the visitor typed. */
     let i=null;
-    if(drag.kind==='course')i=drag.i;
+    if(drag.kind==='course'){
+      if(beforeRef===drag.i)return; // GOLF-215: dropped on itself — leave the order alone
+      i=drag.i;
+    }
     else{
       const it=tripDayFindItem(drag.dayId,drag.id);
       if(!it||it.type!=='golf')return;
@@ -604,8 +607,17 @@ function tbDropOn(dayId,beforeRef){
     const target=tripDays.find(d=>d.id===dayId);
     if(!target)return;
     if(!Array.isArray(target.items))target.items=[];
+    /* GOLF-215: this guard used to sit AFTER the splice below, so a drop
+       on the row being dragged took the item out of its day and then
+       returned early — no re-insert, no saveState, no render. The item
+       silently reappeared in the Shortlist on the next render. A mouse
+       drag never reached it; touch does, because the lifted row sits
+       right under the finger, so it has to be checked before anything
+       moves. */
+    if(drag.kind==='item'&&beforeRef===drag.id)return; // dropped on itself
     let moving=null;
     if(drag.kind==='course'){
+      if(beforeRef===drag.i)return; // ditto, for a Shortlist course dropped on itself
       moving={id:tripItemNewId(),type:'golf',i:drag.i};
       tripDayRemoveCourse(drag.i); // can't be on a day, but keeps the invariant honest
     }else{
@@ -615,7 +627,6 @@ function tbDropOn(dayId,beforeRef){
       if(at<0)return;
       moving=src.items.splice(at,1)[0];
     }
-    if(beforeRef===moving.id)return; // dropped on itself
     const idx=beforeRef!=null?target.items.findIndex(it=>it.id===beforeRef):-1;
     if(idx>=0)target.items.splice(idx,0,moving);else target.items.push(moving);
   }
