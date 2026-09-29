@@ -828,3 +828,25 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   position is what drive legs are computed from).
 - **Date:** 2026-09-24 · **Affects:** GOLF-186, GOLF-197. Amends DEC-028 186(c): the empty
   stay box stays the golf-day entry point, but only until a hotel is picked.
+
+## DEC-032 — Owner phone feedback: fold into the redesign, merge now, country first
+
+- **Decision (owner, 2026-09-29):**
+  1. Items 2, 3 and 6 of the owner's phone list (search on the map, bottom
+     nav, compact course card, map on the home page, search hidden until a
+     country is picked, group size out of Discover) are folded into
+     GOLF-185a/b/c. They are not built on the current live layout.
+  2. Custom costs (GOLF-203): each line has its own **per person / whole
+     group** switch.
+  3. `golf-190-shortlist` merges into `mobile-sheet` **now** (GOLF-199), so
+     all further release work builds on one base. `main` is untouched.
+  4. Country before search (GOLF-204): on a phone, the country card comes
+     first and search is hidden until a country is picked, then a small
+     country switch sits beside search. On desktop, the pills sit above search.
+- **Alternatives:** build items 2/3/6 on the live layout (rejected: it is
+  being replaced); merge everything at release (rejected: three branches
+  diverging on the same files); always-group or always-per-person costs
+  (rejected: car hire is per group and caddies are per person); pills above
+  search on phones too (rejected: the phone has no room for both before a
+  country matters).
+- **Date:** 2026-09-29 · **Affects:** GOLF-185, GOLF-199–204.

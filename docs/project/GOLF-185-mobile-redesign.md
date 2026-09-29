@@ -192,3 +192,23 @@ at 375 × 812 and 430 × 932. "Desktop" = > 900 px.
 3. After an add, nearby suggestions are listed in the sheet **and**
    highlighted on the map.
 4. One label: **"Add to trip"**.
+
+## Owner phone feedback 2026-09-29 (amendments, DEC-032)
+
+The owner tested **live** on an iPhone. Their items 2, 3 and 6 are the direction this redesign already has, so they are folded in here. Full list and the other tickets: `GOLF-199-204-phone-feedback.md`. All of this is built on `mobile-sheet` **after GOLF-199 lands**.
+
+### 185a: additions
+- [ ] (item 2) Search stays at the top of the map, and Discover / Itinerary / Costs stay in the bottom bar. These are built already; the owner confirms them on a phone.
+- [ ] (item 6) **Group size leaves Discover on phones.** It lives in Itinerary: the stepper sits at the top of the Itinerary tab and stays reachable from the trip menu. Desktop is unchanged (194 put it in the trip menu).
+- [ ] (item 6) Space: the Discover sheet shows the £ total **once**. The BA saw £0 in both the peek line and the toolbar. Drop chrome that repeats (the "Golf Tripper · Beta" header inside the sheet, for example) wherever the dev can do so without losing a feature. List what went.
+
+### 185b: the course card is compact (item 3, replaces the first AC)
+- [ ] On a phone, tapping a pin opens a **compact** card in the sheet showing only: **name**, **green fee** (with "~" if it's an estimate, per 193), the **short description** (`note`, clamped to 2 lines) and **"Add to trip"**. It takes up no more than about a third of the screen height.
+- [ ] A **"Show more" chevron** expands the card in place to show region, access, Top 100 rank, the full description and every existing action (website, phone, handicap calculator, played, want to play, correct this, set as anchor). The chevron collapses it again.
+- [ ] Missing fee or note: the line is left out, never shown as "undefined" or empty.
+- [ ] **GOLF-201** (Brora card closes itself) is fixed as part of this. The card stays open when the map moves to show it.
+
+### 185c: the country comes first (items 6 and 8)
+- [ ] When no country has been picked, the phone shows the map with the country card, and **search is hidden**.
+- [ ] Once a country is picked, search appears at the top of the map with a **small country switch** beside it (a flag or code chip that opens the three options). The nation pills row in the sheet goes away on phones.
+- [ ] The rest of 185c's AC stand: frosted card, fit to the nation, not shown again on reload, reduce-motion, never on shared links.
