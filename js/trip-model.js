@@ -802,14 +802,15 @@ function tripSetGroupSize(n,fromId){
      that doesn't say. */
   const focusId=fromId||(document.activeElement&&document.activeElement.id);
   renderTripBuilder();
-  if(!wasOpen)return;
-  const drop2=document.getElementById('tb-trip-drop');
-  if(drop2)drop2.open=true;
-  /* − disables itself at one golfer, so focus falls back to + rather
-     than nowhere. */
-  const back=document.getElementById(focusId==='tb-groupsize-dec'||focusId==='tb-groupsize-inc'?focusId:'');
+  if(wasOpen){const drop2=document.getElementById('tb-trip-drop');if(drop2)drop2.open=true;}
+  /* GOLF-185a: the Itinerary tab's inline stepper (phones) needs focus put
+     back too, menu or no menu. − disables itself at one golfer, so focus
+     falls back to + rather than nowhere. */
+  const m=/^(tb-groupsize(?:-itin)?)-(dec|inc)$/.exec(focusId||'');
+  if(!m)return;
+  const back=document.getElementById(focusId);
   if(back&&!back.disabled)back.focus();
-  else if(focusId==='tb-groupsize-dec'){const inc=document.getElementById('tb-groupsize-inc');if(inc)inc.focus();}
+  else if(m[2]==='dec'){const inc=document.getElementById(m[1]+'-inc');if(inc)inc.focus();}
 }
 function tripSnapshotActive(){
   if(!trips[activeTripId])trips[activeTripId]={name:'My trip',created:Date.now()};
@@ -972,6 +973,23 @@ function tripStartFresh(){
    and the menu read the same in both modes now, which is the point. The
    parameter stays because both callers pass it and a mode-specific item
    here is a live possibility; nothing depends on it today. */
+/* GOLF-185a (owner phone feedback, DEC-032): on a phone, group size leaves
+   Discover — the trip menu there omits it — and sits at the top of the
+   Itinerary tab instead (tbItinGroupHTML), still reachable from this menu.
+   Desktop keeps 194's menu-only placement in every mode. */
+function tbPhoneLayout(){return typeof mobIsPhone==='function'&&mobIsPhone();}
+/* One stepper markup, rendered under different id prefixes so the menu's
+   copy and the Itinerary tab's copy can coexist in the same pane. */
+function tbGroupStepperHTML(idp){
+  return`<div class="tb-group" role="group" aria-label="Group size" title="How many golfers? Green fees and stop costs scale by this; hotels keep their own per-item sharing setting.">
+          <button type="button" class="tb-group-btn" id="${idp}-dec" data-gs="-1" aria-label="One fewer golfer"${groupSize<=1?' disabled':''}>−</button>
+          <span class="tb-group-val" aria-live="polite">${PERSON_ICON_SVG}<b>${groupSize}</b><span class="tb-group-unit">${groupSize===1?'golfer':'golfers'}</span></span>
+          <button type="button" class="tb-group-btn" id="${idp}-inc" data-gs="1" aria-label="One more golfer">+</button>
+        </div>`;
+}
+function tbItinGroupHTML(){
+  return`<div class="tb-itin-group"><span class="tb-itin-group-label">Group size</span>${tbGroupStepperHTML('tb-groupsize-itin')}</div>`;
+}
 function tbTripMenuHTML(isBuild){
   const list=tripListAll();
   const active=list.find(t=>t.id===activeTripId);
@@ -993,15 +1011,9 @@ function tbTripMenuHTML(isBuild){
     <summary title="${esc(activeName)} — trip menu"><span class="tb-drop-label">${esc(activeName)}</span></summary>
     <div class="tb-drop-body">
       ${list.length>1?`<div class="tb-menu-label">Your trips</div>${rows}<div class="tb-menu-sep"></div>`:''}
-      <div class="tb-menu-label">Group size</div>
-      <div class="tb-menu-row">
-        <div class="tb-group" role="group" aria-label="Group size" title="How many golfers? Green fees and stop costs scale by this; hotels keep their own per-item sharing setting.">
-          <button type="button" class="tb-group-btn" id="tb-groupsize-dec" aria-label="One fewer golfer"${groupSize<=1?' disabled':''}>−</button>
-          <span class="tb-group-val" aria-live="polite">${PERSON_ICON_SVG}<b>${groupSize}</b><span class="tb-group-unit">${groupSize===1?'golfer':'golfers'}</span></span>
-          <button type="button" class="tb-group-btn" id="tb-groupsize-inc" aria-label="One more golfer">+</button>
-        </div>
-      </div>
-      <div class="tb-menu-sep"></div>
+      ${isBuild||!tbPhoneLayout()?`<div class="tb-menu-label">Group size</div>
+      <div class="tb-menu-row">${tbGroupStepperHTML('tb-groupsize')}</div>
+      <div class="tb-menu-sep"></div>`:''}
       <button type="button" class="tb-menu-item" onclick="tripRename(activeTripId)">✎ Rename</button>
       <button type="button" class="tb-menu-item" onclick="tripCreateNew()">＋ New trip</button>
       <button type="button" class="tb-menu-item" onclick="tripDuplicate(activeTripId)">⧉ Duplicate</button>

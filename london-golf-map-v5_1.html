@@ -1116,7 +1116,17 @@
     .bs-peek{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);min-height:36px;
       font:600 var(--fs-body)/1.25 var(--font-sans);color:var(--ink)}
     .bs-peek-text{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-    .panel>.mast{padding:var(--sp-2) var(--sp-5);box-shadow:none}
+    /* GOLF-185a (DEC-032): one £ total and one brand line on a phone. The
+       peek line always shows the total, so the header's copy goes; the
+       masthead's "Golf Tripper" repeats what the page already is, and its
+       Beta badge moves into the pane header (js/mobile-sheet.js). */
+    .panel>.mast{display:none}
+    .tb-head-meta{display:none}
+    .tb-head-actions .tb-beta{margin-right:var(--sp-1)}
+    .tb-itin-group{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
+      margin:0 0 var(--sp-3);padding:var(--sp-2) 0}
+    .tb-itin-group-label{font:600 var(--fs-caption) var(--font-sans);color:var(--stone);text-transform:uppercase;letter-spacing:.06em}
+    .tb-itin-group .tb-group-unit{display:inline}
     .tb-pane{overscroll-behavior:contain;padding-bottom:var(--sp-4)}
     /* The pane's segmented tabs move to the bottom tab bar. */
     .tb-tabs{display:none}

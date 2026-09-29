@@ -273,6 +273,13 @@ function mobAfterRender(){
     mobPanel.style.top='';
     return;
   }
+  /* GOLF-185a (DEC-032, "drop chrome that repeats"): the "Golf Tripper"
+     masthead row is hidden on phones (CSS), but the Beta badge must stay
+     visible (GOLF-129), so it rides beside Share/Clear in the pane header.
+     tbMountBetaBadge() mounts a fresh one in the masthead each render,
+     because the pane's innerHTML replaced the last one moved here. */
+  const beta=document.querySelector('.panel>.mast .tb-beta'),acts=document.querySelector('#tb-pane .tb-head-actions');
+  if(beta&&acts)acts.prepend(beta);
   /* Float the search (and its results, and the filter slot) over the map. */
   const results=document.getElementById('tb-search-results');
   if(wrap){

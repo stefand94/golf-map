@@ -1174,7 +1174,7 @@ function tbBindDropdownDismiss(){
   if(tbDismissBound)return;
   tbDismissBound=true;
   document.addEventListener('mousedown',e=>{
-    document.querySelectorAll('#tb-pane details[open].tb-drop,#tb-pane details[open].tb-rowmenu,.mast details[open].tb-beta')
+    document.querySelectorAll('#tb-pane details[open].tb-drop,#tb-pane details[open].tb-rowmenu,.mast details[open].tb-beta,#tb-pane details[open].tb-beta')
       .forEach(dd=>{if(!dd.contains(e.target))dd.removeAttribute('open');});
   });
 }
@@ -1302,7 +1302,7 @@ function renderTripBuilder(){
     <div class="tb-tabs" role="tablist">${TABS.map(([k,label])=>
       `<button class="tb-tab-btn" role="tab" data-tab="${k}" aria-pressed="${activeTab===k}">${label}</button>`).join('')}</div>
     ${tabChrome}
-    <div class="tb-tab-content">${
+    <div class="tb-tab-content">${isItin&&tbPhoneLayout()?tbItinGroupHTML():''}${
       !isBuild?tbPlanHTML()
       :tbBuildTab==='cost'?tbCostsTabHTML()
       :tbItinFilter==='all'?tripDayScheduleHTML()
@@ -1353,9 +1353,7 @@ function renderTripBuilder(){
   /* GOLF-194: the stepper lives in the trip menu now, so it is inside a
      <details> that this same re-render would otherwise slam shut —
      tripSetGroupSize() reopens it and restores focus. */
-  const gsDec=document.getElementById('tb-groupsize-dec'),gsInc=document.getElementById('tb-groupsize-inc');
-  if(gsDec)gsDec.addEventListener('click',()=>tripSetGroupSize(groupSize-1,'tb-groupsize-dec'));
-  if(gsInc)gsInc.addEventListener('click',()=>tripSetGroupSize(groupSize+1,'tb-groupsize-inc'));
+  pane.querySelectorAll('.tb-group-btn[data-gs]').forEach(b=>b.addEventListener('click',()=>tripSetGroupSize(groupSize+Number(b.dataset.gs),b.id)));
   pane.querySelectorAll('.tb-tab-btn').forEach(btn=>btn.addEventListener('click',()=>tbGoTab(btn.dataset.tab)));
   cfWireButton();
   const filterDrop=document.getElementById('tb-filter-drop');
