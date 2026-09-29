@@ -323,6 +323,7 @@ function hotelsCacheSave(c){
   try{localStorage.setItem(HOTELS_CACHE_KEY,JSON.stringify(t));}catch(e){}
 }
 let hotelsPending=new Set();
+const HOTELS_RADIUS_M=3000; // search radius; GOLF-211's map framing uses it too
 /* dayId currently showing the hotel picker, or null — one panel open at
    a time, same convention as tbAddStop. */
 let tbHotelPickerFor=null;
@@ -336,7 +337,7 @@ function tbHotelsFor(day){
   if(hotelsPending.has(key))return null;
   hotelsPending.add(key);
   fetch(ORS_PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({mode:'hotels',point:[pt.lng,pt.lat],radius:3000})})
+    body:JSON.stringify({mode:'hotels',point:[pt.lng,pt.lat],radius:HOTELS_RADIUS_M})})
     .then(r=>r.ok?r.json():Promise.reject(new Error('proxy error '+r.status)))
     .then(data=>{
       if(data&&Array.isArray(data.pois)){
@@ -370,22 +371,24 @@ function tbOpenHotelPicker(dayId){
   if(!pt){tbPromptHotel(dayId);return;}
   /* GOLF-199: on a phone the picker lives in the sheet, so "show the map"
      (which lowers the sheet to peek) would hide it. Half keeps the list
-     and the numbered pins both in view, and the fit centres the day in
-     the strip of map above the sheet rather than behind it. */
-  if(typeof mobIsPhone==='function'&&mobIsPhone()){
-    showMobileList();
-    mapFitBounds(L.latLngBounds([pt,pt]),{maxZoom:13,animate:false});
-  }else if(typeof map!=='undefined'&&map)map.setView([pt.lat,pt.lng],13);
+     and the numbered pins both in view.
+     GOLF-211: frame the whole search circle (the Worker's radius, below)
+     around the anchor, so every Nearby hotel lands on screen as a pin.
+     mapFitBounds() fits it into the strip of map above the phone sheet. */
+  if(typeof mobIsPhone==='function'&&mobIsPhone())showMobileList();
+  if(typeof map!=='undefined'&&map)mapFitBounds(L.latLng(pt.lat,pt.lng).toBounds(HOTELS_RADIUS_M*2),{padding:[16,16],maxZoom:15,animate:false});
   tbHotelPickerFor=dayId;
   tbAddStop={dayId,itemId:null,type:'hotel',name:'',price:'',lat:null,lng:null,nights:'1'};
-  renderTripBuilder();tbDrawMap();
+  /* GOLF-211: fit=false — a fitting redraw here re-framed the whole trip
+     and undid the move above, so the map never showed the day's hotels. */
+  renderTripBuilder();tbDrawMap(false);
   /* GOLF-199: at half height the day's picker is usually below the fold. */
   if(typeof mobIsPhone==='function'&&mobIsPhone()){
     const pane=document.getElementById('tb-pane'),form=pane&&pane.querySelector('.tb-addstop');
     if(form)pane.scrollTop+=form.getBoundingClientRect().top-pane.getBoundingClientRect().top-8;
   }
 }
-function tbCloseHotelPicker(){tbHotelPickerFor=null;tbAddStop=null;renderTripBuilder();tbDrawMap();}
+function tbCloseHotelPicker(){tbHotelPickerFor=null;tbAddStop=null;renderTripBuilder();tbDrawMap(false);} // GOLF-211: closing doesn't move the map
 /* GOLF-186: one ordered list of candidates, shared by the panel rows and
    the map pins, so "number 3 in the list" and "pin 3 on the map" are the
    same hotel — which is the only reason the numbering is worth having.

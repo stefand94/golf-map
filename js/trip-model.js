@@ -277,7 +277,9 @@ function tbEditStop(dayId,itemId){
    close that list, or a stray "Nearby hotels" panel is left open with
    nothing to do. Clearing tbHotelPickerFor for a non-hotel stop is a
    harmless no-op (it only ever matches a hotel-type day slot). */
-function tbAddStopCancel(){tbAddStop=null;if(typeof tbHotelPickerFor!=='undefined')tbHotelPickerFor=null;renderTripBuilder();}
+/* GOLF-211: redraw so the picker's numbered hotel pins go, but fit=false —
+   Cancel must not move the camera the picker just placed. */
+function tbAddStopCancel(){tbAddStop=null;if(typeof tbHotelPickerFor!=='undefined')tbHotelPickerFor=null;renderTripBuilder();tbDrawMap(false);}
 function tbAddStopCommit(){
   if(!tbAddStop)return;
   const s=tbAddStop;
@@ -330,7 +332,10 @@ function tbAddStopFormHTML(dayId,itemId){
   // them; before that it falls back to the day's.
   const cur=curSym(tripStayCurrency(dayObj,tbAddStop));
   const gs=groupSizeFor();
-  return`<div class="tb-addstop">
+  /* GOLF-211: opened from "Where are you staying?", so it lines up with
+     that box (and the Nearby list below it) rather than the day card. */
+  const picker=!editing&&typeof tbHotelPickerFor!=='undefined'&&tbHotelPickerFor===dayId;
+  return`<div class="tb-addstop${picker?' is-picker':''}">
     <div class="tb-addstop-title">${editing?(isHotel?'Edit this stay':'Edit this stop'):(isHotel?'Add a stay':'Add a stop')}</div>
     ${tbSearchFieldHTML({id:'tb-addstop-name',value:tbAddStop.name,
       placeholder:isHotel?'Search a hotel…':'Search a place or landmark…',

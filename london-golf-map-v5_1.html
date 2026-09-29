@@ -531,6 +531,9 @@
   .tb-hotel-picker{margin:calc(-1 * var(--sp-2)) var(--sp-3) var(--sp-3);padding:var(--sp-3);background:var(--paper-2);
     border:1px solid var(--line);border-radius:var(--radius-md)}
   .tb-hotel-picker .tb-poi-list{padding:0}
+  /* GOLF-211: the picker opens under "Where are you staying?"
+     (.tb-stay-slot), so both halves take that box's left and right edges. */
+  .tb-addstop.is-picker,.tb-hotel-picker{margin-left:44px;margin-right:var(--sp-3)}
   /* GOLF-148: "Things to see" — the pre-baked sights along a day's route. */
   .tb-sights{margin:0 var(--sp-3) var(--sp-3) 44px;padding:var(--sp-2) var(--sp-3) var(--sp-3);background:var(--paper-2);
     border-radius:var(--radius-md);display:flex;flex-direction:column;gap:2px}
