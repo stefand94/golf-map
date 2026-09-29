@@ -226,7 +226,9 @@ function poiVisibleForDay(d){
    rounded or come from a different source. */
 function poiInTrip(p){
   return tripDays.some(d=>tripDayItems(d).some(it=>it.type==='poi'&&it.name===p.name.slice(0,80)&&
-    (it.lat==null||haversineMiles(it.lat,it.lng,p.lat,p.lng)<0.2)));
+    (it.lat==null||haversineMiles(it.lat,it.lng,p.lat,p.lng)<0.2))
+    // GOLF-216: or it's a day of its own
+    ||d.placeLat!=null&&d.place===p.name.slice(0,80)&&haversineMiles(d.placeLat,d.placeLng,p.lat,p.lng)<0.2);
 }
 let poiById=new Map();
 function poiAddToDay(id,dayId){
@@ -240,10 +242,20 @@ function poiAddToDay(id,dayId){
   if(typeof tbToast==='function')tbToast(`Added <b>${esc(p.name)}</b> to Day ${tripDays.indexOf(d)+1}`,[
     {label:'Undo',fn:()=>{tripDayRemoveItem(dayId,it.id);renderTripBuilder();tbDrawMap(false);}}]);
 }
+/* GOLF-216: the card's select holds either a day id (a stop on that day)
+   or "new:<pos>" — a whole day located at the POI, which is the same thing
+   as picking a town from search, so it goes through tbAddPlaceToTrip
+   (toast, Undo, Nearby re-scope and all). */
 function poiAddFromPopup(id){
   const sel=document.getElementById('poi-pop-day');
-  const dayId=sel?Number(sel.value):NaN;
-  if(isFinite(dayId))poiAddToDay(id,dayId);
+  const v=sel?sel.value:'';
+  if(v.startsWith('new:')){
+    const p=poiById.get(id);if(!p)return;
+    tbAddPlaceToTrip(p.lat,p.lng,p.name,v.slice(4));
+    return;
+  }
+  const dayId=Number(v);
+  if(v!==''&&isFinite(dayId))poiAddToDay(id,dayId);
 }
 function tbTogglePois(dayId){
   if(tbPoiOn.has(dayId)){tbPoiOn.delete(dayId);tbPoiMore.delete(dayId);}else tbPoiOn.add(dayId);
@@ -314,7 +326,10 @@ function poiPopupHTML(id,defaultDayId){
   const g=POI_GROUP_BY_KEY[p.group];
   const head=`<div class="hotel-pop-name"><span aria-hidden="true" style="margin-right:5px">${g[2]}</span>${esc(p.name)}</div><div class="hotel-pop-cat">${esc(p.label)}</div>`;
   if(poiInTrip(p))return`<div class="hotel-pop">${head}<p class="hotel-pop-note">✓ Already in your trip</p></div>`;
-  const opts=tripDays.map((d,i)=>`<option value="${d.id}"${d.id===defaultDayId?' selected':''}>Day ${i+1}${d.place?' — '+esc(tripShortPlace(d.place)):''}</option>`).join('');
+  const days=tripDays.map((d,i)=>`<option value="${d.id}"${d.id===defaultDayId?' selected':''}>Day ${i+1}${d.place?' — '+esc(tripShortPlace(d.place)):''}</option>`).join('');
+  const opts=tripDays.length
+    ?`<optgroup label="A stop on">${days}</optgroup><optgroup label="Its own day">${tripDayPosOptionsHTML().replace(/value="(\d+)"/g,'value="new:$1"').replace(/ selected/g,'')}</optgroup>`
+    :`<option value="new:0">New day (Day 1)</option>`;
   return`<div class="hotel-pop">${head}
     <label class="hotel-pop-row"><span>Add to</span><select id="poi-pop-day" class="hotel-pop-select">${opts}</select></label>
     <button type="button" class="tb-btn is-primary is-sm hotel-pop-add" onclick="poiAddFromPopup('${p.id}')">＋ Add to trip</button></div>`;

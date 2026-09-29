@@ -153,19 +153,25 @@ let tbUnifiedPlaceResults=null;
        merged "Nearby" scope (GOLF-91) has no other way to get seeded by a
        place, so dropping this side effect would silently strand it. */
 let tbPlaceAddedNote=null;
-function tbAddPlaceToTrip(lat,lng,label){
+/* GOLF-216: `pos` is where the day goes (tripDayInsertAt's 0-based
+   position); omitted = after the last day, as before. A place on an
+   empty trip still starts it as a golf Day 1. A POI on the map can come
+   through here too (js/poi.js poiAddAsDay) — it's just a named point. */
+function tbAddPlaceToTrip(lat,lng,label,pos){
   const fresh=tripDays.length===0;
   const prevAnchor=tbPlaceAnchor,prevTab=tbDiscoveryTab;
-  tripDayAdd();
-  const d=tripDays[tripDays.length-1];
+  const ins=tripDayInsertAt(pos==null||pos===''?null:Number(pos));
+  const d=ins.day;
   if(!fresh)d.kind='free';
   tripDaySetPlaceGeo(d.id,label,lat,lng);
   tbDayShown=d.id;
   tbPlaceAnchor={label,lat,lng};
   tbDiscoveryTab='anchor'; // GOLF-91: "Near a place" merged into "Nearby"
-  tbSearchQ='';tbUnifiedPlaceResults=null;
-  tbPlaceAddedNote={label,day:tripDays.length};
+  tbSearchQ='';tbUnifiedPlaceResults=null;tbPlaceDayPick=null;
+  const n=tripDays.indexOf(d)+1;
+  tbPlaceAddedNote={label,day:n};
   saveState();
+  if(typeof map!=='undefined'&&map)map.closePopup();
   // GOLF-69a: don't yank a visitor who's mid-Build back to Plan/Discover.
   if(appMode!=='build')setAppMode('plan');
   else{renderTripBuilder();tbDrawMap();}
@@ -173,19 +179,50 @@ function tbAddPlaceToTrip(lat,lng,label){
      bigger consequence than "+ Wishlist" beside it — and the old
      "Added X as Day N" note lived in search results that had just been
      cleared, so it never showed. A toast confirms it and offers Undo. */
-  const dayId=d.id,n=tripDays.length;
+  const dayId=d.id;
   tbToast(`Added <b>${esc(tripShortPlace(label))}</b> as Day ${n}`,[
-    {label:'Undo',fn:()=>{tripDayRemove(dayId);tbPlaceAnchor=prevAnchor;tbDiscoveryTab=prevTab;tbPlaceAddedNote=null;
+    {label:'Undo',fn:()=>{tripDayRemove(dayId);ins.restore();tbPlaceAnchor=prevAnchor;tbDiscoveryTab=prevTab;tbPlaceAddedNote=null;
       saveState();renderTripBuilder();tbDrawMap();}},
     ...(appMode!=='build'?[{label:'Open',fn:()=>enterBuildMode()}]:[])
   ]);
+}
+/* The place's lat,lng,'label' as inline-handler arguments. */
+function tbPlaceArgs(lat,lng,label){return`${lat},${lng},'${String(label).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}'`;}
+/* GOLF-216: the "Add as a day" chooser open under one search row, keyed
+   by the place's "lat,lng" (two results can share a label — there are two
+   Nairns), or null. Transient. */
+let tbPlaceDayPick=null;
+/* The chooser itself — shared by the search row and the place card. With
+   no days there's nothing to choose: the button just makes Day 1. `sel`
+   is the id the button reads the position from. */
+function tbPlaceDayControlsHTML(lat,lng,label,sel){
+  const a=tbPlaceArgs(lat,lng,label);
+  if(!tripDays.length)return`<button type="button" class="tb-btn is-sm is-primary place-pop-btn" onclick="event.stopPropagation();tbAddPlaceToTrip(${a})">Start a trip here</button>`;
+  return`<label class="tb-daypos"><span>Goes</span><select id="${sel}" class="hotel-pop-select" onclick="event.stopPropagation()">${tripDayPosOptionsHTML()}</select></label>
+    <button type="button" class="tb-btn is-sm is-primary place-pop-btn" onclick="event.stopPropagation();tbAddPlaceToTrip(${a},document.getElementById('${sel}').value)">＋ Add as a day</button>`;
+}
+/* The search row's own button: with no days it starts the trip there and
+   then; otherwise it opens the chooser (default: after the last day). */
+function tbPlaceDayBtnHTML(p){
+  const a=tbPlaceArgs(p.lat,p.lng,p.label);
+  return tripDays.length
+    ?`<button type="button" class="tb-btn is-sm" aria-expanded="${tbPlaceDayPick===p.lat+','+p.lng}" onclick="event.stopPropagation();tbPlaceDayPickToggle(${a})">＋ Add as a day</button>`
+    :`<button type="button" class="tb-btn is-sm is-primary" onclick="event.stopPropagation();tbAddPlaceToTrip(${a})">Start a trip here</button>`;
+}
+function tbPlaceDayPickToggle(lat,lng,label){
+  const k=lat==null?null:lat+','+lng;
+  tbPlaceDayPick=k==null||tbPlaceDayPick===k?null:k;
+  const el=document.getElementById('tb-search-results');
+  if(el)el.innerHTML=tbUnifiedSearchResultsHTML();
+  const sel=document.getElementById('tb-sr-daypos');
+  if(sel)sel.focus();
 }
 /* GOLF-187: one place to forget the current query — the input's value, the
    two result caches and the temporary map marker that belongs to them. */
 function tbClearUnifiedSearch(){
   tbSearchQ='';
   tbUnifiedPlaceResults=null;
-  tbPlaceAddedNote=null;
+  tbPlaceAddedNote=null;tbPlaceDayPick=null;
   const el=document.getElementById('tb-unified-search');
   if(el)el.value='';
   if(typeof tbClearTempPlaceMarker==='function')tbClearTempPlaceMarker();
@@ -194,13 +231,12 @@ function tbClearUnifiedSearch(){
    Two actions, both of which used to be buttons in the search list:
    re-scope Discover's "Nearby" to here, or make this place a day. */
 function tbPlaceCardHTML(lat,lng,label){
-  const started=tbPlaceAnchor!=null||tripDays.length>0;
-  const a=`${lat},${lng},'${String(label).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}'`;
+  const a=tbPlaceArgs(lat,lng,label);
   return`<div class="place-pop">
     <div class="place-pop-name">📍 ${esc(tripShortPlace(label))}</div>
     ${label.includes(',')?`<div class="place-pop-sub">${esc(label.slice(label.indexOf(',')+1).trim())}</div>`:''}
     <button type="button" class="tb-btn is-sm place-pop-btn" onclick="tbPlaceShowNearby(${a})">⛳ Courses near here</button>
-    <button type="button" class="tb-btn is-sm is-primary place-pop-btn" onclick="tbAddPlaceToTrip(${a})">${started?'＋ Add as a day':'Start a trip here'}</button>
+    ${tbPlaceDayControlsHTML(lat,lng,label,'place-pop-daypos')}
   </div>`;
 }
 /* GOLF-112 set tbPlaceAnchor as a side effect of merely focusing a place,
@@ -407,12 +443,19 @@ function tbUnifiedSearchResultsHTML(){
       title="Show ${esc(e.short)} on the map">
       <div><span class="tb-sr-place-name">📍 ${esc(e.short)}</span>${count}
         ${region?`<div class="cart-region">${esc(region)}</div>`:''}</div>
+      ${tbPlaceDayBtnHTML(p)}
     </div>`;
+    /* GOLF-216: "Add as a day" is back in the list, but as one button that
+       opens a one-line chooser under the row — not the two always-on
+       buttons GOLF-187 removed. */
+    const pick=tbPlaceDayPick===p.lat+','+p.lng&&tripDays.length
+      ?`<div class="tb-sr-daypick">${tbPlaceDayControlsHTML(p.lat,p.lng,p.label,'tb-sr-daypos')}
+          <button type="button" class="tb-btn is-sm is-quiet" onclick="tbPlaceDayPickToggle(null)">Cancel</button></div>`:'';
     const kids=e.children.length
       ?`<div class="tb-sr-kids">${e.children.map(k=>tbSearchCourseRowHTML(k,day)).join('')}${
           e.total>e.children.length?`<p class="hint tb-sr-more">${e.total-e.children.length} more near ${esc(e.short)} — tap the place to see them on the map.</p>`:''}</div>`
       :'';
-    return`<div class="tb-sr-group">${head}${kids}</div>`;
+    return`<div class="tb-sr-group">${head}${pick}${kids}</div>`;
   }).join('');
   return outage+html;
 }

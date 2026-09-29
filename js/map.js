@@ -635,7 +635,7 @@ function tbFocusPlaceOnMap(lat,lng,label){
      here" / "Add as a day"), which is a large part of why a town sat
      below ten course rows — the actions moved here, where there is room
      for them and where the place is already in front of you. */
-  if(label)tbTempPlaceMarker.bindPopup(tbPlaceCardHTML(lat,lng,label),{minWidth:200,closeButton:true});
+  if(label)tbTempPlaceMarker.bindPopup(()=>tbPlaceCardHTML(lat,lng,label),{minWidth:200,closeButton:true});
   if(label)tbTempPlaceMarker.bindTooltip(String(label),{direction:'top',offset:[0,-20]});
   /* flyTo's easing math needs a sized container; fall back to a plain jump
      if the map hasn't been laid out yet (mirrors tbDrawMap()'s own guard). */

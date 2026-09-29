@@ -1369,6 +1369,7 @@ function renderTripBuilder(){
       searchResultsEl.style.display=q?'':'none';
       tbUnifiedPlaceResults=null;
       tbPlaceAddedNote=null; // the "added as Day N" note belongs to the query that produced it
+      tbPlaceDayPick=null;
       searchResultsEl.innerHTML=q?tbUnifiedSearchResultsHTML():'';
     },
     render(list){
@@ -1386,14 +1387,14 @@ function renderTripBuilder(){
        live on that card (js/trip-add.js tbPlaceCardHTML), which is what
        stopped a town costing three rows' worth of height in the list. */
     const focus=e.target.closest('.tb-unified-place-focus');
-    if(!focus)return;
+    if(!focus||e.target.closest('button,select'))return; // GOLF-216: the row's own "Add as a day"
     e.preventDefault();
     tbFocusPlaceOnMap(parseFloat(focus.dataset.lat),parseFloat(focus.dataset.lng),focus.dataset.label);
   });
   searchResultsEl.addEventListener('keydown',e=>{
     if(e.key!=='Enter'&&e.key!==' ')return;
     const focus=e.target.closest('.tb-unified-place-focus');
-    if(!focus)return;
+    if(!focus||e.target.closest('button,select'))return; // GOLF-216: the row's own "Add as a day"
     e.preventDefault();
     tbFocusPlaceOnMap(parseFloat(focus.dataset.lat),parseFloat(focus.dataset.lng),focus.dataset.label);
   });

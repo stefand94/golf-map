@@ -685,6 +685,12 @@
   .place-pop-name{font-weight:700;margin-bottom:2px}
   .place-pop-sub{color:var(--stone);font-size:var(--fs-small);margin-bottom:var(--sp-2)}
   .place-pop-btn{display:block;width:100%;margin-top:var(--sp-1)}
+  /* GOLF-216: "which day does it go after" — the place card, and the
+     one-line chooser that opens under a place row in search. */
+  .tb-daypos{display:flex;align-items:center;gap:var(--sp-2);margin-top:var(--sp-2);font-size:12.5px;color:var(--stone)}
+  .tb-sr-daypick{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);padding:var(--sp-2);margin:0 0 var(--sp-2);background:var(--accent-soft);border-radius:var(--radius-sm)}
+  .tb-sr-daypick .tb-daypos{flex:1 1 180px;margin:0}
+  .tb-sr-daypick .place-pop-btn{display:inline-block;width:auto;margin:0}
 
   /* GOLF-185d: the course filters, behind an icon. A right-hand drawer on
      desktop, a bottom sheet on phones — the filters have never been

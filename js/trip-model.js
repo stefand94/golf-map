@@ -64,6 +64,33 @@ const TRIP_DAY_KINDS={golf:'Golf day',start:'Start point',free:'Free day',end:'E
    is the one thing this ticket's migration promises not to do. */
 function tripItemNewId(){return 'it'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 function tripDayAdd(){tripDays.push({id:tripDayNextId++,items:[],driveIn:null,date:null,kind:'golf',place:null,placeLat:null,placeLng:null});saveState();}
+/* GOLF-216: a new day at 0-based position `pos` (past the end = append),
+   so "the day after Castle Stuart" can go in the middle of a trip. Later
+   days shift down, and a later day that carries a date moves on a day
+   with it — inserting a day pushes the calendar, unlike a reorder
+   (tbDayMoveTo keeps dates). A drive override on the day that now follows
+   the new one described a leg that no longer exists, so it's cleared,
+   exactly as tbDayMoveTo does. Returns {day, restore}; restore() puts the
+   dates and overrides back, for Undo. Doesn't save. */
+function tripDayInsertAt(pos){
+  pos=Math.max(0,Math.min(tripDays.length,pos==null?tripDays.length:pos));
+  const was=tripDays.map(d=>({d,date:d.date,driveIn:d.driveIn}));
+  const shift=(s,n)=>{const t=new Date(s+'T00:00:00Z');t.setUTCDate(t.getUTCDate()+n);return t.toISOString().slice(0,10);};
+  const prev=tripDays[pos-1],next=tripDays[pos];
+  const date=prev&&prev.date?shift(prev.date,1):next&&next.date?next.date:null;
+  tripDays.slice(pos).forEach(d=>{if(d.date)d.date=shift(d.date,1);});
+  if(next)next.driveIn=null;
+  const day={id:tripDayNextId++,items:[],driveIn:null,date,kind:'golf',place:null,placeLat:null,placeLng:null};
+  tripDays.splice(pos,0,day);
+  return{day,restore(){was.forEach(w=>{w.d.date=w.date;w.d.driveIn=w.driveIn;});}};
+}
+/* GOLF-216: the "which day does it go after" choices, shared by the search
+   row, the place card and the POI card. Values are insert positions;
+   the default is after the last day. */
+function tripDayPosOptionsHTML(){
+  return tripDays.map((d,i)=>`<option value="${i+1}"${i===tripDays.length-1?' selected':''}>After Day ${i+1}${d.place?' — '+esc(tripShortPlace(d.place)):''}</option>`).join('')
+    +`<option value="0">Before Day 1</option>`;
+}
 /* GOLF-66: "+ Add day" used to drop an anonymous, placeless day at the
    bottom and leave the visitor to notice the small place box and click
    into it. The stakeholder's ask was "when adding a day make it easier to
