@@ -348,12 +348,46 @@ L.Popup.include({openOn(m){
       mobCardOpen(+hit[1],src&&src.getLatLng?src.getLatLng():null);
       return this;
     }
+    /* GOLF-185e: clear of the map's own controls too — the basemap
+       button under the search, and zoom sitting on the sheet — not just
+       the search bar and the sheet. */
     const t=mobSheetTops();
-    this.options.autoPanPaddingTopLeft=[12,t.topBar+12];
-    this.options.autoPanPaddingBottomRight=[12,Math.max(12,t.H-mobPanelTop+12)];
+    let top=t.topBar,bottom=mobPanelTop;
+    document.querySelectorAll('#map .leaflet-top .leaflet-control').forEach(el=>{
+      const r=el.getBoundingClientRect();if(r.height)top=Math.max(top,r.bottom);
+    });
+    document.querySelectorAll('#map .leaflet-bottom .leaflet-control-zoom').forEach(el=>{
+      const r=el.getBoundingClientRect();if(r.height)bottom=Math.min(bottom,r.top);
+    });
+    this.options.autoPanPaddingTopLeft=[12,Math.round(top)+12];
+    this.options.autoPanPaddingBottomRight=[12,Math.max(12,Math.round(t.H-bottom)+12)];
   }
   return mobPopupOpenOn.apply(this,arguments);
 }});
+
+/* GOLF-185e: the map attribution folds behind an ⓘ on phones (three lines
+   of credits ate the strip of map above the sheet). Tapping it shows the
+   credits in full, legible, until the ⓘ or the map is tapped again. The
+   button is its own control, not inside the attribution, because Leaflet
+   rewrites the attribution's markup whenever the base layer changes. CSS
+   hides the button, and leaves the attribution alone, on desktop. */
+const mobAttrControl=L.control({position:'bottomright'});
+mobAttrControl.onAdd=function(){
+  const el=L.DomUtil.create('div','leaflet-control mob-attr-btn');
+  el.innerHTML=`<button type="button" aria-expanded="false" aria-label="Map credits" title="Map credits"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/></svg></button>`;
+  L.DomEvent.disableClickPropagation(el);
+  el.firstChild.addEventListener('click',()=>mobAttrSet(!map.getContainer().classList.contains('mob-attr-open')));
+  return el;
+};
+mobAttrControl.addTo(map);
+/* Bottom corners stack new controls on top; this one belongs underneath,
+   directly below the credits it opens. */
+mobAttrControl.getContainer().parentNode.appendChild(mobAttrControl.getContainer());
+function mobAttrSet(open){
+  map.getContainer().classList.toggle('mob-attr-open',open);
+  mobAttrControl.getContainer().firstChild.setAttribute('aria-expanded',String(open));
+}
+map.on('click',()=>mobAttrSet(false));
 
 /* ── Dragging ─────────────────────────────────────────────────── */
 /* Handle: drags either way; a tap moves it up one height (full → half,

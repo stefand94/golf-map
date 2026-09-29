@@ -1101,6 +1101,7 @@
   :root{--bs-tab-h:calc(58px + env(safe-area-inset-bottom,0px));--bs-cover-bottom:0px;--bs-cover-top:0px}
   .bs-handle,.bs-tabbar,.mob-top{display:none}
   .map-filter-btn[hidden]{display:none}
+  .mob-attr-btn{display:none}
   @media (max-width:900px){
     #map{position:fixed;inset:0;z-index:0}
     .app{display:block;height:auto}
@@ -1152,6 +1153,8 @@
     .mob-top .tb-search-bar-wrap::before{left:var(--sp-4)}
     .mob-top .tb-search-bar-wrap::after{left:25px}
     .mob-top .tb-search-clear{right:6px}
+    /* GOLF-185e: no clear button while empty, so give its room back to the placeholder. */
+    .mob-top .tb-search-bar:placeholder-shown{padding-right:var(--sp-3)}
     .mob-top .map-filter-btn{flex:0 0 var(--tap);box-shadow:var(--shadow-md)}
     /* Results drop down over the map (and the sheet), never pushing the bar. */
     .mob-top #tb-search-results{position:absolute;left:var(--sp-3);right:var(--sp-3);top:100%;margin-top:var(--sp-2);
@@ -1164,6 +1167,17 @@
     /* Leaflet's corner controls stay in the visible strip of map. */
     .leaflet-bottom{bottom:var(--bs-cover-bottom);transition:bottom .24s var(--ease)}
     .leaflet-top{top:var(--bs-cover-top)}
+    /* GOLF-185e: credits folded behind an ⓘ (js/mobile-sheet.js); open,
+       they wrap at a legible size rather than running off the edge. */
+    .leaflet-control-attribution{display:none}
+    .mob-attr-open .leaflet-control-attribution{display:block;max-width:calc(100vw - 24px);margin:0 12px 6px 0;
+      padding:6px 10px;border-radius:var(--radius-md);background:rgba(255,255,255,.94);box-shadow:var(--shadow-md);
+      font-size:12px;line-height:1.45;white-space:normal}
+    .mob-attr-btn{display:block;margin:0 12px 8px 0}
+    .mob-attr-btn button{display:flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:0;
+      border-radius:50%;background:rgba(255,255,255,.9);box-shadow:var(--shadow-md);color:var(--ink-soft);cursor:pointer}
+    .mob-attr-btn button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    .mob-attr-open .mob-attr-btn button{color:var(--accent-deep)}
     /* At full there is no map strip left to hold them. */
     .panel[data-sheet="full"]~#map .leaflet-control-container{visibility:hidden}
 

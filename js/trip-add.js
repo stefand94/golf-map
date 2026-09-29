@@ -338,12 +338,20 @@ function tbSearchGoToCourse(i){
   }
   goToCourse(i);
 }
+/* GOLF-185e: the green fee beside the region in a search row — one short
+   headline (the weekday rate, else the weekend one), with GOLF-193's "~"
+   when it is an estimate. '' when the course has no usable fee. */
+function tbSearchFeeHTML(i){
+  const r=feeRangeFor(i,'wd')||feeRangeFor(i,'we');
+  const lab=feeLabelFrom(r,curSym(courseCurrency(i)));
+  return lab?` · <span class="tb-sr-fee">${estMark(feeConfWord(i)==='Estimate')}${esc(lab)}</span>`:'';
+}
 function tbSearchCourseRowHTML(e,day){
   const i=e.i;
   const why=e.reason?` · <span class="tb-why">${esc(e.reason)}</span>`:'';
   return`<div class="tb-row tb-sr-row" onclick="if(!event.target.closest('button'))tbSearchGoToCourse(${i})" title="Show ${esc(V(i,'n'))} on the map">
     <div>⛳ <a href="#" class="linkbtn" onclick="event.preventDefault();event.stopPropagation();tbSearchGoToCourse(${i})">${esc(V(i,'n'))}</a>
-      <div class="cart-region">${esc(C[i].r)} · ${ACCESS[V(i,'a')].label.toLowerCase()}${why}</div></div>
+      <div class="cart-region">${esc(C[i].r)}${tbSearchFeeHTML(i)} · ${ACCESS[V(i,'a')].label.toLowerCase()}${why}</div></div>
     <div style="display:flex;gap:var(--sp-2);flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
       <button class="tb-btn is-sm is-primary" onclick="event.stopPropagation();tbAddToWishlist(${i})">＋ Add to trip</button>
       ${day?`<button class="tb-btn is-sm" onclick="event.stopPropagation();tbAddToDay(${i},${day.id})">＋ Day ${tripDays.indexOf(day)+1}</button>`:''}

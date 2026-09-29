@@ -1307,7 +1307,7 @@ function renderTripBuilder(){
   const filtered=tbItinFilter!=='all'||!tbDriveToggle;
   const isItin=isBuild&&tbBuildTab==='itin';
   const searchHTML=`${tbSearchFieldHTML({id:'tb-unified-search',variant:'bar',value:tbSearchQ,
-      placeholder:isItin?'Add a course or town…':'Search courses, towns and cities…',ariaLabel:'Search courses, towns and cities'})}
+      placeholder:isItin?'Add a course or town…':tbPhoneLayout()?'Search clubs or towns':'Search courses, towns and cities…',ariaLabel:'Search courses, towns and cities'})}
     <div class="tb-section" id="tb-search-results" style="border-bottom:none;padding-top:0${tbSearchQ.trim()?'':';display:none'}">${tbSearchQ.trim()?tbUnifiedSearchResultsHTML():''}</div>`;
   const hotelsBtn=`<button type="button" class="tb-btn is-sm${tbHotelLayerOn?' is-active':''}" id="tb-hotel-layer-toggle" aria-pressed="${tbHotelLayerOn}" title="Show nearby hotels on the map as you pan and zoom. Zoom in to see pins — no price data, just location."><span>${tbHotelLayerOn?'✓ ':''}<span class="tb-lbl-long">Show hotels</span><span class="tb-lbl-short">Hotels</span></span></button>`;
   let tabChrome='';
