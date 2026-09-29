@@ -1140,6 +1140,19 @@
     .panel,.leaflet-bottom{transition:none}
   }
   @media print{.bs-tabbar,.mob-top{display:none !important}}
+
+  /* GOLF-200: iOS Safari zooms the page into any focused text field under
+     16px, and it stays zoomed after the keyboard closes. Every typable
+     field at the phone breakpoint is floored at 16px here, once, rather
+     than per component, so fields added later (203's cost lines) are
+     covered too. !important because component rules set sizes with
+     higher specificity. Deliberately not maximum-scale / user-scalable=no
+     in the viewport meta: that would also block pinch-zoom. Desktop sizes
+     are untouched. */
+  @media (max-width:900px){
+    input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]):not([type=submit]):not([type=reset]):not([type=file]):not([type=color]),
+    select,textarea{font-size:max(16px,1em) !important}
+  }
 </style>
 
 <a href="#map" class="skip-link">Skip to map</a>
