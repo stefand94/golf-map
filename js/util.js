@@ -227,8 +227,12 @@ function editCount(){return Object.keys(EDITS).filter(isEdited).length}
    Marking a course played clears it from "want to play" — the two are
    mutually exclusive per course, played takes precedence. */
 const PLAYED=new Set(),WANT=new Set();
-function togglePlayed(i){if(PLAYED.has(i))PLAYED.delete(i);else{PLAYED.add(i);WANT.delete(i)}saveState();render();}
-function toggleWant(i){if(WANT.has(i))WANT.delete(i);else{WANT.add(i);PLAYED.delete(i)}saveState();render();}
+/* GOLF-206: both are buttons on a course's card, and neither changes the
+   trip — but render() redraws the trip layer with a fit, which flew the
+   camera back to the trip and took the card with it. Hold the camera, as
+   adding to the trip already does (GOLF-191/185b). */
+function togglePlayed(i){if(PLAYED.has(i))PLAYED.delete(i);else{PLAYED.add(i);WANT.delete(i)}saveState();mapHoldCamera(render);}
+function toggleWant(i){if(WANT.has(i))WANT.delete(i);else{WANT.add(i);PLAYED.delete(i)}saveState();mapHoldCamera(render);}
 
 /* GOLF-70: these course metrics lived beside the Explore filters until the
    split, but they are read from several modules — FEE_SLIDER_MAX
