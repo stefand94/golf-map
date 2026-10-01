@@ -1263,8 +1263,10 @@ function tbMountBetaBadge(){
   const mast=document.querySelector('.panel>.mast');
   if(!mast||mast.querySelector('.tb-beta'))return;
   mast.insertAdjacentHTML('beforeend',tbBetaBadgeHTML());
-  document.getElementById('tb-beta-close').addEventListener('click',()=>{
-    const dd=mast.querySelector('details.tb-beta[open]');
+  /* GOLF-228: close the panel the button sits in, not one looked up in the
+     masthead — on a phone the badge has moved into the pane header. */
+  document.getElementById('tb-beta-close').addEventListener('click',e=>{
+    const dd=e.currentTarget.closest('details.tb-beta');
     if(dd)dd.removeAttribute('open');
   });
 }

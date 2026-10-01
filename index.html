@@ -1196,6 +1196,14 @@
        Beta badge moves into the pane header (js/mobile-sheet.js). */
     .panel>.mast{display:none}
     .tb-head-actions .tb-beta{margin-right:var(--sp-1)}
+    /* GOLF-228: hung off the badge, the panel ran off the left edge and
+       under the tab bar. On a phone it sits just above the tab bar, inset
+       16px each side, and scrolls if it's taller than the space. Fixed works
+       here because .panel has no transform (it moves by `top`). */
+    .tb-head-actions details.tb-beta div.tb-beta-body{position:fixed;top:auto;left:16px;right:16px;
+      bottom:calc(var(--bs-tab-h) + 12px);width:auto;max-width:400px;margin:0 auto;
+      max-height:calc(100dvh - var(--bs-tab-h) - 24px - env(safe-area-inset-top,0px));overflow-y:auto;
+      padding:var(--sp-3) var(--sp-4)}
     .tb-itin-group{justify-content:space-between}
     .tb-pane{overscroll-behavior:contain;padding-bottom:var(--sp-4)}
     /* The pane's segmented tabs move to the bottom tab bar. */
