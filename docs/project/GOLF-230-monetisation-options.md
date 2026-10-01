@@ -32,6 +32,7 @@ Status: **DISCOVERY**. These are options, not decisions. Nothing here is built u
 - **Top 100 rankings:** DEC-022 must be re-opened (R-11, GOLF-160). Either get permission or drop the numbers.
 - **Esri map tiles:** commercial use needs an Esri account and API key (DEC-036). There is a free tier.
 - **OpenRouteService:** the free plan's commercial terms aren't explicit, and a paid plan is aimed at production use. Confirm with HeiGIT before launch.
+- **Uptime monitor:** UptimeRobot's free plan is non-commercial only (GOLF-229). Switch to Better Stack's free tier; it uses the same `/health` URL.
 - **Privacy note:** update it for affiliate tracking and any lead form (option 2 collects personal data).
 
 ## Questions for the owner
