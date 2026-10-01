@@ -519,7 +519,7 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   product model, not a defect.
 - **Date:** 2026-09-13 · **Affects:** GOLF-138 (cancelled), GOLF-133.
 
-## DEC-011 — Every deploy wipes every visitor's saved trip data (no migration, no warning)
+## DEC-011 — [SUPERSEDED by DEC-037, 2026-10-01] Every deploy wipes every visitor's saved trip data (no migration, no warning)
 
 - **Reaffirmed 2026-09-23 (owner, closing GOLF-165):** keep the wipe for now. It retires when accounts land (GOLF-104, likely Google sign-in), which is when trips become worth keeping. This also means the golftripper.uk move needs no trip migration.
 
@@ -904,3 +904,11 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 - **Decision (owner, 2026-10-01):** open the site to search engines (GOLF-221) once the daily lookup cap (GOLF-223) is live. Rank badges stay as they are. This is the DEC-022 re-open that R-11 requires before going public: the owner accepts the exposure while the site makes no money. Tester notice stays. Add traffic monitoring (GOLF-222).
 - **Esri tiles (gate item 6), BA check:** a free site with no ads and no revenue counts as non-commercial; keyless use with attribution is fine. **Ads, affiliate links or paid features would make it commercial**, which needs an Esri account and API key. Add this to any monetisation scope, alongside DEC-022.
 - **Date:** 2026-10-01 · **Affects:** GOLF-180, 160, 221–223, R-7, R-8, R-11.
+
+## DEC-037 — Trips survive releases (supersedes DEC-011)
+
+- **Decision (owner, 2026-10-01):** stop wiping saved trips on every deploy. Migrate old trips forward, and clear only data that can't be read. Keep the deploy freshness machinery (GOLF-196/210/220). Built as GOLF-224.
+- **Context:** DEC-011 was reaffirmed on 2026-09-23 "until accounts land", but accounts (GOLF-104) are now held (DEC-035), so the wipe would have stayed indefinitely. Going public (DEC-036) makes it unacceptable for strangers. GOLF-163 already made trips migratable.
+- **Consequence:** dev test data no longer self-clears, so devs must clear their test state every session.
+- **Also decided:** a privacy note goes in (GOLF-227). Rank tiers are dropped (GOLF-226): no legal gain, and less useful than the numbers.
+- **Date:** 2026-10-01 · **Affects:** DEC-011, GOLF-165, 224, 226, 227, R-4.
