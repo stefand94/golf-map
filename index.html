@@ -1437,17 +1437,17 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
-<script src="data/config.js?v=f451ffe6d1"></script>
-<script src="data/stations.js?v=f451ffe6d1"></script>
-<script src="data/courses-london.js?v=f451ffe6d1"></script>
-<script src="data/courses-top100.js?v=f451ffe6d1"></script>
-<script src="data/courses-scotland.js?v=f451ffe6d1"></script>
-<script src="data/courses-wales.js?v=f451ffe6d1"></script>
-<script src="data/courses-ireland.js?v=f451ffe6d1"></script>
-<script src="data/courses-southafrica.js?v=f451ffe6d1"></script>
-<script src="data/course-ids.js?v=f451ffe6d1"></script>
-<script src="data/rail-geometry.js?v=f451ffe6d1"></script>
-<script src="js/app-version.js?v=f451ffe6d1"></script>
+<script src="data/config.js?v=e732950f88"></script>
+<script src="data/stations.js?v=e732950f88"></script>
+<script src="data/courses-london.js?v=e732950f88"></script>
+<script src="data/courses-top100.js?v=e732950f88"></script>
+<script src="data/courses-scotland.js?v=e732950f88"></script>
+<script src="data/courses-wales.js?v=e732950f88"></script>
+<script src="data/courses-ireland.js?v=e732950f88"></script>
+<script src="data/courses-southafrica.js?v=e732950f88"></script>
+<script src="data/course-ids.js?v=e732950f88"></script>
+<script src="data/rail-geometry.js?v=e732950f88"></script>
+<script src="js/app-version.js?v=e732950f88"></script>
 <!-- GOLF-210: build check. Every local script above and below carries this
      page's build as ?v= (stamped by scripts/update_sw_cache_version.py), so
      no cache should be able to pair this HTML with another build's JS. If one
@@ -1497,24 +1497,33 @@
   if(navigator.serviceWorker)jobs.push(navigator.serviceWorker.getRegistration().then(function(r){return r&&r.update();}));
   Promise.all(jobs).catch(function(){}).then(function(){location.reload();});
 })();</script>
-<script src="js/util.js?v=f451ffe6d1"></script>
-<script src="js/course-id.js?v=f451ffe6d1"></script>
-<script src="js/trip-model.js?v=f451ffe6d1"></script>
-<script src="js/state.js?v=f451ffe6d1"></script>
-<script src="js/handicap.js?v=f451ffe6d1"></script>
-<script src="js/map.js?v=f451ffe6d1"></script>
-<script src="js/trip-geo.js?v=f451ffe6d1"></script>
-<script src="js/trip-route.js?v=f451ffe6d1"></script>
-<script src="js/trip-add.js?v=f451ffe6d1"></script>
-<script src="js/ors.js?v=f451ffe6d1"></script>
-<script src="js/hotel-layer.js?v=f451ffe6d1"></script>
-<script src="js/poi.js?v=f451ffe6d1"></script>
-<script src="js/trip-ui.js?v=f451ffe6d1"></script>
-<script src="js/touch-dnd.js?v=f451ffe6d1"></script>
-<script src="js/app-mode.js?v=f451ffe6d1"></script>
-<script src="js/mobile-sheet.js?v=f451ffe6d1"></script>
-<script src="js/trip-share.js?v=f451ffe6d1"></script>
-<script src="js/explore.js?v=f451ffe6d1"></script>
-<script src="js/course-filters.js?v=f451ffe6d1"></script>
-<script src="js/editor.js?v=f451ffe6d1"></script>
-<script src="js/boot.js?v=f451ffe6d1"></script>
+<script src="js/util.js?v=e732950f88"></script>
+<script src="js/course-id.js?v=e732950f88"></script>
+<script src="js/trip-model.js?v=e732950f88"></script>
+<script src="js/state.js?v=e732950f88"></script>
+<script src="js/handicap.js?v=e732950f88"></script>
+<script src="js/map.js?v=e732950f88"></script>
+<script src="js/trip-geo.js?v=e732950f88"></script>
+<script src="js/trip-route.js?v=e732950f88"></script>
+<script src="js/trip-add.js?v=e732950f88"></script>
+<script src="js/ors.js?v=e732950f88"></script>
+<script src="js/hotel-layer.js?v=e732950f88"></script>
+<script src="js/poi.js?v=e732950f88"></script>
+<script src="js/trip-ui.js?v=e732950f88"></script>
+<script src="js/touch-dnd.js?v=e732950f88"></script>
+<script src="js/app-mode.js?v=e732950f88"></script>
+<script src="js/mobile-sheet.js?v=e732950f88"></script>
+<script src="js/trip-share.js?v=e732950f88"></script>
+<script src="js/explore.js?v=e732950f88"></script>
+<script src="js/course-filters.js?v=e732950f88"></script>
+<script src="js/editor.js?v=e732950f88"></script>
+<script src="js/boot.js?v=e732950f88"></script>
+<!-- GOLF-222: Cloudflare Web Analytics, added by hand because Pages'
+     automatic injection never appeared. Cookieless; what it collects is in
+     the privacy note (privacyOpen() in js/trip-ui.js). The token is a public
+     site tag, not a secret. Left alone on purpose by everything that
+     rewrites or refetches scripts: it's external (sw.js only handles
+     same-origin GETs; the middleware never sees it) and carries no ?v=
+     (update_sw_cache_version.py, check_js.js and the GOLF-210 reload only
+     match local js/ and data/ tags). Keep it last. -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "bb85bc8fcad84e51babdc1d07ad81fe3"}'></script>
