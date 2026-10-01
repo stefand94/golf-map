@@ -275,6 +275,7 @@ function renderSharedMap(){
   const sharedBases=esriBaseLayers();
   sharedBases['Default'].addTo(m);
   L.control.layers(sharedBases,null,{position:'topright'}).addTo(m);
+  m.attributionControl.addAttribution(PRIVACY_LINK); // GOLF-227
   const order=tripDayOrder();
   const pts=[];
   /* GOLF-182: the main map merges a multi-night stay into one 🏨 icon

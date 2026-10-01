@@ -220,6 +220,10 @@ mapTripFitControlSync();
    street layer's mention is Esri crediting its own tile source, not us
    crediting ours. Added once, outside esriBaseLayers(), so switching layers
    can't drop it. */
+/* GOLF-227: the privacy note's link rides in the credits (privacyOpen() is
+   in js/trip-ui.js); the shared view's map adds the same one. */
+const PRIVACY_LINK='<button type="button" class="attr-link" onclick="privacyOpen()">Privacy</button>';
+map.attributionControl.addAttribution(PRIVACY_LINK);
 map.attributionControl.addAttribution(
   'Course positions &copy; <a href="https://www.openstreetmap.org/copyright" '
   +'target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL)');

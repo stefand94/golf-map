@@ -1224,9 +1224,37 @@ function tbBetaBadgeHTML(){
         <li>Trips are saved only in this browser (no account, no sync). Clearing browser data, or switching device, loses them.</li>
         <li>An app update also resets saved trips — the next time you load the app after we ship a change, your trip starts fresh.</li>
       </ul>
-      <button type="button" class="tb-btn is-sm" id="tb-beta-close">Close</button>
+      <div class="tb-beta-foot"><button type="button" class="attr-link" onclick="privacyOpen()">Privacy</button>
+      <button type="button" class="tb-btn is-sm" id="tb-beta-close">Close</button></div>
     </div>
   </details>`;
+}
+/* GOLF-227: a short privacy note. One <dialog>, built on first open and
+   reached from a "Privacy" link in the map credits (desktop footer, the
+   phone's ⓘ, the shared view's map) and from the Beta panel. The analytics
+   and lookup-cap lines are Geoff's wording for GOLF-222/223 — keep them in
+   step with what the Worker and the beacon actually do. */
+function privacyOpen(){
+  let d=document.getElementById('privacy-dlg');
+  if(!d){
+    document.body.insertAdjacentHTML('beforeend',`<dialog id="privacy-dlg" class="privacy-dlg" aria-labelledby="privacy-h"><div class="privacy-body">
+      <h3 id="privacy-h">Your privacy</h3>
+      <ul>
+        <li>Your trips are saved only in this browser. There are no accounts and no cookies.</li>
+        <li>Route and place searches go through our server to OpenRouteService and OpenStreetMap. They see the places you search for, not who you are.</li>
+        <li>To stop abuse, our server counts how many lookups each connection makes per day, using a scrambled form of your IP address that is deleted the next day. It doesn't record what you searched.</li>
+        <li>Cloudflare Web Analytics counts visits anonymously: which pages, the referring site, country and browser type, and page speed. No cookies and nothing that identifies you.</li>
+        <li>The map comes from Esri and the fonts from Google Fonts. Like any website, they see your IP address when your browser loads them.</li>
+      </ul>
+      <form method="dialog"><button class="tb-btn is-sm">Close</button></form>
+    </div></dialog>`);
+    d=document.getElementById('privacy-dlg');
+    /* A tap on the backdrop closes it: the dialog has no padding, so only
+       a backdrop tap lands on the dialog element itself. */
+    d.addEventListener('click',e=>{if(e.target===d)d.close();});
+  }
+  document.querySelectorAll('details.tb-beta[open]').forEach(x=>x.removeAttribute('open'));
+  if(!d.open)d.showModal();
 }
 /* GOLF-150 (C3): the Beta badge moved from the pane header into the
    "Golf Tripper" masthead — one fewer thing competing with the trip's

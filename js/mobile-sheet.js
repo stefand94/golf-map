@@ -374,7 +374,7 @@ L.Popup.include({openOn(m){
 const mobAttrControl=L.control({position:'bottomright'});
 mobAttrControl.onAdd=function(){
   const el=L.DomUtil.create('div','leaflet-control mob-attr-btn');
-  el.innerHTML=`<button type="button" aria-expanded="false" aria-label="Map credits" title="Map credits"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/></svg></button>`;
+  el.innerHTML=`<button type="button" aria-expanded="false" aria-label="Map credits and privacy" title="Map credits and privacy"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5v.01"/></svg></button>`;
   L.DomEvent.disableClickPropagation(el);
   el.firstChild.addEventListener('click',()=>mobAttrSet(!map.getContainer().classList.contains('mob-attr-open')));
   return el;

@@ -194,7 +194,19 @@
   .tb-beta-body h3{margin:0;font:700 var(--fs-body) var(--font-sans);color:var(--ink)}
   .tb-beta-body ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:var(--sp-2);
     font-size:var(--fs-small);color:var(--stone);line-height:1.4}
-  .tb-beta-body .tb-btn{align-self:flex-end}
+  .tb-beta-foot{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2)}
+  /* GOLF-227: the privacy note. A plain text-style link button (also used
+     in the map credits) and a centred modal dialog. */
+  .attr-link{background:none;border:0;padding:0;margin:0;min-height:0;font:inherit;color:var(--accent-deep);
+    text-decoration:underline;cursor:pointer}
+  .privacy-dlg{padding:0;border:0;border-radius:var(--radius-lg);background:#fff;color:var(--ink);
+    width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - 32px);box-shadow:var(--shadow-lg)}
+  .privacy-dlg::backdrop{background:rgba(0,0,0,.35)}
+  .privacy-body{padding:var(--sp-5);display:flex;flex-direction:column;gap:var(--sp-3)}
+  .privacy-body h3{margin:0;font:700 var(--fs-body) var(--font-sans)}
+  .privacy-body ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:var(--sp-2);
+    font-size:var(--fs-small);color:var(--stone);line-height:1.45}
+  .privacy-body form{display:flex;justify-content:flex-end;margin:0}
 
   /* The single search bar for the whole pane — a full-width pill, per the
      sketch. One component, one look, four call sites (see tbSearchFieldHTML). */
@@ -1225,9 +1237,11 @@
     .leaflet-bottom{bottom:var(--bs-cover-bottom);transition:bottom .24s var(--ease)}
     .leaflet-top{top:var(--bs-cover-top)}
     /* GOLF-185e: credits folded behind an ⓘ (js/mobile-sheet.js); open,
-       they wrap at a legible size rather than running off the edge. */
-    .leaflet-control-attribution{display:none}
-    .mob-attr-open .leaflet-control-attribution{display:block;max-width:calc(100vw - 24px);margin:0 12px 6px 0;
+       they wrap at a legible size rather than running off the edge.
+       Main map only: the shared view's map has no ⓘ, so it keeps its
+       credits (and the privacy link) showing (GOLF-227). */
+    #map .leaflet-control-attribution{display:none}
+    #map.mob-attr-open .leaflet-control-attribution{display:block;max-width:calc(100vw - 24px);margin:0 12px 6px 0;
       padding:6px 10px;border-radius:var(--radius-md);background:rgba(255,255,255,.94);box-shadow:var(--shadow-md);
       font-size:12px;line-height:1.45;white-space:normal}
     .mob-attr-btn{display:block;margin:0 12px 8px 0}
