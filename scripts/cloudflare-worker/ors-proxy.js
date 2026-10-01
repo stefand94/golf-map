@@ -310,7 +310,7 @@ function firstTruthy(promises) {
 
 /* Returns { data } on success or { error: {error, status} } on failure —
    never throws, so callers keep the same shape as the old loop's lastError. */
-async function overpassFetch(query) {
+async function overpassFetch(query, urls = OVERPASS_URLS) {
   const payload = 'data=' + encodeURIComponent(query);
   const controllers = [];
   let lastError = { error: 'could not reach Overpass', status: 502 };
@@ -321,7 +321,7 @@ async function overpassFetch(query) {
     const timer = setTimeout(() => ctl.abort(), OVERPASS_ATTEMPT_TIMEOUT_MS);
     return (async () => {
       try {
-        const res = await fetch(OVERPASS_URLS[i], {
+        const res = await fetch(urls[i], {
           method: 'POST',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -365,7 +365,7 @@ async function overpassFetch(query) {
   clearTimeout(hedgeTimer);
   if (early) return { data: early };
 
-  for (let i = 1; i < OVERPASS_URLS.length; i++) live.push(attempt(i));
+  for (let i = 1; i < urls.length; i++) live.push(attempt(i));
   const won = await firstTruthy(live);
   // Free the losing sockets; the winner has already been fully read.
   for (const c of controllers) { try { c.abort(); } catch (e) { /* already settled */ } }
@@ -428,7 +428,31 @@ export class LookupQuota extends DurableObject {
     this.sql = ctx.storage.sql;
     this.sql.exec('CREATE TABLE IF NOT EXISTS counts (day TEXT, who TEXT, kind TEXT, n INTEGER, PRIMARY KEY (day, who, kind))');
     this.sql.exec('CREATE TABLE IF NOT EXISTS salts (day TEXT PRIMARY KEY, salt TEXT)');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS health (id INTEGER PRIMARY KEY, at INTEGER, result TEXT)');
     this.prunedFor = null;
+    this.healthRun = null;
+  }
+
+  /* GOLF-229: the last health result if it is younger than HEALTH_TTL_MS,
+     else a fresh run. One object for the whole Worker, so however many
+     edges or callers ask, there is at most one run per TTL; callers that
+     arrive mid-run share it rather than starting another. */
+  async health(local) {
+    const row = this.sql.exec('SELECT at, result FROM health WHERE id = 1').toArray()[0];
+    // Test-only, and only for a local request (see testUrl).
+    const ttl = local && this.env.TEST_HEALTH_TTL_MS ? Number(this.env.TEST_HEALTH_TTL_MS) : HEALTH_TTL_MS;
+    if (row && Date.now() - row.at < ttl) {
+      return { ...JSON.parse(row.result), cached: true, ageSeconds: Math.round((Date.now() - row.at) / 1000) };
+    }
+    if (!this.healthRun) {
+      this.healthRun = runHealthChecks(this.env, local, row ? JSON.parse(row.result) : null)
+        .then((result) => {
+          this.sql.exec('INSERT OR REPLACE INTO health (id, at, result) VALUES (1, ?, ?)', Date.now(), JSON.stringify(result));
+          return result;
+        })
+        .finally(() => { this.healthRun = null; });
+    }
+    return { ...(await this.healthRun), cached: false, ageSeconds: 0 };
   }
 
   /* Counts one `kind` lookup for `visitor` today, unless that would break
@@ -495,8 +519,135 @@ async function quotaGate(kind, env, request) {
   return res;
 }
 
+/* ── GOLF-229: health endpoint for an external uptime monitor.
+
+   All three past outages (GOLF-154, 172, 176) were found by a person
+   noticing. GET /health makes one small real call to each upstream this
+   Worker depends on, through the same handlers visitors use, and answers
+   200 {status:'ok'} or 503 {status:'failing', failing:[...]} naming the
+   broken part with its upstream reason (GOLF-155/172), so the alert email
+   already says what broke. HEAD gets the same status with no body, since
+   some monitors use it.
+
+   Cost: the result is kept for HEALTH_TTL_MS in the LookupQuota object,
+   so however often /health is hit, by the monitor or anyone else, there
+   are at most 48 runs a day: 48 of 2,000 directions (2.4%) and 48 of 1,000
+   geocodes (4.8%). The probes skip the GOLF-223 counters (uncounted), so
+   they never take a visitor's allowance; the site cut-offs already sit
+   50+ below each ORS quota, which covers them.
+
+   /health/test-alert always answers 503 and calls nothing: point the
+   monitor at it once to prove the alert email arrives. */
+const HEALTH_TTL_MS = 30 * 60 * 1000;
+const HEALTH_PROBE_TIMEOUT_MS = 20000;
+
+/* Local-only upstream overrides, for testing the health endpoint (and
+   anything else) in `wrangler dev` against a mock. Honoured only when the
+   request itself is to localhost, so a variable set by mistake in the
+   dashboard can never send the ORS key to another host in production. */
+function isLocal(request) {
+  const host = request ? new URL(request.url).hostname : '';
+  return host === 'localhost' || host === '127.0.0.1';
+}
+function testUrl(name, env, request) {
+  return (isLocal(request) && env && env['TEST_URL_' + name.toUpperCase()]) || null;
+}
+
+/* Parts allowed one failed run before they count as failing. Public
+   Overpass 504s under load on both mirrors (see overpassFetch), so one
+   miss is weather, not an outage, and would only teach Stefan to ignore
+   the email. ORS has never flaked like that; a failure there alerts at
+   once. */
+const HEALTH_TOLERATE_ONE_MISS = ['overpass'];
+
+async function runHealthChecks(env, local, previous) {
+  // A stand-in request: the handlers read its URL (test overrides) and its
+  // headers (CORS), and nothing else.
+  const req = new Request(local ? 'http://localhost/health' : 'https://api.golftripper.uk/health');
+  const probe = async (call, looksRight) => {
+    const t0 = Date.now();
+    let timer;
+    try {
+      const res = await Promise.race([
+        call(),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timed out')), HEALTH_PROBE_TIMEOUT_MS); }),
+      ]);
+      let data = null;
+      try { data = await res.json(); } catch (e) { /* reported below */ }
+      const ms = Date.now() - t0;
+      if (res.status === 200 && data && looksRight(data)) return { ok: true, ms };
+      return {
+        ok: false, ms, status: res.status,
+        error: (data && data.error) || (res.status === 200 ? 'answered, but not with what a visitor would need' : 'request failed'),
+        ...(data && data.status ? { upstreamStatus: data.status } : {}),
+        ...(data && data.upstream ? { upstream: String(data.upstream).slice(0, 300) } : {}),
+      };
+    } catch (e) {
+      return { ok: false, ms: Date.now() - t0, error: String((e && e.message) || e) };
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+  const missingKey = { ok: false, error: 'ORS_API_KEY secret is not configured on this Worker' };
+  const [directions, geocode, overpass] = await Promise.all([
+    // St Andrews to Carnoustie: a leg the app routes for real.
+    env.ORS_API_KEY ? probe(
+      () => handleRoute({ origin: [-2.803, 56.343], destination: [-2.731, 56.499] }, env, req, { uncounted: true }),
+      (d) => typeof d.minutes === 'number' && d.minutes > 0) : missingKey,
+    env.ORS_API_KEY ? probe(
+      () => handleGeocode({ mode: 'geocode', text: 'St Andrews', layers: 'coarse' }, env, req, { uncounted: true }),
+      (d) => Array.isArray(d.results) && d.results.length > 0) : missingKey,
+    // Hotels near the Old Course; a 200 with a list is healthy even if a
+    // quiet day's list were empty. Not through withPoiCache: a cached
+    // answer would say nothing about Overpass now.
+    probe(
+      () => handleHotels({ mode: 'hotels', point: [-2.8, 56.343], radius: 800 }, req, env),
+      (d) => Array.isArray(d.pois)),
+  ]);
+  const checks = { directions, geocode, overpass };
+  for (const k of HEALTH_TOLERATE_ONE_MISS) {
+    const before = previous && previous.checks && previous.checks[k];
+    if (!checks[k].ok && !(before && before.ok === false)) checks[k].tolerated = true;
+  }
+  const failing = Object.keys(checks).filter((k) => !checks[k].ok && !checks[k].tolerated);
+  const warnings = Object.keys(checks).filter((k) => checks[k].tolerated);
+  return {
+    status: failing.length ? 'failing' : 'ok', failing,
+    ...(warnings.length ? { warnings } : {}),
+    checks, checkedAt: new Date().toISOString(),
+  };
+}
+
+async function handleHealth(path, request, env) {
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    return json({ error: 'GET or HEAD only' }, 405, request);
+  }
+  let result;
+  if (path === '/health/test-alert') {
+    result = { status: 'failing', failing: ['test-alert'], note: 'GOLF-229 test alert: this URL always fails, on purpose. Point the monitor back at /health.' };
+  } else if (!env.LOOKUP_QUOTA) {
+    // No cache object, no run: an uncached /health would let anyone spend
+    // ORS quota by reloading it.
+    result = { status: 'failing', failing: ['health-cache'], error: 'LOOKUP_QUOTA binding missing, health checks not run' };
+  } else {
+    try {
+      result = await env.LOOKUP_QUOTA.get(env.LOOKUP_QUOTA.idFromName('global')).health(isLocal(request));
+    } catch (e) {
+      result = { status: 'failing', failing: ['health-cache'], error: `health run failed: ${e}` };
+    }
+  }
+  const status = result.status === 'ok' ? 200 : 503;
+  const res = request.method === 'HEAD' ? new Response(null, { status, headers: { 'X-Worker-Build': WORKER_BUILD } }) : json(result, status, request);
+  res.headers.set('Cache-Control', 'no-store');
+  return res;
+}
+
 export default {
   async fetch(request, env, ctx) {
+    const path = new URL(request.url).pathname;
+    if (path === '/health' || path === '/health/test-alert') {
+      return handleHealth(path, request, env);
+    }
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: { 'X-Worker-Build': WORKER_BUILD, ...corsHeaders(request) } });
     }
@@ -565,17 +716,17 @@ export default {
   },
 };
 
-async function handleRoute(body, env, request) {
+async function handleRoute(body, env, request, { uncounted = false } = {}) {
   const { origin, destination } = body || {};
   if (!isCoord(origin) || !isCoord(destination)) {
     return json({ error: 'origin and destination must both be [lng, lat] number pairs' }, 400, request);
   }
-  const refused = await quotaGate('directions', env, request);
+  const refused = uncounted ? null : await quotaGate('directions', env, request);
   if (refused) return refused;
 
   let orsRes;
   try {
-    orsRes = await fetch(ORS_DIRECTIONS_URL, {
+    orsRes = await fetch(testUrl('directions', env, request) || ORS_DIRECTIONS_URL, {
       method: 'POST',
       headers: {
         Authorization: env.ORS_API_KEY,
@@ -796,7 +947,7 @@ function simplifyRoute(points) {
 // accommodation tags unconditionally — a real, ungated hotel doesn't need
 // a Wikipedia page to be worth showing. (It used to be described as a
 // sibling of handleHeritagePois(); that handler went with GOLF-156.)
-async function handleHotels(body, request) {
+async function handleHotels(body, request, env = {}) {
   const { point } = body || {};
   if (!isCoord(point)) {
     return json({ error: 'point must be a [lng, lat] number pair' }, 400, request);
@@ -813,7 +964,8 @@ async function handleHotels(body, request) {
 out center 60;
 `.trim();
 
-  const op = await overpassFetch(query);
+  const overpassTest = testUrl('overpass', env, request);
+  const op = await overpassFetch(query, overpassTest ? [overpassTest] : OVERPASS_URLS);
   if (op.error) return json(op.error, 502, request);
   const data = op.data;
 
@@ -928,7 +1080,7 @@ const GEOCODE_COUNTRIES = 'GBR,IRL,ZAF';
 // upon Tyne while browsing South Africa. Anything not exactly one of the
 // three known codes falls back to the full unrestricted list rather than
 // risk silently scoping to an unrecognised/malformed value.
-async function handleGeocode(body, env, request) {
+async function handleGeocode(body, env, request, { uncounted = false } = {}) {
   const text = typeof body.text === 'string' ? body.text.trim() : '';
   if (!text) {
     return json({ results: [] }, 200, request);
@@ -948,7 +1100,7 @@ async function handleGeocode(body, env, request) {
       ? requestedCountry
       : GEOCODE_COUNTRIES;
 
-  const url = new URL(ORS_GEOCODE_URL);
+  const url = new URL(testUrl('geocode', env, request) || ORS_GEOCODE_URL);
   url.searchParams.set('api_key', env.ORS_API_KEY);
   url.searchParams.set('text', text.slice(0, 200));
   url.searchParams.set('boundary.country', boundaryCountry);
@@ -966,7 +1118,7 @@ async function handleGeocode(body, env, request) {
   // Allowlisted: anything else is ignored rather than forwarded.
   if (body.layers === 'coarse') url.searchParams.set('layers', 'coarse');
 
-  const refused = await quotaGate('geocode', env, request);
+  const refused = uncounted ? null : await quotaGate('geocode', env, request);
   if (refused) return refused;
 
   let orsRes;
@@ -1046,8 +1198,10 @@ const UPSTREAM_LOG_LIMIT = 1000;
    redacts something harmless out of a diagnostic string. */
 function redactKey(s) {
   return String(s)
-    .replace(/(api_key\s*[=:]\s*"?)[^&"'\s,}]+/gi, '$1<redacted>')
-    .replace(/(authorization\s*[=:]\s*"?)(?:bearer\s+)?[^&"'\s,}]+/gi, '$1<redacted>');
+    // GOLF-229: `"?` after the name too, so a JSON body's "api_key":"…"
+    // is caught as well as a query string's api_key=…; it wasn't before.
+    .replace(/(api_key"?\s*[=:]\s*"?)[^&"'\s,}]+/gi, '$1<redacted>')
+    .replace(/(authorization"?\s*[=:]\s*"?)(?:bearer\s+)?[^&"'\s,}]+/gi, '$1<redacted>');
 }
 
 /* Returns the clipped, redacted upstream body so the caller can put it in
@@ -1091,7 +1245,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = 'f2cba42149';
+const WORKER_BUILD = '2cffea21c0';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {

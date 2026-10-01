@@ -16,7 +16,12 @@ import { pathToFileURL } from 'node:url';
 
 const WORKER_SRC = new URL('./cloudflare-worker/ors-proxy.js', import.meta.url);
 const tmp = join(mkdtempSync(join(tmpdir(), 'golfworker-')), 'worker.mjs');
-writeFileSync(tmp, readFileSync(WORKER_SRC, 'utf8'));
+/* GOLF-223: the Worker imports DurableObject from 'cloudflare:workers', a
+   module only the Workers runtime has. Swap it for a stand-in base class;
+   nothing here exercises the Durable Object itself. */
+writeFileSync(tmp, readFileSync(WORKER_SRC, 'utf8').replace(
+  "import { DurableObject } from 'cloudflare:workers';",
+  'class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }'));
 
 let overpassCalls = 0;
 let overpassStatus = 200;

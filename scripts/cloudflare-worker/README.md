@@ -24,6 +24,52 @@ makes no ORS call. Visitors are stored only as a hash with a random
 per-day salt, and each day's rows are deleted the next day. Overpass
 hotel modes are not counted.
 
+## Health check and outage alert (GOLF-229)
+
+`GET https://api.golftripper.uk/health` makes one small real call to each
+upstream, through the same code visitors use: a St Andrews to Carnoustie
+route, a "St Andrews" place search, and hotels near the Old Course
+(Overpass). It answers **200** `{status:'ok'}` or **503**
+`{status:'failing', failing:[...]}`, with each part's error and the
+redacted upstream reason under `checks`. `HEAD` gives the same status.
+
+- **Cost:** the result is cached for 30 minutes in the `LookupQuota`
+  Durable Object, so there are at most 48 runs a day however often anyone
+  hits it: 2.4% of the directions quota and 4.8% of geocoding. Probes
+  don't count against the GOLF-223 per-visitor or site counters.
+- **Hotels (Overpass)** only count as failing after two runs in a row. One
+  miss shows under `warnings` with a 200, because public Overpass 504s
+  under load and a one-off would be a false alarm. Routes and place search
+  fail on the first miss.
+- **`/health/test-alert`** always answers 503 and calls nothing. Use it to
+  prove the alert email arrives.
+
+Local testing: `wrangler dev --local-upstream localhost:<port>` with
+`--var TEST_URL_DIRECTIONS:…`, `TEST_URL_GEOCODE:…`, `TEST_URL_OVERPASS:…`
+pointing an upstream at a mock or a dead host, and
+`TEST_HEALTH_TTL_MS` to shorten the cache. These are honoured only for a
+request to localhost, so they can never redirect production (or its key).
+
+### Monitor setup (Stefan, once)
+
+UptimeRobot's free plan (non-commercial use; 5-minute minimum interval;
+email alerts):
+
+1. Sign up at uptimerobot.com with the address alerts should go to, and
+   confirm the email.
+2. **+ New monitor** → type **HTTP(s)**.
+3. URL: `https://api.golftripper.uk/health`. Name: `Golf Tripper lookups`.
+4. Interval: **15 minutes**. Polling faster than the 30-minute cache gains
+   nothing; 15 means an outage is emailed within about 45 minutes.
+5. Under alert contacts, tick your email. Create the monitor.
+6. **Test alert:** edit the monitor, change the URL to
+   `https://api.golftripper.uk/health/test-alert`, save. A "down" email
+   arrives within one interval. Change the URL back to `/health` and you
+   get an "up" email.
+
+The alert email gives the status code only. Open `/health` in a browser
+to see which part failed and why.
+
 ## Deploying it
 
 **One-time manual setup** (if you haven't deployed this Worker yet): see
