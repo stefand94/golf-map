@@ -6,8 +6,9 @@
    .mjs in the OS temp dir and import that. Checks that the bare
    golf-map.pages.dev and www.golftripper.uk 301 to the same path + query on
    golftripper.uk, that golftripper.uk itself and every branch preview pass
-   straight through, and (GOLF-214) that the old /london-golf-map-v5_1
-   address 301s to / on every host.
+   straight through, (GOLF-214) that the old /london-golf-map-v5_1
+   address 301s to / on every host, (GOLF-220) the X-Build / ?v= rules, and
+   (GOLF-221) that only production is indexable.
 */
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
@@ -19,8 +20,17 @@ const tmp = join(mkdtempSync(join(tmpdir(), 'golfmw-')), 'mw.mjs');
 writeFileSync(tmp, readFileSync(SRC, 'utf8'));
 const { onRequest } = await import(pathToFileURL(tmp).href);
 
-const PASSED = new Response('app');
-const run = (url, env = {}) => onRequest({ request: new Request(url), env, next: async () => PASSED });
+/* GOLF-220 made the middleware read this deployment's build from
+   env.ASSETS (js/app-version.js) and re-wrap every response with X-Build,
+   so the harness needs an ASSETS stub, and a passed-through response is a
+   copy of next()'s, not the same object. next() makes a fresh Response per
+   call because a body stream can only be wrapped once. */
+const BUILD = 'abc123def0';
+const ASSETS = { fetch: async () => new Response(`const APP_VERSION='golfmap-shell-v5-${BUILD}';`) };
+const run = (url, env = {}) => onRequest({
+  request: new Request(url), env: { ASSETS, ...env },
+  next: async () => new Response('app', { headers: { 'Content-Type': 'text/html' } }),
+});
 
 const results = [];
 const check = (name, pass, detail) => results.push({ name, pass, detail });
@@ -32,7 +42,9 @@ async function redirects(from, to) {
 }
 async function passes(url, env) {
   const r = await run(url, env);
-  check(`${url} is not redirected`, r === PASSED, `status=${r.status} location=${r.headers.get('Location')}`);
+  const body = r.status === 200 ? await r.text() : '';
+  check(`${url} is not redirected`, r.status === 200 && body === 'app' && !r.headers.get('Location'),
+    `status=${r.status} location=${r.headers.get('Location')}`);
 }
 
 await redirects('https://golf-map.pages.dev/', 'https://golftripper.uk/');
@@ -58,6 +70,31 @@ await passes('https://golftripper.uk/london-golf-map-v5_1/extra');
 // gate still works on a preview when DEV_PASSWORD is set.
 const gated = await run('https://golf-150-ui.golf-map.pages.dev/', { DEV_PASSWORD: 'x' });
 check('preview password gate still applies when set', gated.status === 401, `status=${gated.status}`);
+
+// GOLF-220: every passed-through GET says which build served it, and a
+// ?v= for another build is served no-store so neither cache keeps it.
+const own = await run(`https://golftripper.uk/js/map.js?v=${BUILD}`);
+check('X-Build on a passed-through response', own.headers.get('X-Build') === BUILD, `x-build=${own.headers.get('X-Build')}`);
+check('?v= of this build stays cacheable', own.headers.get('Cache-Control') !== 'no-store', `cache-control=${own.headers.get('Cache-Control')}`);
+const other = await run('https://golftripper.uk/js/map.js?v=0000000000');
+check('?v= of another build is no-store', other.headers.get('Cache-Control') === 'no-store', `cache-control=${other.headers.get('Cache-Control')}`);
+
+// GOLF-221: production is indexable; anything else (branch previews) is
+// noindex, with a Disallow robots.txt. Redirects carry no header either way.
+const prod = await run('https://golftripper.uk/');
+check('production has no X-Robots-Tag', prod.headers.get('X-Robots-Tag') === null, `x-robots-tag=${prod.headers.get('X-Robots-Tag')}`);
+const prodRobots = await run('https://golftripper.uk/robots.txt');
+check('production robots.txt is the static file', (await prodRobots.text()) === 'app', 'middleware answered it itself');
+const prev = await run('https://golf-150-ui.golf-map.pages.dev/');
+check('preview is noindex', prev.headers.get('X-Robots-Tag') === 'noindex, nofollow', `x-robots-tag=${prev.headers.get('X-Robots-Tag')}`);
+const prevRobots = await run('https://golf-150-ui.golf-map.pages.dev/robots.txt');
+const prevRobotsBody = await prevRobots.text();
+check('preview robots.txt disallows everything', /Disallow: \/\n/.test(prevRobotsBody) && prevRobots.headers.get('X-Robots-Tag') === 'noindex, nofollow',
+  `body=${JSON.stringify(prevRobotsBody)}`);
+check('gated preview 401 is noindex too', gated.headers.get('X-Robots-Tag') === 'noindex, nofollow', `x-robots-tag=${gated.headers.get('X-Robots-Tag')}`);
+const bareRobots = await run('https://golf-map.pages.dev/robots.txt');
+check('bare pages.dev robots.txt still 301s to production', bareRobots.status === 301 && bareRobots.headers.get('Location') === 'https://golftripper.uk/robots.txt',
+  `status=${bareRobots.status} location=${bareRobots.headers.get('Location')}`);
 
 let failed = 0;
 for (const t of results) {
