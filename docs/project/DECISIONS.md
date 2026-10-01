@@ -883,3 +883,18 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   Rejected: it adds a second integration point, and the 205 hook damage
   happened on it.
 - **Date:** 2026-09-29 · **Affects:** all new work; GOLF-211 onward.
+
+## DEC-035 — Owner answers, 2026-10-01: open questions and backlog clean-up
+
+- **Decision (owner, 2026-10-01):**
+  - Mixed GB + Ireland trips keep the "N more from other countries" note; the shortlist does not show both.
+  - Nearby radius stays at **60 miles**.
+  - Shared links hiding unscheduled shortlist courses is **intended**.
+  - "Drive 0 min" on a second night at the same hotel, and the Craigtoun name, are **accepted as is**.
+  - The iPhone checks for 200 (input zoom) and 220 (home-screen copy) are dropped as unimportant.
+  - GOLF-189 (ready-made lists) cancelled. GOLF-195 (first-visit hint) deferred. GOLF-153 (detailed mode) is a candidate next step.
+  - GOLF-104 (accounts/backend) held: no technical direction work until the use case and monetisation are clear.
+  - GOLF-167 closed (current course names accepted). GOLF-158 and GOLF-159 cancelled.
+  - GOLF-157 deliverable 2 and GOLF-160 stay parked.
+- **Context:** carried questions from BA sessions 8–9, plus a backlog review.
+- **Date:** 2026-10-01 · **Affects:** GOLF-153, 157, 158, 159, 160, 167, 189, 195, 104, 209.
