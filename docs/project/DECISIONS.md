@@ -898,3 +898,9 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   - GOLF-157 deliverable 2 and GOLF-160 stay parked.
 - **Context:** carried questions from BA sessions 8–9, plus a backlog review.
 - **Date:** 2026-10-01 · **Affects:** GOLF-153, 157, 158, 159, 160, 167, 189, 195, 104, 209.
+
+## DEC-036 — Go public; keep rank badges for now
+
+- **Decision (owner, 2026-10-01):** open the site to search engines (GOLF-221) once the daily lookup cap (GOLF-223) is live. Rank badges stay as they are. This is the DEC-022 re-open that R-11 requires before going public: the owner accepts the exposure while the site makes no money. Tester notice stays. Add traffic monitoring (GOLF-222).
+- **Esri tiles (gate item 6), BA check:** a free site with no ads and no revenue counts as non-commercial; keyless use with attribution is fine. **Ads, affiliate links or paid features would make it commercial**, which needs an Esri account and API key. Add this to any monetisation scope, alongside DEC-022.
+- **Date:** 2026-10-01 · **Affects:** GOLF-180, 160, 221–223, R-7, R-8, R-11.
