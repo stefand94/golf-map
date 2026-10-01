@@ -1452,7 +1452,7 @@
      page's build as ?v= (stamped by scripts/update_sw_cache_version.py), so
      no cache should be able to pair this HTML with another build's JS. If one
      still does (APP_VERSION is not the build this page asked for), stop here,
-     before state.js can run DEC-011's wipe against the wrong version, clear
+     before the rest of the page runs against another build's JS, clear
      any other build's service-worker cache, and reload once. The session
      flag makes that once per build: if the reload didn't fix it, the page
      carries on rather than loop. Unstamped (local dev) pages skip it.

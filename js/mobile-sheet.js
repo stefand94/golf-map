@@ -75,8 +75,9 @@ filterBtn.hidden=true; // GOLF-185d unhides it once the filter panel exists
 /* GOLF-185c: on a phone the app opens on a country question, over a
    blurred map, until a country is picked; after that the pick lives on as
    a small chip beside the floating search. state.nation is saved, so the
-   card doesn't come back on reload (DEC-011's per-deploy wipe does bring it
-   back once, which is accepted). Never on a #share= link: CSS keys every
+   card doesn't come back on reload. GOLF-224/DEC-037 retired the per-deploy
+   wipe that used to bring it back once after every release, so a release no
+   longer re-asks the question. Never on a #share= link: CSS keys every
    rule below off body:not(.shared-mode). */
 const MOB_NATION_CODE={gb:'GB',ie:'IE',za:'ZA'};
 document.body.insertAdjacentHTML('beforeend',

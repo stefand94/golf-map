@@ -12,9 +12,10 @@ to `docs/testing-full.md`.** These docs are only useful if they stay current.
 ## Layer 1 — automated, always run before committing
 
 ```bash
-node scripts/test_data.js        # data-file integrity + course counts
-node scripts/check_js.js         # every js/*.js parses + correct load order
-node scripts/test_course_ids.js  # course identity + order didn't move
+node scripts/test_data.js          # data-file integrity + course counts
+node scripts/check_js.js           # every js/*.js parses + correct load order
+node scripts/test_course_ids.js    # course identity + order didn't move
+node scripts/test_state_persist.js # saved state survives a release + migrates
 ```
 
 - `test_data.js` loads `data/*.js` for real (Node `vm`) and checks required
@@ -35,9 +36,19 @@ node scripts/test_course_ids.js  # course identity + order didn't move
   silent re-index is the one data change with no recovery path. If a course is
   deliberately added or removed, regenerate the baseline and say so in the
   commit message.
-- None of the three executes load-time code, so a module calling a function
-  from a *later* module only throws in a real browser — Layer 2 #1 is the
-  backstop.
+- `test_state_persist.js` (GOLF-224/DEC-037) runs `loadStoredState()` for
+  real, in a `vm` sandbox with a fake `localStorage`, and asserts the thing
+  that is otherwise invisible until a release has already eaten someone's
+  trip: a different `APP_VERSION` changes nothing, a pre-GOLF-163
+  (index-form) and a pre-GOLF-42 (flat) payload still load, one unreadable
+  stored value costs only that value with nothing reaching `console.error`,
+  loading writes nothing, and an old and a new `#share=` link decode to the
+  same trip. Run after any change to `js/state.js`, `js/course-id.js` or
+  `js/trip-share.js`. (It is the one script here that *does* execute
+  load-time code.)
+- The other three don't execute load-time code, so a module calling a
+  function from a *later* module only throws in a real browser — Layer 2 #1
+  is the backstop.
 
 ## Layer 2 — browser checks (run after any rendering / filter / persistence change)
 

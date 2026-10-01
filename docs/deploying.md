@@ -25,8 +25,10 @@ Once connected, Cloudflare deploys automatically on every push:
   `#share=` hash across a redirect, so old share links still open the same
   trip. A returning visitor's old service worker on pages.dev doesn't get
   in the way: navigations are network-first (GOLF-122), so one reload lands
-  them on golftripper.uk. Trips saved on pages.dev stay there; the new
-  domain starts empty (DEC-011).
+  them on golftripper.uk. Trips saved on pages.dev stay there and the new
+  domain starts empty — localStorage is per-origin, so that is true however
+  trips are handled (GOLF-224/DEC-037 keeps trips across releases, but not
+  across a change of host).
 - **Preview**: pushes to *any other branch* automatically get their own
   preview URL, `<branch-name>.<project-name>.pages.dev` — no per-branch
   configuration needed. This is the "dev link" — use it to view/share a

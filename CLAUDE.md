@@ -103,6 +103,7 @@ records carrying `dupOf:<Top 100 id>`, kept so old ids and links still resolve.
 node scripts/test_data.js        # data-file integrity + course counts
 node scripts/check_js.js         # all js/*.js modules parse + correct load order
 node scripts/test_course_ids.js  # GOLF-163: course ids unique, array order unmoved
+node scripts/test_state_persist.js # GOLF-224: saved state survives a release, old formats migrate
 ```
 A course's identity is its `id` (GOLF-163), not its position in `C[]` — but
 runtime code still speaks indices, with the translation confined to the

@@ -108,33 +108,45 @@ function validateTripEntry(t){
     tripDayNextId:Math.max(0,...tripDays.map(d=>d.id))+1
   };
 }
-/* GOLF-132/DEC-011: every deploy wipes every visitor's saved trip. Reuses
-   sw.js's own CACHE_NAME (a content hash of every precached file, stamped
-   here into APP_VERSION by scripts/update_sw_cache_version.py) as the
-   "has the deploy changed" signal, rather than inventing a second version
-   scheme. Returns true only when we can positively confirm the deploy
-   changed — any ambiguity (APP_VERSION missing, e.g. this script failed to
-   load) fails closed and leaves trips untouched, per the ticket's explicit
-   "losing data on a false positive is worse than occasionally missing a
-   real version change." */
-const DEPLOY_VERSION_KEY='golfmap:deployversion';
-function tbDeployVersionChanged(){
-  if(typeof APP_VERSION!=='string'||!APP_VERSION)return false;
-  let last;try{last=localStorage.getItem(DEPLOY_VERSION_KEY)}catch(e){return false}
-  if(last===APP_VERSION)return false;
-  try{localStorage.setItem(DEPLOY_VERSION_KEY,APP_VERSION)}catch(e){return false}
-  // No stored value (null) covers both a brand-new visitor (nothing to
-  // clear anyway) AND an existing visitor whose browser predates this
-  // feature shipping — the two are indistinguishable, and the ticket's
-  // acceptance criteria explicitly call the latter's one-time clear
-  // expected, not a bug. Treat both as changed.
-  return true;
+/* GOLF-224/DEC-037: saved trips survive a release. Until this ticket,
+   GOLF-132/DEC-011 compared APP_VERSION with a stored copy of it and wiped
+   every visitor's trips whenever a deploy changed. DEC-037 ends that: the
+   stored format is migratable in every direction we ship — GOLF-163's
+   index->id references, the pre-GOLF-42 flat {trip,tripSeq,tripDays} shape,
+   the pre-GOLF-63 day shape — so a new release migrates what it finds
+   instead of deleting it. Gone with the wipe: DEPLOY_VERSION_KEY and
+   tbDeployVersionChanged(), which nothing else read. A stale
+   'golfmap:deployversion' key left behind in an existing visitor's browser
+   is inert.
+   The deploy *freshness* machinery is deliberately untouched: index.html's
+   GOLF-210/220 build check still clears another build's caches, refetches
+   every ?v= script and reloads once, and sw.js still versions its cache by
+   content hash. Only the data wipe went. */
+
+/* GOLF-224: a stored section that cannot be read must cost only that
+   section. Every part of the load below runs through this, so a corrupt
+   trip, an unreadable corrections map or a broken filter block drops
+   itself and leaves the rest — and the app still finishes loading.
+   console.warn, not an error: there is nothing here a visitor can act on,
+   and a thrown error at this point would abort the rest of the load. */
+function loadPart(label,fn){
+  try{return fn()}
+  catch(e){console.warn('golfmap: ignoring unreadable saved '+label+' — the rest of your saved data is unaffected.',e);return undefined}
 }
 function loadStoredState(){
-  const deployChanged=tbDeployVersionChanged();
   let raw;try{raw=localStorage.getItem(LS_KEY)}catch(e){return}
   if(!raw)return;
-  let saved;try{saved=JSON.parse(raw)}catch(e){return}
+  let saved;try{saved=JSON.parse(raw)}catch(e){saved=null}
+  /* A payload that isn't a plain object is unreadable as a whole — there is
+     no smaller piece left to keep — so this is the one case that drops the
+     key, rather than leaving a blob that fails again on every future load.
+     (A bare string is the shape the old double-stringify bug left behind;
+     see the quota retry in saveState().) */
+  if(!saved||typeof saved!=='object'||Array.isArray(saved)){
+    console.warn('golfmap: your saved data could not be read at all and has been reset.');
+    clearStoredState();
+    return;
+  }
   /* GOLF-163: course references are stored as stable ids now, not array
      indices. Every one of these decodes goes through courseRefDecode(),
      which accepts both the id form and the old numeric form (resolved via
@@ -142,51 +154,51 @@ function loadStoredState(){
      before ids shipped keeps their trip, their corrections and their
      played/want marks. `null` means "that course no longer exists", which
      is dropped exactly as an out-of-range index always was. */
-  if(saved.edits)Object.assign(EDITS,courseDecodeKeyed(saved.edits));
-  (saved.played||[]).forEach(r=>{const i=courseRefDecode(r);if(i!==null)PLAYED.add(i)});
-  (saved.want||[]).forEach(r=>{const i=courseRefDecode(r);if(i!==null)WANT.add(i)});
+  loadPart('corrections',()=>{if(saved.edits)Object.assign(EDITS,courseDecodeKeyed(saved.edits))});
+  loadPart('played list',()=>{(saved.played||[]).forEach(r=>{const i=courseRefDecode(r);if(i!==null)PLAYED.add(i)})});
+  loadPart('want-to-play list',()=>{(saved.want||[]).forEach(r=>{const i=courseRefDecode(r);if(i!==null)WANT.add(i)})});
   /* GOLF-198: one course saved under both its records, marked played
      under one and want under the other — played wins, as togglePlayed()
      would have made it. */
   PLAYED.forEach(i=>WANT.delete(i));
-  if(deployChanged){
-    // Leave `trips`/`activeTripId` at their already-initialised, empty
-    // defaults (same shape tripStartFresh() resets to) and persist that
-    // once below so the clear survives even if the visitor never edits
-    // anything this session.
-  }else if(saved.trips&&typeof saved.trips==='object'&&Object.keys(saved.trips).length){
-    const nextTrips={};
-    Object.entries(saved.trips).forEach(([id,t])=>{if(t&&typeof t==='object')nextTrips[id]=validateTripEntry(courseDecodeTripEntry(t))});
-    if(Object.keys(nextTrips).length){
-      trips=nextTrips;
-      activeTripId=(typeof saved.activeTripId==='string'&&trips[saved.activeTripId])?saved.activeTripId:Object.keys(trips)[0];
-    }
+  /* GOLF-224: decoded and validated one trip at a time, so a single
+     unreadable trip costs that trip and not the whole list. */
+  let nextTrips=null;
+  if(saved.trips&&typeof saved.trips==='object'){
+    const acc={};
+    Object.entries(saved.trips).forEach(([id,t])=>{
+      if(!t||typeof t!=='object')return;
+      const v=loadPart('trip "'+id+'"',()=>validateTripEntry(courseDecodeTripEntry(t)));
+      if(v)acc[id]=v;
+    });
+    if(Object.keys(acc).length)nextTrips=acc;
+  }
+  if(nextTrips){
+    trips=nextTrips;
+    activeTripId=(typeof saved.activeTripId==='string'&&trips[saved.activeTripId])?saved.activeTripId:Object.keys(trips)[0];
   }else if(Array.isArray(saved.trip)){
-    trips={default:validateTripEntry(courseDecodeTripEntry({name:'My trip',trip:saved.trip,tripSeq:saved.tripSeq,tripDays:saved.tripDays}))};
-    activeTripId='default';
+    /* The pre-GOLF-42 flat shape, wrapped into a single "My trip" entry. */
+    const v=loadPart('trip',()=>validateTripEntry(courseDecodeTripEntry({name:'My trip',trip:saved.trip,tripSeq:saved.tripSeq,tripDays:saved.tripDays})));
+    if(v){trips={default:v};activeTripId='default';}
   }
   tripRestoreActive();
-  if(saved.filters){['access','price','region','flag','arch'].forEach(k=>{
-    (saved.filters[k]||[]).forEach(v=>state[k].add(v));});}
-  // GOLF-69: fee range, same defensive "finite number or null" discipline
-  // as every other saved field.
-  if(saved.filters){
-    const n=v=>typeof v==='number'&&isFinite(v)?v:null;
-    state.feeMin=n(saved.filters.feeMin);state.feeMax=n(saved.filters.feeMax);
-  }
-  if(saved.q)state.q=saved.q;
-  if(saved.sort)state.sort=saved.sort;
-  // GOLF-81: which nation's courses the Explore list is gated to — 'gb'
-  // (Great Britain: England/Scotland/Wales)/'ie'/'za', or null before any
-  // pill has been picked.
-  if(saved.nation==='gb'||saved.nation==='ie'||saved.nation==='za')state.nation=saved.nation;
-  if(saved.mapCenter&&saved.mapZoom)restoredView={center:saved.mapCenter,zoom:saved.mapZoom};
-  // GOLF-132: persist the cleared trip state immediately so it survives
-  // even if the visitor closes the tab without ever editing anything —
-  // otherwise the stale trips left in LS_KEY would still be there (and
-  // get loaded) on their next visit, since DEPLOY_VERSION_KEY already
-  // matches by then.
-  if(deployChanged)saveState();
+  loadPart('filters',()=>{
+    if(saved.filters){
+      ['access','price','region','flag','arch'].forEach(k=>{
+        (saved.filters[k]||[]).forEach(v=>state[k].add(v));});
+      // GOLF-69: fee range, same defensive "finite number or null" discipline
+      // as every other saved field.
+      const n=v=>typeof v==='number'&&isFinite(v)?v:null;
+      state.feeMin=n(saved.filters.feeMin);state.feeMax=n(saved.filters.feeMax);
+    }
+    if(typeof saved.q==='string')state.q=saved.q;
+    if(typeof saved.sort==='string')state.sort=saved.sort;
+    // GOLF-81: which nation's courses the Explore list is gated to — 'gb'
+    // (Great Britain: England/Scotland/Wales)/'ie'/'za', or null before any
+    // pill has been picked.
+    if(saved.nation==='gb'||saved.nation==='ie'||saved.nation==='za')state.nation=saved.nation;
+  });
+  loadPart('map view',()=>{if(saved.mapCenter&&saved.mapZoom)restoredView={center:saved.mapCenter,zoom:saved.mapZoom}});
 }
 function saveState(){
   let payload;

@@ -340,6 +340,19 @@ it.
 node scripts/test_data.js
 ```
 
+### `test_state_persist.js`
+GOLF-224 / DEC-037: runs `loadStoredState()` for real in a `vm` sandbox with
+a fake `localStorage`, and asserts that a new `APP_VERSION` no longer wipes
+saved trips, that older stored formats (pre-GOLF-163 bare indices,
+pre-GOLF-42 flat trips, pre-GOLF-63 days) still load, that one unreadable
+stored value costs only that value, that loading writes nothing, and that an
+old and a new `#share=` link decode to the same trip. Run it after any change
+to `js/state.js`, `js/course-id.js` or `js/trip-share.js`.
+
+```bash
+node scripts/test_state_persist.js
+```
+
 ### `fetch_osm_golf_courses.py` + `merge_osm_coords.py`
 GOLF-161 / DEC-023: re-source published coordinates from OpenStreetMap for
 **England and Scotland only** — the two nations whose governing-body terms
