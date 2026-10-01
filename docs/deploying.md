@@ -84,10 +84,13 @@ directly — it's static, so there's no new link to send on every deploy.
 The gate code stays in the repo, harmless while dormant, for whenever a
 future preview/beta actually wants it.
 
-Both production and preview also carry a blanket `X-Robots-Tag:
-noindex, nofollow` (`_headers`) and `robots.txt` `Disallow: /` — the
-whole site is link-only, independent of whether the password gate is
-ever turned on.
+**GOLF-221 (2026-10-01): production is open to search engines.**
+`robots.txt` allows `/` and production sends no `X-Robots-Tag`. Every other
+host that reaches the middleware, in practice the branch previews, gets
+`X-Robots-Tag: noindex, nofollow` on every non-redirect response and a
+`Disallow: /` robots.txt, both set in `functions/_middleware.js` by host.
+(The old blanket rule in `_headers` is gone; Pages headers can't tell
+production from a preview.)
 
 ## Worker CORS allowlist (GOLF-102 Part 1)
 

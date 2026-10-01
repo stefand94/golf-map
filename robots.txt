@@ -1,2 +1,5 @@
+# GOLF-221: open to search engines. Branch previews are kept out by
+# functions/_middleware.js, which serves them a Disallow robots.txt and a
+# noindex header instead of this file.
 User-agent: *
-Disallow: /
+Allow: /

@@ -80,10 +80,36 @@ async function withBuild(context, url) {
   return out;
 }
 
-export async function onRequest(context) {
-  const { request, env, next } = context;
+/*
+ * GOLF-221 — production (golftripper.uk) is open to search engines.
+ * Everything else that reaches this point, in practice the branch previews
+ * (<branch>.golf-map.pages.dev), stays out: every response carries
+ * X-Robots-Tag noindex, and robots.txt is a Disallow. Redirects are left
+ * alone; a 301 isn't indexed. Decided by host rather than by
+ * CF_PAGES_BRANCH, so a preview of main can't be indexed either.
+ */
+const CANONICAL_HOST = new URL(CANONICAL_ORIGIN).hostname;
+const PREVIEW_ROBOTS = 'User-agent: *\nDisallow: /\n';
 
-  const url = new URL(request.url);
+function keepPreviewsOut(res, url) {
+  if (url.hostname === CANONICAL_HOST) return res;
+  const out = new Response(res.body, res);
+  out.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  return out;
+}
+
+export async function onRequest(context) {
+  const url = new URL(context.request.url);
+  if (url.hostname !== CANONICAL_HOST && url.pathname === '/robots.txt' && !REDIRECT_HOSTS.has(url.hostname)) {
+    return keepPreviewsOut(new Response(PREVIEW_ROBOTS, { headers: { 'Content-Type': 'text/plain' } }), url);
+  }
+  const res = await route(context, url);
+  return res.status >= 300 && res.status < 400 ? res : keepPreviewsOut(res, url);
+}
+
+async function route(context, url) {
+  const { request, env } = context;
+
   const legacy = LEGACY_APP_PATH.test(url.pathname);
   const path = legacy ? '/' : url.pathname;
   if (REDIRECT_HOSTS.has(url.hostname)) {
