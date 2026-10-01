@@ -452,17 +452,11 @@ function popupHTML(i,{card=false}={}){
     :(esc(V(i,'walk'))||'Outside the rail catchment — no nearby station on this map');
   const search=`https://www.google.com/search?q=${encodeURIComponent(V(i,'n')+' golf club green fees')}`;
   const site=V(i,'site'),book=V(i,'book'),club=c.clubInfo;
-  /* GOLF-88 (implementation): a real course photo, distinct from the small
-     club-logo thumbnail below it — sourced from Wikimedia Commons per the
-     published proposal (see plan file). CC-BY-SA/BY licenses require
-     visible attribution, unlike the logo, so this carries a credit line
-     (photographer + license, linking to the Commons source page) the logo
-     block never needed. Degrades gracefully — simply absent — for the
-     majority of courses with no photo field, same convention as every
-     other optional field in this app. */
-  const photoBlock=c.photo?`<div style="width:100%;border-radius:8px;margin-bottom:8px;overflow:hidden"><img src="${esc(escUrl(c.photo.src))}" alt="${esc(V(i,'n'))}" loading="lazy" style="width:100%;height:140px;object-fit:cover;display:block"><div style="font-size:10.5px;color:var(--stone);padding:3px 2px 0">Photo: <a href="${esc(escUrl(c.photo.sourceUrl))}" target="_blank" rel="noopener">${esc(c.photo.photographer)}</a> · ${esc(c.photo.license)}</div></div>`:'';
+  /* GOLF-225: course photos (GOLF-88) are no longer shown — the owner
+     didn't rate them. The `photo` fields stay in the data; only the club
+     logo renders here now. */
   const addBtn=card?'':`<button class="btn primary" onclick="${TRIP.has(i)?`tripRemoveCourse(${i})`:`tbAddToPlan(${i})`}">${TRIP.has(i)?'✓ In your trip — remove':'＋ Add to trip'}</button>`;
-  return `<div class="pop" data-course="${i}">${photoBlock}${c.logo?`<div style="width:100%;height:100px;background:var(--paper);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${esc(escUrl(c.logo))}" alt="${esc(V(i,'n'))} club logo" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"></div>`:''}${card?'':`<h3>${esc(V(i,'n'))} ${courseBadgesHTML(i)}</h3>`}
+  return `<div class="pop" data-course="${i}">${c.logo?`<div style="width:100%;height:100px;background:var(--paper);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${esc(escUrl(c.logo))}" alt="${esc(V(i,'n'))} club logo" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"></div>`:''}${card?'':`<h3>${esc(V(i,'n'))} ${courseBadgesHTML(i)}</h3>`}
     <p class="sub">${esc(c.r)} · ${esc(a.label)}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
     ${feeBlock(i)}
     ${(()=>{const ct=(typeof feeCartFor==='function')&&feeCartFor(i);return ct&&ct.status==='mandatory'?`<p class="note" style="color:var(--stone)">Buggy compulsory${ct.amount!=null?` — ${esc(curSym(courseCurrency(i))+Math.round(ct.amount))}${ct.per==='person'?' per person':' per cart'}`:''}, billed separately.</p>`:'';})()}
