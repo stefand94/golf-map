@@ -182,22 +182,25 @@ function loadStoredState(){
     if(v){trips={default:v};activeTripId='default';}
   }
   tripRestoreActive();
-  loadPart('filters',()=>{
-    if(saved.filters){
-      ['access','price','region','flag','arch'].forEach(k=>{
-        (saved.filters[k]||[]).forEach(v=>state[k].add(v));});
-      // GOLF-69: fee range, same defensive "finite number or null" discipline
-      // as every other saved field.
+  /* One filter chip group at a time, so an unreadable `access` list doesn't
+     also cost the saved nation, sort order or fee range. */
+  if(saved.filters&&typeof saved.filters==='object'){
+    ['access','price','region','flag','arch'].forEach(k=>{
+      loadPart(k+' filter',()=>{(saved.filters[k]||[]).forEach(v=>state[k].add(v))});
+    });
+    // GOLF-69: fee range, same defensive "finite number or null" discipline
+    // as every other saved field.
+    loadPart('fee range',()=>{
       const n=v=>typeof v==='number'&&isFinite(v)?v:null;
       state.feeMin=n(saved.filters.feeMin);state.feeMax=n(saved.filters.feeMax);
-    }
-    if(typeof saved.q==='string')state.q=saved.q;
-    if(typeof saved.sort==='string')state.sort=saved.sort;
-    // GOLF-81: which nation's courses the Explore list is gated to — 'gb'
-    // (Great Britain: England/Scotland/Wales)/'ie'/'za', or null before any
-    // pill has been picked.
-    if(saved.nation==='gb'||saved.nation==='ie'||saved.nation==='za')state.nation=saved.nation;
-  });
+    });
+  }
+  if(typeof saved.q==='string')state.q=saved.q;
+  if(typeof saved.sort==='string')state.sort=saved.sort;
+  // GOLF-81: which nation's courses the Explore list is gated to — 'gb'
+  // (Great Britain: England/Scotland/Wales)/'ie'/'za', or null before any
+  // pill has been picked.
+  if(saved.nation==='gb'||saved.nation==='ie'||saved.nation==='za')state.nation=saved.nation;
   loadPart('map view',()=>{if(saved.mapCenter&&saved.mapZoom)restoredView={center:saved.mapCenter,zoom:saved.mapZoom}});
 }
 function saveState(){

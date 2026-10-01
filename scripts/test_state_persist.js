@@ -209,7 +209,7 @@ const good = JSON.parse(SAVED);
 const corrupt = Object.assign({}, good, {
   played: 'not-an-array',                 // hand-edited to a string: used to throw
   edits: 'not-an-object',
-  filters: { access: 'not-an-array', region: ['surrey'] },
+  filters: { access: 'not-an-array', region: ['surrey'], feeMin: 50, feeMax: 400 },
 });
 const partly = boot({ 'golfmap:v1': JSON.stringify(corrupt) }, 'golfmap-shell-v5-deadbeef99');
 eq('corrupt section: trips still load', partly.sandbox.trips.mine && partly.sandbox.trips.mine.name, 'Scotland 2026');
@@ -221,6 +221,14 @@ eq('corrupt section: nothing reached console.error', partly.errors, []);
 if (!partly.warns.length) fail('corrupt section: expected a console.warn naming the dropped section');
 if (!partly.warns.some(w => /played/.test(w))) fail('corrupt section: the warning should name the played list');
 eq('corrupt section: the stored payload is left alone', partly.store['golfmap:v1'], JSON.stringify(corrupt));
+/* GOLF-224: an unreadable chip group must not take the rest of the filter
+   block with it — one bad list costs that list. */
+eq('corrupt filter: the bad chip group is empty', [...partly.sandbox.state.access], []);
+eq('corrupt filter: a good chip group beside it survives', [...partly.sandbox.state.region], ['surrey']);
+eq('corrupt filter: the fee range beside it survives',
+  [partly.sandbox.state.feeMin, partly.sandbox.state.feeMax], [50, 400]);
+eq('corrupt filter: the saved nation beside it survives', partly.sandbox.state.nation, 'gb');
+eq('corrupt filter: the saved sort beside it survives', partly.sandbox.state.sort, 'name');
 
 /* one trip of two unreadable: the other still loads */
 const twoTrips = boot({ 'golfmap:v1': JSON.stringify({
