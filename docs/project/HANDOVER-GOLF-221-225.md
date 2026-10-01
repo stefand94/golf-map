@@ -25,7 +25,7 @@ These three areas don't overlap. If you find you need a file in another dev's co
 - **Verify against what ships, not against the old code path.** A diff against the old path only proves the two agree.
 - **API keys:** never ask for, read or commit one. Stefan adds secrets in the Worker dashboard himself. The Worker's domain and settings live in `wrangler.jsonc`; dashboard toggles get reverted by git deploys.
 - **Course data:** identity is `id`, not array position. Never rebuild a `data/courses-*.js` array; `data/course-ids.js` is frozen.
-- **Finish:** run `tripStartFresh(); localStorage.clear()` in any browser you used and reset the window size. Report back to the BA with commit, build hash, what you verified and how, and anything only Stefan can check.
+- **Finish:** reset the window size. **Don't clear trip data unprompted.** Stefan may keep a trip loaded to test against. Say what's still loaded and clear it (`tripStartFresh(); localStorage.clear()`) only when he says so. Report back to the BA with commit, build hash, what you verified and how, and anything only Stefan can check.
 
 ---
 
@@ -75,7 +75,7 @@ Stefan enables Cloudflare Web Analytics (Pages → Metrics → Enable); it's inj
 - [ ] Old and new share links still render the same trip.
 - [ ] One release after this ships, Stefan's real trip survives on his phone. **Only Stefan can confirm this.**
 
-**Watch:** DEC-011 started because dev test data kept reappearing in Stefan's browser. Without the wipe, **clearing your test state at the end of every session is now mandatory**, not tidy-up. Also check `js/mobile-sheet.js:78`, which leans on the wipe.
+**Watch:** DEC-011 started because dev test data kept reappearing in Stefan's browser. Without the wipe, nothing self-clears any more. **At the end of every session, tell Stefan what test data you left and offer to clear it.** Don't clear it without his word, because he may be using it. Also check `js/mobile-sheet.js:78`, which leans on the wipe.
 
 ---
 
