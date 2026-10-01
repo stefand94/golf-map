@@ -24,5 +24,13 @@
   // Don't turn them back on without a rate-limit rule covering them.
   "routes": [{ "pattern": "api.golftripper.uk", "custom_domain": true }],
   "workers_dev": false,
-  "preview_urls": false
+  "preview_urls": false,
+  // GOLF-223: the daily lookup counter (LookupQuota in ors-proxy.js). A
+  // SQLite-backed Durable Object; the migration creates it on the first
+  // deploy that carries it. Never delete or rename the class without a
+  // matching deleted_classes/renamed_classes migration.
+  "durable_objects": {
+    "bindings": [{ "name": "LOOKUP_QUOTA", "class_name": "LookupQuota" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LookupQuota"] }]
 }

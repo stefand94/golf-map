@@ -16,6 +16,15 @@ routes = [{ pattern = "api.golftripper.uk", custom_domain = true }]
 workers_dev = false
 preview_urls = false
 
+# GOLF-223: keep in step with the root wrangler.jsonc.
+[[durable_objects.bindings]]
+name = "LOOKUP_QUOTA"
+class_name = "LookupQuota"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["LookupQuota"]
+
 # ORS_API_KEY is NOT set here — it stays exactly as it is today, a
 # secret configured in the dashboard (Settings -> Variables and Secrets).
 # Connecting Git for deploys doesn't touch secrets at all.

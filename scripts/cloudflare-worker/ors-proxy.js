@@ -51,8 +51,10 @@
  *      POST {mode:'hotelsViewport', bbox:[south,west,north,east]}
  *      -> {pois:[{name, category, lat, lng}, ...]}
  *
- * No database, no state, no logging of requests beyond Cloudflare's own
- * standard request logs — a pure pass-through either way.
+ * No logging of requests beyond Cloudflare's own standard request logs.
+ * The one piece of state is GOLF-223's daily lookup counter (LookupQuota,
+ * below): a count per visitor per day, keyed by a salted hash of the IP
+ * that is thrown away with the day.
  *
  * --- Deploy steps (Cloudflare dashboard, no CLI needed) ---
  * 1. dash.cloudflare.com -> Workers & Pages -> Create -> Create Worker.
@@ -71,6 +73,8 @@
  *    new secret or URL change is needed — ORS_API_KEY and the Worker's
  *    URL both stay exactly as they are.)
  */
+
+import { DurableObject } from 'cloudflare:workers';
 
 // GOLF-50: the /geojson variant returns the actual route geometry
 // alongside the same duration/distance summary the plain endpoint gives —
@@ -368,6 +372,129 @@ async function overpassFetch(query) {
   return won ? { data: won } : { error: lastError };
 }
 
+/* ── GOLF-223: daily cap on ORS lookups (directions + geocoding).
+
+   The api.golftripper.uk rate-limiting rule (100 requests / 10 s per IP)
+   stops a flood but not a slow drip: a script staying under it can still
+   drain the ORS daily quota and take routing and place search down for
+   everyone (R-7). So every ORS-backed call is counted per UTC day, twice:
+
+   - per visitor, well above real use. A cold 10-day trip load is ~30
+     route calls; place search is debounced and cached per session.
+   - for the whole site, just under ORS's own daily quota. Once that is
+     reached the Worker stops calling ORS until the day rolls over, so the
+     last few hundred lookups are never the ones ORS itself refuses.
+
+   Over either limit the Worker answers 429 and makes no upstream call. The
+   app already treats any non-200 as "no answer": drives fall back to the
+   dotted straight line and place search says it is unavailable.
+
+   The Overpass hotel modes are not counted: they are keyless, edge-cached
+   (GOLF-146) and draw on no quota of ours.
+
+   Storage is one SQLite-backed Durable Object rather than KV: KV is
+   eventually consistent (two edges could both let the 1,900th call
+   through) and the free plan allows only 1,000 KV writes a day, fewer than
+   the lookups being counted. A single instance serialises every count, so
+   the check-and-increment is atomic, and at this traffic one object is
+   nowhere near busy. Declared in wrangler.jsonc, so a git deploy creates
+   it; nothing to set up in the dashboard.
+
+   If the object can't be reached the call is let through (logged), not
+   refused: a counter outage shouldn't take routing down with it, and the
+   per-10-second rule still caps the damage. */
+const QUOTA_LIMITS = {
+  // ORS standard plan: directions 2,000/day, geocode autocomplete
+  // 1,000/day, each its own quota. Check the ORS dashboard if they change.
+  directions: { visitor: 300, site: 1900 },
+  geocode: { visitor: 200, site: 950 },
+};
+
+/* A visitor is an IP. An IPv6 user can rotate through a whole /64 without
+   trying, so v6 addresses count by their /64 prefix. */
+function visitorKey(ip) {
+  if (!ip) return 'unknown';
+  if (!ip.includes(':')) return ip;
+  const [head, tail = ''] = ip.split('::');
+  const h = head ? head.split(':') : [];
+  const t = tail ? tail.split(':') : [];
+  const full = ip.includes('::') ? [...h, ...Array(8 - h.length - t.length).fill('0'), ...t] : h;
+  return full.slice(0, 4).map((x) => x.toLowerCase().replace(/^0+(?=.)/, '')).join(':') + '::/64';
+}
+
+export class LookupQuota extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.sql = ctx.storage.sql;
+    this.sql.exec('CREATE TABLE IF NOT EXISTS counts (day TEXT, who TEXT, kind TEXT, n INTEGER, PRIMARY KEY (day, who, kind))');
+    this.sql.exec('CREATE TABLE IF NOT EXISTS salts (day TEXT PRIMARY KEY, salt TEXT)');
+    this.prunedFor = null;
+  }
+
+  /* Counts one `kind` lookup for `visitor` today, unless that would break
+     a limit. Returns { ok:true } or { ok:false, scope:'visitor'|'site' }.
+     `limits` is passed in, so a test run can shrink them. */
+  async take(kind, visitor, limits) {
+    const day = new Date().toISOString().slice(0, 10);
+    if (this.prunedFor !== day) {
+      // Yesterday's counts and salt are no use to anyone; drop them.
+      this.sql.exec('DELETE FROM counts WHERE day <> ?', day);
+      this.sql.exec('DELETE FROM salts WHERE day <> ?', day);
+      this.prunedFor = day;
+    }
+    // A fresh random salt per day: the stored key can't be reversed to an
+    // IP by trying every IPv4 address, and nothing links two days.
+    let salt = this.sql.exec('SELECT salt FROM salts WHERE day = ?', day).toArray()[0]?.salt;
+    if (!salt) {
+      salt = [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('');
+      this.sql.exec('INSERT INTO salts (day, salt) VALUES (?, ?)', day, salt);
+    }
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + visitor));
+    const who = [...new Uint8Array(digest).slice(0, 12)].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+    const count = (w) =>
+      this.sql.exec('SELECT n FROM counts WHERE day = ? AND who = ? AND kind = ?', day, w, kind).toArray()[0]?.n || 0;
+    if (count('*') >= limits.site) return { ok: false, scope: 'site' };
+    if (count(who) >= limits.visitor) return { ok: false, scope: 'visitor' };
+    const bump = 'INSERT INTO counts (day, who, kind, n) VALUES (?, ?, ?, 1) ON CONFLICT (day, who, kind) DO UPDATE SET n = n + 1';
+    this.sql.exec(bump, day, '*', kind);
+    this.sql.exec(bump, day, who, kind);
+    return { ok: true };
+  }
+}
+
+/* Returns a 429 Response if this lookup is over a daily limit, else null
+   (go ahead). Call it after the request is validated and immediately
+   before the upstream fetch, so only calls that would reach ORS count. */
+async function quotaGate(kind, env, request) {
+  if (!env.LOOKUP_QUOTA) return null; // binding missing (e.g. a manual paste deploy): no cap
+  const limits = { ...QUOTA_LIMITS[kind] };
+  // Test-only overrides (`wrangler dev --var`); production uses the table above.
+  if (env.QUOTA_TEST_VISITOR) limits.visitor = Number(env.QUOTA_TEST_VISITOR);
+  if (env.QUOTA_TEST_SITE) limits.site = Number(env.QUOTA_TEST_SITE);
+  let verdict;
+  try {
+    const stub = env.LOOKUP_QUOTA.get(env.LOOKUP_QUOTA.idFromName('global'));
+    verdict = await stub.take(kind, visitorKey(request.headers.get('CF-Connecting-IP')), limits);
+  } catch (e) {
+    console.log(`GOLF-223 quota check failed, letting ${kind} through: ${e}`);
+    return null;
+  }
+  if (verdict.ok) return null;
+  const now = new Date();
+  const resets = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  const res = json({
+    error: verdict.scope === 'site'
+      ? 'daily lookup limit reached for the whole site; try again after midnight UTC'
+      : 'daily lookup limit reached for this connection; try again after midnight UTC',
+    limit: verdict.scope,
+    kind,
+    resets: resets.toISOString(),
+  }, 429, request);
+  res.headers.set('Retry-After', String(Math.ceil((resets - now) / 1000)));
+  return res;
+}
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') {
@@ -443,6 +570,8 @@ async function handleRoute(body, env, request) {
   if (!isCoord(origin) || !isCoord(destination)) {
     return json({ error: 'origin and destination must both be [lng, lat] number pairs' }, 400, request);
   }
+  const refused = await quotaGate('directions', env, request);
+  if (refused) return refused;
 
   let orsRes;
   try {
@@ -837,6 +966,9 @@ async function handleGeocode(body, env, request) {
   // Allowlisted: anything else is ignored rather than forwarded.
   if (body.layers === 'coarse') url.searchParams.set('layers', 'coarse');
 
+  const refused = await quotaGate('geocode', env, request);
+  if (refused) return refused;
+
   let orsRes;
   try {
     orsRes = await fetch(url.toString());
@@ -959,7 +1091,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = '7b99f36f8f';
+const WORKER_BUILD = 'f2cba42149';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {

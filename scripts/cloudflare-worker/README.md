@@ -9,8 +9,20 @@ infrastructure this app has — everything else is static files.
 
 Takes `POST {origin:[lng,lat], destination:[lng,lat]}`, calls ORS's
 driving-directions API with the key held as a Worker secret, and returns
-`{minutes, miles}`. No database, no state, no per-visitor data — a pure
-pass-through that exists solely to keep the key off the client.
+`{minutes, miles}`. Otherwise a pass-through that exists to keep the key
+off the client, with one piece of state: GOLF-223's daily lookup cap.
+
+## Daily lookup cap (GOLF-223)
+
+ORS calls (directions and geocoding) are counted per UTC day in a
+SQLite-backed Durable Object, `LookupQuota`, declared in the root
+`wrangler.jsonc`. Limits live in `QUOTA_LIMITS` in `ors-proxy.js`:
+per visitor (IP, or IPv6 /64) and for the whole site, just under ORS's
+daily quota. Over either, the Worker answers **429** with
+`{error, limit:'visitor'|'site', kind, resets}` and a `Retry-After`, and
+makes no ORS call. Visitors are stored only as a hash with a random
+per-day salt, and each day's rows are deleted the next day. Overpass
+hotel modes are not counted.
 
 ## Deploying it
 
