@@ -193,6 +193,21 @@ function esriBaseLayers(){
 const esriBases=esriBaseLayers();
 esriBases['Default'].addTo(map);
 L.control.layers(esriBases,null,{position:'topright'}).addTo(map);
+/* GOLF-232 follow-up: an always-visible Feedback pill. On a phone it floats
+   in the map's top-left corner: a Leaflet control, so it stays inside the
+   visible strip of map (below the floating search, above the sheet) and
+   hides with the other controls at full. Added before "Show whole trip" so
+   it keeps its place when that button comes and goes. Desktop CSS hides
+   it; there the pill sits in the masthead beside Beta. */
+const FEEDBACK_ICON='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>';
+const mapFeedbackControl=L.control({position:'topleft'});
+mapFeedbackControl.onAdd=function(){
+  const el=L.DomUtil.create('div','leaflet-control map-fb');
+  el.innerHTML='<button type="button" class="fb-pill" onclick="feedbackOpen()">'+FEEDBACK_ICON+'Feedback</button>';
+  L.DomEvent.disableClickPropagation(el);
+  return el;
+};
+mapFeedbackControl.addTo(map);
 /* GOLF-191 (AC 1): "Show whole trip". Top-left is the only free corner —
    zoom is bottom-right, the basemap picker top-right, and the bottom-left
    is the tile attribution we're obliged to keep legible. Hidden whenever

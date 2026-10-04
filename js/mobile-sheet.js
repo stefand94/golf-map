@@ -448,6 +448,7 @@ function mobDragEnd(){
 }
 mobHandle.addEventListener('pointerdown',e=>{
   if(e.button!==0)return;
+  if(e.target.closest('.peek-fb'))return; // GOLF-232: a tap on Feedback, not a drag
   mobHandle.setPointerCapture(e.pointerId);
   mobDragStart(e.clientY,'handle');
 });
@@ -518,7 +519,10 @@ function mobPeekHTML(){
     bits.push(`${n} course${n===1?'':'s'} in view`);
     if(TRIP.size)bits.push(`${TRIP.size} in trip`);
   }
-  return`<span class="bs-peek-text">${bits.join(' · ')}</span><span class="tb-pill">${tbTripTotalHTML()}</span>`; // GOLF-199: 193's app-wide pp/total reading, like the other pills
+  /* GOLF-232 follow-up: at full the map, and its Feedback pill, is covered,
+     so a compact one rides in this row instead (CSS shows it only at full;
+     beside Beta in the header it squeezed the trip name to "My tr…"). */
+  return`<span class="bs-peek-text">${bits.join(' · ')}</span><button type="button" class="fb-pill peek-fb" onclick="feedbackOpen()">Feedback</button><span class="tb-pill">${tbTripTotalHTML()}</span>`; // GOLF-199: 193's app-wide pp/total reading, like the other pills
 }
 function mobUpdatePeek(){
   if(!mobIsPhone())return;
