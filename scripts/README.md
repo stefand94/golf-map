@@ -130,7 +130,7 @@ coordinate spot-check and de-dup pass before merging, same lesson as the
 other nations.
 
 Output JSON shape matches every other nation's script, so
-`merge_club_details.py`/`merge_club_images.py` need no changes. No
+`merge_club_details.py` needs no changes. No
 fee/architect/note fields exist in HNA's response at all (`Website`,
 `LogoImage`, `TeeBookingUrl`, `MembershipUrl`, `FacilityDescription` were
 null for every course fetched this round) — that content is hand-curated,
@@ -172,7 +172,7 @@ python3 scripts/merge_nearest_stations.py data/courses-top100.js --nearest scrip
 
 ### `merge_club_details.py`
 GOLF-11: merges `fetch_england_golf_clubs.py`'s output into a
-`data/courses-*.js` file as a `clubInfo:{phone,membership,teeBooking,blurb}`
+`data/courses-*.js` file as a `clubInfo:{phone,membership,teeBooking}`
 field, keyed by course name with any trailing "(Old)"/"(Hotchkin)"/etc.
 qualifier stripped (several Top 100 entries share one physical club).
 
@@ -186,8 +186,9 @@ check across ~95 clubs found it consistently `null` on `GetClubDetails`, so
 that's not actually available there and isn't merged. `LogoImage`/banner
 image fields are also skipped on purpose: they're raw base64 blobs averaging
 ~470KB each — embedding them would add tens of MB to a data file that's
-currently ~130KB total. A real image pipeline (fetch once, save as actual
-`.jpg` files, reference by relative path) would need its own ticket.
+currently ~130KB total. GOLF-21 later decoded them into `images/clubs/`;
+GOLF-237 removed those logos, and stopped merging `FacilityDescription` as
+`blurb`, because England Golf's terms bar republishing either.
 
 **Also note:** `GetClubsByName` can return several close matches for one
 query (e.g. "St Georges" → both "St Georges Hill Golf Club" and "The Royal
@@ -196,32 +197,12 @@ St Georges Golf Club") — the script picks the closest name match via
 one) can still need a more specific query. Verify unfamiliar matches via
 `matched_name` in the output JSON before trusting them.
 
-### `fetch_club_images.py`
-GOLF-21: decodes and resizes club logo images out of the `LogoImage` base64
-blobs already sitting in `scripts/output/england_golf_clubs.json` (from
-`fetch_england_golf_clubs.py`) — does not hit the network again. Resizes to
-~160px wide, JPEG quality ~70, landing around 15-25KB each (raw blobs
-average ~470KB), saved under `images/clubs/`.
-
-**Requires Pillow** (`pip install Pillow`) — a one-time local dev dependency
-for this script only, never shipped to the browser. Every other script here
-uses only the Python standard library; this is the one deliberate exception.
-
-```bash
-python3 scripts/fetch_club_images.py
-```
-Writes `images/clubs/*.jpg` plus `scripts/output/club_images.json` — a
-`{clubName: relativePath}` map for `merge_club_images.py` to consume.
-
-### `merge_club_images.py`
-Merges `fetch_club_images.py`'s output into a `data/courses-*.js` file as a
-`logo:"images/clubs/....jpg"` field, keyed by course name with any trailing
-"(Old)"/"(Hotchkin)"/etc. qualifier stripped (same convention as
-`merge_club_details.py`). Idempotent.
-
-```bash
-python3 scripts/merge_club_images.py data/courses-top100.js --images scripts/output/club_images.json
-```
+### `fetch_club_images.py` / `merge_club_images.py` (deleted, GOLF-237)
+GOLF-21 decoded club logos out of England Golf's `LogoImage` blobs into
+`images/clubs/` and merged them as `logo` fields. England Golf's terms
+(§4.2/4.3) bar republishing that content, so GOLF-237 removed the logos, the
+files and both scripts. They are in git history before GOLF-237 if a
+licensed logo source is ever found.
 
 ### `fetch_course_images.py`
 GOLF-88 (implementation): fetches a real, openly-licensed course *photo*

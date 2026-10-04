@@ -462,16 +462,16 @@ function popupHTML(i,{card=false}={}){
     :(esc(V(i,'walk'))||'Outside the rail catchment — no nearby station on this map');
   const search=`https://www.google.com/search?q=${encodeURIComponent(V(i,'n')+' golf club green fees')}`;
   const site=V(i,'site'),book=V(i,'book'),club=c.clubInfo;
-  /* GOLF-225: course photos (GOLF-88) are no longer shown — the owner
-     didn't rate them. The `photo` fields stay in the data; only the club
-     logo renders here now. */
+  /* GOLF-225 stopped showing course photos; GOLF-237 removed the England
+     Golf club logos and blurbs from the data altogether (their terms bar
+     republishing them), so the popup opens straight on the name. */
   const addBtn=card?'':`<button class="btn primary" onclick="${TRIP.has(i)?`tripRemoveCourse(${i})`:`tbAddToPlan(${i})`}">${TRIP.has(i)?'✓ In your trip — remove':'＋ Add to trip'}</button>`;
-  return `<div class="pop" data-course="${i}">${c.logo?`<div style="width:100%;height:100px;background:var(--paper);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="${esc(escUrl(c.logo))}" alt="${esc(V(i,'n'))} club logo" loading="lazy" style="max-width:100%;max-height:100%;object-fit:contain"></div>`:''}${card?'':`<h3>${esc(V(i,'n'))} ${courseBadgesHTML(i)}</h3>`}
+  return `<div class="pop" data-course="${i}">${card?'':`<h3>${esc(V(i,'n'))} ${courseBadgesHTML(i)}</h3>`}
     <p class="sub">${esc(c.r)} · ${esc(a.label)}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
     ${feeBlock(i)}
     ${(()=>{const ct=(typeof feeCartFor==='function')&&feeCartFor(i);return ct&&ct.status==='mandatory'?`<p class="note" style="color:var(--stone)">Buggy compulsory${ct.amount!=null?` — ${esc(curSym(courseCurrency(i))+Math.round(ct.amount))}${ct.per==='person'?' per person':' per cart'}`:''}, billed separately.</p>`:'';})()}
     <dl><dt>Course</dt><dd>${esc(V(i,'spec'))}</dd><dt>Design</dt><dd>${esc(V(i,'arch'))}</dd>${(!RAIL_FEATURE||c.topSouthAfrica)?'':`<dt>By rail</dt><dd>${travel}</dd>`}${club&&club.phone?`<dt>Phone</dt><dd>${esc(club.phone)}</dd>`:''}</dl>
-    <p class="note">${esc(V(i,'note'))}${club&&club.blurb?` <span style="color:var(--stone)">— England Golf: ${esc(club.blurb)}</span>`:''}</p>
+    <p class="note">${esc(V(i,'note'))}</p>
     ${calcHTML(i)}
     <div class="actions">
       ${addBtn}

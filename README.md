@@ -28,8 +28,7 @@ A single-page interactive map covering 326 golf courses:
   Top 100.
 
 Every course card/popup shows green fees, access tier (pay & play,
-members' guest, restricted days, etc.), architect, a club logo where
-available, and links to the club's own site and tee-booking page.
+members' guest, restricted days, etc.), architect, and links to the club's own site and tee-booking page.
 
 Beyond browsing, the app includes:
 
@@ -65,7 +64,6 @@ never leaves it.
 ```
 index.html                  the app, served at / (GOLF-214; the old /london-golf-map-v5_1 301s here)
 data/                       course, station and config data, loaded as plain <script>s
-images/clubs/               resized club logo thumbnails
 scripts/                    one-off/on-demand data-refresh scripts (see scripts/README.md)
 SCHEMA.md                   documents every field on a course entry
 TESTING.md                  automated + manual regression checklist

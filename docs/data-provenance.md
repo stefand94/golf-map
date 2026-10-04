@@ -31,7 +31,6 @@ listed in §1. The sections after it give the detail. **§9 is the open risks.**
 | `data/pois-{england,scotland,wales,ireland,southafrica}.js` | Notable sights for the itinerary | §3 |
 | `data/pois-categories.js` | POI category list | §3 |
 | `images/courses/*.jpg` (298 files) | Course photos, no longer rendered | §2.8 |
-| `images/clubs/*.jpg` (71 files) | Club logos, rendered | §2.7 |
 | Worker → `api.heigit.org` | ORS driving directions | §6 |
 | Worker → `api.openrouteservice.org` | ORS geocoding (place search) | §6 |
 | Worker → Overpass API | Live hotels and heritage POIs | §6 |
@@ -162,7 +161,7 @@ No other host is contacted for data. The Worker's upstream URLs are in
   similar text labels with no number. Verulam's reads "Hertfordshire list".
   Same derivation, same risk.
 
-### 2.6 Club info (`clubInfo.phone`, `.membership`, `.teeBooking`, `.blurb`)
+### 2.6 Club info (`clubInfo.phone`, `.membership`, `.teeBooking`)
 
 - **Source:** England Golf's club-finder API, and the equivalent DotGolf
   finders for the other nations. Scripts: `scripts/fetch_england_golf_clubs.py`
@@ -170,25 +169,32 @@ No other host is contacted for data. The Worker's upstream URLs are in
   `SCHEMA.md`).
 - **Counts:** 726 records carry a phone number: London 6, Top 100 111,
   Scotland 99, Wales 35, Ireland 81, SA 394.
-- **Blurbs:** **22 England Golf `blurb` texts are rendered** in the popup
-  after the course note, credited "— England Golf: …" (`js/map.js` popup
-  template). That is England Golf's own written text, copied verbatim.
+- **Blurbs: removed (GOLF-237).** 22 records used to carry
+  `clubInfo.blurb`, England Golf's `FacilityDescription` prose (6 verbatim,
+  16 reworded from it), shown in the popup as "— England Golf: …". The
+  field was deleted from the data in place, the popup no longer reads it,
+  `scripts/merge_club_details.py` no longer writes it, and
+  `scripts/test_data.js` fails if it comes back. The raw text survives only
+  in the gitignored `scripts/output/england_golf_clubs.json`, which is never
+  deployed.
 - **Terms:** England §4.2/4.3 and Scotland §2.10/2.11 restrict republication
   (GOLF-119 §5). DEC-023 moved **only coordinates** off DotGolf. The phone
-  numbers for 216 England/Scotland records and the 22 blurbs still come
-  straight from the restricted APIs. A phone number is a fact the club
-  publishes itself, so that is low risk. The blurbs are prose, so copyright
-  and not just database right applies. Open risk R1.
+  numbers for 216 England/Scotland records still come straight from the
+  restricted APIs. A phone number is a fact the club publishes itself, so
+  that is low risk. Open risk R1.
 
-### 2.7 Club logos (`logo`, `images/clubs/*.jpg`)
+### 2.7 Club logos: removed (GOLF-237)
 
-- **Source:** 71 logos decoded from England Golf's `LogoImage` base64 blob,
-  resized to about 160px (GOLF-21, `scripts/fetch_club_images.py` and
-  `scripts/merge_club_images.py`). On 68 Top 100 and 3 London records.
-- **Rendered:** yes, at the top of the course popup (`js/map.js`).
-- **Rights:** each logo is the club's trademark and the artwork's copyright.
-  It was obtained through a terms-restricted API. No licence from any club
-  is on record. Open risk R2.
+- **Was:** 71 `logo` fields (68 Top 100, 3 London) pointing at 67 distinct
+  files, plus 4 unreferenced files: 71 files in `images/clubs/`. All were
+  decoded from England Golf's `LogoImage` blob (GOLF-21).
+- **How we know there was no other source:** every file in `images/clubs/`
+  was added by the one GOLF-21 commit (`95aa809`), and the 71 files match
+  the 71 entries of `scripts/output/club_images.json`, the England Golf
+  decode script's output map, one to one.
+- **Now:** the fields, all 71 files and both logo scripts are deleted.
+  `scripts/test_data.js` fails on any `logo` field, so a new logo source
+  has to pass a terms check first. No logos are shipped.
 
 ### 2.8 Course photos (`photo`, `images/courses/*.jpg`)
 
@@ -353,14 +359,12 @@ Open risk R12.
 
 Ordered by how much they would matter to a buyer or licensee.
 
-1. **R1. England Golf blurbs are copied prose.** 22 `clubInfo.blurb` texts
-   are rendered verbatim, credited to England Golf. England §4.2/4.3 forbids
-   republication, and prose carries copyright as well as database right.
-   DEC-023 did not cover this field. 216 England/Scotland phone numbers come
-   from the same restricted APIs, but they are low risk.
-2. **R2. 71 club logos come from England Golf.** They are club trademarks,
-   decoded from a terms-restricted API and rendered in every Top 100 popup.
-   No club's permission is on record.
+1. **R1. Phone numbers from the restricted APIs.** 216 England/Scotland
+   phone numbers still come from England Golf and Scottish Golf. A phone
+   number is a fact the club publishes, so this is low risk. (The England
+   Golf blurbs, the higher risk here, were removed in GOLF-237.)
+2. **R2. Closed by GOLF-237.** The 71 England Golf club logos and their
+   files were removed, and `test_data.js` blocks their return.
 3. **R3. 49 England/Scotland coordinates are not from OSM.** This breaks
    DEC-023's own rule for 49 shown courses (12 London, 19 Top 100,
    18 Scotland). Nothing in the record says where their positions came from.

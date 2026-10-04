@@ -53,7 +53,8 @@ Loads `data/*.js` for real (via Node's `vm` module, not regex) and checks:
 every course has the fields SCHEMA.md says are required; access tier/region/
 band values are all valid against `ACCESS`/`REGIONS`/`BANDS`; every
 London-catchment `stn` resolves to a real station in `R`/`ISOLATED`;
-`nearStation`/`clubInfo`/`courseStats`/`logo` are well-formed when present;
+`nearStation`/`clubInfo`/`courseStats` are well-formed when present, and no
+record carries `logo` or `clubInfo.blurb` (GOLF-237);
 course count matches the last-known total; no duplicate name+coordinate
 entries. Exits non-zero on any failure, with a readable list of what broke.
 
@@ -125,10 +126,9 @@ that touches rendering, filters, or persistence:
    unnamed tee row saves in the plain `{par,slope,rating}` shape (backward
    compatible with pre-existing `courseStats`); two or more (or one with a
    name) save as `{tees:[...]}`.
-7. **Club logo popups.** Spot-check a course with a `logo` field (e.g.
-   Sunningdale) — image should be fully visible (letterboxed, not
-   cropped) inside its frame, and a course without one should render with
-   no gap or broken-image icon.
+7. **Popup top.** Spot-check Sunningdale (Old), which had a logo and an
+   England Golf blurb until GOLF-237: the popup should open on the name
+   with no gap or broken image, and the note should end cleanly.
 8. **Rail/station zoom-gating.** At the default London view (zoom 9) rail
    lines and line-name labels should be visible; zoom out to a country-wide
    view (e.g. via "Show all results on map") and they should disappear

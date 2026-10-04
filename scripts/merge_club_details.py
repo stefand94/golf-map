@@ -67,8 +67,9 @@ def main():
             fields.append(f'membership:"{esc_js(details["MembershipUrl"])}"')
         if details.get("TeeBookingUrl") and details["TeeBookingUrl"] not in ("http:///", ""):
             fields.append(f'teeBooking:"{esc_js(details["TeeBookingUrl"])}"')
-        if details.get("FacilityDescription"):
-            fields.append(f'blurb:"{esc_js(details["FacilityDescription"])}"')
+        # GOLF-237: FacilityDescription is England Golf's own prose, which
+        # their terms (§4.2/4.3) bar us from republishing. It is no longer
+        # merged as clubInfo.blurb.
         if not fields:
             skipped.append(name)
             return m.group(0)

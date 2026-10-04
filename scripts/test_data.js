@@ -95,7 +95,8 @@ C.forEach((c, i) => {
   }
   if (c.clubInfo) {
     const ci = c.clubInfo;
-    const allowed = ['phone', 'membership', 'teeBooking', 'blurb'];
+    // GOLF-237: no 'blurb' — England Golf's prose isn't ours to ship.
+    const allowed = ['phone', 'membership', 'teeBooking'];
     Object.keys(ci).forEach(k => { if (!allowed.includes(k)) fail(`${label}: clubInfo has unexpected key "${k}"`); });
   }
   if (c.courseStats) {
@@ -104,9 +105,11 @@ C.forEach((c, i) => {
       if (cs[k] !== undefined && typeof cs[k] !== 'number') fail(`${label}: courseStats.${k} is not numeric`);
     });
   }
-  if (c.logo && !fs.existsSync(path.join(ROOT, c.logo))) {
-    fail(`${label}: logo path "${c.logo}" does not exist on disk`);
-  }
+  // GOLF-237: the only logos we ever had were decoded from England Golf's
+  // API, and they were removed with their files. A new logo source needs
+  // its terms checked first (docs/data-provenance.md), then this guard
+  // relaxed.
+  if ('logo' in c) fail(`${label}: has a logo field (removed in GOLF-237)`);
   // GOLF-97: banded green-fee schema — additive, optional. When present,
   // shape must be {weekday,weekend,weekendTwilight?,confidence,lastVerified}
   // with each band a {min,max} pair (numbers or null, for 'poa' courses).
