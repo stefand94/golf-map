@@ -738,6 +738,15 @@
      whole card's width, so a long hotel name wraps here instead of being
      ellipsised the way the fixed-width slot name was. */
   .tb-stay-ctl{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;margin-top:var(--sp-1);cursor:default}
+  /* GOLF-233: affiliate links. Shaped like the quiet buttons beside them,
+     but they are <a>s leaving the site, so the underline needs resetting and
+     the arrow earns its keep. The disclosure sits under the row it belongs
+     to and must stay visible — never collapse it into a title attribute. */
+  a.tb-aff{text-decoration:none}
+  .tb-aff-note{flex:1 1 100%;margin:0;color:var(--ink-soft);
+    font:var(--fs-micro)/1.4 var(--font-sans)}
+  .tb-cost-aff{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);
+    margin-top:var(--sp-2)}
   .tb-item-hotel .tb-item-name{display:block;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
   .tb-item-hotel .tb-stay-price{max-width:110px}
   /* GOLF-186: candidate rows and their matching numbered map pins. */
@@ -1555,6 +1564,7 @@
 })();</script>
 <script src="js/util.js?v=08d028327d"></script>
 <script src="js/course-id.js?v=08d028327d"></script>
+<script src="js/affiliate.js?v=08d028327d"></script>
 <script src="js/trip-model.js?v=08d028327d"></script>
 <script src="js/state.js?v=08d028327d"></script>
 <script src="js/handicap.js?v=08d028327d"></script>

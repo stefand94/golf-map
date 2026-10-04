@@ -391,6 +391,9 @@ function tbStayControlsHTML(d,st){
      price field starts a drag of the whole stop instead of a text
      selection. */
   const noDrag=`draggable="false" ondragstart="event.preventDefault();event.stopPropagation();"`;
+  /* GOLF-233: null in the shared view, and null when the stay is nowhere
+     near a destination we can actually search — see js/affiliate.js. */
+  const aff=typeof affHotelLink==='function'?affHotelLink(d,st):null;
   return`<div class="tb-stay-ctl" ${noDrag}>
     <span class="tb-stay-nights">
       <span class="tb-stay-label">Nights</span>
@@ -406,6 +409,10 @@ function tbStayControlsHTML(d,st){
       onchange="tbStayPriceSet(${d.id},'${st.id}',this)">
     <button type="button" class="tb-btn is-sm is-quiet" ${noDrag} onclick="tbOpenHotelPicker(${d.id})"
       title="Pick a different hotel — replaces it on every night of this stay">Change</button>
+    ${aff?`<a class="tb-btn is-sm is-quiet tb-aff" ${noDrag} href="${esc(aff.href)}"
+      target="_blank" rel="sponsored noopener"
+      title="Search hotels around ${esc(aff.dest)} for these dates">Check prices ↗</a>
+    <p class="tb-aff-note">Hotel search around ${esc(aff.dest)}. ${esc(AFF_DISCLOSURE)}</p>`:''}
   </div>`;
 }
 /* GOLF-197: the slot is now only ever the empty question. Once a hotel is
@@ -807,12 +814,24 @@ function costOtherGroupHTML(b,readOnly){
   const addBtn=readOnly?'':`<button type="button" class="tb-btn is-sm is-quiet cc-add"
     ${lines.length>=TRIP_CUSTOM_MAX?'disabled title="That is as many as one trip can hold."':''}
     onclick="tripCustomAdd()">+ Add a cost</button>`;
+  /* GOLF-233: the trip's one car-hire link. It lives here rather than on
+     the Itinerary because hire is a cost, not a stop — the custom-cost
+     field right above it already suggests "Car hire" as its example. The
+     readOnly branch is the shared view and the print sheet, neither of
+     which gets a link. */
+  const car=readOnly?null:(typeof affCarHireLink==='function'?affCarHireLink():null);
+  const carRow=car?`<div class="tb-cost-aff">
+    <a class="tb-btn is-sm is-quiet tb-aff" href="${esc(car)}"
+      target="_blank" rel="sponsored noopener"
+      title="Compare hire cars on EconomyBookings">🚗 Hire a car ↗</a>
+    <p class="tb-aff-note">${esc(AFF_DISCLOSURE)}</p>
+  </div>`:'';
   return`<details class="cost-group cost-other-group"${tbCostOtherOpen?' open':''}
       ontoggle="tbCostOtherOpen=this.open"><summary class="cost-group-summary">
       <span class="cost-group-label"><span class="cost-group-toggle" aria-hidden="true"></span>💷 Other</span>
       <span class="cost-group-amt" data-other-amt>${costDual(moneyBucketFmt(b.otherTotal,cur),costPPBucketFmt(b.otherTotal,gs,cur),gs)}</span>
     </summary>
-    <div class="cost-other-body">${fuelRow}${rows}${addBtn}</div>
+    <div class="cost-other-body">${fuelRow}${rows}${addBtn}${carRow}</div>
   </details>`;
 }
 /* GOLF-203: repaint every figure a custom-cost keystroke can move, and
@@ -1248,6 +1267,7 @@ function privacyOpen(){
         <li>The map comes from Esri and the fonts from Google Fonts. Like any website, they see your IP address when your browser loads them.</li>
         <li>Feedback you send is emailed to the site owner. It's not stored anywhere else.</li>
         <li>We count, anonymously, how many trips are planned and shared. Nothing about you or your trip is stored.</li>
+        <li>Hotel and car-hire "Check prices" links are affiliate links: they go through Travelpayouts to the booking site, which may pay us a commission. We send the destination and your dates, nothing else, and nothing is sent until you click.</li>
       </ul>
       <h3>Credits</h3>
       <ul>

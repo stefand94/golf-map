@@ -39,6 +39,11 @@ const ORDER = [
   // GOLF-163: must precede state.js, which calls loadStoredState() at its
   // own top level and decodes stored course ids through this module.
   'course-id.js',
+  // GOLF-233: only function and const declarations, and nothing calls into
+  // it until a render. Placed early so trip-ui.js and the Costs renderer can
+  // both see it; it in turn reaches forward to appMode and groupSizeFor()
+  // only from inside a call, hence the typeof guards at its two call sites.
+  'affiliate.js',
   'trip-model.js',
   'state.js',
   // handicap.js is only function declarations, but it must precede map.js:
