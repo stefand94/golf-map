@@ -25,6 +25,11 @@ class_name = "LookupQuota"
 tag = "v1"
 new_sqlite_classes = ["LookupQuota"]
 
+# GOLF-232: keep in step with the root wrangler.jsonc. No destination
+# address here: the recipient is the FEEDBACK_TO dashboard secret.
+[[send_email]]
+name = "EMAIL"
+
 # ORS_API_KEY is NOT set here — it stays exactly as it is today, a
 # secret configured in the dashboard (Settings -> Variables and Secrets).
 # Connecting Git for deploys doesn't touch secrets at all.

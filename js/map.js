@@ -223,7 +223,10 @@ mapTripFitControlSync();
 /* GOLF-227: the privacy note's link rides in the credits (privacyOpen() is
    in js/trip-ui.js); the shared view's map adds the same one. */
 const PRIVACY_LINK='<button type="button" class="attr-link" onclick="privacyOpen()">Privacy</button>';
+/* GOLF-232: the Feedback link sits beside it, everywhere it does. */
+const FEEDBACK_LINK='<button type="button" class="attr-link" onclick="feedbackOpen()">Feedback</button>';
 map.attributionControl.addAttribution(PRIVACY_LINK);
+map.attributionControl.addAttribution(FEEDBACK_LINK);
 map.attributionControl.addAttribution(
   'Course positions &copy; <a href="https://www.openstreetmap.org/copyright" '
   +'target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL)');

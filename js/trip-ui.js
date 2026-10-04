@@ -1225,7 +1225,8 @@ function tbBetaBadgeHTML(){
         <li>An app update also resets saved trips — the next time you load the app after we ship a change, your trip starts fresh.</li>
       </ul>
       <div class="tb-beta-foot"><button type="button" class="attr-link" onclick="privacyOpen()">Privacy</button>
-      <button type="button" class="tb-btn is-sm" id="tb-beta-close">Close</button></div>
+      <span class="tb-beta-acts"><button type="button" class="tb-btn is-sm" onclick="feedbackOpen()">Feedback</button>
+      <button type="button" class="tb-btn is-sm" id="tb-beta-close">Close</button></span></div>
     </div>
   </details>`;
 }
@@ -1245,6 +1246,7 @@ function privacyOpen(){
         <li>To stop abuse, our server counts how many lookups each connection makes per day, using a scrambled form of your IP address that is deleted the next day. It doesn't record what you searched.</li>
         <li>Cloudflare Web Analytics counts visits anonymously: which pages, the referring site, country and browser type, and page speed. No cookies and nothing that identifies you.</li>
         <li>The map comes from Esri and the fonts from Google Fonts. Like any website, they see your IP address when your browser loads them.</li>
+        <li>Feedback you send is emailed to the site owner. It's not stored anywhere else.</li>
       </ul>
       <form method="dialog"><button class="tb-btn is-sm">Close</button></form>
     </div></dialog>`);
@@ -1255,6 +1257,83 @@ function privacyOpen(){
   }
   document.querySelectorAll('details.tb-beta[open]').forEach(x=>x.removeAttribute('open'));
   if(!d.open)d.showModal();
+}
+/* GOLF-232: the Feedback dialog, reached from a "Feedback" link next to
+   every Privacy link (map credits, the shared view's map, the Beta panel).
+   Same one-<dialog>-built-on-first-open pattern as privacyOpen(). The text
+   is posted to the Worker's /feedback, which emails it to Stefan; nothing
+   about the trip goes with it, only the build and the page mode. The
+   dialog stays in the page once built, so whatever is typed survives a
+   failed send, a Cancel and a re-open; it's cleared only by a send that
+   worked. The text is only ever a textarea value, never put into markup.
+   `website` is a honeypot: hidden from people and screen readers, so only
+   a bot fills it, and the Worker drops those silently. */
+const FEEDBACK_MAX=2000;
+function feedbackOpen(){
+  let d=document.getElementById('feedback-dlg');
+  if(!d){
+    document.body.insertAdjacentHTML('beforeend',`<dialog id="feedback-dlg" class="privacy-dlg" aria-labelledby="feedback-h"><form class="privacy-body fb-body" id="fb-form">
+      <h3 id="feedback-h">Send feedback</h3>
+      <label class="fb-label" for="fb-text">What's working, what isn't, what you'd like to see?</label>
+      <textarea id="fb-text" class="fb-text" maxlength="${FEEDBACK_MAX}" rows="6" required aria-describedby="fb-hint fb-count"></textarea>
+      <div class="fb-meta"><span id="fb-hint">Don't include personal details. Add your email if you'd like a reply.</span>
+        <span id="fb-count" class="fb-count" aria-live="polite">0 / ${FEEDBACK_MAX}</span></div>
+      <div class="fb-hp" aria-hidden="true"><label>Website <input type="text" name="website" id="fb-website" tabindex="-1" autocomplete="off"></label></div>
+      <p id="fb-status" class="fb-status" role="status" hidden></p>
+      <div class="fb-acts"><button type="button" class="tb-btn is-sm" id="fb-cancel">Cancel</button>
+        <button type="submit" class="tb-btn is-sm is-primary" id="fb-send">Send</button></div>
+    </form></dialog>`);
+    d=document.getElementById('feedback-dlg');
+    d.addEventListener('click',e=>{if(e.target===d)d.close();});
+    const ta=document.getElementById('fb-text');
+    ta.addEventListener('input',()=>{
+      document.getElementById('fb-count').textContent=ta.value.length+' / '+FEEDBACK_MAX;
+      fbStatus('');
+    });
+    document.getElementById('fb-cancel').addEventListener('click',()=>d.close());
+    document.getElementById('fb-form').addEventListener('submit',e=>{e.preventDefault();feedbackSend();});
+  }
+  document.querySelectorAll('details.tb-beta[open]').forEach(x=>x.removeAttribute('open'));
+  fbStatus('');
+  document.getElementById('fb-cancel').textContent='Cancel';
+  if(!d.open)d.showModal();
+  document.getElementById('fb-text').focus();
+}
+function fbStatus(msg,kind){
+  const p=document.getElementById('fb-status');
+  if(!p)return;
+  p.textContent=msg;
+  p.hidden=!msg;
+  p.className='fb-status'+(kind?' is-'+kind:'');
+}
+function feedbackSend(){
+  const ta=document.getElementById('fb-text');
+  const btn=document.getElementById('fb-send');
+  const text=ta.value.trim();
+  if(!text){fbStatus('Type a message first.','err');ta.focus();return;}
+  if(text.length>FEEDBACK_MAX){fbStatus('That\'s over '+FEEDBACK_MAX+' characters.','err');return;}
+  btn.disabled=true;btn.textContent='Sending…';
+  fbStatus('');
+  fetch(ORS_PROXY_URL.replace(/\/$/,'')+'/feedback',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({text,
+      build:typeof APP_VERSION==='string'?APP_VERSION.slice(APP_VERSION.lastIndexOf('-')+1):'',
+      mode:appMode,website:document.getElementById('fb-website').value})})
+    .then(r=>r.json().catch(()=>({})).then(data=>({r,data})))
+    .then(({r,data})=>{
+      if(r.ok&&data.ok){
+        ta.value='';
+        document.getElementById('fb-count').textContent='0 / '+FEEDBACK_MAX;
+        document.getElementById('fb-cancel').textContent='Close';
+        fbStatus('Thanks, sent.','ok');
+        return;
+      }
+      if(r.status===429)fbStatus(data.limit==='site'
+        ?'We\'ve had a lot of feedback today, so sending is paused until tomorrow. Your message is still here.'
+        :'You\'ve reached today\'s feedback limit. Try again tomorrow; your message is still here.','err');
+      else fbStatus('Sorry, that didn\'t send. Your message is still here; try again in a minute.','err');
+    })
+    .catch(()=>fbStatus('Sorry, that didn\'t send. Check your connection and try again; your message is still here.','err'))
+    .finally(()=>{btn.disabled=false;btn.textContent='Send';});
 }
 /* GOLF-150 (C3): the Beta badge moved from the pane header into the
    "Golf Tripper" masthead — one fewer thing competing with the trip's

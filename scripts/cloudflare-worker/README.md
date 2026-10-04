@@ -70,6 +70,50 @@ email alerts):
 The alert email gives the status code only. Open `/health` in a browser
 to see which part failed and why.
 
+## Feedback email (GOLF-232)
+
+`POST /feedback {text, build, mode, website}` emails the app's Feedback
+dialog to Stefan, subject exactly **Golftripper feedback**, plain text: the
+message, then the build, page mode (plan/build/shared) and UTC time. No IP,
+no trip data. It goes out through Email Routing's `send_email` binding
+(`EMAIL` in `wrangler.jsonc`, no restriction attribute).
+
+- **The recipient is never in the repo.** An unrestricted binding can send
+  to any *verified* Email Routing destination address, picked at runtime,
+  and those sends are free on every plan, including with only Email Routing
+  set up (Cloudflare docs, Email Service → Configure send bindings and
+  Pricing, checked 2026-10-04). So the address is the `FEEDBACK_TO` secret.
+- **Limits:** 5 per visitor and 100 for the site per UTC day, counted in
+  the GOLF-223 `LookupQuota` object as `kind: 'feedback'`. Over a limit:
+  429 with `limit: 'visitor'|'site'`. If the counter can't be reached,
+  nothing is sent (fails closed, unlike the ORS cap).
+- **Refused, no email:** empty or over 2,000 characters (400), a request
+  from any origin not on `ALLOWED_ORIGINS` or with none, e.g. curl (403).
+  A filled honeypot (`website`) gets `{ok:true}` and is dropped.
+- Until the steps below are done it answers **503 "feedback is not set up
+  yet"** and the app says it didn't send, keeping the text.
+
+### Setup (Stefan, once)
+
+1. Cloudflare dashboard → **Compute → Email Service → Email Routing →
+   Onboard Domain** → pick **golftripper.uk** → accept the DNS records it
+   offers (MX, SPF and DKIM on the root; the domain has no mail today, so
+   nothing is displaced) → **Done**. (Older menus call this
+   golftripper.uk → Email → Email Routing → Enable.)
+2. Same page → **Destination Addresses** → add your Gmail → open the
+   verification email Cloudflare sends and click **Verify email address**.
+   Sends to it fail until it is verified.
+3. **Workers & Pages → geofftheworker → Settings → Variables and Secrets
+   → Add** → Type **Secret** (not Text), Name `FEEDBACK_TO`, Value your
+   Gmail → **Deploy**. A secret survives git deploys; a plain Text variable
+   would be wiped by the next one.
+4. Nothing to set up for the sender, `feedback@golftripper.uk`: it only has
+   to be on a domain onboarded in step 1, and needs no mailbox or routing
+   rule. If a send is refused with `E_SENDER_NOT_VERIFIED` (it shows in the
+   Worker's logs as `GOLF-232 feedback send failed`), step 1 isn't finished.
+5. Send yourself one from the live site (Beta panel → Feedback, or the
+   Feedback link in the map credits) and check it arrives.
+
 ## Deploying it
 
 **One-time manual setup** (if you haven't deployed this Worker yet): see

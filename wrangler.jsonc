@@ -32,5 +32,11 @@
   "durable_objects": {
     "bindings": [{ "name": "LOOKUP_QUOTA", "class_name": "LookupQuota" }]
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LookupQuota"] }]
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LookupQuota"] }],
+  // GOLF-232: the Feedback email (handleFeedback in ors-proxy.js). No
+  // restriction attribute on purpose: an unrestricted binding may send to
+  // any verified Email Routing destination, so the recipient comes from the
+  // FEEDBACK_TO secret Stefan sets in the dashboard. Never add a
+  // destination_address here; that would put his address in the repo.
+  "send_email": [{ "name": "EMAIL" }]
 }

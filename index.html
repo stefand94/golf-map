@@ -222,6 +222,23 @@
   .privacy-body ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:var(--sp-2);
     font-size:var(--fs-small);color:var(--stone);line-height:1.45}
   .privacy-body form{display:flex;justify-content:flex-end;margin:0}
+  /* GOLF-232: the Feedback dialog reuses .privacy-dlg/.privacy-body. */
+  .tb-beta-acts{display:flex;gap:var(--sp-2)}
+  .fb-label{font-size:var(--fs-small);color:var(--ink-soft)}
+  .fb-text{width:100%;box-sizing:border-box;min-height:120px;resize:vertical;padding:var(--sp-2) var(--sp-3);
+    border:1px solid var(--line);border-radius:var(--radius-md);background:#fff;color:var(--ink);
+    font:400 var(--fs-body)/1.45 var(--font-sans)}
+  .fb-text:focus{outline:none;border-color:var(--accent);box-shadow:var(--shadow-focus)}
+  .fb-meta{display:flex;justify-content:space-between;gap:var(--sp-3);font-size:var(--fs-caption);color:var(--stone);line-height:1.4}
+  .fb-count{flex:none;font-variant-numeric:tabular-nums}
+  .fb-hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+  .fb-status{margin:0;font-size:var(--fs-small);line-height:1.4}
+  .fb-status.is-ok{color:var(--accent-deep)}
+  .fb-status.is-err{color:#9A3412}
+  .fb-acts{display:flex;justify-content:flex-end;gap:var(--sp-2)}
+  /* The credits' text links are 12px tall; give them a finger-sized hit
+     area on touch screens without moving the text. */
+  @media (pointer:coarse){.leaflet-control-attribution .attr-link{padding:8px 4px;margin:-8px 0}}
 
   /* The single search bar for the whole pane — a full-width pill, per the
      sketch. One component, one look, four call sites (see tbSearchFieldHTML). */

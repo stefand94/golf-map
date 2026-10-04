@@ -51,6 +51,10 @@
  *      POST {mode:'hotelsViewport', bbox:[south,west,north,east]}
  *      -> {pois:[{name, category, lat, lng}, ...]}
  *
+ *   5. Feedback (GOLF-232 — the app's Feedback dialog), its own path:
+ *      POST /feedback {text, build, mode, website}
+ *      -> {ok:true}, and emails the text to the site owner (handleFeedback).
+ *
  * No logging of requests beyond Cloudflare's own standard request logs.
  * The one piece of state is GOLF-223's daily lookup counter (LookupQuota,
  * below): a count per visitor per day, keyed by a salted hash of the IP
@@ -519,6 +523,105 @@ async function quotaGate(kind, env, request) {
   return res;
 }
 
+/* ── GOLF-232: the Feedback dialog's POST /feedback.
+
+   Emails the visitor's text to the site owner with the subject exactly
+   "Golftripper feedback", through Email Routing's send_email binding
+   (EMAIL, declared in wrangler.jsonc with no restriction attribute). An
+   unrestricted binding may send to any *verified destination address* on
+   the account, chosen at runtime, and such sends are free on every plan
+   (developers.cloudflare.com/email-service/configuration/send-bindings,
+   checked 2026-10-04). So the recipient is the FEEDBACK_TO secret, set by
+   Stefan in the dashboard: his address is never in this repo, in
+   wrangler.jsonc, or in anything the browser loads.
+
+   Plain text only: the body goes in `text`, never `html`, so markup typed
+   in the box arrives as the characters typed. The email carries the text,
+   the app build, the page mode and the time; not the IP, not the trip.
+
+   Capped through the GOLF-223 LookupQuota object, as its own `kind`: 5 a
+   day per visitor, 100 a day for the site. Unlike the ORS gate this fails
+   closed: if the counter can't be reached nothing is sent, because an
+   uncounted email path is a spam relay into Stefan's inbox. The app keeps
+   the visitor's text on any failure, so they lose nothing by retrying.
+
+   The honeypot (`website`, a field no person sees) is answered with the
+   same {ok:true} as a real send, so a bot learns nothing, and is neither
+   counted nor sent. A browser from another site is refused outright: CORS
+   would only hide the answer from it, not stop the email. */
+const FEEDBACK_LIMITS = { visitor: 5, site: 100 };
+const FEEDBACK_MAX_CHARS = 2000;
+const FEEDBACK_FROM = { email: 'feedback@golftripper.uk', name: 'Golftripper' };
+const FEEDBACK_SUBJECT = 'Golftripper feedback';
+const FEEDBACK_MODES = ['plan', 'build', 'shared'];
+
+async function handleFeedback(request, env) {
+  if (request.method !== 'POST') return json({ error: 'POST only' }, 405, request);
+  if (!isAllowedOrigin(request.headers.get('Origin'))) {
+    return json({ error: 'feedback is only accepted from the Golftripper site' }, 403, request);
+  }
+  let body;
+  try {
+    const raw = await request.text();
+    if (raw.length > 16000) return json({ error: 'message too long' }, 413, request);
+    body = JSON.parse(raw);
+  } catch (e) {
+    return json({ error: 'invalid JSON body' }, 400, request);
+  }
+  if (!body || typeof body !== 'object') return json({ error: 'invalid JSON body' }, 400, request);
+  if (body.website) return json({ ok: true }, 200, request); // honeypot: drop silently
+  if (typeof body.text !== 'string') return json({ error: 'text must be a string' }, 400, request);
+  const text = body.text.trim();
+  if (!text) return json({ error: 'message is empty' }, 400, request);
+  if (text.length > FEEDBACK_MAX_CHARS) {
+    return json({ error: `message is over ${FEEDBACK_MAX_CHARS} characters` }, 400, request);
+  }
+  if (!env.EMAIL || !env.FEEDBACK_TO) {
+    console.log(`GOLF-232 feedback not configured: EMAIL binding ${env.EMAIL ? 'ok' : 'missing'}, FEEDBACK_TO ${env.FEEDBACK_TO ? 'set' : 'missing'}`);
+    return json({ error: 'feedback is not set up yet' }, 503, request);
+  }
+  if (!env.LOOKUP_QUOTA) return json({ error: 'feedback is not set up yet' }, 503, request);
+
+  let verdict;
+  try {
+    const stub = env.LOOKUP_QUOTA.get(env.LOOKUP_QUOTA.idFromName('global'));
+    verdict = await stub.take('feedback', visitorKey(request.headers.get('CF-Connecting-IP')), FEEDBACK_LIMITS);
+  } catch (e) {
+    console.log(`GOLF-232 feedback quota check failed, not sending: ${e}`);
+    return json({ error: 'could not send right now; try again later' }, 503, request);
+  }
+  if (!verdict.ok) {
+    const now = new Date();
+    const resets = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+    const res = json({
+      error: verdict.scope === 'site'
+        ? 'daily feedback limit reached for the whole site; try again after midnight UTC'
+        : 'daily feedback limit reached for this connection; try again after midnight UTC',
+      limit: verdict.scope,
+      resets: resets.toISOString(),
+    }, 429, request);
+    res.headers.set('Retry-After', String(Math.ceil((resets - now) / 1000)));
+    return res;
+  }
+
+  const build = typeof body.build === 'string' && /^[\w.-]{1,64}$/.test(body.build) ? body.build : 'unknown';
+  const mode = FEEDBACK_MODES.includes(body.mode) ? body.mode : 'unknown';
+  try {
+    await env.EMAIL.send({
+      to: env.FEEDBACK_TO,
+      from: FEEDBACK_FROM,
+      subject: FEEDBACK_SUBJECT,
+      text: `${text}\n\n--\nBuild: ${build}\nMode: ${mode}\nSent: ${new Date().toISOString()}\n`,
+    });
+  } catch (e) {
+    // e.code is e.g. E_SENDER_NOT_VERIFIED (Email Routing not enabled on
+    // golftripper.uk) or a destination that isn't verified yet.
+    console.log(`GOLF-232 feedback send failed: ${e && e.code} ${e && e.message}`);
+    return json({ error: 'could not send right now; try again later' }, 502, request);
+  }
+  return json({ ok: true }, 200, request);
+}
+
 /* ── GOLF-229: health endpoint for an external uptime monitor.
 
    All three past outages (GOLF-154, 172, 176) were found by a person
@@ -650,6 +753,9 @@ export default {
     }
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: { 'X-Worker-Build': WORKER_BUILD, ...corsHeaders(request) } });
+    }
+    if (path === '/feedback') {
+      return handleFeedback(request, env);
     }
     if (request.method !== 'POST') {
       return json({ error: 'POST only' }, 405, request);
