@@ -25,8 +25,9 @@ archaeology, not for onboarding; grep it by ticket number).
   **`golftripper.uk`** since GOLF-35 Phase B. `functions/_middleware.js`
   301s the bare `golf-map.pages.dev` and `www.golftripper.uk` there
   (path kept, and browsers keep the `#share=` hash). Every other branch still
-  gets its own un-redirected preview at `<branch>.golf-map.pages.dev`. Still
-  private: `noindex` + `robots.txt Disallow`. GitHub Pages is not used — retired
+  gets its own un-redirected preview at `<branch>.golf-map.pages.dev`.
+  Public since GOLF-221 (2026-10-01): production is indexable, while previews
+  get `noindex` + a Disallow `robots.txt` from `_middleware.js` by host. GitHub Pages is not used — retired
   per DEC-006, and the GitHub setting itself was finally turned off on
   2026-09-20, having quietly kept publishing `main` to
   `stefand94.github.io/golf-map/` for three weeks after the repo stopped
