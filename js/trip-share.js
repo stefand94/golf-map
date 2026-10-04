@@ -283,6 +283,7 @@ function renderSharedMap(){
   L.control.layers(sharedBases,null,{position:'topright'}).addTo(m);
   m.attributionControl.addAttribution(PRIVACY_LINK); // GOLF-227
   m.attributionControl.addAttribution(FEEDBACK_LINK); // GOLF-232
+  m.attributionControl.addAttribution(DATA_CREDIT); // GOLF-240
   const order=tripDayOrder();
   const pts=[];
   /* GOLF-182: the main map merges a multi-night stay into one 🏨 icon

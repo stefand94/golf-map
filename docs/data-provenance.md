@@ -30,7 +30,6 @@ listed in §1. The sections after it give the detail. **§9 is the open risks.**
 | `data/rail-geometry.js` | TfL track polylines | §4 |
 | `data/pois-{england,scotland,wales,ireland,southafrica}.js` | Notable sights for the itinerary | §3 |
 | `data/pois-categories.js` | POI category list | §3 |
-| `images/courses/*.jpg` (298 files) | Course photos, no longer rendered | §2.8 |
 | Worker → `api.heigit.org` | ORS driving directions | §6 |
 | Worker → `api.openrouteservice.org` | ORS geocoding (place search) | §6 |
 | Worker → Overpass API | Live hotels and heritage POIs | §6 |
@@ -82,10 +81,12 @@ No other host is contacted for data. The Worker's upstream URLs are in
   are likely DotGolf-derived or hand-placed, and nothing in the data says
   which. This is open risk R3.
 - **Licence:** OSM data is © OpenStreetMap contributors, **ODbL 1.0**.
-- **Attribution shown:** "Course positions © OpenStreetMap contributors
-  (ODbL)". It is in the map's credits on every base layer, added outside
-  `esriBaseLayers()` so a layer switch can't drop it (`js/map.js`, GOLF-161
-  comment above `PRIVACY_LINK`).
+- **Attribution shown:** "Data © OpenStreetMap contributors (ODbL)" (widened
+  from "Course positions" in GOLF-240). It is in the map's credits on every
+  base layer, added outside `esriBaseLayers()` so a layer switch can't drop
+  it (`DATA_CREDIT`, `js/map.js`), and on the shared view's map
+  (`js/trip-share.js`). The privacy dialog's Credits list repeats it in full
+  (`privacyOpen()`, `js/trip-ui.js`).
 - **Share-alike:** see §7.
 
 ### 2.3 Course names (`n`)
@@ -196,19 +197,18 @@ No other host is contacted for data. The Worker's upstream URLs are in
   `scripts/test_data.js` fails on any `logo` field, so a new logo source
   has to pass a terms check first. No logos are shipped.
 
-### 2.8 Course photos (`photo`, `images/courses/*.jpg`)
+### 2.8 Course photos: removed (GOLF-240)
 
-- **Source:** Wikimedia Commons, mostly geograph.org.uk images. Each record
-  carries `{src, photographer, license, sourceUrl}`, for example
-  `CC BY-SA 2.0`. Scripts: `scripts/fetch_course_images.py` and
-  `scripts/merge_course_images.py`.
-- **Counts:** 260 records reference a photo; 298 files sit in
-  `images/courses/`.
-- **Rendered:** **no.** GOLF-225 (`e1c5d8d`) stopped showing photos in popup
-  cards. But the files are still deployed and publicly fetchable by URL, and
-  the credit is only in the data, not on any page. CC BY-SA requires
-  attribution wherever the work is distributed, and serving the file is
-  distribution. Open risk R8.
+- **Was:** Wikimedia Commons photos, mostly geograph.org.uk, under CC BY-SA
+  and similar licences (GOLF-88, `scripts/fetch_course_images.py` and
+  `scripts/merge_course_images.py`). 260 `photo` fields and 298 files in
+  `images/courses/` (17.3 MB).
+- **Why removed:** GOLF-225 (`e1c5d8d`) stopped showing them, so their
+  credit appeared nowhere, yet the files were still served. CC BY-SA needs
+  the credit wherever the work is distributed.
+- **Now:** all fields and files are deleted. `scripts/test_data.js` fails
+  on any `photo` field. The scripts are kept, for a future return that
+  ships with a visible credit line.
 
 ### 2.9 Course stats (`courseStats`: par, slope, rating)
 
@@ -257,10 +257,12 @@ No other host is contacted for data. The Worker's upstream URLs are in
   `scripts/build_poi_data.py`; do not hand-edit". England alone has 12,970
   POIs.
 - **Licence:** ODbL 1.0. Wikidata is CC0.
-- **Attribution shown:** the map credit reads "Course positions ©
-  OpenStreetMap contributors (ODbL)". That covers OSM generally, but its
-  wording names only course positions. The POI layer (GOLF-207) and the
-  itinerary POI cards carry no separate OSM credit. Open risk R12.
+- **Attribution shown:** the map credit reads "Data © OpenStreetMap
+  contributors (ODbL)" (GOLF-240), which covers the POI layer (GOLF-207)
+  shown on the same map. The privacy dialog's Credits list names course
+  positions, sights and hotels explicitly. The itinerary's POI cards in
+  the side pane have no credit of their own; the map beside them carries
+  it.
 - **Restriction:** share-alike; see §7.
 - `pois-categories.js` is our own category list. No external source.
 
@@ -273,8 +275,9 @@ No other host is contacted for data. The Worker's upstream URLs are in
   - The TfL StopPoint API (`api.tfl.gov.uk`) gives Tube, Overground,
     Elizabeth line and DLR. TfL's open-data terms require "Powered by TfL
     Open Data" attribution and the OS/Geomni credits.
-  - The `davwheat/uk-railway-stations` GitHub CSV gives National Rail.
-    **Its licence has not been checked.**
+  - The `davwheat/uk-railway-stations` GitHub CSV gives National Rail. It
+    is **ODbL 1.0** (repo licence, checked 2026-10-04), and its README asks
+    for credit to its author, Trainline EU and Trainline's sources.
 - **Track geometry:** `rail-geometry.js` was traced from OpenStreetMap
   route relations by `scripts/fetch_rail_geometry.py` and
   `scripts/merge_rail_geometry.py`. ODbL.
@@ -285,7 +288,11 @@ No other host is contacted for data. The Worker's upstream URLs are in
 - **Shown?** The rail layer is **hidden** behind `RAIL_FEATURE=false`
   (GOLF-110, DEC-008). The files still load, so they are distributed even
   though they aren't drawn.
-- **Attribution shown:** none for TfL or davwheat. Open risk R9.
+- **Attribution shown:** since GOLF-240, in the privacy dialog's Credits
+  list: "Powered by TfL Open Data", the OS Crown copyright and Geomni lines
+  TfL asks for, and the uk-railway-stations credit. Not on the map itself,
+  because the rail layer isn't drawn; the credit goes on the map if
+  `RAIL_FEATURE` is ever turned on.
 
 ---
 
@@ -302,7 +309,7 @@ No other host is contacted for data. The Worker's upstream URLs are in
 
 | Service | Called from | Purpose | Terms | Credit shown |
 |---|---|---|---|---|
-| OpenRouteService directions, `api.heigit.org` | Worker | Drive legs | ORS/HeiGIT terms. Free tier is non-commercial. **Commercial use unconfirmed** (GOLF-234) | ORS/OSM credit is not on the map. Open risk R10 |
+| OpenRouteService directions, `api.heigit.org` | Worker | Drive legs | ORS/HeiGIT terms. Free tier is non-commercial. **Commercial use unconfirmed** (GOLF-234) | "routes © openrouteservice.org by HeiGIT" in the map credits and on the shared view's map (GOLF-240), and in the privacy dialog |
 | OpenRouteService geocoding, `api.openrouteservice.org` | Worker | Place search | As above. Geocoding intermittently 403s (CLAUDE.md) | As above |
 | Overpass API (OSM) | Worker | Hotels only: the "Add a stay" picker (GOLF-96) and the viewport hotel layer (GOLF-142). The live heritage mode was removed in GOLF-156 | ODbL data. Overpass has a fair-use policy, with rate limits handled by the Worker cache | Covered only by the general OSM credit. R12 |
 | Esri ArcGIS Online tiles | Browser | Street and satellite base maps | Keyless use, with attribution, accepted while the site is **non-commercial** (DEC-036, gate item 6). **Affiliate income makes the site commercial (DEC-038); a commercial key is GOLF-234** | Esri's attribution string, via `esriBaseLayers()` in `js/map.js` |
@@ -384,22 +391,20 @@ Ordered by how much they would matter to a buyer or licensee.
    the rights holder DEC-022 and DEC-038 are about.
 7. **R7. `courseStats` comes from a reseller under unread terms.** 69 records
    come from golfapi.uk via RapidAPI, whose republication terms are unread.
-8. **R8. CC BY-SA photos are served with no visible credit.** 298 photo files
-   are still deployed and fetchable after GOLF-225, with the attribution
-   only in the data. That breaches the CC BY-SA attribution condition for
-   as long as they are served. The fix is to delete them or credit them.
-9. **R9. Rail data attribution and licence are missing.** There is no
-   TfL Open Data credit, and the davwheat station CSV's licence is
-   unchecked. The layer is hidden, but the files still ship.
-10. **R10. Routing shows no ORS/HeiGIT credit.** ORS's terms ask for
-    attribution on routes it serves. None appears.
+8. **R8. Closed by GOLF-240.** The 298 uncredited CC BY-SA photo files
+   and the 260 `photo` fields were deleted.
+9. **R9. Rail credit is in the dialog only.** GOLF-240 added the TfL and
+   uk-railway-stations (ODbL) credits to the privacy dialog. If the rail
+   layer is ever turned on, they must move onto the map.
+10. **R10. Closed by GOLF-240.** ORS/HeiGIT is credited in the map credits,
+    on the shared map and in the privacy dialog.
 11. **R11. Notes may paraphrase their sources.** The research-agent-written
     notes were never checked for closeness to their sources. Low risk.
 12. **R12. ODbL share-alike constrains licensing, and the OSM credit is
     narrow.** OSM-derived coordinates and POIs can't be licensed
     exclusively, and a licensee who redistributes the course table may have
-    to release it under ODbL (§7). The on-map credit names only "course
-    positions", not POIs, rail geometry or live hotel results.
+    to release it under ODbL (§7). (The narrow "course positions" credit
+    was widened to all OSM data in GOLF-240.)
 13. **R13. 325 legacy fees have no source.** These are free-text `wd`/`we`
     values with no provenance. Most belong to hidden SA records, but
     **11 are shown**.

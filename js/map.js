@@ -234,17 +234,22 @@ mapTripFitControlSync();
    layer is showing — the Satellite tiles don't mention OSM at all, and the
    street layer's mention is Esri crediting its own tile source, not us
    crediting ours. Added once, outside esriBaseLayers(), so switching layers
-   can't drop it. */
+   can't drop it.
+   GOLF-240: widened to all our OSM data (course positions, POIs, hotels),
+   plus OpenRouteService for the drive routes and place search. The shared
+   view's map adds the same DATA_CREDIT. Fuller credits, TfL's included,
+   are in the privacy dialog (privacyOpen(), js/trip-ui.js). */
 /* GOLF-227: the privacy note's link rides in the credits (privacyOpen() is
    in js/trip-ui.js); the shared view's map adds the same one. */
 const PRIVACY_LINK='<button type="button" class="attr-link" onclick="privacyOpen()">Privacy</button>';
 /* GOLF-232: the Feedback link sits beside it, everywhere it does. */
 const FEEDBACK_LINK='<button type="button" class="attr-link" onclick="feedbackOpen()">Feedback</button>';
+const DATA_CREDIT='Data &copy; <a href="https://www.openstreetmap.org/copyright" '
+  +'target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL), routes '
+  +'&copy; <a href="https://openrouteservice.org/" target="_blank" rel="noopener">openrouteservice.org</a> by HeiGIT';
 map.attributionControl.addAttribution(PRIVACY_LINK);
 map.attributionControl.addAttribution(FEEDBACK_LINK);
-map.attributionControl.addAttribution(
-  'Course positions &copy; <a href="https://www.openstreetmap.org/copyright" '
-  +'target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL)');
+map.attributionControl.addAttribution(DATA_CREDIT);
 
 /* GOLF-110 (DEC-008): the rail/station map layer is a legacy of the
    original London-only concept. Hidden behind this single flag until

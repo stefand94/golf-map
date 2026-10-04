@@ -205,8 +205,14 @@ files and both scripts. They are in git history before GOLF-237 if a
 licensed logo source is ever found.
 
 ### `fetch_course_images.py`
+**GOLF-240: the photos this produced, and the `photo` fields, were deleted.**
+GOLF-225 had stopped showing them, so their CC BY-SA credit was no longer
+shown anywhere, yet the files were still served. `test_data.js` now rejects
+a `photo` field. The two scripts are kept in case photos come back, but only
+together with a visible credit line, and the guard has to be relaxed then.
+
 GOLF-88 (implementation): fetches a real, openly-licensed course *photo*
-(distinct from `fetch_club_images.py`'s club-badge/logo) from Wikimedia
+(distinct from the deleted `fetch_club_images.py`'s club logos) from Wikimedia
 Commons' structured API (`action=query`, `generator=search`,
 `prop=imageinfo` with `iiprop=extmetadata` — free, keyless), for a named
 list of courses. Filters to open licenses (CC0/CC-BY/CC-BY-SA/public
@@ -218,8 +224,8 @@ sourceUrl}` per image — the one genuinely new requirement beyond
 GOLF-21, since CC-BY-SA/BY licenses legally require visible attribution
 (the popup UI's photo credit line, `js/map.js`, renders this).
 
-**Requires Pillow** (`pip install Pillow`), same one-time exception as
-`fetch_club_images.py`.
+**Requires Pillow** (`pip install Pillow`), the one exception to this
+folder's standard-library-only rule.
 
 ```bash
 python3 scripts/fetch_course_images.py \
@@ -232,13 +238,13 @@ python3 scripts/fetch_course_images.py \
 `{courseName: {path, photographer, license, sourceUrl, width, height}}`
 for `merge_course_images.py` to consume. A course with no acceptable
 Commons candidate is simply omitted (degrades gracefully — same
-convention as `logo`).
+convention as the old `logo`).
 
 ### `merge_course_images.py`
 Merges `fetch_course_images.py`'s output into `data/courses-*.js` files as
 a `photo:{src,photographer,license,sourceUrl}` field, matched by exact
 course name then by parenthetical-stripped base name (same sibling-club
-convention as `merge_club_images.py`). Idempotent.
+convention as `merge_club_details.py`). Idempotent.
 
 ```bash
 python3 scripts/merge_course_images.py --images scripts/output/course_images.json \

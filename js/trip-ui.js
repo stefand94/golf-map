@@ -1249,6 +1249,13 @@ function privacyOpen(){
         <li>Feedback you send is emailed to the site owner. It's not stored anywhere else.</li>
         <li>We count, anonymously, how many trips are planned and shared. Nothing about you or your trip is stored.</li>
       </ul>
+      <h3>Credits</h3>
+      <ul>
+        <li>Course positions, sights and hotels: &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors, under the Open Database License.</li>
+        <li>Drive routes and place search: <a href="https://openrouteservice.org/" target="_blank" rel="noopener">openrouteservice.org</a> by HeiGIT, using OpenStreetMap data.</li>
+        <li>Map tiles: Esri and its data partners (named on the map).</li>
+        <li>Station data: Powered by TfL Open Data. Contains OS data &copy; Crown copyright and database rights 2016, and Geomni UK Map data &copy; and database rights 2019. National Rail stations from <a href="https://github.com/davwheat/uk-railway-stations" target="_blank" rel="noopener">uk-railway-stations</a> by David Wheatley, Trainline EU and their sources (ODbL).</li>
+      </ul>
       <form method="dialog"><button class="tb-btn is-sm">Close</button></form>
     </div></dialog>`);
     d=document.getElementById('privacy-dlg');

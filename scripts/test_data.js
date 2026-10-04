@@ -110,6 +110,9 @@ C.forEach((c, i) => {
   // its terms checked first (docs/data-provenance.md), then this guard
   // relaxed.
   if ('logo' in c) fail(`${label}: has a logo field (removed in GOLF-237)`);
+  // GOLF-240: CC BY-SA photos need a visible credit. None is shown since
+  // GOLF-225, so the fields and files went. Relax this only with a credit.
+  if ('photo' in c) fail(`${label}: has a photo field (removed in GOLF-240)`);
   // GOLF-97: banded green-fee schema — additive, optional. When present,
   // shape must be {weekday,weekend,weekendTwilight?,confidence,lastVerified}
   // with each band a {min,max} pair (numbers or null, for 'poa' courses).

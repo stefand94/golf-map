@@ -1285,9 +1285,11 @@
     /* GOLF-199: tucked away while a picked result's card is on the map
        (js/mobile-sheet.js showMobileMap); the search field brings it back. */
     body.mob-results-off .mob-top #tb-search-results{display:none!important}
-    /* Leaflet's corner controls stay in the visible strip of map. */
-    .leaflet-bottom{bottom:var(--bs-cover-bottom);transition:bottom .24s var(--ease)}
-    .leaflet-top{top:var(--bs-cover-top)}
+    /* Leaflet's corner controls stay in the visible strip of map. Main map
+       only (GOLF-240): unscoped, this also lifted the shared view's credits
+       by the sheet's height, off the top of its 320px map. */
+    #map .leaflet-bottom{bottom:var(--bs-cover-bottom);transition:bottom .24s var(--ease)}
+    #map .leaflet-top{top:var(--bs-cover-top)}
     /* GOLF-185e: credits folded behind an ⓘ (js/mobile-sheet.js); open,
        they wrap at a legible size rather than running off the edge.
        Main map only: the shared view's map has no ⓘ, so it keeps its
@@ -1385,7 +1387,7 @@
     .mob-nation-menu button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
   }
   @media (max-width:900px) and (prefers-reduced-motion:reduce){
-    .panel,.leaflet-bottom,.bs-card-more svg,.mob-gate,.mob-gate-card{transition:none}
+    .panel,#map .leaflet-bottom,.bs-card-more svg,.mob-gate,.mob-gate-card{transition:none}
   }
   @media print{.bs-tabbar,.mob-top{display:none !important}}
 
