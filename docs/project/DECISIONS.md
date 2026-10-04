@@ -912,3 +912,18 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 - **Consequence:** dev test data no longer self-clears, so devs must clear their test state every session.
 - **Also decided:** a privacy note goes in (GOLF-227). Rank tiers are dropped (GOLF-226): no legal gain, and less useful than the numbers.
 - **Date:** 2026-10-01 · **Affects:** DEC-011, GOLF-165, 224, 226, 227, R-4.
+
+## DEC-038 — Affiliate links via Travelpayouts; rank numbers hidden when they go live
+
+- **Decision:** we monetise with Travelpayouts affiliate deeplinks.
+  - Stage 1: hotel "Check prices" links and one car-hire link per trip.
+  - Stage 2: tours and activities. The owner has joined Klook.
+  - Partner marker: **778843**. It's public and safe in code; the 2026-09-17 API token is never used.
+  - **Top 100 rank numbers are hidden in the same release the links go live.** They can come back if top100golfcourses grants permission or a deal is struck.
+- **Context:** affiliate income makes the site commercial (GOLF-230). The `t100.*` positions are top100golfcourses.com's copyright (GOLF-160, DEC-022), and the owner may pitch them. The owner's goal is side income of about £5k a year.
+- **Alternatives:** keep the numbers and take the risk (rejected); tiers (GOLF-226, cancelled).
+- **Date:** 2026-10-04 · **Affects:**
+  - GOLF-160: resolved by hiding the numbers.
+  - DEC-036: badges are kept only until the links launch.
+  - GOLF-230.
+  - The commercial switches (Esri key, ORS terms, Better Stack, privacy line).
