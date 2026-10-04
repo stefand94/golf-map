@@ -55,10 +55,15 @@
  *      POST /feedback {text, build, mode, website}
  *      -> {ok:true}, and emails the text to the site owner (handleFeedback).
  *
+ *   6. Usage counter (GOLF-235), its own paths:
+ *      POST /count {e:'trip'|'share'|'open'}  (a sendBeacon) -> 204
+ *      GET  /stats -> {days:[{day, trip, share, open}], totals:{...}}
+ *
  * No logging of requests beyond Cloudflare's own standard request logs.
- * The one piece of state is GOLF-223's daily lookup counter (LookupQuota,
- * below): a count per visitor per day, keyed by a salted hash of the IP
- * that is thrown away with the day.
+ * The state is GOLF-223's daily lookup counter (LookupQuota, below): a
+ * count per visitor per day, keyed by a salted hash of the IP that is
+ * thrown away with the day; and GOLF-235's daily usage totals, which hold
+ * three numbers a day and nothing about who.
  *
  * --- Deploy steps (Cloudflare dashboard, no CLI needed) ---
  * 1. dash.cloudflare.com -> Workers & Pages -> Create -> Create Worker.
@@ -433,8 +438,39 @@ export class LookupQuota extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS counts (day TEXT, who TEXT, kind TEXT, n INTEGER, PRIMARY KEY (day, who, kind))');
     this.sql.exec('CREATE TABLE IF NOT EXISTS salts (day TEXT PRIMARY KEY, salt TEXT)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS health (id INTEGER PRIMARY KEY, at INTEGER, result TEXT)');
+    // GOLF-235: daily totals only — never a visitor, trip or IP column.
+    this.sql.exec('CREATE TABLE IF NOT EXISTS usage (day TEXT, event TEXT, n INTEGER, PRIMARY KEY (day, event))');
     this.prunedFor = null;
     this.healthRun = null;
+    this.usageDay = null; // GOLF-235: the per-visitor cap, memory only (see handleCount)
+    this.usageSalt = null;
+    this.usageSeen = new Map();
+  }
+
+  /* GOLF-235: adds one `event` to today's total unless today's site
+     ceiling or this visitor's in-memory ceiling is reached. */
+  async count(event, visitor, limits) {
+    const day = new Date().toISOString().slice(0, 10);
+    if (this.usageDay !== day) {
+      this.usageDay = day;
+      this.usageSalt = crypto.getRandomValues(new Uint8Array(16)).join('.');
+      this.usageSeen = new Map();
+    }
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(this.usageSalt + visitor));
+    const key = [...new Uint8Array(digest).slice(0, 12)].map((b) => b.toString(16).padStart(2, '0')).join('') + event;
+    const mine = this.usageSeen.get(key) || 0;
+    if (mine >= limits.visitor) return { ok: false, scope: 'visitor' };
+    const total = this.sql.exec('SELECT n FROM usage WHERE day = ? AND event = ?', day, event).toArray()[0]?.n || 0;
+    if (total >= limits.site) return { ok: false, scope: 'site' };
+    this.sql.exec('INSERT INTO usage (day, event, n) VALUES (?, ?, 1) ON CONFLICT (day, event) DO UPDATE SET n = n + 1', day, event);
+    this.usageSeen.set(key, mine + 1);
+    return { ok: true };
+  }
+
+  /* GOLF-235: the stored rows for the last `days` days, oldest first. */
+  async stats(days) {
+    const from = new Date(Date.now() - (days - 1) * 86400000).toISOString().slice(0, 10);
+    return this.sql.exec('SELECT day, event, n FROM usage WHERE day >= ? ORDER BY day, event', from).toArray();
   }
 
   /* GOLF-229: the last health result if it is younger than HEALTH_TTL_MS,
@@ -622,6 +658,84 @@ async function handleFeedback(request, env) {
   return json({ ok: true }, 200, request);
 }
 
+/* ── GOLF-235: usage counter — proof for the top100 licence pitch.
+
+   Three daily totals (UTC day): trips reaching 2+ days ('trip'), share
+   links created ('share') and share links opened in the shared view
+   ('open'). The app sends each one as a fire-and-forget sendBeacon, at
+   most once per trip (or per link, for an open) — that dedupe lives in
+   the visitor's own localStorage, so nothing here needs to know which
+   trip or visitor it was. The request carries the event name and nothing
+   else; the stored row is (day, event, n).
+
+   Abuse cap, because inflated counts would sink the very proof they are
+   for: a site-wide ceiling per event per day, plus a per-visitor ceiling
+   kept only in the Durable Object's memory (a salted IP hash with a salt
+   that also lives only in memory). Nothing about a visitor is written to
+   storage. The cost is that the per-visitor cap forgets when the object
+   is evicted after a quiet spell, so it stops bursts, not a patient
+   script; the site ceiling bounds that.
+
+   Every answer to POST /count is a bare 204, accepted or capped alike:
+   a beacon never reads it, and a script learns nothing from it. GET
+   /stats is open: totals only, the same numbers the pitch will quote. */
+const COUNT_EVENTS = ['trip', 'share', 'open'];
+const COUNT_LIMITS = {
+  trip: { visitor: 10, site: 5000 },
+  share: { visitor: 10, site: 5000 },
+  open: { visitor: 30, site: 20000 },
+};
+const STATS_DAYS = 120;
+
+async function handleCount(request, env) {
+  if (request.method !== 'POST') return json({ error: 'POST only' }, 405, request);
+  if (!isAllowedOrigin(request.headers.get('Origin'))) return countDone(request, 403);
+  let event;
+  try {
+    const raw = await request.text();
+    if (raw.length > 200) return countDone(request, 413);
+    event = JSON.parse(raw).e;
+  } catch (e) {
+    return countDone(request, 400);
+  }
+  if (!COUNT_EVENTS.includes(event)) return countDone(request, 400);
+  if (!env.LOOKUP_QUOTA) return countDone(request, 503);
+  try {
+    const stub = env.LOOKUP_QUOTA.get(env.LOOKUP_QUOTA.idFromName('global'));
+    await stub.count(event, visitorKey(request.headers.get('CF-Connecting-IP')), COUNT_LIMITS[event]);
+  } catch (e) {
+    console.log(`GOLF-235 count failed for ${event}: ${e}`);
+  }
+  return countDone(request, 204);
+}
+
+function countDone(request, status) {
+  return new Response(null, { status, headers: { 'X-Worker-Build': WORKER_BUILD, ...corsHeaders(request) } });
+}
+
+async function handleStats(request, env) {
+  if (request.method !== 'GET') return json({ error: 'GET only' }, 405, request);
+  if (!env.LOOKUP_QUOTA) return json({ error: 'stats are not set up' }, 503, request);
+  let rows;
+  try {
+    rows = await env.LOOKUP_QUOTA.get(env.LOOKUP_QUOTA.idFromName('global')).stats(STATS_DAYS);
+  } catch (e) {
+    console.log(`GOLF-235 stats read failed: ${e}`);
+    return json({ error: 'stats unavailable right now' }, 503, request);
+  }
+  const byDay = new Map();
+  const totals = { trip: 0, share: 0, open: 0 };
+  for (const r of rows) {
+    if (!byDay.has(r.day)) byDay.set(r.day, { day: r.day, trip: 0, share: 0, open: 0 });
+    byDay.get(r.day)[r.event] = r.n;
+    totals[r.event] += r.n;
+  }
+  const res = json({ days: [...byDay.values()], totals, since: rows[0]?.day || null }, 200, request);
+  res.headers.set('Access-Control-Allow-Origin', '*');
+  res.headers.set('Cache-Control', 'no-store');
+  return res;
+}
+
 /* ── GOLF-229: health endpoint for an external uptime monitor.
 
    All three past outages (GOLF-154, 172, 176) were found by a person
@@ -757,6 +871,8 @@ export default {
     if (path === '/feedback') {
       return handleFeedback(request, env);
     }
+    if (path === '/count') return handleCount(request, env);
+    if (path === '/stats') return handleStats(request, env);
     if (request.method !== 'POST') {
       return json({ error: 'POST only' }, 405, request);
     }

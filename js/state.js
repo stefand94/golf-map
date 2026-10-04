@@ -105,7 +105,14 @@ function validateTripEntry(t){
         per:c.per==='person'?'person':'group',
         cur:(typeof c.cur==='string'&&CURRENCY_SYMS[c.cur])?c.cur:'GBP'};
     }).filter(Boolean),
-    tripDayNextId:Math.max(0,...tripDays.map(d=>d.id))+1
+    tripDayNextId:Math.max(0,...tripDays.map(d=>d.id))+1,
+    /* GOLF-235: which usage events this trip has already been counted
+       for. A trip saved before the counter shipped has no flags; one that
+       already has 2+ days is marked as counted rather than counted now,
+       so the first days of the stats aren't a backlog of old trips. */
+    counted:(t.counted&&typeof t.counted==='object')
+      ?{trip:t.counted.trip?1:0,share:t.counted.share?1:0}
+      :{trip:tripDays.length>=2?1:0,share:0}
   };
 }
 /* GOLF-224/DEC-037: saved trips survive a release. Until this ticket,
@@ -203,10 +210,55 @@ function loadStoredState(){
   if(saved.nation==='gb'||saved.nation==='ie'||saved.nation==='za')state.nation=saved.nation;
   loadPart('map view',()=>{if(saved.mapCenter&&saved.mapZoom)restoredView={center:saved.mapCenter,zoom:saved.mapZoom}});
 }
+/* GOLF-235: usage counter. Three anonymous daily totals for the Worker
+   (trips reaching 2+ days, share links created, share links opened), sent
+   as a fire-and-forget beacon that carries the event name and nothing
+   else. Each trip counts once per event via its own `counted` flags,
+   which live in the saved trip (never in the share payload) and so
+   survive a release like every other saved field. Opens are deduped per
+   link in USAGE_OPENED_KEY, a list of short hashes of links this browser
+   has opened or created. Never throws, never blocks, never logs. */
+const USAGE_OPENED_KEY='golfmap:usage-opened:v1', USAGE_OPENED_MAX=200;
+function usagePing(e){
+  try{
+    if(typeof navigator==='undefined'||!navigator.sendBeacon||navigator.onLine===false)return;
+    if(typeof ORS_PROXY_URL==='undefined'||!ORS_PROXY_URL)return;
+    navigator.sendBeacon(ORS_PROXY_URL.replace(/\/$/,'')+'/count',JSON.stringify({e}));
+  }catch(_){}
+}
+function usageTripOnce(t,e){
+  if(!t)return;
+  if(!t.counted||typeof t.counted!=='object')t.counted={trip:0,share:0};
+  if(t.counted[e])return;
+  t.counted[e]=1;
+  usagePing(e);
+}
+/* A short FNV-1a hash of the link, so the list says "seen" without
+   keeping the trip itself. */
+function usageLinkKey(hash){
+  let h=0x811c9dc5;
+  for(let i=0;i<hash.length;i++){h^=hash.charCodeAt(i);h=Math.imul(h,16777619);}
+  return(h>>>0).toString(36)+hash.length.toString(36);
+}
+/* Records a link as seen; returns true only the first time. */
+function usageLinkFirstSeen(hash){
+  try{
+    const k=usageLinkKey(String(hash||''));
+    let seen=JSON.parse(localStorage.getItem(USAGE_OPENED_KEY)||'[]');
+    if(!Array.isArray(seen))seen=[];
+    if(seen.includes(k))return false;
+    seen.push(k);
+    localStorage.setItem(USAGE_OPENED_KEY,JSON.stringify(seen.slice(-USAGE_OPENED_MAX)));
+    return true;
+  }catch(_){return false;}
+}
+function usageShareOpened(hash){if(usageLinkFirstSeen(hash))usagePing('open');}
 function saveState(){
   let payload;
   try{
     tripSnapshotActive();
+    // GOLF-235: the shared view never saves, but be sure it never counts.
+    if(tripDays.length>=2&&(typeof appMode==='undefined'||appMode!=='shared'))usageTripOnce(trips[activeTripId],'trip');
     const c=map?map.getCenter():null;
     /* GOLF-163: written as stable ids, so a future reorder of C[] cannot
        silently turn someone's saved trip into a different one. The runtime

@@ -1247,6 +1247,7 @@ function privacyOpen(){
         <li>Cloudflare Web Analytics counts visits anonymously: which pages, the referring site, country and browser type, and page speed. No cookies and nothing that identifies you.</li>
         <li>The map comes from Esri and the fonts from Google Fonts. Like any website, they see your IP address when your browser loads them.</li>
         <li>Feedback you send is emailed to the site owner. It's not stored anywhere else.</li>
+        <li>We count, anonymously, how many trips are planned and shared. Nothing about you or your trip is stored.</li>
       </ul>
       <form method="dialog"><button class="tb-btn is-sm">Close</button></form>
     </div></dialog>`);

@@ -77,6 +77,11 @@ function tripEncodeShareURL(){
 function tbShareTrip(btn){
   const url=tripEncodeShareURL();
   history.pushState({appMode},'',url);
+  /* GOLF-235: one 'share' per trip, saved straight away so a reload can't
+     count it twice; and the sharer's own link is marked as seen, so their
+     reopening it doesn't count as an open. */
+  usageTripOnce(trips[activeTripId],'share');saveState();
+  usageLinkFirstSeen(location.hash);
   /* GOLF-150: the button is icon-only now, so "Copied!" can't replace its
      label — it shows as a small bubble (the data-tip ::after in CSS).
      On touch devices with a native share sheet (iPhone/iPad, most
@@ -210,6 +215,7 @@ function renderSharedTrip(){
     </div></div>`;
     return;
   }
+  usageShareOpened(location.hash); // GOLF-235: once per link per browser
   const savedTrip=new Set(TRIP),savedSeq=tripSeq,savedDays=tripDays,savedGS=groupSize,savedFuel=tbIncludeFuel,savedCustom=tripCustom;
   try{
     /* tripDecodeSharePayload() has already rebuilt every field of this

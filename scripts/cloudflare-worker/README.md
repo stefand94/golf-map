@@ -114,6 +114,30 @@ no trip data. It goes out through Email Routing's `send_email` binding
 5. Send yourself one from the live site (Beta panel → Feedback, or the
    Feedback link in the map credits) and check it arrives.
 
+## Usage counter (GOLF-235)
+
+Three anonymous daily totals (UTC day), kept as proof of use for the
+top100 licence pitch (GOLF-230): trips reaching 2+ days (`trip`), share
+links created (`share`) and share links opened in the shared view
+(`open`).
+
+- The app sends `POST /count {"e":"trip"|"share"|"open"}` as a
+  `sendBeacon`. Each trip counts once per event (a `counted` flag in the
+  saved trip, never in the share link). Each link counts one open per
+  browser, and the sharer's own link never counts as an open.
+- Stored: one row per day per event, `(day, event, n)`, in the
+  `LookupQuota` Durable Object's `usage` table. No IP, visitor, trip or
+  course is stored.
+- Abuse cap: a site-wide ceiling per event per day (5,000 trips, 5,000
+  shares, 20,000 opens), plus a per-visitor ceiling (10 / 10 / 30) held
+  only in the object's memory. The memory cap resets whenever the object
+  goes idle, so it stops bursts rather than a slow script.
+- Every `POST /count` answer is a bare 204, so a script can't tell
+  whether it was counted.
+- Read the totals: `curl https://api.golftripper.uk/stats`. It returns
+  `{days:[{day,trip,share,open}], totals, since}` for the last 120 days.
+  It's open, with totals only.
+
 ## Deploying it
 
 **One-time manual setup** (if you haven't deployed this Worker yet): see

@@ -20,6 +20,7 @@
  *     still load, and nothing reaches console.error.
  *  5. A wholly unreadable payload still leaves a loadable app.
  *  6. An old index-form and a new id-form share link decode identically.
+ *  7. GOLF-235's usage flags persist, count once, and stay out of share links.
  *
  * Run: node scripts/test_state_persist.js
  */
@@ -273,9 +274,55 @@ if (newDec && oldDec) {
 }
 eq('share: decoding writes nothing to localStorage', Object.keys(sh.store).sort(), ['golfmap:v1']);
 
+/* ---------- 7. GOLF-235: usage flags persist, count once, stay out of share links ---------- */
+function withBeacons(b) {
+  const sent = [];
+  b.sandbox.navigator = { sendBeacon: (url, body) => { sent.push(JSON.parse(body).e); return true; } };
+  b.sandbox.ORS_PROXY_URL = 'https://worker.test/';
+  return sent;
+}
+const savedTrip = JSON.parse(SAVED).trips.mine;
+eq('usage: a 2-day trip is saved as counted', savedTrip.counted, { trip: 1, share: 0 });
+eq('usage: the flag survives a release', next.sandbox.trips.mine.counted, { trip: 1, share: 0 });
+
+const fresh = boot({}, BUILD_A);
+const freshSent = withBeacons(fresh);
+fresh.sandbox.tripDays = [{ id: 1, kind: 'golf', items: [] }];
+fresh.sandbox.saveState();
+eq('usage: 1 day sends nothing', freshSent, []);
+fresh.sandbox.tripDays.push({ id: 2, kind: 'free', items: [] });
+fresh.sandbox.saveState(); fresh.sandbox.saveState();
+eq('usage: reaching 2 days sends one trip, once', freshSent, ['trip']);
+const freshAgain = boot(Object.assign({}, fresh.store), BUILD_A);
+const againSent = withBeacons(freshAgain);
+freshAgain.sandbox.saveState();
+eq('usage: a reload does not count it again', againSent, []);
+
+const legacy = JSON.parse(SAVED); delete legacy.trips.mine.counted;
+const old = boot({ 'golfmap:v1': JSON.stringify(legacy) }, BUILD_A);
+const oldSent = withBeacons(old);
+old.sandbox.saveState();
+eq('usage: a pre-counter 2-day trip is marked, not counted', [old.sandbox.trips.mine.counted, oldSent], [{ trip: 1, share: 0 }, []]);
+
+const shPayload = JSON.stringify(sh.sandbox.tripBuildSharePayload());
+delete sh.sandbox.trips.mine.counted;
+eq('usage: the share payload does not change with the flags', JSON.stringify(sh.sandbox.tripBuildSharePayload()), shPayload);
+if (shPayload.includes('counted')) fail('usage: the flags leaked into the share payload');
+
+const opener = boot({}, BUILD_A);
+const openSent = withBeacons(opener);
+opener.sandbox.usageShareOpened('#share=abc'); opener.sandbox.usageShareOpened('#share=abc');
+opener.sandbox.usageLinkFirstSeen('#share=mine'); opener.sandbox.usageShareOpened('#share=mine');
+eq('usage: an open counts once per link, and never for your own link', openSent, ['open']);
+const offline = boot({}, BUILD_A);
+offline.sandbox.navigator = { sendBeacon: () => { throw new Error('down'); } };
+offline.sandbox.ORS_PROXY_URL = 'https://worker.test/';
+offline.sandbox.usageShareOpened('#share=x');
+eq('usage: a failing beacon logs nothing', [offline.errors, offline.warns], [[], []]);
+
 if (failures.length) {
   console.error(`test_state_persist: ${failures.length} failure(s)\n`);
   failures.forEach(f => console.error('  - ' + f));
   process.exit(1);
 }
-console.log('test_state_persist: OK — trips survive a release, old formats migrate, one bad value costs one value, share links agree.');
+console.log('test_state_persist: OK — trips survive a release, old formats migrate, one bad value costs one value, share links agree, usage counts once.');
