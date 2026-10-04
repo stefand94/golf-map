@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- GOLF-231: the app is one page, so the sitemap has one URL. Listed in
+     robots.txt; branch previews get a Disallow robots.txt from
+     functions/_middleware.js and never point here. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://golftripper.uk/</loc>
+  </url>
+</urlset>

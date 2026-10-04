@@ -3,3 +3,4 @@
 # noindex header instead of this file.
 User-agent: *
 Allow: /
+Sitemap: https://golftripper.uk/sitemap.xml
