@@ -380,7 +380,11 @@ const layer=L.markerClusterGroup({
 const courseJitterLL=new Map();
 function courseLatLng(i){return courseJitterLL.get(i)||[C[i].lat,C[i].lng];}
 const HC_TEES={};
-function ranked(i){const t=C[i].t100;return t&&(typeof t.gl==='number'||t.gbi||typeof t.eng==='number'||typeof t.sco==='number'||typeof t.wal==='number')}
+/* GOLF-160 (DEC-038): `notable:1` replaced the numeric t100 positions. GB
+   only, as before: the old rule never counted the Ireland/South Africa
+   lists, so their pins keep the plain size. courseNation()'s rule,
+   inlined: js/explore.js loads after this file and pins are drawn here. */
+function ranked(i){const c=C[i];return!!c.notable&&!c.topIreland&&!c.topSouthAfrica}
 /* GOLF-130: collapsed from a 4-way tee colour to a single yellow/white
    circle boolean — wishlisted, added to the trip, or played all read the
    same (owner: "there are only 2 states"). */
@@ -391,27 +395,11 @@ function pinFor(i){const rk=ranked(i),size=rk?30:22,h=size*1.5;
   return L.divIcon({className:'',html:golfPinSVG(size,{ranked:rk,tint:pinStateTint(i)}),
     iconSize:[size,h],iconAnchor:[size*0.5,h],popupAnchor:[0,-h+2],tooltipAnchor:[0,-h+2]})}
 const CONF={club:"Rate from the club's own page",press:"Rate published in trade press or a golf guide",est:"Indicative — verify with the club before travelling"};
-/* Card space is tight — show only the single most prestigious ranking
-   (ENG > GB&I > GL), with a "+N" hint if a course carries more than one. */
-function bestRankBadge(i){const t=C[i].t100;if(!t)return'';
-  const all=[];
-  if(typeof t.eng==='number')all.push(`ENG #${t.eng}`);
-  if(typeof t.sco==='number')all.push(`SCO #${t.sco}`);
-  if(typeof t.wal==='number')all.push(`WAL #${t.wal}`);
-  if(typeof t.ire==='number')all.push(`IRE #${t.ire}`);
-  if(typeof t.za==='number')all.push(`ZA #${t.za}`);
-  if(t.gbi)all.push(`GB&amp;I #${t.gbi}`);
-  if(typeof t.gl==='number')all.push(`GL #${t.gl}`);
-  if(!all.length)return'';
-  const extra=all.length>1?` <span class="wt">+${all.length-1}</span>`:'';
-  return `<span class="rk">${all[0]}</span>${extra}`;
-}
+/* GOLF-160: list membership labels only (e.g. "Greater London list").
+   No rank positions: they are top100golfcourses.com's (DEC-038). */
 function rankChips(i){const t=C[i].t100;if(!t)return'';const p=[];
-  if(typeof t.gl==='number')p.push(`Greater London #${t.gl}`);if(t.gbi)p.push(`Britain &amp; Ireland #${t.gbi}`);
-  if(t.eng)p.push(`England #${t.eng}`);if(t.sco)p.push(`Scotland #${t.sco}`);if(t.wal)p.push(`Wales #${t.wal}`);if(t.ire)p.push(`Ireland #${t.ire}`);if(t.za)p.push(`South Africa #${t.za}`);
-  if(t.lse)p.push(`London &amp; SE #${t.lse}`);if(t.sur)p.push(`Surrey #${t.sur}`);
-  if(typeof t.gl==='string')p.push(t.gl);if(t.kent)p.push(t.kent);
-  return `<p class="ranks">${p.map(x=>`<span>${x}</span>`).join('')}</p>`}
+  if(typeof t.gl==='string')p.push(esc(t.gl));if(t.kent)p.push(esc(t.kent));
+  return p.length?`<p class="ranks">${p.map(x=>`<span>${x}</span>`).join('')}</p>`:''}
 
 /* GOLF-120 fee UI: the Weekday/Weekend fee panel for a popup. Two boxes
    when the weekday and weekend headlines differ; a single "Green fee" box
@@ -482,20 +470,12 @@ function popupHTML(i,{card=false}={}){
       <button class="btn subtle" onclick="setAsAnchor(${i})">Set as anchor course for a trip</button>
     </div><p class="conf">${esc(CONF[c.conf])}</p></div>`;
 }
-/* GOLF-52: a lightweight hover tooltip (name/fee/ranking) so a visitor
+/* GOLF-52: a lightweight hover tooltip (name/fee) so a visitor
    can scan the map without clicking every pin open — the full popup
    (fees, design, booking links, etc.) still only opens on click. */
 function courseTooltipHTML(i){
-  const t=C[i].t100,ranks=[];
-  if(t){
-    if(typeof t.gl==='number')ranks.push('GL #'+t.gl);
-    else if(t.gbi)ranks.push('B&amp;I #'+t.gbi);
-    else if(t.eng)ranks.push('England #'+t.eng);
-    else if(t.sco)ranks.push('Scotland #'+t.sco);
-    else if(t.wal)ranks.push('Wales #'+t.wal);
-  }
   const fee=((typeof feeV2Label==='function')&&feeV2Label(i,'wd'))||V(i,'wd');
-  return`<div class="course-tt-name">${esc(V(i,'n'))}</div><div class="course-tt-meta">${esc(fee)}${ranks.length?' · '+ranks[0]:''}</div>`;
+  return`<div class="course-tt-name">${esc(V(i,'n'))}</div><div class="course-tt-meta">${esc(fee)}</div>`;
 }
 /* GOLF: a handful of clubs (Sunningdale Old/New, Saunton East/West,
    Woburn's three courses, etc.) share one clubhouse and so share the exact

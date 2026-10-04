@@ -319,12 +319,13 @@ wrong nation. Add a `DATA_REFRESHED` key too (`data/config.js:9`).
 **5. `courseShownOnMap()` — `js/explore.js:30`.** Only needed if the
 country is ringfenced (step 4).
 
-**6. Ranking fields.** `t100.<cc>` for the position and `<cc>Ranked:1`
-for the ringfence flag, following `za`/`zaRanked`. Note `rankNum()`
-(`js/util.js`) has its own field-priority list mirroring
-`bestRankBadge()` — a new nation's ranking field has to be added to
-**both** or "Sort: by ranking" silently falls through to its flat default
-for that nation, which is precisely the GOLF-81 bug.
+**6. Ranking fields.** `notable:1` for a course on the nation's ranking
+list and `<cc>Ranked:1` for the ringfence flag, following `za`/`zaRanked`.
+**Never store the numeric position** (GOLF-160, DEC-038): ranking lists are
+their publishers' copyright and the site is commercial. If you need the
+order while researching, keep it in gitignored `scripts/output/`. Note
+`ranked()` (`js/map.js`) only counts GB courses for the bigger pin and the
+"Top 100 ranked" filter; decide whether a new nation should join it.
 
 **7. The two-independent-sources rule.** Established practice is that a
 nation's ranking is the **union of two independent published rankings** —

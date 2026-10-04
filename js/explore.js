@@ -42,8 +42,9 @@ document.getElementById('nation-pills').addEventListener('click',e=>{
   const k=b.dataset.nation;
   state.nation=state.nation===k?null:k;
   /* "populate and order by ranking" — set once on pick so the list opens
-     ranked; the Sort dropdown still works normally after that, this just
-     picks a sensible first view instead of forcing rank permanently. */
+     top courses first (GOLF-160: notable, then A-Z); the Sort dropdown
+     still works normally after that, this just picks a sensible first
+     view instead of forcing rank permanently. */
   if(state.nation)state.sort='rank';
   renderNationPills();
   document.getElementById('sort').value=state.sort;
@@ -324,7 +325,7 @@ if(RAIL_FEATURE)['t-rail','t-lbl','t-stn'].forEach(id=>{ // GOLF-110: wiring dor
   });
 });
 
-/* GOLF-70: feeNum/distOut/rankNum moved to js/util.js — they are shared
+/* GOLF-70: feeNum/distOut/notableFirst moved to js/util.js — they are shared
    course metrics, not Explore-only ones, and js/util.js is evaluated ahead
    of every reader. See the note at the top of js/util.js. */
 /* GOLF-185d: the filter predicates on their own — everything passes()
@@ -459,7 +460,7 @@ function renderNearestList(anchorIdx){
     return`<div class="card" data-i="${i}"><div class="card-top">
       <p class="cname">${flagSVG(ac.colour,ac.pole,15,false)}${esc(V(i,'n'))}</p>
       <span class="cfee">${esc(V(i,'wd'))}<small>${mi.toFixed(0)} mi away</small></span></div>
-      <p class="cmeta"><span>${esc(ac.label)}</span><span>${esc(C[i].r)}</span>${bestRankBadge(i)}</p>
+      <p class="cmeta"><span>${esc(ac.label)}</span><span>${esc(C[i].r)}</span></p>
       <p class="cmeta"><button class="btn2" data-add="${i}" style="padding:5px 10px;font-size:11px">＋ Add to trip</button></p></div>`}).join('');
   list.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',e=>{
     e.stopPropagation();
@@ -510,7 +511,7 @@ function render(){
   if(tripBuilderOn&&appMode!=='plan'&&tripLayer.getLayers().length){mapReopenCourse(openCourse);return;}
   let shown=C.map((c,i)=>i).filter(passes);
   const S_={region:(a,b)=>REGIONS.indexOf(C[a].r)-REGIONS.indexOf(C[b].r)||feeNum(a)-feeNum(b),
-    fee:(a,b)=>feeNum(a)-feeNum(b),rank:(a,b)=>rankNum(a)-rankNum(b),
+    fee:(a,b)=>feeNum(a)-feeNum(b),rank:(a,b)=>notableFirst(a,b)||V(a,'n').localeCompare(V(b,'n')),
     dist:(a,b)=>distOut(a)-distOut(b),name:(a,b)=>V(a,'n').localeCompare(V(b,'n'))};
   shown.sort(S_[state.sort]);
   // The popup/tooltip content is bound lazily (function form, js/map.js),
@@ -551,7 +552,7 @@ function render(){
   if(!shown.length){
     list.innerHTML=state.nation
       ?`<p class="empty">Nothing matches. The cheapest heathland tends to be weekdays-only — try dropping that filter.</p>`
-      :`<p class="empty">Pick a country above to see its courses, ranked.</p>`;
+      :`<p class="empty">Pick a country above to see its courses.</p>`;
     return}
   list.innerHTML=shown.map(i=>{const a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')],near=C[i].nearStation;
     return `<button class="card" data-i="${i}"><div class="card-top">
@@ -559,7 +560,7 @@ function render(){
       <span class="cfee">${esc(V(i,'wd'))}<small>wknd ${esc(V(i,'we'))}</small></span></div>
       <p class="cmeta"><span>${esc(a.label)}</span>
       ${stn?`<span>${esc(stn.n)} · ${esc(LINES[stn.l].n)}</span>`:near?`<span>${esc(near.n)} · ${esc(near.mi)} mi straight-line</span>`:C[i].topSouthAfrica?'':`<span style="color:var(--stone)">no close station</span>`}
-      ${bestRankBadge(i)}${C[i].sweep?'<span class="wt">sweep</span>':''}${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
+      ${C[i].sweep?'<span class="wt">sweep</span>':''}${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
   // GOLF-201: through goToCourse() (GOLF-187), which opens a clustered or
   // trip-layer pin too; the old flyTo + openPopup did neither.
   list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>goToCourse(+el.dataset.i)));

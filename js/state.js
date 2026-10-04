@@ -274,7 +274,7 @@ const HOME=[51.5467873,-0.1798875];
 // GOLF-81: nation:null means "no country picked yet" — the Explore list
 // stays empty until one of the three pills is clicked (see render() in
 // js/explore.js); once set, the list is gated to that nation and sorted
-// by ranking.
+// top courses first (GOLF-160; was by ranking).
 const state={access:new Set(),price:new Set(),region:new Set(),flag:new Set(),arch:new Set(),q:"",sort:"name",feeMin:null,feeMax:null,nation:null};
 let map; // assigned below; loadStoredState reads state before map exists
 loadStoredState();

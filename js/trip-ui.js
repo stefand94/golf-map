@@ -1119,7 +1119,7 @@ function tbPickNation(k){
      doesn't leave a stale By-region selection filtering the results. */
   if(tbRegion&&state.nation&&!tbRegionsForNation(state.nation).includes(tbRegion))tbRegion='';
   /* Match the legacy js/explore.js pill: opening a nation orders its
-     list by ranking. */
+     list top courses first (GOLF-160). */
   if(state.nation)state.sort='rank';
   /* The retired Explore sidebar draws its own copy of these pills and
      only ever re-renders them from its own handler, so a pick made

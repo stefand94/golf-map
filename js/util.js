@@ -257,17 +257,8 @@ function feeNum(i){
    card and popup (a raw great-circle figure from a hard-coded home point
    was meaningless), so there is no longer a distMiles() miles conversion. */
 function distOut(i){const dy=C[i].lat-HOME[0],dx=(C[i].lng-HOME[1])*Math.cos(HOME[0]*Math.PI/180);return Math.hypot(dy,dx)}
-// GOLF-81: was only checking gl/gbi — every England-Top100/Scotland/Wales/
-// Ireland/South-Africa course (t100.eng/sco/wal/ire/za) fell through to
-// the flat 500 default, so "Sort: by ranking" never actually ordered a
-// single-nation list by its own ranking, only separated ranked from
-// unranked. Mirrors bestRankBadge()'s own field-priority list.
-function rankNum(i){const t=C[i].t100;if(!t)return 9999;
-  if(typeof t.gl==='number')return t.gl;
-  if(t.gbi)return t.gbi/20;
-  if(typeof t.eng==='number')return t.eng;
-  if(typeof t.sco==='number')return t.sco;
-  if(typeof t.wal==='number')return t.wal;
-  if(typeof t.ire==='number')return t.ire;
-  if(typeof t.za==='number')return t.za;
-  return 500}
+// GOLF-160 (DEC-038): "Sort: top courses first". Was rankNum(), ordering by
+// the t100 positions (GOLF-81); those are top100golfcourses.com's and are
+// gone from the data, so notable courses come first and the caller
+// tiebreaks by name.
+function notableFirst(a,b){return(C[b].notable?1:0)-(C[a].notable?1:0)}

@@ -93,6 +93,8 @@ def find_target_courses():
     });
     const {C}=sandbox;
     const london18=C.filter(c=>!c.top100 && /\\b18\\b/.test(c.spec));
+    // GOLF-160: t100 positions are gone from data/; rerunning this needs the
+    // untracked scripts/output/golf-160-rank-positions.json eng list instead.
     const top30=C.filter(c=>c.top100 && c.t100 && typeof c.t100.eng==='number' && c.t100.eng<=30);
     console.log(JSON.stringify([...london18,...top30].map(c=>c.n)));
     """
