@@ -1351,7 +1351,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = '2cffea21c0';
+const WORKER_BUILD = 'dfd6ca0325';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {
