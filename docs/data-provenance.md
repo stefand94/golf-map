@@ -318,6 +318,23 @@ No other host is contacted for data. The Worker's upstream URLs are in
 No API key reaches the browser. ORS keys are Worker secrets, set in the
 dashboard by Stefan.
 
+### 6.1 Klook destination ids (`AFF_KLOOK_DESTS` in `js/affiliate.js`)
+
+- **Source:** collected by hand by Gavin from Klook's public hotel-search UI
+  on 2026-10-04 (GOLF-233). There are 10 entries: St Andrews, Kingsbarns, Gullane, Brora,
+  Dornoch, Machrihanish, Portrush, Lahinch, Ballybunion and George.
+- **What it is:** a one-off snapshot. No Klook API or other live call is
+  made, by the app or by any script. The ids only go into an outbound link
+  when someone clicks it.
+- **Checked:** on 2026-10-04 each link was opened once in Klook's UI. All 10
+  resolve to the right place. The results are in
+  `scripts/output/golf-233-klook-dests.json`, which is gitignored and kept locally.
+- **Extending it** means repeating the manual collection: type the town into
+  Klook's hotel search, pick the golf course or town, and read
+  `svalue`/`city_id` from the URL. Then open the link once and check that
+  the hotels are near the town. A wrong id fails silently.
+- **KKday** had no hotel coverage in any of the 10 towns, so it is not used.
+
 ---
 
 ## 7. OSM, ODbL and a licensee
