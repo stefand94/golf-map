@@ -39,3 +39,14 @@ Status: **DISCOVERY**. These are options, not decisions. Nothing here is built u
 1. **Ambition:** side income that covers costs, or building a business you'd put real time into?
 2. **Selling:** would you personally take calls with operators and tourism bodies? Options 3, 6 and 9 depend on it.
 3. **Brand:** are you comfortable with commission links and labelled sponsored listings?
+
+## Owner answers (2026-10-04)
+- **Ambition:** side income. Cover costs, and about **£5k a year** would be a big win. Not a full-time business; deep booking integrations are too much work.
+- **Partner idea:** pitch to **top100golfcourses.com**, which already has an AI trip-builder. This could be a licence, a white label or a sale (options 6 and 9). A deal would also settle the rankings permission (GOLF-160 / DEC-022).
+- **Affiliates:** wanted in principle (flights, car hire, hotels, green fees), but the owner doubts the work pays off.
+- **Going beyond golf:** with an hour-by-hour plan (GOLF-153), it could be a general trip planner to sell on.
+
+### BA view
+- **£5k a year from affiliates alone** needs roughly 100+ booked group trips a year, so thousands of serious planners. That's unlikely soon. The links themselves are cheap, though: hotels and car hire only, a day or so of dev work. That's enough to cover costs. Skip flights and green fees; tee-time affiliate schemes are patchy.
+- **The top100golfcourses pitch is the best single route to £5k.** Show them a demo and a short deck, not the code. Lead with what their AI builder lacks: real drive times, per-person costs, day-by-day editing and shareable links.
+- **Generic planner: not now.** That market is crowded (Wanderlog, TripIt, Google), and golf is the edge. Build GOLF-153 because it strengthens the golf pitch; going generic stays an option later.
