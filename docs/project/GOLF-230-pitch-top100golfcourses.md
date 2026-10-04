@@ -84,3 +84,8 @@ Keep it this short. The demo does the selling.
 - [ ] Find the right contact. Their footer links "Advertise with us"; that page or LinkedIn should name a commercial or partnerships person. Avoid the general inbox.
 - [ ] Decide on the offer and the walk-away number (above).
 - [ ] Never send code or a technical write-up before an agreement. Demo only.
+
+## Owner direction (2026-10-04)
+- **Licence only. No sale.**
+- Non-cash value counts: access to them, the relationship and invitations to play courses. A low fee is fine if the perks are right.
+- The business consultant session is researching and writing up fully worked options (`GOLF-230-consultant-options.md`, to follow).
