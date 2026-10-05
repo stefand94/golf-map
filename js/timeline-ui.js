@@ -31,6 +31,9 @@ const TL_MIN_BLOCK_PX=22;
 /* Same idea for a drive leg: 14px is the floor at which "🚗 1h 20m"
    still fits on its line. */
 const TL_DRIVE_MIN_PX=14;
+/* What a marker takes up: its time and its two lines of text. It has no
+   duration, so this is the only thing that keeps the next block off it. */
+const TL_MARKER_PX=38;
 
 function tlSetDetailed(on){
   tbDetailed=!!on;
@@ -166,21 +169,34 @@ function tlDayGridHTML(d,dayIdx,firstNights){
     hours.push(`<div class="tl-hour" style="top:${((h-range.startHour)*TL_PX_PER_HOUR).toFixed(1)}px">
       <span class="tl-hour-label">${tlFormatTime(h*60)}</span></div>`);
   }
+  /* Drawn in order down a running cursor rather than each block
+     independently at its own true offset. Three things have a floor
+     height — a short stop, a short drive leg, and a marker, which has
+     no duration at all — and at true offsets any of them can be written
+     straight over the next thing down: a 10:55 arrival five minutes
+     before an 11:00 tee was painted over completely by the round.
+     Below the floor, then, the drawing stretches and every block still
+     prints its own true time; above it, nothing moves. */
+  let cursor=0;
   const blocks=chain.map(r=>{
     const parts=[];
-    if(r.driveMins>0){
+    const driveH=r.driveMins>0?Math.max(TL_DRIVE_MIN_PX,r.driveMins*TL_PX_PER_MIN):0;
+    const y=Math.max(top(r.startMins),cursor+driveH);
+    if(driveH){
       /* Hung from the stop it arrives at, not drawn down from its own
          start: a short leg is held at the floor height, and a 9-minute
          drive drawn downwards would overlap the block it leads into by
          the difference. */
-      const h=Math.max(TL_DRIVE_MIN_PX,r.driveMins*TL_PX_PER_MIN);
-      parts.push(`<div class="tl-drive" style="top:${(top(r.startMins)-h).toFixed(1)}px;height:${h.toFixed(1)}px"
+      parts.push(`<div class="tl-drive" style="top:${(y-driveH).toFixed(1)}px;height:${driveH.toFixed(1)}px"
         title="Drive into ${esc(tripItemName(r.item))}">🚗 ${esc(fmtDriveMinutes(r.driveMins))}</div>`);
     }
     /* A marker (a flight: no duration) is sized by its own text
        instead — it carries the flight number and departure on a second
-       line, and a fixed height would cut that off. */
+       line, and a fixed height would cut that off. It still has to
+       claim room from the cursor, though, or the next block starts on
+       top of it; TL_MARKER_PX is what two lines of it come to. */
     const h=r.marker?null:Math.max(TL_MIN_BLOCK_PX,r.durationMins*TL_PX_PER_MIN);
+    cursor=y+(h||TL_MARKER_PX);
     const cls=['tl-block','tl-block-'+(r.item.type||'poi')];
     if(r.marker)cls.push('is-marker');
     if(r.conflict)cls.push('is-conflict');
@@ -188,7 +204,7 @@ function tlDayGridHTML(d,dayIdx,firstNights){
        typed and the visitor is told they cannot make it (DEC-039). */
     const warn=r.conflict?`<span class="tl-warn" title="You'd arrive at ${tlFormatTime(r.conflict.arriveMins)}, after this ${
       tlFormatTime(r.conflict.fixedMins)} start.">⚠ arrive ${tlFormatTime(r.conflict.arriveMins)}</span>`:'';
-    parts.push(`<div class="${cls.join(' ')}" style="top:${top(r.startMins).toFixed(1)}px${h?`;height:${h.toFixed(1)}px`:''}">
+    parts.push(`<div class="${cls.join(' ')}" style="top:${y.toFixed(1)}px${h?`;height:${h.toFixed(1)}px`:''}">
       <span class="tl-block-time">${tlFormatTime(r.startMins)}${r.fixed?'<span class="tl-pin" title="A time you set. Everything after it follows from here.">•</span>':''}</span>
       <span class="tl-block-body">${tlItemIcon(r.item.type)} ${tlBlockLabelHTML(r)}${warn}${
         r.item.type==='flight'?'':tlTimeFieldHTML(d,r.item,r.item.type==='golf'?'Tee time':'Start time')}</span>
@@ -199,7 +215,9 @@ function tlDayGridHTML(d,dayIdx,firstNights){
      nothing (DEC-039). Drawn only on a stay's first night. */
   const checkins=firstStays.map(r=>`<div class="tl-checkin" style="top:${top(r.startMins).toFixed(1)}px">
       <span>🏨 check in ${tlFormatTime(r.startMins)}</span></div>`).join('');
-  const height=(range.endHour-range.startHour)*TL_PX_PER_HOUR;
+  /* The ruler's own height, unless the stretching above has pushed the
+     last block past the bottom of it. */
+  const height=Math.max((range.endHour-range.startHour)*TL_PX_PER_HOUR,cursor);
   return`<div class="tl-grid" style="height:${height}px">${hours.join('')}${blocks}${checkins}</div>
     ${tlStayStripHTML(d,stays,firstNights)}`;
 }
