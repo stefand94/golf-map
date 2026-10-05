@@ -958,4 +958,17 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
     - **a gap between activities**: a note in that free time, sitting in the gap.
     Notes are **shared** (read-only in the share link).
     Notes show **in detailed mode only**, not in the default list view (owner, 2026-10-05). Desktop uses right-click; a phone uses long-press on detailed-view blocks plus an "Add note" menu item. Cap: 300 characters.
+- **Owner review of the preview (desktop, 2026-10-05) — supersedes the notes rules above and widens v1:**
+  - **It should behave like a calendar.** The day is a scrollable hour timeline.
+    - **Right-click an empty time slot** opens an add menu: flight, train, a drive from another city, or an activity.
+    - **Drag a block** to move it, which sets a fixed time.
+    - **Drag a block's top or bottom edge** to change its length. Defaults are only a starting point.
+  - **New block types, all typed by hand:**
+    - **train:** from and to stations, depart and arrive times;
+    - **drive from another place:** a start point, with the drive computed;
+    - **activity:** a title, time, length, optional place and price, and a note.
+    The old "gap note" becomes the activity block.
+  - **Notes:** a note is a field in any block's details. **The day note is dropped.**
+  - **The hotel starts the next morning:** last night's hotel is the first point of the day's chain, so the drive from the hotel to the first course or activity shows.
+- **Date of the review:** 2026-10-05.
 - **Date:** 2026-10-05 · **Affects:** GOLF-153, GOLF-99 (share), GOLF-224 (load whitelist), GOLF-235 (share counting unchanged).
