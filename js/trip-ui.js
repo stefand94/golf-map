@@ -200,7 +200,12 @@ function tripDayLegs(dayIdx){
     const pos=posOf.get(it.id);
     if(pos!=null){const r=driveRow(pos);if(r)legs.push(r);}
     const det=tripItemPriceDetail(d,it);
-    legs.push({type:it.type,name:tripItemName(it),price:det.total,detail:det,id:it.id,i:it.type==='golf'?it.i:undefined});
+    /* GOLF-153: a note's words are its name, and a note attached to
+       another item rides along so the read-only itinerary can show it
+       too — the shared view renders from these legs, not from
+       tripDayItemRowHTML(). */
+    legs.push({type:it.type,name:it.type==='note'?(it.text||''):tripItemName(it),
+      note:it.note||null,price:det.total,detail:det,id:it.id,i:it.type==='golf'?it.i:undefined});
   });
   return legs;
 }
@@ -441,7 +446,9 @@ function tripPriceLabel(det){
 }
 function itinLegRowHTML(l){
   if(l.type==='drive')return tbDriveCapHTML(l);
-  const icon=l.type==='golf'?'⛳':l.type==='hotel'?'🏨':'📍';
+  /* GOLF-153: a flight and a note are stops of their own here too —
+     this is the renderer the read-only shared view uses. */
+  const icon=l.type==='golf'?'⛳':l.type==='hotel'?'🏨':l.type==='flight'?'✈':l.type==='note'?'📝':'📍';
   /* Merge (GOLF-71 + GOLF-74): GOLF-71's price column is a single nowrap
      figure and stays exactly that — the sharing arithmetic would have burst
      it. Instead a per-person stay explains itself on GOLF-71's own existing
@@ -454,7 +461,8 @@ function itinLegRowHTML(l){
   return`<div class="tb-day-course tb-item-${l.type}" style="cursor:default">
     <span class="tb-item-icon">${icon}</span>
     <div class="tb-item-main"><span class="tb-item-name">${esc(l.name)}</span>
-      ${sharing?`<div class="cart-region">${sym}${l.detail.base.toFixed(0)} × ${l.detail.guests} people = ${sym}${l.detail.total.toFixed(0)}</div>`:''}</div>
+      ${sharing?`<div class="cart-region">${sym}${l.detail.base.toFixed(0)} × ${l.detail.guests} people = ${sym}${l.detail.total.toFixed(0)}</div>`:''}
+      ${l.note?`<div class="tb-item-note" title="${esc(l.note)}">📝 ${esc(l.note)}</div>`:''}</div>
     <span class="tb-item-price">${estMark(!!(l.detail&&l.detail.est))}${tbDualPriceHTML(l.price,cur)}</span>
   </div>`;
 }
@@ -475,6 +483,7 @@ function tbItinAllHTML(){
         ${tbDaySumHTML(idx)}
       </div>
       <div class="tb-day-rule"></div>
+      ${d.note?`<div class="tb-day-note">📝 ${esc(d.note)}</div>`:''}
       ${tbDetailed?tlDayGridHTML(d,idx,firstNights)
         :legs.length?legs.map(itinLegRowHTML).join(''):`<p class="hint" style="margin:var(--sp-3)">${d.kind!=='golf'?TRIP_DAY_KINDS[d.kind]:'No stops yet.'}</p>`}
     </div>`;
@@ -535,6 +544,10 @@ function tripCostLineItems(){
     +'|'+(typeof it.lat==='number'?it.lat.toFixed(3):'?')
     +'|'+(typeof it.lng==='number'?it.lng.toFixed(3):'?'));
   tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{
+    /* GOLF-153: a note is not a cost. Left to fall through it would have
+       pushed a nameless £0 line into "Stops" for every note in the
+       trip. */
+    if(it.type==='note')return;
     const det=tripItemPriceDetail(d,it);
     if(it.type==='hotel'){
       const flat=it.priceType==='total'||it.priceType==='flat';
@@ -962,6 +975,10 @@ function tbDayCardHTML(d,idx){
     :`<button type="button" class="tb-menu-item" onclick="tripDayMoveToPos(${d.id},${i})">${
         i===0?'↑ Move to Day 1':i===tripDays.length-1?`↓ Move to Day ${i+1} (last)`:`Move to Day ${i+1}`}</button>`).join(''):'';
   const menu=tbRowMenuHTML(moveItems+
+    /* GOLF-153: a note for the whole day. The day header is draggable
+       (GOLF-152), so it gets right-click and this menu entry but no
+       long-press — see the note in js/timeline-ui.js. */
+    `<button type="button" class="tb-menu-item" onclick="tlEditDayNote(${d.id})">📝 ${d.note?'Edit day note':'Add a day note'}</button>`+
     `<button type="button" class="tb-menu-item is-danger" onclick="tripRemoveDay(${d.id});">🗑 Remove day ${idx+1}</button>`);
   return`
     <div class="tb-day tb-day-${kind}"
@@ -969,7 +986,8 @@ function tbDayCardHTML(d,idx){
       ondrop="event.preventDefault();tbDropOut(this);tbDropInDay(${d.id},null);">
       <div class="tb-day-head" draggable="true"
         ondragstart="tbDayDragSet(${d.id},event,this);"
-        ondragend="tbDragEnd();">
+        ondragend="tbDragEnd();"
+        oncontextmenu="return tlNoteContextDay(event,${d.id})">
         <span class="tb-drag-handle" title="Drag to move this whole day">⠿</span>
         <span class="tb-day-title"><span class="tb-day-dot"></span>
           <span class="tb-day-title-text">Day ${idx+1}</span>
@@ -978,6 +996,9 @@ function tbDayCardHTML(d,idx){
         ${menu}
       </div>
       <div class="tb-day-rule"></div>
+      ${/* GOLF-153: the day's own note, in both views — the visitor's
+           text, escaped, and clickable to edit (read-only when shared). */''}
+      ${d.note?`<div class="tb-day-note"${appMode==='shared'?'':` onclick="tlEditDayNote(${d.id})" title="Click to edit"`}>📝 ${esc(d.note)}</div>`:''}
       ${items.length?rowsHTML:`<p class="hint" style="margin:0 var(--sp-3) var(--sp-3) 44px">Drag a course here, or add a stop below.</p>`}
       <div class="tb-dropzone"
         ondragover="event.preventDefault();event.stopPropagation();event.dataTransfer.dropEffect='move';tbDropOver(this);"
@@ -1010,6 +1031,9 @@ function tbDayCardHTML(d,idx){
                  offered in both views, or you would have to switch to
                  Detailed to record the one that gets you there. */''}
             <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptFlight(${d.id})">✈ A flight</button>
+            ${/* GOLF-153: a note as a thing you add to a day, for anyone
+                 who never discovers the right-click. */''}
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlAddNote(${d.id})">📝 A note</button>
           </div>
         </details>
       </div>

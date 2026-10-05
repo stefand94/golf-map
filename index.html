@@ -782,6 +782,23 @@
      as said — the ⚠ carries the words, this carries the glance. */
   .tl-block.is-conflict{border-color:#B3261E;box-shadow:inset 3px 0 0 #B3261E}
   .tl-warn{color:#B3261E;font-weight:700;font-size:var(--fs-micro)}
+  /* GOLF-153: the arrival buffer (DEC-039) — the time before a fixed
+     start that you have to be there by. Hatched like a drive leg,
+     because it is the same kind of thing: time the day spends getting
+     ready rather than doing something. No text of its own; the block
+     says "Arrive by 09:15". */
+  .tl-buffer{position:absolute;left:38px;right:0;box-sizing:border-box;
+    border-radius:var(--radius-sm);
+    background:repeating-linear-gradient(135deg,var(--paper-2) 0 5px,var(--accent-soft) 5px 10px)}
+  .tl-block-ready{flex:none;color:var(--accent-deep);font-size:var(--fs-micro);font-weight:600}
+  /* A note item in a gap, and a note attached to a stop. Both are the
+     visitor's own words, so both stay quiet. */
+  .tl-block-note{background:#FFFDE7;border-color:#E8DFA8}
+  .tl-note-line{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;color:var(--ink-soft);font-size:var(--fs-micro)}
+  .tb-item-note{font:var(--fs-micro)/1.4 var(--font-sans);color:var(--ink-soft);overflow-wrap:anywhere}
+  .tb-day-note{margin:0 var(--sp-3) var(--sp-2) 44px;
+    font:var(--fs-micro)/1.4 var(--font-sans);color:var(--ink-soft);overflow-wrap:anywhere}
   .tl-drive{background:repeating-linear-gradient(135deg,var(--paper) 0 5px,var(--paper-2) 5px 10px);
     border-radius:var(--radius-sm);color:var(--stone);
     font:var(--fs-micro)/1.2 var(--font-sans);padding:1px var(--sp-2);display:flex;align-items:center}

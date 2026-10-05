@@ -732,7 +732,7 @@ function tripRemoveItem(dayId,itemId){
      leave the course in the shortlist, which is not what "Remove" on an
      itinerary row has ever meant. */
   if(it.type==='golf')return tripRemoveCourse(it.i);
-  tripRemoveWithUndo(it.name||(it.type==='hotel'?'Hotel':'Stop'),()=>tripDayRemoveItem(dayId,itemId));
+  tripRemoveWithUndo(it.name||(it.type==='hotel'?'Hotel':it.type==='note'?'Note':'Stop'),()=>tripDayRemoveItem(dayId,itemId));
 }
 function tripRemoveDay(dayId){
   const idx=tripDays.findIndex(d=>d.id===dayId);

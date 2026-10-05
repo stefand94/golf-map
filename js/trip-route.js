@@ -701,6 +701,9 @@ function tbDrawTripItems(){
     let fallbackN=0;
     tripDayItems(d).forEach(it=>{
       if(it.type==='golf')return; // already drawn as a numbered route stop
+      // GOLF-153: a note has nowhere to be, so it gets no pin — without
+      // this it would be dropped on the day's fallback point as a 📍.
+      if(it.type==='note')return;
       let pt=tripItemPoint(it),approx=false;
       /* A hotel with no address of its own resolves to the day's fallback
          point, so key it on that *pre-jitter* point: the jitter offset

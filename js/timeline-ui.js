@@ -34,6 +34,13 @@ const TL_DRIVE_MIN_PX=14;
 /* What a marker takes up: its time and its two lines of text. It has no
    duration, so this is the only thing that keeps the next block off it. */
 const TL_MARKER_PX=46;
+/* A buffer is drawn as a hatched band in front of its block. 12px is the
+   floor: below that it is a hint rather than a band. */
+const TL_BUFFER_MIN_PX=12;
+/* Long-press, for a phone with no right-click. Deliberately the same
+   half-second GOLF-215 uses, so the two gestures feel like one. */
+const TL_PRESS_MS=500;
+const TL_PRESS_SLOP=8;
 
 function tlSetDetailed(on){
   tbDetailed=!!on;
@@ -131,10 +138,17 @@ function tlFirstNightItemIds(){
    The grid is an absolute-positioned layer over an hour ruler, because
    a CSS grid would have to quantise every block to a row and a 12:24
    tee time is the whole point of this view. */
-function tlItemIcon(t){return t==='golf'?'⛳':t==='hotel'?'🏨':t==='flight'?'✈':'📍';}
+function tlItemIcon(t){return t==='golf'?'⛳':t==='hotel'?'🏨':t==='flight'?'✈':t==='note'?'📝':'📍';}
 
 function tlBlockLabelHTML(r){
   const it=r.item;
+  /* A note is the visitor's own text, so it is escaped here like every
+     other string that reaches the DOM, and held to one line on the grid
+     with the whole of it in the title. */
+  if(it.type==='note')
+    return`<span class="tl-block-name" title="${esc(it.text||'')}">${esc(it.text||'')}</span>`;
+  /* A note attached to an item rides under that item's name. */
+  const note=it.note?`<span class="tl-note-line" title="${esc(it.note)}">📝 ${esc(it.note)}</span>`:'';
   if(it.type==='flight'){
     /* DEC-039: the departure is TEXT, never a block — a trip "only
        starts from arrival", and with time zones out of scope a
@@ -142,9 +156,9 @@ function tlBlockLabelHTML(r){
     const from=[it.flightNo,it.fromCode&&it.toCode?it.fromCode+'→'+it.toCode:''].filter(Boolean).join(' ');
     const dep=tlParseTime(it.depart)!=null?`dep ${esc(it.depart)}`:'';
     return`<span class="tl-block-name">${esc(tripItemName(it)||'Flight')}</span>
-      ${from||dep?`<span class="tl-block-sub">${[esc(from),dep].filter(Boolean).join(' · ')}</span>`:''}`;
+      ${from||dep?`<span class="tl-block-sub">${[esc(from),dep].filter(Boolean).join(' · ')}</span>`:''}${note}`;
   }
-  return`<span class="tl-block-name">${esc(tripItemName(it))}</span>`;
+  return`<span class="tl-block-name">${esc(tripItemName(it))}</span>${note}`;
 }
 function tlDayGridHTML(d,dayIdx,firstNights){
   const rows=tlRowsForDay(dayIdx);
@@ -181,14 +195,23 @@ function tlDayGridHTML(d,dayIdx,firstNights){
   const blocks=chain.map(r=>{
     const parts=[];
     const driveH=r.driveMins>0?Math.max(TL_DRIVE_MIN_PX,r.driveMins*TL_PX_PER_MIN):0;
-    const y=Math.max(top(r.startMins),cursor+driveH);
+    /* DEC-039: the arrival buffer — the time before a fixed start that
+       you have to be there by. Drawn between the drive and the block,
+       because that is the order it happens in, and because it is what
+       the drive is now judged against. */
+    const bufH=r.bufferMins>0?Math.max(TL_BUFFER_MIN_PX,r.bufferMins*TL_PX_PER_MIN):0;
+    const y=Math.max(top(r.startMins),cursor+driveH+bufH);
     if(driveH){
       /* Hung from the stop it arrives at, not drawn down from its own
          start: a short leg is held at the floor height, and a 9-minute
          drive drawn downwards would overlap the block it leads into by
          the difference. */
-      parts.push(`<div class="tl-drive" style="top:${(y-driveH).toFixed(1)}px;height:${driveH.toFixed(1)}px"
+      parts.push(`<div class="tl-drive" style="top:${(y-bufH-driveH).toFixed(1)}px;height:${driveH.toFixed(1)}px"
         title="Drive into ${esc(tripItemName(r.item))}">🚗 ${esc(fmtDriveMinutes(r.driveMins))}</div>`);
+    }
+    if(bufH){
+      parts.push(`<div class="tl-buffer" style="top:${(y-bufH).toFixed(1)}px;height:${bufH.toFixed(1)}px"
+        title="Be here by ${tlFormatTime(r.readyMins)} — ${esc(fmtDriveMinutes(r.bufferMins))} before it starts. The drive has to land by then, not by ${tlFormatTime(r.startMins)}."></div>`);
     }
     /* A marker (a flight: no duration) is sized by its own text
        instead — it carries the flight number and departure on a second
@@ -202,12 +225,18 @@ function tlDayGridHTML(d,dayIdx,firstNights){
     if(r.conflict)cls.push('is-conflict');
     /* A conflict is said in words, not just colour: the time stands as
        typed and the visitor is told they cannot make it (DEC-039). */
-    const warn=r.conflict?`<span class="tl-warn" title="You'd arrive at ${tlFormatTime(r.conflict.arriveMins)}, after this ${
-      tlFormatTime(r.conflict.fixedMins)} start.">⚠ arrive ${tlFormatTime(r.conflict.arriveMins)}</span>`:'';
-    parts.push(`<div class="${cls.join(' ')}" style="top:${y.toFixed(1)}px${h?`;height:${h.toFixed(1)}px`:''}">
+    const warn=r.conflict?`<span class="tl-warn" title="You'd arrive at ${tlFormatTime(r.conflict.arriveMins)}, and you need to be here by ${
+      tlFormatTime(r.conflict.dueMins)} for a ${tlFormatTime(r.conflict.fixedMins)} start.">⚠ arrive ${tlFormatTime(r.conflict.arriveMins)}</span>`:'';
+    /* DEC-039 asks for this in words on the block, not only as the band
+       in front of it: for a 10:00 tee, "Arrive by 09:15". */
+    const ready=r.bufferMins>0
+      ?`<span class="tl-block-ready" title="${esc(fmtDriveMinutes(r.bufferMins))} before it starts.">Arrive by ${tlFormatTime(r.readyMins)}</span>`:'';
+    parts.push(`<div class="${cls.join(' ')}" style="top:${y.toFixed(1)}px${h?`;height:${h.toFixed(1)}px`:''}"
+      data-tlnote="item" data-tlday="${d.id}" data-tlitem="${esc(r.item.id)}"
+      oncontextmenu="return tlNoteContextItem(event,${d.id},'${esc(r.item.id)}')">
       <span class="tl-block-time">${tlFormatTime(r.startMins)}${r.fixed?'<span class="tl-pin" title="A time you set. Everything after it follows from here.">•</span>':''}</span>
-      <span class="tl-block-body">${tlItemIcon(r.item.type)} ${tlBlockLabelHTML(r)}${warn}${
-        r.item.type==='flight'?'':tlTimeFieldHTML(d,r.item,r.item.type==='golf'?'Tee time':'Start time')}</span>
+      <span class="tl-block-body">${tlItemIcon(r.item.type)} ${tlBlockLabelHTML(r)}${ready}${warn}${
+        r.item.type==='flight'||r.item.type==='note'?'':tlTimeFieldHTML(d,r.item,r.item.type==='golf'?'Tee time':'Start time')}</span>
     </div>`);
     return parts.join('');
   }).join('');
@@ -218,7 +247,13 @@ function tlDayGridHTML(d,dayIdx,firstNights){
   /* The ruler's own height, unless the stretching above has pushed the
      last block past the bottom of it. */
   const height=Math.max((range.endHour-range.startHour)*TL_PX_PER_HOUR,cursor);
-  return`<div class="tl-grid" style="height:${height}px">${hours.join('')}${blocks}${checkins}</div>
+  /* Right-click (or long-press) the empty grid and the note lands in the
+     gap you clicked, not at the end of the day — which is the whole
+     point of a note in a gap. The start hour travels on the element so
+     the handler can turn a y offset back into a time. */
+  return`<div class="tl-grid" style="height:${height}px"
+      data-tlnote="gap" data-tlday="${d.id}" data-tlstart="${range.startHour}"
+      oncontextmenu="return tlNoteContextGap(event,${d.id},${range.startHour})">${hours.join('')}${blocks}${checkins}</div>
     ${tlStayStripHTML(d,stays,firstNights)}`;
 }
 /* DEC-039: a stay is a strip along the bottom of the night it covers,
@@ -478,6 +513,153 @@ function tlFlightFormHTML(dayId){
 }
 /* The list view's own line for a flight (js/trip-add.js calls this):
    the same facts the grid shows, without the clock. */
+/* ── Notes (DEC-039) ──────────────────────────────────────────────────
+   Right-click anything in the day view — or long-press it on a phone —
+   and you are editing that thing's note. An item's note travels with the
+   item, a day's note belongs to the day, and a note dropped into a gap
+   becomes an item of its own, so it keeps its place when the day is
+   reordered. A note item has no location and no duration: it is not a
+   routing stop (tripItemPoint() returns null) and not in the timeline
+   chain, so it pushes nothing and costs nothing.
+
+   The text is read with prompt(), as the trip rename already is
+   (tripRenameActive, js/trip-model.js). A note is one short line, and a
+   bespoke form for it would be more chrome than content; nothing about
+   the model depends on that choice.
+
+   Every note is capped at TL_NOTE_MAX on the way in — they travel in
+   #share= links — and escaped at every point it renders, here and in
+   js/trip-add.js and js/trip-ui.js. */
+function tlNoteAsk(current,what){
+  const v=prompt(`Note for ${what}:`,current||'');
+  if(v==null)return null;              // cancelled: change nothing
+  return String(v).trim().slice(0,TL_NOTE_MAX);
+}
+function tlNoteDay(dayId){return tripDays.find(x=>x.id===dayId)||null;}
+function tlEditItemNote(dayId,itemId){
+  if(appMode==='shared')return;
+  const d=tlNoteDay(dayId);if(!d)return;
+  const it=tripDayItems(d).find(x=>x.id===itemId);if(!it)return;
+  if(it.type==='note')return tlEditNoteItem(dayId,itemId);
+  const v=tlNoteAsk(it.note,tripItemName(it)||'this stop');
+  if(v==null)return;
+  if(v)it.note=v;else delete it.note;
+  saveState();renderTripBuilder();
+}
+function tlEditDayNote(dayId){
+  if(appMode==='shared')return;
+  const d=tlNoteDay(dayId);if(!d)return;
+  const v=tlNoteAsk(d.note,`Day ${tripDays.indexOf(d)+1}`);
+  if(v==null)return;
+  if(v)d.note=v;else delete d.note;
+  saveState();renderTripBuilder();
+}
+function tlEditNoteItem(dayId,itemId){
+  if(appMode==='shared')return;
+  const d=tlNoteDay(dayId);if(!d)return;
+  const it=tripDayItems(d).find(x=>x.id===itemId);
+  if(!it||it.type!=='note')return;
+  const v=tlNoteAsk(it.text,'this note');
+  if(v==null)return;
+  /* Emptying a note removes it: an item that says nothing is not
+     something anyone meant to keep. */
+  if(v)it.text=v;else d.items=tripDayItems(d).filter(x=>x.id!==itemId);
+  saveState();renderTripBuilder();
+}
+/* A new note at the end of a day — the visible, discoverable path, since
+   neither right-click nor long-press announces itself. */
+function tlAddNote(dayId){
+  if(appMode==='shared')return;
+  const d=tlNoteDay(dayId);if(!d)return;
+  const v=tlNoteAsk('',`Day ${tripDays.indexOf(d)+1}`);
+  if(!v)return;
+  if(!Array.isArray(d.items))d.items=[];
+  d.items.push({id:tripItemNewId(),type:'note',text:v});
+  saveState();renderTripBuilder();
+}
+/* A new note in the gap at `mins` — inserted before the first thing in
+   the day that starts after it, which is what puts it in that gap
+   rather than at the end of the list. */
+function tlAddNoteAt(dayId,mins){
+  if(appMode==='shared')return;
+  const d=tlNoteDay(dayId);if(!d)return;
+  const v=tlNoteAsk('',`Day ${tripDays.indexOf(d)+1}`);
+  if(!v)return;
+  const items=tripDayItems(d);
+  const rows=tlRowsForDay(tripDays.indexOf(d));
+  let at=items.length;
+  for(let k=0;k<rows.length;k++){
+    const r=rows[k];
+    if(!r.item||r.item.type==='hotel')continue;   // the strip, not the clock
+    if(r.startMins>mins){at=items.indexOf(r.item);break;}
+  }
+  if(at<0)at=items.length;
+  items.splice(at,0,{id:tripItemNewId(),type:'note',text:v});
+  saveState();renderTripBuilder();
+}
+
+/* ── Right-click and long-press ───────────────────────────────────────
+   The grid only. The itinerary's LIST rows are draggable, and GOLF-215
+   already spends a 500ms press-and-hold on them to lift one for
+   reordering (js/touch-dnd.js) — a notes long-press there would fight
+   the one gesture the itinerary already has, and the day header is
+   draggable for the same reason. Nothing on the grid is draggable, so
+   there is nothing to fight here; in the list view, and on the day
+   header, the menu's "note" entry is the way in. */
+function tlNoteContextItem(ev,dayId,itemId){
+  if(appMode==='shared')return true;   // someone else's trip: no editing
+  ev.preventDefault();ev.stopPropagation();
+  tlEditItemNote(dayId,itemId);
+  return false;
+}
+function tlNoteContextDay(ev,dayId){
+  if(appMode==='shared')return true;
+  ev.preventDefault();ev.stopPropagation();
+  tlEditDayNote(dayId);
+  return false;
+}
+function tlNoteContextGap(ev,dayId,startHour){
+  if(appMode==='shared')return true;
+  const el=ev.currentTarget;
+  if(!el||!el.getBoundingClientRect)return true;
+  ev.preventDefault();ev.stopPropagation();
+  tlAddNoteAt(dayId,tlGridMinsAt(el,startHour,ev.clientY));
+  return false;
+}
+/* A y position on the grid, back to a time on the clock. */
+function tlGridMinsAt(el,startHour,clientY){
+  const y=clientY-el.getBoundingClientRect().top;
+  return startHour*60+y/TL_PX_PER_MIN;
+}
+let tlPressT=null,tlPressFrom=null;
+function tlPressCancel(){if(tlPressT){clearTimeout(tlPressT);tlPressT=null;}tlPressFrom=null;}
+/* Armed on a stationary finger and cancelled by any movement, so a
+   scroll through the itinerary is never even slightly stickier — the
+   same contract GOLF-215's hold follows, for the same reason. */
+document.addEventListener('touchstart',e=>{
+  tlPressCancel();
+  if(appMode==='shared'||!e.touches||e.touches.length!==1)return;
+  const el=e.target&&e.target.closest?e.target.closest('[data-tlnote]'):null;
+  if(!el)return;
+  const t=e.touches[0];
+  tlPressFrom={x:t.clientX,y:t.clientY};
+  tlPressT=setTimeout(()=>{
+    tlPressT=null;
+    const kind=el.getAttribute('data-tlnote');
+    const dayId=Number(el.getAttribute('data-tlday'));
+    if(kind==='item')tlEditItemNote(dayId,el.getAttribute('data-tlitem'));
+    else if(kind==='gap')tlAddNoteAt(dayId,tlGridMinsAt(el,Number(el.getAttribute('data-tlstart'))||0,tlPressFrom.y));
+    tlPressFrom=null;
+  },TL_PRESS_MS);
+},{passive:true});
+document.addEventListener('touchmove',e=>{
+  if(!tlPressT||!tlPressFrom||!e.touches||!e.touches.length)return;
+  const t=e.touches[0];
+  if(Math.abs(t.clientX-tlPressFrom.x)>TL_PRESS_SLOP||Math.abs(t.clientY-tlPressFrom.y)>TL_PRESS_SLOP)tlPressCancel();
+},{passive:true});
+document.addEventListener('touchend',tlPressCancel,{passive:true});
+document.addEventListener('touchcancel',tlPressCancel,{passive:true});
+
 function tlFlightListMetaHTML(it){
   const bits=[];
   if(it.flightNo)bits.push(esc(it.flightNo));
