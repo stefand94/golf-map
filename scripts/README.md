@@ -252,6 +252,13 @@ python3 scripts/merge_course_images.py --images scripts/output/course_images.jso
 ```
 
 ### `fetch_course_stats.py` + `merge_course_stats.py`
+**Retired by GOLF-239.** The 69 `courseStats` fields these wrote were removed:
+the reseller says its slope and rating come from England Golf's API, whose
+terms bar republishing them. `test_data.js` now fails on any `courseStats`
+field, so don't re-run these against a new source until its terms are
+checked (`docs/data-provenance.md`). Kept for the line-patch technique other
+scripts cite.
+
 GOLF-12/13: fetches par/slope/course rating from `golfapi.uk` (RapidAPI,
 free tier — 200 requests/month, 5 req/min) and merges it into a
 `data/courses-*.js` file as `courseStats:{par,slope,rating}`, which
@@ -401,6 +408,22 @@ found real failures:
   collapsed them onto one pin. Multi-course venues are normal and OSM usually
   maps the venue, so every contested group is left alone and reported —
   moving one course and not its siblings is worse than moving none.
+
+### `fetch_golf238_osm.py` + `merge_golf238_coords.py`
+GOLF-238: the 49 England/Scotland records the GOLF-161 merge left alone,
+mostly the contested multi-course venues above. One Overpass pull of golf
+courses and clubhouses within 3 km of each point, then a **hand-written**
+match table (`MATCHES` in the merge script), applied in place the same way.
+
+```bash
+python3 scripts/fetch_golf238_osm.py points.json   # [{id,lat,lng}, ...]
+python3 scripts/merge_golf238_coords.py --dry-run
+python3 scripts/merge_golf238_coords.py
+```
+
+Sibling courses deliberately share their venue's polygon here; the map
+de-stacks coincident pins (`jitteredLatLng()`, `js/map.js`). The report goes
+to `scripts/output/golf238_merge_report.json`.
 
 ### `update_worker_build.py`
 GOLF-164: stamps a content hash of `scripts/cloudflare-worker/ors-proxy.js`

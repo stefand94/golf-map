@@ -141,6 +141,37 @@ links created (`share`) and share links opened in the shared view
   `{days:[{day,trip,share,open}], totals, since}` for the last 120 days.
   It's open, with totals only.
 
+## Esri basemap key (GOLF-234 part 1)
+
+The site is commercial (DEC-038), so the map uses Esri's keyed tiles on
+production instead of the keyless ones.
+
+- `GET /esri-key` returns `{"key":"…"}` only when Origin is exactly
+  `https://golftripper.uk` **and** the `ESRI_MAP` secret is set. Otherwise
+  it returns `{"key":null}`: previews, localhost, `www.`, scripts with no
+  Origin, and a Worker with no secret. Always `Cache-Control: no-store`.
+  Never logged.
+- The key reaches the browser, because the browser fetches the tiles.
+  What protects it is Esri's referrer restriction on the key itself, not
+  this route.
+- With a key, the app (`esriAttachBases()`, `js/map.js`) uses Esri's
+  Static Basemap Tiles (`arcgis/streets`, `arcgis/imagery/labels`) and the
+  keyed `World_Imagery`. With none, or if the keyed tiles fail to load
+  (expired or revoked key, missing privilege), it uses the keyless
+  arcgisonline tiles it used before, so the map never breaks.
+
+### Setup (Stefan, once)
+
+1. In the ArcGIS Location Platform dashboard, create an API key with the
+   **Basemaps** privileges, including **Static basemap tiles**, and the
+   referrer `https://golftripper.uk`. Note its expiry date.
+2. Worker → Settings → Variables and Secrets → add `ESRI_MAP` as a
+   **Secret** → Deploy.
+3. Check without printing the key:
+   `curl -s -H 'Origin: https://golftripper.uk' https://api.golftripper.uk/esri-key | grep -c '"key":"'`
+   prints `1`. With any other Origin it prints `0`.
+4. Before the key expires, make a new one and replace the secret.
+
 ## Deploying it
 
 **One-time manual setup** (if you haven't deployed this Worker yet): see

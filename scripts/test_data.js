@@ -5,7 +5,7 @@
  * scripts, via Node's vm module — not eval/require, so this can't
  * accidentally pick up npm-style module semantics the files don't use)
  * and asserts against the real parsed objects rather than regexing text,
- * so nested fields (t100, nearStation, clubInfo, courseStats) are checked
+ * so nested fields (t100, nearStation, clubInfo) are checked
  * properly.
  *
  * Run: node scripts/test_data.js
@@ -99,12 +99,11 @@ C.forEach((c, i) => {
     const allowed = ['phone', 'membership', 'teeBooking'];
     Object.keys(ci).forEach(k => { if (!allowed.includes(k)) fail(`${label}: clubInfo has unexpected key "${k}"`); });
   }
-  if (c.courseStats) {
-    const cs = c.courseStats;
-    ['par', 'slope', 'rating'].forEach(k => {
-      if (cs[k] !== undefined && typeof cs[k] !== 'number') fail(`${label}: courseStats.${k} is not numeric`);
-    });
-  }
+  // GOLF-239: the only courseStats we had came from a RapidAPI reseller of
+  // England Golf's slope/rating data, which England Golf's terms restrict.
+  // Removed; a new source needs its terms checked first
+  // (docs/data-provenance.md), then this guard can go.
+  if ('courseStats' in c) fail(`${label}: has a courseStats field (removed in GOLF-239)`);
   // GOLF-237: the only logos we ever had were decoded from England Golf's
   // API, and they were removed with their files. A new logo source needs
   // its terms checked first (docs/data-provenance.md), then this guard
