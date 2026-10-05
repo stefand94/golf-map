@@ -252,6 +252,13 @@ python3 scripts/merge_course_images.py --images scripts/output/course_images.jso
 ```
 
 ### `fetch_course_stats.py` + `merge_course_stats.py`
+**Retired by GOLF-239.** The 69 `courseStats` fields these wrote were removed:
+the reseller says its slope and rating come from England Golf's API, whose
+terms bar republishing them. `test_data.js` now fails on any `courseStats`
+field, so don't re-run these against a new source until its terms are
+checked (`docs/data-provenance.md`). Kept for the line-patch technique other
+scripts cite.
+
 GOLF-12/13: fetches par/slope/course rating from `golfapi.uk` (RapidAPI,
 free tier — 200 requests/month, 5 req/min) and merges it into a
 `data/courses-*.js` file as `courseStats:{par,slope,rating}`, which

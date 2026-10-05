@@ -53,8 +53,8 @@ Loads `data/*.js` for real (via Node's `vm` module, not regex) and checks:
 every course has the fields SCHEMA.md says are required; access tier/region/
 band values are all valid against `ACCESS`/`REGIONS`/`BANDS`; every
 London-catchment `stn` resolves to a real station in `R`/`ISOLATED`;
-`nearStation`/`clubInfo`/`courseStats` are well-formed when present, and no
-record carries `logo` or `clubInfo.blurb` (GOLF-237);
+`nearStation`/`clubInfo` are well-formed when present, and no
+record carries `logo` or `clubInfo.blurb` (GOLF-237) or `courseStats` (GOLF-239);
 course count matches the last-known total; no duplicate name+coordinate
 entries. Exits non-zero on any failure, with a readable list of what broke.
 
@@ -110,9 +110,9 @@ that touches rendering, filters, or persistence:
    pre-selected and results populated.
 6. **Course Handicap calculator.** Collapsed behind a "Calculate your
    handicap" button on every popup — click it to reveal the calculator,
-   pre-filled with `courseStats` where we have it (66 of 221 so far, e.g.
-   Royal Birkdale), otherwise all four fields (par/slope/rating/index) are
-   blank for manual entry. If a course has multiple tees on record (via
+   with all four fields (par/slope/rating/index) blank for manual entry —
+   no course ships `courseStats` since GOLF-239, so check one (e.g. Royal
+   Birkdale) shows empty fields, not "undefined". If a course has multiple tees on record (via
    "Correct this" — see #10a below), a Tee dropdown appears above the
    fields; switching it re-fills par/slope/rating for that tee. Verify one
    output against a hand-calculated example, and that an incomplete set of
@@ -123,8 +123,8 @@ that touches rendering, filters, or persistence:
    par/slope/rating) via "+ Add tee", and remove a row via "Remove". Save,
    reopen the popup, and confirm the handicap calculator now shows a Tee
    dropdown pre-filled with the values you entered for each tee. A single
-   unnamed tee row saves in the plain `{par,slope,rating}` shape (backward
-   compatible with pre-existing `courseStats`); two or more (or one with a
+   unnamed tee row saves in the plain `{par,slope,rating}` shape (the shape the removed
+   GOLF-12 data used); two or more (or one with a
    name) save as `{tees:[...]}`.
 7. **Popup top.** Spot-check Sunningdale (Old), which had a logo and an
    England Golf blurb until GOLF-237: the popup should open on the name

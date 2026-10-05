@@ -5,7 +5,8 @@ under what terms, what credit we show, and what restricts it. It is written
 for a buyer's or licensee's due diligence, so it states the gaps plainly.
 
 Counts are from the data files at `origin/main` `c6b770f` (2026-10-04),
-loaded the way the app loads them. A number with no other citation was
+loaded the way the app loads them. The fee and courseStats counts (§2.4, §2.9) were
+recounted after GOLF-239 on 2026-10-05. A number with no other citation was
 counted from the data files on that date. Re-run the counts before you quote
 them anywhere else.
 
@@ -123,28 +124,42 @@ No other host is contacted for data. The Worker's upstream URLs are in
 - **The BRS lesson:** in Phase 34, the BRS Golf booking site was found to
   forbid scraping (archive, GOLF-97/98 entry). It was dropped as a source.
   **Zero `feeV2` records cite a BRS Golf URL** (audit on 2026-10-04).
+- **GOLF-239 re-verification (2026-10-05):** every fee whose only source
+  was a third party, plus the 11 shown fees that had no source at all, was
+  re-checked against the club's own site (146 records). Research agents
+  returned JSON. Each claimed price was then audited by a second agent,
+  which had to see the price on the club or operator page itself, and some
+  were spot-checked by hand. The first pass cited club homepages that show
+  no price for many Irish and South African courses, so all of those were
+  rejected. Outcome:
+  - **52 verified** at the club or operator site (`lastVerified`
+    2026-10-05, `conf:"club"`), plus 1 `poa` (the club's own page says
+    rates on application).
+  - **90 dropped** to "Ask club" (`conf:"est"`, no `feeV2`, no v1 `fee`):
+    no price could be seen on the club's own site, the only rates were for
+    2024 or earlier, or the site was down.
+  - **3 kept** on londongolfcourses.com, one of the three sources whose
+    terms allow it (§8).
+  - Askernish had been carrying Lundin's fee since an earlier merge; both
+    now cite their own club.
 - **Coverage:**
-  - **554 records have `feeV2`. Every one carries at least one source URL.**
-  - By confidence: 369 `published-rates`, 140 `estimated`, 32 `poa` and
+  - **475 records have `feeV2`. Every one carries a source URL.**
+  - By confidence: 387 `published-rates`, 46 `estimated`, 29 `poa` and
     13 `published-from-only`.
 - **Where the sources are:**
-  - **Clubs' own sites (most records).** A club's own published price list
-    is the club telling the public its prices. That carries low risk.
-  - **Third-party aggregators, about 128 records.** golfshake.com 50,
-    leadingcourses.com 19, where2golf.com 11, satop100courses.com 10,
-    gogolfing.ie 7, thesocialgolfer.com 4, golflux.com 4,
-    londongolfcourses.com 3, litenews.co.uk 3, loyalteegolf.co.uk 2,
-    nationalclubgolfer 2, and singles. **None of their terms have been
-    read.** A single price is a fact, but a run of prices copied from one
-    site could be argued as a substantial extract under database right.
-    Open risk R6.
-  - **top100golfcourses.com, 3 records** (Skibo, St Andrews Eden, the
-    Jubilee). This is the same rights holder DEC-022 and DEC-038 are about.
-    Open risk R6.
-- **Untraceable fees:** **325 records have no `feeV2`, only legacy free-text
-  `wd`/`we`.** None of those has a source field: 322 are marked `conf:"est"`,
-  2 `press` and 1 `club`. Almost all are the hidden South African bulk-pull
-  courses (GOLF-121a/d). **11 of them are shown on the map.** Open risk R13.
+  - **Clubs' or operators' own sites:** all of them except the 3 below. A
+    club's own published price list is the club telling the public its
+    prices, so the risk is low.
+  - **londongolfcourses.com, 3 records** (Hendon, the Hertsmere,
+    Barnehurst). Its §9 bars only substantial extraction.
+  - **No `feeV2` cites an aggregator whose terms forbid reuse or are
+    unclear** (golfshake.com, leadingcourses.com, where2golf.com,
+    top100golfcourses.com and the rest, see §8). `scripts/test_data.js`
+    does not enforce this yet. Re-check before a bulk fee import.
+- **Untraceable fees:** 314 records still have priced legacy `wd`/`we`
+  with no source. **None of them is shown on the map.** All are hidden
+  South African bulk-pull courses (GOLF-121a/d). R13 is now limited to
+  those, and matters only if the "show all" toggle ships.
 - **Attribution shown:** none. `feeV2.source` is stored but not rendered
   anywhere (no `js/` file reads it for display).
 
@@ -225,14 +240,20 @@ No other host is contacted for data. The Worker's upstream URLs are in
   on any `photo` field. The scripts are kept, for a future return that
   ships with a visible credit line.
 
-### 2.9 Course stats (`courseStats`: par, slope, rating)
+### 2.9 Course stats: removed (GOLF-239)
 
-- **Source:** golfapi.uk, accessed through RapidAPI (GOLF-12/13,
-  `scripts/fetch_course_stats.py` and `scripts/merge_course_stats.py`). On
-  69 records. Used to pre-fill the handicap calculator.
-- **Terms:** neither golfapi.uk's nor RapidAPI's terms for **republishing**
-  results have been read. Slope and rating are set by the national body;
-  the API is a reseller. Open risk R7.
+- **Was:** par, slope and rating on 69 England records (52 London,
+  17 Top 100). They came from golfapi.uk through RapidAPI (GOLF-12/13,
+  `scripts/fetch_course_stats.py` and `scripts/merge_course_stats.py`) and
+  pre-filled the handicap calculator.
+- **Why removed:** RapidAPI's terms defer to each API provider. golfapi.uk
+  publishes no terms, and its RapidAPI listing says the slope and rating
+  come straight from the England Golf, Scottish Golf and Wales Golf APIs.
+  England Golf's terms restrict republishing that data.
+- **Now:** all 69 fields are deleted. The calculator leaves the fields
+  blank, and a visitor can still type them or add tees in the editor.
+  `scripts/test_data.js` fails on any `courseStats` field, so a new source
+  has to pass a terms check first. The scripts are kept, marked retired.
 
 ### 2.10 South Africa `zaRanked`
 
@@ -389,9 +410,26 @@ Open risk R12.
 - **Live site:** the rendering of blurbs, logos, attribution and photos was
   checked against `js/map.js` on `main`. During GOLF-160 the live site's
   879 popups were scanned for leftover rank numbers.
-- **Not done:** no third-party terms were read in this pass beyond those
-  already in GOLF-119 and DEC-022/023/036/038. Every "unread" above means
-  exactly that.
+- **Fee source terms (GOLF-239 phase 1, 2026-10-05):** each fee source's
+  terms page was read and classified.
+  - **Forbid reuse (93 fees then):** golfshake.com 50 (terms cl. 11.3,
+    11.8), leadingcourses.com 19, where2golf.com 11, thesocialgolfer.com 4,
+    top100golfcourses.com 3, nationalclubgolfer.com 2, golfpass.com 2,
+    golfmonthly.com 1 (Future plc terms), allsquaregolf.com 1.
+  - **Unclear (36):** satop100courses 10, gogolfing.ie 7, golflux 4,
+    litenews 3, todays-golfer 2 (its terms page returns 402), golfcards 2,
+    1golf.eu 2, and single fees from ukgolfguy, golftipsmag,
+    destinationgolf, localgreenfees, teefee and sagolfers.
+  - **Allow it (6):** londongolfcourses.com (§9 bars only substantial
+    extraction), birdiebrae.co.uk (with credit and link), golfempire.co.uk
+    (brief extracts with attribution).
+  - Phase 2 then re-verified all of them at the clubs' own sites (§2.4).
+- **courseStats terms (GOLF-239):** RapidAPI's terms defer to the API
+  provider. golfapi.uk publishes no terms, and its listing names England
+  Golf, Scottish Golf and Wales Golf as the source (§2.9).
+- **Not done:** apart from GOLF-239 and the terms already covered in
+  GOLF-119 and DEC-022/023/036/038, no third-party terms were read. Every
+  "unread" above means exactly that.
 
 ---
 
@@ -419,12 +457,11 @@ Ordered by how much they would matter to a buyer or licensee.
    database-right exposure is real, though weakened by *BHB v William Hill*.
    It can be removed within a week (DEC-038). The positions are kept
    privately in `scripts/output/golf-160-rank-positions.json`.
-6. **R6. Fees from aggregators are under unread terms.** About 128 `feeV2`
-   records cite aggregator sites whose terms have not been read
-   (golfshake.com 50, leadingcourses.com 19, …). 3 cite top100golfcourses.com,
-   the rights holder DEC-022 and DEC-038 are about.
-7. **R7. `courseStats` comes from a reseller under unread terms.** 69 records
-   come from golfapi.uk via RapidAPI, whose republication terms are unread.
+6. **R6. Closed by GOLF-239.** No fee cites an aggregator whose terms
+   forbid reuse or are unclear. The 3 that remain cite londongolfcourses.com,
+   whose terms allow it (§2.4).
+7. **R7. Closed by GOLF-239.** The 69 `courseStats` records, which traced
+   back to England Golf, were removed, and `test_data.js` blocks their return.
 8. **R8. Closed by GOLF-240.** The 298 uncredited CC BY-SA photo files
    and the 260 `photo` fields were deleted.
 9. **R9. Rail credit is in the dialog only.** GOLF-240 added the TfL and
@@ -439,6 +476,6 @@ Ordered by how much they would matter to a buyer or licensee.
     exclusively, and a licensee who redistributes the course table may have
     to release it under ODbL (§7). (The narrow "course positions" credit
     was widened to all OSM data in GOLF-240.)
-13. **R13. 325 legacy fees have no source.** These are free-text `wd`/`we`
-    values with no provenance. Most belong to hidden SA records, but
-    **11 are shown**.
+13. **R13. 314 hidden legacy fees have no source.** These are free-text
+    `wd`/`we` on the hidden South African bulk-pull records. None is shown
+    since GOLF-239. Re-verify or drop them before any "show all" toggle.

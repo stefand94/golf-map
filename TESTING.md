@@ -20,7 +20,7 @@ node scripts/test_state_persist.js # saved state survives a release + migrates
 
 - `test_data.js` loads `data/*.js` for real (Node `vm`) and checks required
   fields, valid access/region/band values, resolvable `stn`s, well-formed
-  `nearStation`/`clubInfo`/`courseStats` (and rejects `logo`/`blurb`, GOLF-237), the course-count total, and
+  `nearStation`/`clubInfo` (and rejects `logo`/`blurb`, GOLF-237, and `courseStats`, GOLF-239), the course-count total, and
   no duplicate name+coordinate entries. Run after any `data/*.js` edit.
 - `check_js.js` parses each module alone, checks the HTML loads exactly the
   known modules in the known order (update the `ORDER` array if you
@@ -77,7 +77,7 @@ Via the Browser tool: `preview_start` against `.claude/launch.json`, then
 7. **Costs tab.** Add hotels/POIs + set group size → whole-trip and per-person
    totals reconcile with the line items.
 8. **Popups spot-check.** A popup opens straight on the course name, with no
-   gap where the old logo sat (GOLF-237); the handicap calculator pre-fills from `courseStats` where present;
+   gap where the old logo sat (GOLF-237); the handicap calculator opens with blank par/slope/rating fields and no "undefined" (GOLF-239 removed `courseStats`);
    National Rail badge shows for non-TfL nearest stations only.
 9. **Zoom-gating.** Rail lines/labels off below `RAIL_MIN_ZOOM` (9), station
    dots below `STN_MIN_ZOOM` (11); markers cluster into numbered badges until
