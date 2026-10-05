@@ -236,6 +236,22 @@ check('junk buffer ignored', run('tlBufferFor({type:"golf",bufferMins:"early"})'
      'depart 22:10 > arrive 11:35 would be negative if we drew depart→arrive');
 }
 {
+  /* A flight's buffer is NOT drawn in front of its arrival: it is a
+     check-in buffer, and it belongs before the departure. Until the
+     full two-point flight model lands, a flight anchored on its arrival
+     carries no buffer at all — "be at Inverness two hours before you
+     land" is worse than nothing. */
+  drives['g>f'] = 20;
+  const rows = compute([
+    { id: 'g', type: 'golf', i: 0, time: '08:00' },          // ends 13:00
+    { id: 'f', type: 'flight', toCode: 'INV', arrive: '13:10' }
+  ]);
+  check('a flight draws no buffer before its landing', rows[1].bufferMins, 0);
+  check('so "be there by" is simply the landing', at(rows[1].readyMins), '13:10');
+  ok('and the drive is judged against the landing itself',
+     rows[1].conflict !== null, '13:00 + 20 min = 13:20, after a 13:10 landing');
+}
+{
   // A flight with an unparseable arrival falls back into the flow rather
   // than poisoning every time after it.
   const rows = compute([

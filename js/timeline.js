@@ -143,8 +143,15 @@ function tlComputeDay(items,driveFn){
     const drive=(prevStop&&typeof driveFn==='function')?(driveFn(prevStop,it)||0):0;
     /* A buffer only means anything in front of a time the visitor
        FIXED. There is nothing to be early for when the start itself is
-       derived from when you happen to arrive. */
-    const buffer=fixed!=null?tlBufferFor(it):0;
+       derived from when you happen to arrive.
+
+       A flight is the exception, and deliberately gets none here: the
+       time it is anchored on is its ARRIVAL, and a check-in buffer
+       belongs in front of its DEPARTURE. Drawing one before a landing
+       says "be at Inverness two hours before you land", which is what
+       this produced until it was seen on screen. The flight's own
+       buffer is wired up with the rest of the two-point flight model. */
+    const buffer=(fixed!=null&&it.type!=='flight')?tlBufferFor(it):0;
     let start,conflict=null,ready;
     if(cursor===null){
       /* First timed item of the day: nothing precedes it, so a fixed
