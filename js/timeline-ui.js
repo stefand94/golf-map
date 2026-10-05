@@ -33,7 +33,7 @@ const TL_MIN_BLOCK_PX=22;
 const TL_DRIVE_MIN_PX=14;
 /* What a marker takes up: its time and its two lines of text. It has no
    duration, so this is the only thing that keeps the next block off it. */
-const TL_MARKER_PX=38;
+const TL_MARKER_PX=46;
 
 function tlSetDetailed(on){
   tbDetailed=!!on;
