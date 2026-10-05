@@ -102,6 +102,7 @@ const PRECACHE_URLS = [
   './js/util.js',
   './js/course-id.js',
   './js/affiliate.js',
+  './js/timeline.js',
   './js/trip-model.js',
   './js/state.js',
   './js/map.js',

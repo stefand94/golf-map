@@ -49,11 +49,37 @@ function tripBuildSharePayload(){
          cache is empty, so the shared itinerary can't recompute them).
          Presence of the object = "this leg has a ferry". */
       ferryIn:tripShareInboundFerry(idx),
-      items:tripDayItems(d).map(it=>it.type==='golf'
+      items:tripDayItems(d).map(it=>shareItemTiming(it.type==='golf'
         ?{id:it.id,type:'golf',c:courseRefEncode(it.i)}
-        :{id:it.id,type:it.type,name:it.name,price:it.price,lat:it.lat,lng:it.lng})
+        :it.type==='flight'
+          ?shareFlightFields(it)
+          :{id:it.id,type:it.type,name:it.name,price:it.price,lat:it.lat,lng:it.lng},it))
     }))
   };
+}
+/* GOLF-153: the timing fields ride along ONLY when set. That is what
+   keeps the payload small, and more importantly what keeps a trip with
+   no times encoding byte-for-byte as it did before detailed mode
+   existed — adding the keys unconditionally would change every link the
+   app generates, for every trip, to carry two nulls nobody asked for. */
+function shareItemTiming(out,it){
+  if(!out||!it)return out;
+  if(typeof it.time==='string'&&it.time)out.t=it.time;
+  if(typeof it.durationMins==='number'&&isFinite(it.durationMins))out.dm=it.durationMins;
+  return out;
+}
+function shareFlightFields(it){
+  const out={id:it.id,type:'flight'};
+  if(it.name)out.name=it.name;
+  if(it.flightNo)out.fn=it.flightNo;
+  if(it.fromCode)out.fc=it.fromCode;
+  if(it.toCode)out.tc=it.toCode;
+  if(it.depart)out.dep=it.depart;
+  if(it.arrive)out.arr=it.arrive;
+  if(typeof it.price==='number'&&isFinite(it.price))out.price=it.price;
+  if(typeof it.lat==='number'&&isFinite(it.lat))out.lat=it.lat;
+  if(typeof it.lng==='number'&&isFinite(it.lng))out.lng=it.lng;
+  return out;
 }
 /* GOLF-118: {mins} for the ferry portion of a day's inbound leg (previous
    day's last stop → this day's first stop), or null when that leg has no
@@ -124,6 +150,17 @@ function shareNum(v,min,max){
   if(typeof v!=='number'||!Number.isFinite(v))return null;
   return Math.min(max,Math.max(min,v));
 }
+/* GOLF-153: a time off the URL, normalised to "HH:MM" or dropped. */
+function shareTime(v){
+  const m=typeof tlParseTime==='function'?tlParseTime(v):null;
+  return m==null?null:tlFormatTime(m);
+}
+function shareReadTiming(out,it){
+  if(!out||!it)return out;
+  const t=shareTime(it.t); if(t)out.time=t;
+  const d=shareNum(it.dm,0,1440); if(d!=null)out.durationMins=Math.round(d);
+  return out;
+}
 function tripDecodeSharePayload(hash){
   try{
     if(!hash||hash.indexOf('#share=')!==0)return null;
@@ -145,7 +182,23 @@ function tripDecodeSharePayload(hash){
         const id=shareStr(it.id,64)||('s'+idx+'-'+n);
         if(it.type==='golf'){
           const ci=courseRefDecode(it.c!==undefined?it.c:it.i);
-          return(ci!==null&&C[ci])?{id,type:'golf',i:ci,_raw:it.c!==undefined?it.c:it.i}:null;
+          return(ci!==null&&C[ci])?shareReadTiming({id,type:'golf',i:ci,_raw:it.c!==undefined?it.c:it.i},it):null;
+        }
+        /* GOLF-153: untrusted input off the URL, so every field is read
+           through the same shareStr/shareNum clamps as the rest, and a
+           bad time is simply absent rather than fatal. */
+        if(it.type==='flight'){
+          const out={id,type:'flight'};
+          const nm=shareStr(it.name,80); if(nm)out.name=nm;
+          const fno=shareStr(it.fn,12); if(fno)out.flightNo=fno;
+          const fc=shareStr(it.fc,8); if(fc)out.fromCode=fc;
+          const tc=shareStr(it.tc,8); if(tc)out.toCode=tc;
+          const dep=shareTime(it.dep); if(dep)out.depart=dep;
+          const arr=shareTime(it.arr); if(arr)out.arrive=arr;
+          const pr=shareNum(it.price,0,1e6); if(pr!=null)out.price=pr;
+          const la=shareNum(it.lat,-90,90),ln=shareNum(it.lng,-180,180);
+          if(la!=null&&ln!=null){out.lat=la;out.lng=ln;}
+          return shareReadTiming(out,it);
         }
         if(it.type!=='hotel'&&it.type!=='poi')return null;
         const name=shareStr(it.name,80);
@@ -158,7 +211,7 @@ function tripDecodeSharePayload(hash){
           out.nights=n2!=null?Math.round(n2):1;
           out.stayId=shareStr(it.stayId,64);
         }
-        return out;
+        return shareReadTiming(out,it);
       }).filter(Boolean);
       const id=Number.isInteger(d.id)?d.id:idx+1;
       return{

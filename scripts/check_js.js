@@ -44,6 +44,9 @@ const ORDER = [
   // both see it; it in turn reaches forward to appMode and groupSizeFor()
   // only from inside a call, hence the typeof guards at its two call sites.
   'affiliate.js',
+  // GOLF-153: pure time arithmetic, no DOM. Must precede state.js,
+  // whose load-time whitelist validates stored times through it.
+  'timeline.js',
   'trip-model.js',
   'state.js',
   // handicap.js is only function declarations, but it must precede map.js:

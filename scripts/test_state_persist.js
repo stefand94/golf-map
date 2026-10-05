@@ -34,7 +34,7 @@ const FILES = [
   'data/courses-top100.js', 'data/courses-scotland.js', 'data/courses-wales.js',
   'data/courses-ireland.js', 'data/courses-southafrica.js',
   'data/course-ids.js', 'js/util.js', 'js/course-id.js', 'js/app-version.js',
-  'js/trip-model.js', 'js/state.js', 'js/trip-share.js',
+  'js/timeline.js', 'js/trip-model.js', 'js/state.js', 'js/trip-share.js',
 ];
 const SRC = {};
 for (const f of FILES) SRC[f] = fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/^(const|let) /gm, 'var ');
@@ -330,6 +330,126 @@ offline.sandbox.navigator = { sendBeacon: () => { throw new Error('down'); } };
 offline.sandbox.ORS_PROXY_URL = 'https://worker.test/';
 offline.sandbox.usageShareOpened('#share=x');
 eq('usage: a failing beacon logs nothing', [offline.errors, offline.warns], [[], []]);
+
+// ── GOLF-153: detailed-mode times ─────────────────────────────────────
+// Three things the brief asks for by name — fields survive a release, an
+// old trip loads with no times, and a corrupt time is dropped not fatal —
+// plus the one that is easiest to break without noticing: a trip with no
+// times must still encode byte-for-byte as it did before detailed mode.
+{
+  const t = boot({}, BUILD_A);
+  writeRichTrip(t.sandbox);
+  // Put a fixed time on the golf item, a duration on the POI, and a flight.
+  const d0 = t.sandbox.tripDays[0];
+  d0.items[0].time = '12:24';
+  d0.items[2].durationMins = 45;
+  d0.items.unshift({ id: 'a0', type: 'flight', flightNo: 'BA942', fromCode: 'LCY',
+                     toCode: 'INV', depart: '09:40', arrive: '10:55',
+                     lat: 57.5425, lng: -4.0475, price: 120 });
+  t.sandbox.saveState();
+  const stored = t.store['golfmap:v1'];
+
+  // ... survives a release.
+  const rel = boot({ 'golfmap:v1': stored }, 'golfmap-shell-v5-deadbeef99');
+  const it = (n) => ((rel.sandbox.tripDays[0] || {}).items || [])[n] || {};
+  eq('GOLF-153: tee time survives a release', it(1).time, '12:24');
+  eq('GOLF-153: duration survives a release', it(3).durationMins, 45);
+  eq('GOLF-153: flight type survives', it(0).type, 'flight');
+  eq('GOLF-153: flight number survives', it(0).flightNo, 'BA942');
+  eq('GOLF-153: flight arrival survives', it(0).arrive, '10:55');
+  eq('GOLF-153: the arrival airport stays a located stop',
+     [it(0).lat, it(0).lng], [57.5425, -4.0475]);
+  eq('GOLF-153: the flight is routable, so it gets a drive leg',
+     !!rel.sandbox.tripItemPoint(it(0)), true);
+
+  // ... a corrupt time costs the field, not the item.
+  const bad = JSON.parse(stored);
+  const bd = bad.trips[bad.activeTripId].tripDays[0];
+  bd.items[1].time = '99:99';
+  bd.items[3].durationMins = 'ages';
+  bd.items[0].arrive = { not: 'a time' };
+  const cr = boot({ 'golfmap:v1': JSON.stringify(bad) }, 'golfmap-shell-v5-deadbeef99');
+  const ci = (n) => ((cr.sandbox.tripDays[0] || {}).items || [])[n] || {};
+  eq('GOLF-153: a corrupt time is dropped', ci(1).time, undefined);
+  eq('GOLF-153: ...but the item survives', ci(1).type, 'golf');
+  eq('GOLF-153: a corrupt duration is dropped', ci(3).durationMins, undefined);
+  eq('GOLF-153: ...but that item survives too', ci(3).name, 'Castle ruins');
+  eq('GOLF-153: a corrupt arrival is dropped', ci(0).arrive, undefined);
+  eq('GOLF-153: ...and the flight is still there', ci(0).flightNo, 'BA942');
+  eq('GOLF-153: nothing was logged as an error', cr.errors, []);
+
+  // ... a time is stored canonically, so a re-save is a no-op.
+  const loose = JSON.parse(stored);
+  loose.trips[loose.activeTripId].tripDays[0].items[1].time = '9:05';
+  const canon = boot({ 'golfmap:v1': JSON.stringify(loose) }, BUILD_A);
+  eq('GOLF-153: "9:05" is stored as "09:05"',
+     ((canon.sandbox.tripDays[0] || {}).items || [])[1].time, '09:05');
+}
+{
+  // An OLD trip — no times anywhere — must load with no times, and a
+  // load→save cycle must not change what it holds. This is the
+  // regression that would quietly rewrite every trip already in a
+  // visitor's browser the first time they opened the new build.
+  // `modified` is a wall-clock stamp, and saveState() writes day keys in
+  // the whitelist's order rather than the order they happened to be in
+  // memory, so compare sorted-key content, not raw bytes.
+  const canon = j => {
+    const walk = v => Array.isArray(v) ? v.map(walk)
+      : (v && typeof v === 'object')
+        ? Object.keys(v).sort().reduce((o, k) => (o[k] = k === 'modified' ? 0 : walk(v[k]), o), {})
+        : v;
+    return JSON.stringify(walk(JSON.parse(j)));
+  };
+  const o = boot({}, BUILD_A);
+  writeRichTrip(o.sandbox);
+  const before = o.store['golfmap:v1'];
+  eq('GOLF-153: detailed mode added no keys to an untimed trip',
+     /"time":|"durationMins":|"flight"/.test(before), false);
+
+  const re = boot({ 'golfmap:v1': before }, BUILD_A);
+  re.sandbox.saveState();
+  const after = re.store['golfmap:v1'];
+  eq('GOLF-153: a load→save cycle leaves an untimed trip unchanged',
+     canon(after), canon(before));
+  const items = (re.sandbox.tripDays[0] || {}).items || [];
+  eq('GOLF-153: an old trip loads with no times',
+     items.filter(x => 'time' in x || 'durationMins' in x).length, 0);
+
+  // ...and a second cycle is byte-for-byte stable, so nothing drifts.
+  const re2 = boot({ 'golfmap:v1': after }, BUILD_A);
+  re2.sandbox.saveState();
+  eq('GOLF-153: a second cycle is byte-identical',
+     re2.store['golfmap:v1'].replace(/"modified":\d+/g, '0'),
+     after.replace(/"modified":\d+/g, '0'));
+}
+{
+  // Share payload: unchanged for an untimed trip, carries the new fields
+  // only when set, and survives the round trip.
+  const a = boot({}, BUILD_A);
+  writeRichTrip(a.sandbox);
+  const plain = JSON.stringify(a.sandbox.tripBuildSharePayload());
+  eq('GOLF-153: an untimed share payload gains no keys',
+     /"t":|"dm":|"flight"/.test(plain), false);
+
+  a.sandbox.tripDays[0].items[0].time = '12:24';
+  a.sandbox.tripDays[0].items[0].durationMins = 240;
+  const timed = a.sandbox.tripBuildSharePayload();
+  const decoded = a.sandbox.tripDecodeSharePayload(
+    '#share=' + encodeURIComponent(JSON.stringify(timed)));
+  const di = decoded.days[0].items[0];
+  eq('GOLF-153: share round-trips the tee time', di.time, '12:24');
+  eq('GOLF-153: share round-trips the duration', di.durationMins, 240);
+
+  // A hostile time off the URL is dropped, not fatal.
+  const nasty = JSON.parse(JSON.stringify(timed));
+  nasty.days[0].items[0].t = '<script>';
+  nasty.days[0].items[0].dm = 1e9;
+  const safe = a.sandbox.tripDecodeSharePayload(
+    '#share=' + encodeURIComponent(JSON.stringify(nasty)));
+  eq('GOLF-153: a hostile share time is dropped', safe.days[0].items[0].time, undefined);
+  eq('GOLF-153: an absurd share duration is clamped',
+     safe.days[0].items[0].durationMins, 1440);
+}
 
 if (failures.length) {
   console.error(`test_state_persist: ${failures.length} failure(s)\n`);

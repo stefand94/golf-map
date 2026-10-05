@@ -32,10 +32,48 @@ function validateTripEntry(t){
      tripDayMigrateItems() below folds the old one into the new one once,
      in today's exact render order, so an existing saved trip looks
      identical on the first load after this upgrade. */
+  /* GOLF-153: the model stores only the times the visitor FIXED —
+     everything else on a detailed-mode grid is derived at render time by
+     js/timeline.js and never written back. Both fields are omitted when
+     unset, so a trip from before detailed mode, or one that simply has
+     no times, saves byte-for-byte as it always did. A corrupt value
+     costs that one field, never the item (GOLF-224). Times are stored
+     canonically ("9:40" lands as "09:40"), which keeps a re-save of an
+     already-canonical trip a no-op. */
+  const validTime=v=>{
+    const m=typeof tlParseTime==='function'?tlParseTime(v):null;
+    return m==null?null:tlFormatTime(m);
+  };
+  const validDur=v=>(typeof v==='number'&&isFinite(v)&&v>=0)?Math.min(1440,Math.round(v)):null;
+  const withTiming=(out,it)=>{
+    const t=validTime(it.time); if(t!==null)out.time=t;
+    const d=validDur(it.durationMins); if(d!==null)out.durationMins=d;
+    return out;
+  };
   const validItems=(d)=>{
     if(!Array.isArray(d.items))return null;
     return d.items.filter(it=>it&&typeof it==='object'&&typeof it.id==='string').map(it=>{
-      if(it.type==='golf')return validSet.has(it.i)?{id:it.id,type:'golf',i:it.i}:null;
+      if(it.type==='golf')return validSet.has(it.i)?withTiming({id:it.id,type:'golf',i:it.i},it):null;
+      /* GOLF-153: a flight is a located stop like any other — its lat/lng
+         are the ARRIVAL airport, so tripItemPoint() gives it a drive leg
+         with no change to the routing code. An airport typed by hand
+         that isn't on the list simply has no coordinates, exactly like a
+         hand-typed hotel, and so contributes no leg. */
+      if(it.type==='flight'){
+        const str=(v,max)=>(typeof v==='string'&&v.trim())?v.trim().slice(0,max):null;
+        const out={id:it.id,type:'flight'};
+        const nm=str(it.name,80); if(nm)out.name=nm;
+        const fno=str(it.flightNo,12); if(fno)out.flightNo=fno;
+        const fc=str(it.fromCode,8); if(fc)out.fromCode=fc;
+        const tc=str(it.toCode,8); if(tc)out.toCode=tc;
+        const dep=validTime(it.depart); if(dep)out.depart=dep;
+        const arr=validTime(it.arrive); if(arr)out.arrive=arr;
+        if(typeof it.price==='number'&&isFinite(it.price))out.price=it.price;
+        if(typeof it.lat==='number'&&isFinite(it.lat)&&typeof it.lng==='number'&&isFinite(it.lng)){
+          out.lat=it.lat;out.lng=it.lng;
+        }
+        return withTiming(out,it);
+      }
       if(it.type!=='hotel'&&it.type!=='poi')return null;
       if(typeof it.name!=='string'||!it.name.trim())return null;
       const out={id:it.id,type:it.type,name:it.name.trim().slice(0,80),
@@ -52,7 +90,7 @@ function validateTripEntry(t){
         out.nights=(typeof it.nights==='number'&&isFinite(it.nights)&&it.nights>1)?Math.min(30,Math.round(it.nights)):1;
         out.stayId=typeof it.stayId==='string'?it.stayId:null;
       }
-      return out;
+      return withTiming(out,it);
     }).filter(Boolean);
   };
   const tripDays=Array.isArray(t.tripDays)?t.tripDays.filter(d=>d&&typeof d.id!=='undefined'&&(Array.isArray(d.items)||Array.isArray(d.courses)))
