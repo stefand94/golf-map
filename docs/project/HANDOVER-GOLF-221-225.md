@@ -15,6 +15,7 @@ These three areas don't overlap. If you find you need a file in another dev's co
 
 ## Standing rules (every dev, read first)
 
+- **Keep it very short (owner, 2026-10-05).** Reports, notes and messages are a few lines: commit, build, pass or fail, blockers, and iPhone-only checks. Give detail only when the BA asks, or when it's a risk or a decision. Stefan hears through the BA.
 - Read `CLAUDE.md` and your ticket's row in `docs/project/BACKLOG.md`. Product questions go to the BA, not guesses.
 - **Work in your own worktree, branched from `main`.** The main checkout has uncommitted files that aren't yours. Only Barry touches those, for GOLF-162.
 - **Pushing:** run the three check scripts (`test_data.js`, `check_js.js`, `test_course_ids.js`). Then `git pull --rebase --autostash`, check `git log origin/main..HEAD` is only your commits, and push. Three of you are pushing to `main` today, so a hook-stamped `sw.js` `CACHE_NAME` may conflict. Take `main`'s side and let the post-commit hook re-stamp. Never force-push. Never check out `a43d9e8` or `f692e96`.
