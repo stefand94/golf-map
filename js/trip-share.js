@@ -49,6 +49,8 @@ function tripBuildSharePayload(){
       id:d.id,kind:d.kind,place:d.place||null,
       placeLat:d.placeLat??null,placeLng:d.placeLng??null,
       date:d.date||null,driveIn:d.driveIn??null,
+      /* GOLF-153: the day's own note, written only when there is one. */
+      ...(d.note?{nt:d.note}:{}),
       /* GOLF-118: freeze the inbound leg's ferry facts (the viewer's ORS
          cache is empty, so the shared itinerary can't recompute them).
          Presence of the object = "this leg has a ferry". */
@@ -57,7 +59,11 @@ function tripBuildSharePayload(){
         ?{id:it.id,type:'golf',c:courseRefEncode(it.i)}
         :it.type==='flight'
           ?shareFlightFields(it)
-          :{id:it.id,type:it.type,name:it.name,price:it.price,lat:it.lat,lng:it.lng},it))
+          :it.type==='note'
+            /* GOLF-153: a gap note carries its text and nothing else —
+               no price, no coordinates, nothing to route. */
+            ?{id:it.id,type:'note',tx:it.text}
+            :{id:it.id,type:it.type,name:it.name,price:it.price,lat:it.lat,lng:it.lng},it))
     }))
   };
 }
@@ -70,6 +76,8 @@ function shareItemTiming(out,it){
   if(!out||!it)return out;
   if(typeof it.time==='string'&&it.time)out.t=it.time;
   if(typeof it.durationMins==='number'&&isFinite(it.durationMins))out.dm=it.durationMins;
+  if(typeof it.bufferMins==='number'&&isFinite(it.bufferMins))out.bf=it.bufferMins;
+  if(typeof it.note==='string'&&it.note)out.nt=it.note;
   return out;
 }
 function shareFlightFields(it){
@@ -145,6 +153,9 @@ function tbShareTrip(btn){
    fit is dropped; a structurally wrong payload returns null and
    renderSharedTrip()'s existing "link looks broken" fallback handles it. */
 const SHARE_MAX_DAYS=30, SHARE_MAX_ITEMS_PER_DAY=20, SHARE_MAX_STR=120, SHARE_MAX_CUSTOM=40;
+/* GOLF-153: the same cap the model enforces, so a note that was saved
+   whole travels whole — and a hand-edited hash cannot smuggle in more. */
+const SHARE_NOTE_MAX=typeof TL_NOTE_MAX==='number'?TL_NOTE_MAX:500;
 function shareStr(v,max){
   if(typeof v!=='string')return null;
   const s=String(v).trim().slice(0,max||SHARE_MAX_STR);
@@ -163,6 +174,8 @@ function shareReadTiming(out,it){
   if(!out||!it)return out;
   const t=shareTime(it.t); if(t)out.time=t;
   const d=shareNum(it.dm,0,1440); if(d!=null)out.durationMins=Math.round(d);
+  const b=shareNum(it.bf,0,1440); if(b!=null)out.bufferMins=Math.round(b);
+  const n=shareStr(it.nt,SHARE_NOTE_MAX); if(n)out.note=n;
   return out;
 }
 function tripDecodeSharePayload(hash){
@@ -204,6 +217,10 @@ function tripDecodeSharePayload(hash){
           if(la!=null&&ln!=null){out.lat=la;out.lng=ln;}
           return shareReadTiming(out,it);
         }
+        if(it.type==='note'){
+          const tx=shareStr(it.tx,SHARE_NOTE_MAX);
+          return tx?{id,type:'note',text:tx}:null;
+        }
         if(it.type!=='hotel'&&it.type!=='poi')return null;
         const name=shareStr(it.name,80);
         if(!name)return null;
@@ -225,6 +242,7 @@ function tripDecodeSharePayload(hash){
         placeLat:shareNum(d.placeLat,-90,90),placeLng:shareNum(d.placeLng,-180,180),
         date:(typeof d.date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d.date))?d.date:null,
         driveIn:shareNum(d.driveIn,0,10000),
+        note:shareStr(d.nt,SHARE_NOTE_MAX), // GOLF-153
         /* GOLF-118 — object present ⇒ inbound leg has a ferry; mins clamped. */
         ferryIn:(d.ferryIn&&typeof d.ferryIn==='object')
           ?{hasFerry:true,ferryMinutes:Math.round(shareNum(d.ferryIn.mins,0,10000)||0)}:null,

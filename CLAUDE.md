@@ -61,6 +61,13 @@ Costs).
   consecutive located stops, never a manually-added item type.
 - Multi-trip: `trips{tripId:{...snapshot}}` + `activeTripId`, snapshotted
   on every `saveState()`.
+- GOLF-153 detailed mode stores only the times the visitor FIXED —
+  `time` on an item (a tee time, a check-in), `arrive`/`depart` on a
+  flight, `durationMins`, and `bufferMins` (the arrival buffer: golf 45,
+  flight 120). Every other time on the grid is derived at render time by
+  `js/timeline.js` and never written back. Notes are `note` on an item or
+  a day, plus `{id,type:'note',text}` as an item for a note in a gap;
+  they are capped at `TL_NOTE_MAX` because they ride in `#share=` links.
 - Course green fees: legacy free-text `wd`/`we` strings, being migrated
   course-by-course to a structured `fee:{weekday,weekend,weekendTwilight?,
   confidence,lastVerified}` object (GOLF-97/98, in progress — see
@@ -105,6 +112,7 @@ node scripts/test_data.js        # data-file integrity + course counts
 node scripts/check_js.js         # all js/*.js modules parse + correct load order
 node scripts/test_course_ids.js  # GOLF-163: course ids unique, array order unmoved
 node scripts/test_state_persist.js # GOLF-224: saved state survives a release, old formats migrate
+node scripts/test_timeline.js     # GOLF-153: detailed mode's computed-time engine
 ```
 A course's identity is its `id` (GOLF-163), not its position in `C[]` — but
 runtime code still speaks indices, with the translation confined to the

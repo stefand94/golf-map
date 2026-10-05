@@ -57,14 +57,27 @@ check('format 755', run('tlFormatTime(755)'), '12:35');
 check('format past midnight counts up', run('tlFormatTime(25 * 60)'), '25:00');
 
 // ── 2. Defaults (DEC-039) ─────────────────────────────────────────────
-check('golf default 4h30', run('tlDurationFor({type:"golf"})'), 270);
+check('golf default 5h', run('tlDurationFor({type:"golf"})'), 300);
 check('poi default 90', run('tlDurationFor({type:"poi"})'), 90);
 check('hotel is a marker', run('tlDurationFor({type:"hotel"})'), 0);
 check('flight is a marker', run('tlDurationFor({type:"flight"})'), 0);
 check('explicit duration wins', run('tlDurationFor({type:"golf",durationMins:200})'), 200);
 check('duration clamped to a day', run('tlDurationFor({type:"golf",durationMins:99999})'), 1440);
-check('negative duration ignored', run('tlDurationFor({type:"golf",durationMins:-30})'), 270);
-check('junk duration ignored', run('tlDurationFor({type:"golf",durationMins:"long"})'), 270);
+check('negative duration ignored', run('tlDurationFor({type:"golf",durationMins:-30})'), 300);
+check('junk duration ignored', run('tlDurationFor({type:"golf",durationMins:"long"})'), 300);
+
+// Arrival buffers (DEC-039 as revised 2026-10-05).
+check('golf buffer default 45', run('tlBufferFor({type:"golf"})'), 45);
+check('flight buffer default 120', run('tlBufferFor({type:"flight"})'), 120);
+check('a hotel has nothing to be early for', run('tlBufferFor({type:"hotel"})'), 0);
+check('nor does a POI', run('tlBufferFor({type:"poi"})'), 0);
+check('nor does a note', run('tlBufferFor({type:"note"})'), 0);
+check('explicit buffer wins', run('tlBufferFor({type:"golf",bufferMins:20})'), 20);
+check('zero buffer is a real answer, not a default',
+      run('tlBufferFor({type:"golf",bufferMins:0})'), 0);
+check('buffer clamped to a day', run('tlBufferFor({type:"flight",bufferMins:99999})'), 1440);
+check('negative buffer ignored', run('tlBufferFor({type:"golf",bufferMins:-10})'), 45);
+check('junk buffer ignored', run('tlBufferFor({type:"golf",bufferMins:"early"})'), 45);
 
 // ── 3. THE OWNER'S WORKED EXAMPLE (GOLF-153 backlog row) ──────────────
 // "Depart 9:40 LCY (BA942) → arrive Inverness 10:55 → 5 min drive →
@@ -87,9 +100,12 @@ check('junk duration ignored', run('tlDurationFor({type:"golf",durationMins:"lon
   check('example: 5 min drive runs into the tee', rows[1].driveMins, 5);
   check('example: tee time honoured at 12:24', at(rows[1].startMins), '12:24');
   ok('example: tee time is the visitor\'s, not derived', rows[1].fixed === true);
-  check('example: round ends 16:54 (4h30)', at(rows[1].endMins), '16:54');
-  ok('example: no conflict — 11:00 arrival, 12:24 tee', rows[1].conflict === null,
-     'the drive lands at 11:00, so there is 1h24 spare');
+  check('example: round ends 17:24 (5h)', at(rows[1].endMins), '17:24');
+  check('example: be at the course by 11:39 (45 min before)',
+        at(rows[1].readyMins), '11:39');
+  check('example: the buffer rides on the row', rows[1].bufferMins, 45);
+  ok('example: no conflict — lands 11:00, due 11:39', rows[1].conflict === null,
+     'the drive lands at 11:00, so there is 39 min spare on the buffer');
   // The hotel is a strip, outside the chain: check-in marker, pushes nothing.
   check('example: hotel check-in defaults to 15:00', at(rows[2].startMins), '15:00');
   check('example: hotel consumes no time', rows[2].durationMins, 0);
@@ -103,40 +119,63 @@ check('junk duration ignored', run('tlDurationFor({type:"golf",durationMins:"lon
     { id: 'a', type: 'golf', i: 0, time: '08:00' },
     { id: 'b', type: 'poi', name: 'Distillery' }
   ]);
-  check('round 08:00 → ends 12:30', at(early[0].endMins), '12:30');
-  check('POI flows: +30 min drive → 13:00', at(early[1].startMins), '13:00');
-  check('POI ends 14:30 (90 min)', at(early[1].endMins), '14:30');
+  check('round 08:00 → ends 13:00', at(early[0].endMins), '13:00');
+  check('POI flows: +30 min drive → 13:30', at(early[1].startMins), '13:30');
+  check('POI ends 15:00 (90 min)', at(early[1].endMins), '15:00');
 
   // Move the tee time two hours later; everything after must move with it.
   const later = compute([
     { id: 'a', type: 'golf', i: 0, time: '10:00' },
     { id: 'b', type: 'poi', name: 'Distillery' }
   ]);
-  check('tee +2h pushes the POI to 15:00', at(later[1].startMins), '15:00');
+  check('tee +2h pushes the POI to 15:30', at(later[1].startMins), '15:30');
   ok('the pushed item is still derived, not fixed', later[1].fixed === false);
+  check('a derived start has no buffer to be early for', later[1].bufferMins, 0);
+  check('so being "ready" for it is simply starting it',
+        later[1].readyMins, later[1].startMins);
 }
 
 // ── 5. Conflicts: warn, never silently move ───────────────────────────
 {
   drives['g1>g2'] = 60;
   const rows = compute([
-    { id: 'g1', type: 'golf', i: 0, time: '09:00' },   // ends 13:30
-    { id: 'g2', type: 'golf', i: 1, time: '12:24' }    // + 60 min drive = 14:30
+    { id: 'g1', type: 'golf', i: 0, time: '09:00' },   // ends 14:00
+    { id: 'g2', type: 'golf', i: 1, time: '12:24' }    // + 60 min drive = 15:00
   ]);
   ok('a missed fixed time is flagged', rows[1].conflict !== null);
-  check('conflict reports the real arrival', at(rows[1].conflict.arriveMins), '14:30');
+  check('conflict reports the real arrival', at(rows[1].conflict.arriveMins), '15:00');
   check('conflict reports the fixed time', at(rows[1].conflict.fixedMins), '12:24');
+  check('conflict reports what it was due by', at(rows[1].conflict.dueMins), '11:39');
   check('THE FIXED TIME IS NOT MOVED', at(rows[1].startMins), '12:24');
   ok('it is still marked fixed', rows[1].fixed === true);
 }
 {
-  // Exactly on time is not a conflict.
+  /* DEC-039, the point of the buffer: the drive has to land by the
+     BUFFER, not by the tee time. Landing at 14:00 for a 14:30 tee is
+     half an hour early and still late — you were due at 13:45. */
   drives['g1>g2'] = 60;
-  const rows = compute([
+  const items = [
     { id: 'g1', type: 'golf', i: 0, time: '09:00', durationMins: 240 }, // ends 13:00
-    { id: 'g2', type: 'golf', i: 1, time: '14:00' }                     // +60 = 14:00
-  ]);
-  ok('arriving exactly on time is no conflict', rows[1].conflict === null);
+    { id: 'g2', type: 'golf', i: 1, time: '14:30' }                     // +60 = 14:00
+  ];
+  const rows = compute(items);
+  ok('landing after the buffer is a conflict, even before the tee time',
+     rows[1].conflict !== null, 'due 13:45, lands 14:00');
+  check('and it says when you were due', at(rows[1].conflict.dueMins), '13:45');
+
+  // Exactly on the buffer is not a conflict.
+  items[1].time = '14:45';
+  const onTime = compute(items);
+  ok('arriving exactly on the buffer is no conflict', onTime[1].conflict === null);
+  check('"arrive by" is the tee minus the buffer', at(onTime[1].readyMins), '14:00');
+
+  // A visitor who edits the buffer away gets the old tee-time deadline.
+  items[1].time = '14:00';
+  items[1].bufferMins = 0;
+  const noBuf = compute(items);
+  ok('a zero buffer means the tee time itself is the deadline',
+     noBuf[1].conflict === null);
+  check('and nothing is drawn in front of the block', noBuf[1].bufferMins, 0);
 }
 
 // ── 6. The first item can never be "late" ─────────────────────────────
@@ -155,7 +194,7 @@ check('junk duration ignored', run('tlDurationFor({type:"golf",durationMins:"lon
     { id: 'p', type: 'poi', name: 'Castle' }
   ]);
   check('day anchors at 09:00', at(rows[0].startMins), '09:00');
-  check('then flows: 13:30 + 20 min drive', at(rows[1].startMins), '13:50');
+  check('then flows: 14:00 + 20 min drive', at(rows[1].startMins), '14:20');
   ok('neither time is fixed', rows[0].fixed === false && rows[1].fixed === false);
 }
 
@@ -215,13 +254,52 @@ check('junk duration ignored', run('tlDurationFor({type:"golf",durationMins:"lon
     { id: 'p', type: 'poi', name: 'Castle' }
   ]);
   const range = run('tlDayRange(' + JSON.stringify(rows) + ')');
-  check('grid starts at 09:00', range.startHour, 9);
-  check('grid ends at 16:00 (15:30 rounded out)', range.endHour, 16);
+  check('grid starts at 08:00 — the 08:15 arrival buffer is drawn too',
+        range.startHour, 8);
+  check('grid ends at 16:00 (15:50 rounded out)', range.endHour, 16);
 }
 check('empty day has no range', run('tlDayRange([])'), null);
 check('null is survivable', run('tlDayRange(null)'), null);
 
-// ── 11. Degenerate input never throws ─────────────────────────────────
+// ── 11. Notes: in the day, out of the clock ───────────────────────────
+{
+  drives['g>p'] = 10;
+  const withNote = compute([
+    { id: 'g', type: 'golf', i: 0, time: '09:00' },
+    { id: 'n', type: 'note', text: 'book the ferry' },
+    { id: 'p', type: 'poi', name: 'Castle' }
+  ]);
+  const without = compute([
+    { id: 'g', type: 'golf', i: 0, time: '09:00' },
+    { id: 'p', type: 'poi', name: 'Castle' }
+  ]);
+  check('a note in a gap pushes nothing',
+        at(withNote[2].startMins), at(without[1].startMins));
+  check('and does not absorb the drive it sits in', withNote[2].driveMins, 10);
+  check('the note consumes no time', withNote[1].durationMins, 0);
+  ok('the note is a marker', withNote[1].marker === true);
+  check('it marks the time the day has reached: the end of the round',
+        at(withNote[1].startMins), '14:00');
+}
+{
+  // A note before anything else has no cursor to sit at, so it takes the
+  // day's own start rather than NaN.
+  const rows = compute([
+    { id: 'n', type: 'note', text: 'passports!' },
+    { id: 'g', type: 'golf', i: 0 }
+  ]);
+  check('a leading note sits at the day start', at(rows[0].startMins), '09:00');
+  check('and the round still starts the day', at(rows[1].startMins), '09:00');
+  check('no drive is attributed to a note', rows[0].driveMins, 0);
+}
+{
+  // A note can be pinned to a time like anything else.
+  const rows = compute([{ id: 'n', type: 'note', text: 'low tide', time: '16:20' }]);
+  check('a pinned note honours its time', at(rows[0].startMins), '16:20');
+  ok('and is marked fixed', rows[0].fixed === true);
+}
+
+// ── 12. Degenerate input never throws ─────────────────────────────────
 check('no items', compute([]).length, 0);
 check('null items', run('tlComputeDay(null, driveFn).length'), 0);
 ok('a null item in the list does not throw',
@@ -236,4 +314,6 @@ if (failures) {
   process.exit(1);
 }
 console.log('test_timeline: OK — times compute, fixed times push and never move, ' +
-            'hotels and flights stay markers, and the owner\'s worked example builds end to end.');
+            'the drive is judged against the arrival buffer and not the tee time, ' +
+            'hotels, flights and notes stay markers, and the owner\'s worked ' +
+            'example builds end to end.');

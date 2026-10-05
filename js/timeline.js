@@ -18,7 +18,7 @@
 /* Default block lengths, in minutes (DEC-039, owner 2026-10-05).
    A value of 0 means "a marker, not a block": it takes a line on the
    grid but consumes no time, so nothing after it is pushed. */
-const TL_DEFAULT_MINS={golf:270,poi:90,hotel:0,flight:0};
+const TL_DEFAULT_MINS={golf:300,poi:90,hotel:0,flight:0};
 /* Where a day starts when NOTHING in it carries a fixed time. Without an
    anchor there is no clock at all and the grid has nothing to draw. */
 const TL_DAY_START=9*60;
@@ -27,6 +27,21 @@ const TL_DAY_START=9*60;
    check-in data anywhere in data/ to derive this from — checked
    2026-10-05 — so this is a convention, not a measurement. */
 const TL_DEFAULT_CHECKIN=15*60;
+/* Arrival buffers (DEC-039, revised by the owner 2026-10-05): the time
+   you have to be there BEFORE the thing you are there for. A 10:00 tee
+   means being at the course by 09:15; a flight means being at the
+   airport two hours before it departs. Editable per item through
+   `bufferMins` — these are only the defaults.
+
+   A buffer is a DEADLINE, not a block: it changes when you are late,
+   not how long anything takes. The drive has to land by the buffer, and
+   landing after it is the conflict. A hotel or a POI has nothing to be
+   early for, so neither has one. */
+const TL_DEFAULT_BUFFER={golf:45,flight:120};
+/* One cap for a note, read by the model, the loader and the share codec
+   alike — notes ride in share URLs, which is what makes a cap a
+   correctness concern rather than a tidiness one. */
+const TL_NOTE_MAX=500;
 
 /* ── Time values ──────────────────────────────────────────────────────
    A stored time is "HH:MM", 24h, local wall-clock at that place. Time
@@ -58,6 +73,16 @@ function tlDurationFor(it){
   const def=TL_DEFAULT_MINS[it.type];
   return typeof def==='number'?def:0;
 }
+/* The arrival buffer for one item, in minutes: its own bufferMins when
+   set and sane, else the type default, else none. Clamped to a day for
+   the same reason a duration is — a 3-day buffer is always a typo. */
+function tlBufferFor(it){
+  if(!it)return 0;
+  const b=it.bufferMins;
+  if(typeof b==='number'&&Number.isFinite(b)&&b>=0)return Math.min(1440,Math.round(b));
+  const def=TL_DEFAULT_BUFFER[it.type];
+  return typeof def==='number'?def:0;
+}
 /* The fixed start the visitor typed, or null when this item just flows
    from the one before it. A flight is anchored on ARRIVAL: the departure
    is shown as text but never drawn, because across a time zone a
@@ -69,19 +94,26 @@ function tlFixedStart(it){
 }
 /* Hotels are a strip along the bottom of the day, not a stop in the
    chain: you do not "spend" the evening before driving on. Excluding
-   them here is what stops a hotel pushing the next morning. */
-function tlInChain(it){return!!it&&it.type!=='hotel';}
+   them here is what stops a hotel pushing the next morning. A note is
+   out of the chain for the same reason: it is something written about
+   the time it sits in, and reading it costs the day nothing. */
+function tlInChain(it){return!!it&&it.type!=='hotel'&&it.type!=='note';}
 
 /* ── The engine ───────────────────────────────────────────────────────
    Walks a day's items in order and returns one row per item:
-     {item, startMins, endMins, durationMins, fixed, driveMins,
-      conflict:{arriveMins,fixedMins}|null, marker}
+     {item, startMins, endMins, durationMins, bufferMins, readyMins,
+      fixed, driveMins, conflict:{arriveMins,fixedMins,dueMins}|null,
+      marker}
    `fixed` says the visitor set this time; everything else was derived.
-   `driveMins` is the leg running INTO this item.
+   `driveMins` is the leg running INTO this item. `readyMins` is when
+   you have to BE there — startMins minus the buffer — which is the time
+   the view shows as "Arrive by" and the time the drive is judged
+   against.
 
-   A fixed time is never moved. When the chain cannot reach it, the row
-   carries a conflict and the clock continues from the fixed time anyway
-   — the visitor is told they are late, not quietly re-planned.
+   A fixed time is never moved. When the chain cannot reach it in time,
+   the row carries a conflict and the clock continues from the fixed
+   time anyway — the visitor is told they are late, not quietly
+   re-planned.
 
    driveFn(prevItem,item) → minutes is supplied by the caller, so this
    module never reaches into the routing cache and the tests can hand it
@@ -94,31 +126,41 @@ function tlComputeDay(items,driveFn){
     const dur=tlDurationFor(it);
     const fixed=tlFixedStart(it);
     /* A hotel sits outside the chain entirely: it gets its check-in
-       marker and leaves the cursor exactly where it was. */
+       marker and leaves the cursor exactly where it was. A note in a
+       gap marks the time the day has reached at that position — the
+       cursor, not a convention — and likewise consumes none of it. */
     if(!tlInChain(it)){
-      const at=fixed!=null?fixed:TL_DEFAULT_CHECKIN;
+      const at=fixed!=null?fixed
+        :(it&&it.type==='note')?(cursor!=null?cursor:TL_DAY_START)
+        :TL_DEFAULT_CHECKIN;
       rows.push({item:it,startMins:at,endMins:at,durationMins:0,
+        bufferMins:0,readyMins:at,
         fixed:fixed!=null,driveMins:0,conflict:null,marker:true});
       return;
     }
     /* The drive into this item. The caller only returns minutes when
        both ends have a location, so a hand-typed stop contributes none. */
     const drive=(prevStop&&typeof driveFn==='function')?(driveFn(prevStop,it)||0):0;
-    let start,conflict=null;
+    /* A buffer only means anything in front of a time the visitor
+       FIXED. There is nothing to be early for when the start itself is
+       derived from when you happen to arrive. */
+    const buffer=fixed!=null?tlBufferFor(it):0;
+    let start,conflict=null,ready;
     if(cursor===null){
       /* First timed item of the day: nothing precedes it, so a fixed
          time here can never be late. */
       start=fixed!=null?fixed:TL_DAY_START;
+      ready=start-buffer;
     }else{
       const earliest=cursor+drive;
-      if(fixed!=null){
-        start=fixed;
-        if(fixed<earliest)conflict={arriveMins:earliest,fixedMins:fixed};
-      }else{
-        start=earliest;
-      }
+      start=fixed!=null?fixed:earliest;
+      ready=start-buffer;
+      /* DEC-039: the drive must land by the BUFFER, not by the tee
+         time. Reaching the first tee as your round starts is late. */
+      if(fixed!=null&&earliest>ready)conflict={arriveMins:earliest,fixedMins:fixed,dueMins:ready};
     }
     rows.push({item:it,startMins:start,endMins:start+dur,durationMins:dur,
+      bufferMins:buffer,readyMins:ready,
       fixed:fixed!=null,driveMins:cursor===null?0:drive,conflict,marker:dur===0});
     cursor=start+dur;
     prevStop=it;
@@ -133,7 +175,8 @@ function tlDayRange(rows){
   if(!r.length)return null;
   let lo=Infinity,hi=-Infinity;
   r.forEach(x=>{
-    const s=x.startMins-(x.driveMins||0); // the drive before it is drawn too
+    // the buffer and the drive before it are drawn too
+    const s=x.startMins-(x.bufferMins||0)-(x.driveMins||0);
     if(s<lo)lo=s;
     if(x.endMins>hi)hi=x.endMins;
   });

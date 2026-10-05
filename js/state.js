@@ -45,9 +45,25 @@ function validateTripEntry(t){
     return m==null?null:tlFormatTime(m);
   };
   const validDur=v=>(typeof v==='number'&&isFinite(v)&&v>=0)?Math.min(1440,Math.round(v)):null;
+  /* GOLF-153 notes (DEC-039): free text the visitor attached to an item,
+     a day, or a gap. Capped on the way in, because a note travels in a
+     share URL; escaped on the way out, everywhere it renders. */
+  const NOTE_MAX=typeof TL_NOTE_MAX==='number'?TL_NOTE_MAX:500;
+  const validNote=v=>{
+    if(typeof v!=='string')return null;
+    const s=v.trim().slice(0,NOTE_MAX);
+    return s?s:null;
+  };
+  const noteKey=v=>{const n=validNote(v);return n?{note:n}:{};};
   const withTiming=(out,it)=>{
     const t=validTime(it.time); if(t!==null)out.time=t;
     const d=validDur(it.durationMins); if(d!==null)out.durationMins=d;
+    /* The editable arrival buffer, on the two types that have one —
+       there is nothing to be early for at a hotel or a sight. */
+    if(it.type==='golf'||it.type==='flight'){
+      const b=validDur(it.bufferMins); if(b!==null)out.bufferMins=b;
+    }
+    const n=validNote(it.note); if(n!==null)out.note=n;
     return out;
   };
   const validItems=(d)=>{
@@ -74,6 +90,15 @@ function validateTripEntry(t){
         }
         return withTiming(out,it);
       }
+      /* GOLF-153: a note written into a gap is an item of its own, so it
+         keeps its place in items[] when the day is reordered. It has no
+         location, so tripItemPoint() returns null and it never becomes a
+         routing stop; it is outside the timeline chain, so it pushes
+         nothing. An empty note is not an item. */
+      if(it.type==='note'){
+        const tx=validNote(it.text);
+        return tx?{id:it.id,type:'note',text:tx}:null;
+      }
       if(it.type!=='hotel'&&it.type!=='poi')return null;
       if(typeof it.name!=='string'||!it.name.trim())return null;
       const out={id:it.id,type:it.type,name:it.name.trim().slice(0,80),
@@ -98,6 +123,10 @@ function validateTripEntry(t){
       items:validItems(d),
       courses:Array.isArray(d.courses)?d.courses.filter(i=>validSet.has(i)):[],
       driveIn:typeof d.driveIn==='number'?d.driveIn:null,
+      /* GOLF-153: a note on the day as a whole. Spread rather than
+         assigned, so a day without one saves exactly the keys it always
+         did. */
+      ...noteKey(d.note),
       /* GOLF-48: optional real calendar date (YYYY-MM-DD), user-entered.
          Validated as a plain well-formed date string here — actual use
          (picking wd vs we for the cost estimate) lives in

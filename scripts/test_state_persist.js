@@ -404,7 +404,7 @@ eq('usage: a failing beacon logs nothing', [offline.errors, offline.warns], [[],
   writeRichTrip(o.sandbox);
   const before = o.store['golfmap:v1'];
   eq('GOLF-153: detailed mode added no keys to an untimed trip',
-     /"time":|"durationMins":|"flight"/.test(before), false);
+     /"time":|"durationMins":|"bufferMins":|"note":|"flight"|"note"/.test(before), false);
 
   const re = boot({ 'golfmap:v1': before }, BUILD_A);
   re.sandbox.saveState();
@@ -429,7 +429,7 @@ eq('usage: a failing beacon logs nothing', [offline.errors, offline.warns], [[],
   writeRichTrip(a.sandbox);
   const plain = JSON.stringify(a.sandbox.tripBuildSharePayload());
   eq('GOLF-153: an untimed share payload gains no keys',
-     /"t":|"dm":|"dt":|"flight"/.test(plain), false);
+     /"t":|"dm":|"bf":|"nt":|"dt":|"flight"|"note"/.test(plain), false);
 
   a.sandbox.tripDays[0].items[0].time = '12:24';
   a.sandbox.tripDays[0].items[0].durationMins = 240;
@@ -449,6 +449,92 @@ eq('usage: a failing beacon logs nothing', [offline.errors, offline.warns], [[],
   eq('GOLF-153: a hostile share time is dropped', safe.days[0].items[0].time, undefined);
   eq('GOLF-153: an absurd share duration is clamped',
      safe.days[0].items[0].durationMins, 1440);
+}
+
+{
+  /* DEC-039 as revised 2026-10-05: an editable arrival buffer on the two
+     types that have one, and notes attached to an item, to a day, and to
+     a gap. All optional, all dropped rather than fatal when corrupt. */
+  const t = boot({}, BUILD_A);
+  writeRichTrip(t.sandbox);
+  const d0 = t.sandbox.tripDays[0];
+  d0.items[0].time = '10:00';
+  d0.items[0].bufferMins = 30;
+  d0.items[0].note = '  ask about buggy hire  ';
+  d0.items[2].bufferMins = 90;   // a POI has nothing to be early for
+  d0.note = 'pack for rain';
+  d0.items.push({ id: 'n1', type: 'note', text: 'book the Mull ferry' });
+  d0.items.push({ id: 'n2', type: 'note', text: '   ' }); // empty: not an item
+  t.sandbox.saveState();
+  const stored = t.store['golfmap:v1'];
+
+  const rl = boot({ 'golfmap:v1': stored }, 'golfmap-shell-v5-deadbeef99');
+  const day = rl.sandbox.tripDays[0] || {};
+  const items = day.items || [];
+  const note = items.find(x => x.type === 'note') || {};
+  eq('GOLF-153: a golf arrival buffer survives a release', items[0].bufferMins, 30);
+  eq('GOLF-153: an item note survives, trimmed', items[0].note, 'ask about buggy hire');
+  eq('GOLF-153: a POI gets no buffer', items[2].bufferMins, undefined);
+  eq('GOLF-153: a day note survives a release', day.note, 'pack for rain');
+  eq('GOLF-153: a gap note survives as an item of its own', note.text, 'book the Mull ferry');
+  eq('GOLF-153: an empty gap note is not an item',
+     items.filter(x => x.type === 'note').length, 1);
+  eq('GOLF-153: a note is not a routing stop', rl.sandbox.tripItemPoint(note), null);
+
+  // Corrupt values cost the value, never the item (GOLF-224).
+  const bad = JSON.parse(stored);
+  const bd = bad.trips[bad.activeTripId].tripDays[0];
+  bd.items[0].bufferMins = 'early';
+  bd.items[0].note = { not: 'a string' };
+  bd.note = 42;
+  bd.items[3].text = '';
+  const cr = boot({ 'golfmap:v1': JSON.stringify(bad) }, BUILD_A);
+  const cd = cr.sandbox.tripDays[0] || {};
+  const ci = cd.items || [];
+  eq('GOLF-153: a corrupt buffer is dropped', ci[0].bufferMins, undefined);
+  eq('GOLF-153: a corrupt note is dropped', ci[0].note, undefined);
+  eq('GOLF-153: ...but the round survives both', ci[0].type, 'golf');
+  eq('GOLF-153: a corrupt day note is dropped', cd.note, undefined);
+  eq('GOLF-153: an emptied gap note drops the whole item',
+     ci.filter(x => x.type === 'note').length, 0);
+  eq('GOLF-153: nothing was logged as an error', cr.errors, []);
+
+  // The cap is enforced on the way in, because a note travels in a URL.
+  const long = JSON.parse(stored);
+  const ld = long.trips[long.activeTripId].tripDays[0];
+  ld.items[0].note = 'x'.repeat(900);
+  ld.note = 'y'.repeat(900);
+  const lr = boot({ 'golfmap:v1': JSON.stringify(long) }, BUILD_A);
+  eq('GOLF-153: an over-long item note is capped at 500',
+     (lr.sandbox.tripDays[0].items[0].note || '').length, 500);
+  eq('GOLF-153: so is an over-long day note',
+     (lr.sandbox.tripDays[0].note || '').length, 500);
+
+  // Share: the new fields ride along only when set, and round-trip.
+  const payload = rl.sandbox.tripBuildSharePayload();
+  const dec = rl.sandbox.tripDecodeSharePayload(
+    '#share=' + encodeURIComponent(JSON.stringify(payload)));
+  const dd = dec.days[0];
+  const dnote = dd.items.find(x => x.type === 'note') || {};
+  eq('GOLF-153: share round-trips the buffer', dd.items[0].bufferMins, 30);
+  eq('GOLF-153: share round-trips an item note', dd.items[0].note, 'ask about buggy hire');
+  eq('GOLF-153: share round-trips the day note', dd.note, 'pack for rain');
+  eq('GOLF-153: share round-trips a gap note', dnote.text, 'book the Mull ferry');
+
+  // Hostile input off the hash: clamped and kept verbatim for esc() to
+  // handle at render time — never unescaped here, never re-interpreted.
+  const nasty = JSON.parse(JSON.stringify(payload));
+  nasty.days[0].items[0].bf = 1e9;
+  nasty.days[0].items[0].nt = '<img src=x onerror=alert(1)>';
+  nasty.days[0].nt = 'z'.repeat(2000);
+  const safe = rl.sandbox.tripDecodeSharePayload(
+    '#share=' + encodeURIComponent(JSON.stringify(nasty)));
+  eq('GOLF-153: an absurd share buffer is clamped',
+     safe.days[0].items[0].bufferMins, 1440);
+  eq('GOLF-153: a hostile note is carried verbatim, for esc() to render',
+     safe.days[0].items[0].note, '<img src=x onerror=alert(1)>');
+  eq('GOLF-153: an over-long shared day note is capped',
+     (safe.days[0].note || '').length, 500);
 }
 
 if (failures.length) {
