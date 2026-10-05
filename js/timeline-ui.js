@@ -348,20 +348,33 @@ function tlFlightCommit(){
    drive to the airport, then land" — which the engine then correctly
    flags as a conflict, for a trip that is not what anyone typed.
 
-   So it lands by its clock: before the first stop that starts after it.
-   A morning arrival goes to the top of the day, an evening departure to
-   the bottom, and a flight with no time typed is appended like anything
+   So it lands by its clock, against the times the visitor actually
+   TYPED. A stop with no time of its own floats to wherever the chain
+   puts it, so its computed start says nothing about whether it happens
+   before the flight — only a fixed time does. Hence:
+
+     · lands after everything planned → it ends the day (appended);
+     · otherwise it goes before the first stop that isn't demonstrably
+       earlier than it — i.e. the first one with no time set, or with a
+       time set later than the landing.
+
+   A morning arrival therefore goes to the top of the day, an evening
+   one to the bottom, and a 10:55 landing on a day with a 09:00 tee time
+   stays after that tee time, where the engine can tell the visitor the
+   two don't fit. A flight with no time typed is appended like anything
    else. Positions are never adjusted again — dragging stays the way you
    change your mind. */
 function tlFlightInsertAt(d,arrive){
   const items=tripDayItems(d);
   const mins=tlParseTime(arrive);
   if(mins==null)return items.length;
-  const rows=tlRowsForDay(tripDays.indexOf(d));
+  const chain=tlRowsForDay(tripDays.indexOf(d)).filter(r=>r.item&&r.item.type!=='hotel');
+  if(!chain.length)return items.length;
+  if(mins>=Math.max(...chain.map(r=>r.endMins)))return items.length;
   for(let k=0;k<items.length;k++){
     if(items[k].type==='hotel')continue; // a stay is a strip, not a point in the day
-    const r=rows.find(x=>x.item===items[k]);
-    if(r&&r.startMins>mins)return k;
+    const fx=tlFixedStart(items[k]);
+    if(fx==null||fx>mins)return k;
   }
   return items.length;
 }
