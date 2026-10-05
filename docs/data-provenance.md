@@ -243,8 +243,8 @@ No other host is contacted for data. The Worker's upstream URLs are in
 ### 2.12 Booking and site links (`site`, `book`)
 
 - Links to the club's own or a booking site. A link is not a copy. No
-  restriction. Affiliate deeplinks (Travelpayouts, GOLF-230, DEC-038) are
-  covered by that programme's own terms, not by data provenance.
+  restriction. Affiliate deeplinks (Travelpayouts and Stay22, GOLF-230,
+  DEC-038, GOLF-242) are covered by those programmes' own terms, not by data provenance.
 
 ---
 
@@ -339,22 +339,23 @@ No other host is contacted for data. The Worker's upstream URLs are in
 No API key reaches the browser. ORS keys are Worker secrets, set in the
 dashboard by Stefan.
 
-### 6.1 Klook destination ids (`AFF_KLOOK_DESTS` in `js/affiliate.js`)
+### 6.1 Klook destination ids: retired (GOLF-242, 2026-10-05)
 
-- **Source:** collected by hand by Gavin from Klook's public hotel-search UI
-  on 2026-10-04 (GOLF-233). There are 10 entries: St Andrews, Kingsbarns, Gullane, Brora,
-  Dornoch, Machrihanish, Portrush, Lahinch, Ballybunion and George.
-- **What it is:** a one-off snapshot. No Klook API or other live call is
-  made, by the app or by any script. The ids only go into an outbound link
-  when someone clicks it.
-- **Checked:** on 2026-10-04 each link was opened once in Klook's UI. All 10
-  resolve to the right place. The results are in
-  `scripts/output/golf-233-klook-dests.json`, which is gitignored and kept locally.
-- **Extending it** means repeating the manual collection: type the town into
-  Klook's hotel search, pick the golf course or town, and read
-  `svalue`/`city_id` from the URL. Then open the link once and check that
-  the hotels are near the town. A wrong id fails silently.
-- **KKday** had no hotel coverage in any of the 10 towns, so it is not used.
+- GOLF-233's hand-collected table of 10 Klook destination ids
+  (`AFF_KLOOK_DESTS`) has been **removed from `js/affiliate.js`**. No Klook
+  ids are in the code any more.
+- Hotel "Check prices" links now go to **Stay22**'s Allez deeplink
+  (`stay22.com/allez/roam`, aid `golftripper`, a public partner id). It
+  takes the stay's own lat/lng, so there is no destination table to
+  collect, keep or license. The app sends only the stay's position, the
+  dates when set, the group size and a placement tag (`campaign=hotel`),
+  and only when someone clicks. Stays with no coordinates get no link.
+- Klook remains a joined Travelpayouts programme for a possible tours
+  stage, but nothing links to it today. The car-hire link
+  (EconomyBookings via Travelpayouts) is unchanged.
+- `scripts/output/golf-233-klook-dests.json` (gitignored) is the only
+  remaining copy of the old table, kept for reference.
+- KKday had no hotel coverage in any of the 10 towns, so it was never used.
 
 ---
 

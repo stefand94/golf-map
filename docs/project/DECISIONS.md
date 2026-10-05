@@ -943,6 +943,32 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 - **Owner answers to Gavin's shape questions (2026-10-05):**
   - **Hotel:** a strip along the bottom of each night's day, not a timed block. On the **first night** it also draws a **check-in time line** on the grid (editable; default 15:00, the BA's pick).
   - **Day labels:** days show as "Day 1", "Day 2"… until a real date is added.
-  - **Default POI length:** 90 minutes. **Golf:** 270 minutes.
-  - **Time zones:** none. Everything is local time, because **a trip starts from arrival**. A flight is drawn from its arrival; the departure time and airport are shown as text, not as a block.
+  - **Default POI length:** 90 minutes.
+  - **Time zones:** none. Everything is local time, because **a trip starts from arrival**. The **first, inbound flight** is drawn from its arrival; its departure details are text only.
+  - **Flights within the trip, and the departure home (owner, 2026-10-05):** these are planned in full, in this order:
+    1. the drive to the departure airport;
+    2. a **check-in buffer**: be at the airport this long before departure;
+    3. the flight block with its details;
+    4. for an internal flight, the arrival, from which the rest of the day flows.
+    The departure airport becomes a located stop, so the drive to it is computed. Default buffer: **2 hours**, editable per flight. This is the BA's pick.
+  - **Golf (owner, 2026-10-05):** **5 hours** from the tee time. Plus an **arrival buffer of 45 minutes**: for a 10:00 tee, be at the course by 09:15. That is the time the drive must arrive by, and a later arrival triggers the conflict warning.
+  - **Notes (owner, 2026-10-05):** right-click (long-press on a phone) adds a note to whatever was clicked:
+    - **an item** (round, hotel, flight, tour): the note is attached to it and moves with it;
+    - **the day header** ("Day 1"): a note for the whole day;
+    - **a gap between activities**: a note in that free time, sitting in the gap.
+    Notes are **shared** (read-only in the share link).
+    Notes show **in detailed mode only**, not in the default list view (owner, 2026-10-05). Desktop uses right-click; a phone uses long-press on detailed-view blocks plus an "Add note" menu item. Cap: 300 characters.
+- **Owner review of the preview (desktop, 2026-10-05) — supersedes the notes rules above and widens v1:**
+  - **It should behave like a calendar.** The day is a scrollable hour timeline.
+    - **Right-click an empty time slot** opens an add menu: flight, train, a drive from another city, or an activity.
+    - **Drag a block** to move it, which sets a fixed time.
+    - **Drag a block's top or bottom edge** to change its length. Defaults are only a starting point.
+  - **New block types, all typed by hand:**
+    - **train:** from and to stations, depart and arrive times;
+    - **drive from another place:** a start point, with the drive computed;
+    - **activity:** a title, time, length, optional place and price, and a note.
+    The old "gap note" becomes the activity block.
+  - **Notes:** a note is a field in any block's details. **The day note is dropped.**
+  - **The hotel starts the next morning:** last night's hotel is the first point of the day's chain, so the drive from the hotel to the first course or activity shows.
+- **Date of the review:** 2026-10-05.
 - **Date:** 2026-10-05 · **Affects:** GOLF-153, GOLF-99 (share), GOLF-224 (load whitelist), GOLF-235 (share counting unchanged).
