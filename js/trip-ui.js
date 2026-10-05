@@ -265,7 +265,7 @@ function tbDriveCapHTML(l){
     timeHTML=l.mins!=null?esc(fmtDriveMinutes(l.mins)):'—';
   }
   const tag=l.hasFerry?` <span class="wt tb-ferry-tag" title="This route has a ferry">⛴ This route has a ferry</span>`:'';
-  return`<div class="tb-drive-cap${l.hasFerry?' has-ferry':''}" title="${esc(l.label)}">🚗 Drive ${timeHTML}${l.real?` <span class="tb-drive-real">· live</span>`:''}${tag}</div>`;
+  return`<div class="tb-drive-cap${l.hasFerry?' has-ferry':''}" title="${esc(l.label)}"><span class="tb-drive-ico" aria-hidden="true">🚗</span>Drive ${timeHTML}${l.real?` <span class="tb-drive-real">· live</span>`:''}${tag}</div>`;
 }
 /* Currency correctness (GOLF-169): every `cur` passed around the pane is
    now a currency CODE ('GBP'/'EUR'/'ZAR'/'AUD'/'NZD'...), sourced from
@@ -444,7 +444,7 @@ function tbStaySlotHTML(d){
   if(tripDayStay(d))return'';
   return`<div class="tb-stay-slot is-empty">
     <button type="button" class="tb-stay-ask" onclick="tbOpenHotelPicker(${d.id})"
-      title="Show hotels near this day's golf">🏨 Where are you staying?</button>
+      title="Show hotels near this day's golf"><span class="ico-gap" aria-hidden="true">🏨</span>Where are you staying?</button>
   </div>`;
 }
 const tbDaySumHTML=idx=>{

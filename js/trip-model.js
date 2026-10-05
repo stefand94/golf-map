@@ -1070,12 +1070,12 @@ function tbTripMenuHTML(isBuild){
         isBuild&&tbPhoneLayout()?`<div class="tb-menu-label">Group size</div>
       <div class="tb-menu-row">${tbGroupStepperHTML('tb-groupsize')}</div>
       <div class="tb-menu-sep"></div>`:''}
-      <button type="button" class="tb-menu-item" onclick="tripRename(activeTripId)">✎ Rename</button>
-      <button type="button" class="tb-menu-item" onclick="tripCreateNew()">＋ New trip</button>
-      <button type="button" class="tb-menu-item" onclick="tripDuplicate(activeTripId)">⧉ Duplicate</button>
-      ${list.length>1?`<button type="button" class="tb-menu-item is-danger" onclick="tripDelete(activeTripId)">🗑 Delete this trip</button>`:''}
+      <button type="button" class="tb-menu-item" onclick="tripRename(activeTripId)"><span class="tb-menu-ico" aria-hidden="true">✎</span>Rename</button>
+      <button type="button" class="tb-menu-item" onclick="tripCreateNew()"><span class="tb-menu-ico" aria-hidden="true">＋</span>New trip</button>
+      <button type="button" class="tb-menu-item" onclick="tripDuplicate(activeTripId)"><span class="tb-menu-ico" aria-hidden="true">⧉</span>Duplicate</button>
+      ${list.length>1?`<button type="button" class="tb-menu-item is-danger" onclick="tripDelete(activeTripId)"><span class="tb-menu-ico" aria-hidden="true">🗑</span>Delete this trip</button>`:''}
       <div class="tb-menu-sep"></div>
-      <button type="button" class="tb-menu-item is-danger" onclick="tripStartFresh()" title="Deletes every trip, not just this one, and leaves you with one empty trip">⟲ Start fresh — delete all trips</button>
+      <button type="button" class="tb-menu-item is-danger" onclick="tripStartFresh()" title="Deletes every trip, not just this one, and leaves you with one empty trip"><span class="tb-menu-ico" aria-hidden="true">⟲</span>Start fresh — delete all trips</button>
     </div>
   </details>`;
 }
