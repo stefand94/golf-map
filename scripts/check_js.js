@@ -47,6 +47,11 @@ const ORDER = [
   // GOLF-153: pure time arithmetic, no DOM. Must precede state.js,
   // whose load-time whitelist validates stored times through it.
   'timeline.js',
+  // GOLF-153: the day view. Declarations only at load time, so it could sit
+  // anywhere — but `let tbDetailed` lives here and state.js reads it while
+  // restoring saved state, and a `let` that has not been evaluated yet
+  // throws on access rather than reading as undefined. So: before state.js.
+  'timeline-ui.js',
   'trip-model.js',
   'state.js',
   // handicap.js is only function declarations, but it must precede map.js:

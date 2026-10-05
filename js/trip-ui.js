@@ -460,7 +460,11 @@ function itinLegRowHTML(l){
 }
 function tbItinAllHTML(){
   if(!tripDays.length)return`<p class="hint">Add a day to start building your itinerary.</p>`;
-  return tripDays.map((d,idx)=>{
+  /* GOLF-153: the same two views the trip's owner had. The toggle is the
+     only thing added when detailed mode is off — the day markup below is
+     untouched, so an existing share link renders exactly as it did. */
+  const firstNights=tlFirstNightItemIds();
+  return tlViewToggleHTML()+tripDays.map((d,idx)=>{
     const legs=tripDayLegs(idx);
     const dow=d.date?new Date(d.date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short'}):'';
     return`<div class="tb-day">
@@ -471,7 +475,8 @@ function tbItinAllHTML(){
         ${tbDaySumHTML(idx)}
       </div>
       <div class="tb-day-rule"></div>
-      ${legs.length?legs.map(itinLegRowHTML).join(''):`<p class="hint" style="margin:var(--sp-3)">${d.kind!=='golf'?TRIP_DAY_KINDS[d.kind]:'No stops yet.'}</p>`}
+      ${tbDetailed?tlDayGridHTML(d,idx,firstNights)
+        :legs.length?legs.map(itinLegRowHTML).join(''):`<p class="hint" style="margin:var(--sp-3)">${d.kind!=='golf'?TRIP_DAY_KINDS[d.kind]:'No stops yet.'}</p>`}
     </div>`;
   }).join('');
 }
@@ -922,7 +927,11 @@ function tbDayCardHTML(d,idx){
   const items=tripDayItems(d);
   const nCourses=items.filter(it=>it.type==='golf').length;
   const byId=new Map(items.map(it=>[it.id,it]));
-  const rowsHTML=tripDayLegs(idx).map(l=>{
+  /* GOLF-153: detailed mode replaces the day's ROWS and nothing else —
+     the head, its menu, the drop zones, the stay slot and the add
+     controls are the same controls in the same places, so turning the
+     view on never takes an action away. */
+  const rowsHTML=tbDetailed?tlDayGridHTML(d,idx,tlFirstNightItemIds()):tripDayLegs(idx).map(l=>{
     if(l.type==='drive')return tbDriveCapHTML(l);
     const it=byId.get(l.id);
     if(!it)return'';
@@ -1036,7 +1045,7 @@ function tripDayScheduleHTML(){
       <button class="tb-btn" onclick="setAppMode('plan')">Browse courses</button></div>`;
   const unscheduled=tripUnscheduled();
   const reorderHTML=tbReorderSuggestionHTML();
-  const daysHTML=tripDays.map((d,idx)=>tbDayCardHTML(d,idx)).join('');
+  const daysHTML=tlViewToggleHTML()+tripDays.map((d,idx)=>tbDayCardHTML(d,idx)).join('');
   const unschedHTML=unscheduled.length?`
     <div class="tb-day tb-day-wish" ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
       ondrop="event.preventDefault();tbDropOut(this);tbDropOn(null,null);">

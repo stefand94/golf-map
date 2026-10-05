@@ -246,6 +246,10 @@ function loadStoredState(){
   // (Great Britain: England/Scotland/Wales)/'ie'/'za', or null before any
   // pill has been picked.
   if(saved.nation==='gb'||saved.nation==='ie'||saved.nation==='za')state.nation=saved.nation;
+  /* GOLF-153: which itinerary view the visitor last chose. Only ever
+     true in storage — saveState() omits it when off, so a trip that has
+     never seen detailed mode keeps exactly the bytes it had before. */
+  if(saved.detailed===true&&typeof tbDetailed!=='undefined')tbDetailed=true;
   loadPart('map view',()=>{if(saved.mapCenter&&saved.mapZoom)restoredView={center:saved.mapCenter,zoom:saved.mapZoom}});
 }
 /* GOLF-235: usage counter. Three anonymous daily totals for the Worker
@@ -314,6 +318,8 @@ function saveState(){
       trips:encTrips,activeTripId,
       filters:{access:[...state.access],price:[...state.price],region:[...state.region],flag:[...state.flag],arch:[...state.arch],feeMin:state.feeMin,feeMax:state.feeMax},
       q:state.q,sort:state.sort,nation:state.nation,
+      detailed:(typeof tbDetailed!=='undefined'&&tbDetailed)?true:undefined, // GOLF-153
+
       mapCenter:c?[c.lat,c.lng]:undefined,mapZoom:map?map.getZoom():undefined
     });
     localStorage.setItem(LS_KEY,payload);

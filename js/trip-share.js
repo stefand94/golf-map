@@ -31,6 +31,10 @@ function tripBuildSharePayload(){
     gs:groupSize,
     nm:((trips[activeTripId]||{}).name)||null, // GOLF-115: carry the trip name so the shared view can show it in full
     ...(oth.length?{oth}:{}),
+    /* GOLF-153: the view the sender was looking at, so the link opens on
+       the same one. Written only when detailed — an untimed, list-view
+       trip encodes to exactly the bytes it did before detailed mode. */
+    ...(typeof tbDetailed!=='undefined'&&tbDetailed?{dt:1}:{}),
 
     /* GOLF-163: courses travel as stable ids (`c`), not array indices.
        A share link is the one reference we can never migrate — it is a
@@ -242,7 +246,7 @@ function tripDecodeSharePayload(hash){
         per:c.p==='person'?'person':'group',
         cur:(typeof c.c==='string'&&CURRENCY_SYMS[c.c])?c.c:'GBP'};
     }).filter(Boolean);
-    return{v:1,gs:gs!=null?Math.round(gs):1,nm:shareStr(p.nm,80),seq,days,oth};
+    return{v:1,gs:gs!=null?Math.round(gs):1,nm:shareStr(p.nm,80),seq,days,oth,dt:p.dt===1}; // GOLF-153
   }catch(e){return null;}
 }
 
@@ -269,6 +273,11 @@ function renderSharedTrip(){
     return;
   }
   usageShareOpened(location.hash); // GOLF-235: once per link per browser
+  /* GOLF-153: the link opens on the view its sender was using, and after
+     that the recipient's own toggle wins — this re-renders through here,
+     so it has to be first-render only. Nothing is saved either way: a
+     shared link never writes to this browser's state. */
+  if(!tlSharedViewApplied){tlSharedViewApplied=true;tbDetailed=!!payload.dt;}
   const savedTrip=new Set(TRIP),savedSeq=tripSeq,savedDays=tripDays,savedGS=groupSize,savedFuel=tbIncludeFuel,savedCustom=tripCustom;
   try{
     /* tripDecodeSharePayload() has already rebuilt every field of this

@@ -747,6 +747,46 @@
     font:var(--fs-micro)/1.4 var(--font-sans)}
   .tb-cost-aff{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);
     margin-top:var(--sp-2)}
+  /* ── GOLF-153: detailed mode, the day on an hour grid ──────────────
+     Blocks are absolutely positioned over an hour ruler because the
+     times are real (a 12:24 tee time), not slots. Built at 375px first:
+     the hour gutter is 38px, which leaves 44px of tap target on the
+     narrowest phone we support, and a 90-minute POI is 84px tall. */
+  .tl-viewswitch{display:flex;gap:var(--sp-1);padding:0 var(--sp-3) var(--sp-2)}
+  .tl-grid{position:relative;margin:var(--sp-2) var(--sp-3) var(--sp-2) 0}
+  .tl-hour{position:absolute;left:0;right:0;height:0;border-top:1px solid var(--line)}
+  .tl-hour-label{position:absolute;left:0;top:-.55em;width:34px;text-align:right;
+    font:var(--fs-micro)/1 var(--font-sans);color:var(--stone);background:var(--paper-2);padding-right:2px}
+  .tl-block,.tl-drive,.tl-checkin{position:absolute;left:38px;right:0;box-sizing:border-box}
+  .tl-block,.tl-drive{overflow:hidden}
+  .tl-block{border-radius:var(--radius-sm);border:1px solid var(--line);
+    background:var(--paper-2);padding:2px var(--sp-2);display:flex;gap:var(--sp-2);
+    align-items:baseline;font:var(--fs-caption)/1.3 var(--font-sans)}
+  .tl-block-time{flex:none;font-weight:700;color:var(--accent-deep);font-variant-numeric:tabular-nums}
+  .tl-pin{margin-left:2px;color:var(--accent)}
+  .tl-block-body{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;gap:0 var(--sp-1);align-items:baseline}
+  .tl-block-name{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
+  .tl-block-sub{color:var(--stone);font-size:var(--fs-micro)}
+  .tl-block-golf{background:var(--accent-soft);border-color:#C6D8E6}
+  .tl-block-poi{background:#FFF6E0;border-color:#EFD9A8}
+  .tl-block-flight{background:#EDE7F6;border-color:#CFC2E8}
+  .tl-block.is-marker{min-height:22px;border-style:dashed;flex-wrap:wrap}
+  /* A missed fixed time is never moved, so it has to be visible as well
+     as said — the ⚠ carries the words, this carries the glance. */
+  .tl-block.is-conflict{border-color:#B3261E;box-shadow:inset 3px 0 0 #B3261E}
+  .tl-warn{color:#B3261E;font-weight:700;font-size:var(--fs-micro)}
+  .tl-drive{background:repeating-linear-gradient(135deg,var(--paper) 0 5px,var(--paper-2) 5px 10px);
+    border-radius:var(--radius-sm);color:var(--stone);
+    font:var(--fs-micro)/1.2 var(--font-sans);padding:1px var(--sp-2);display:flex;align-items:center}
+  .tl-checkin{border-top:2px dashed var(--stone);height:0;display:flex;justify-content:flex-end}
+  .tl-checkin span{transform:translateY(-55%);background:var(--paper-2);padding:0 4px;
+    font:var(--fs-micro)/1 var(--font-sans);color:var(--stone)}
+  /* The stay is a strip along the bottom of the night it covers, not a
+     block on the clock (DEC-039). */
+  .tl-stay{margin:0 var(--sp-3) var(--sp-2);padding:var(--sp-2);border-radius:var(--radius-sm);
+    background:var(--accent-soft);border:1px solid #C6D8E6;
+    font:var(--fs-caption)/1.3 var(--font-sans);color:var(--ink)}
+  .tl-stay-sub{color:var(--ink-soft);margin-left:var(--sp-2)}
   .tb-item-hotel .tb-item-name{display:block;font-weight:600;color:var(--ink);overflow-wrap:anywhere}
   .tb-item-hotel .tb-stay-price{max-width:110px}
   /* GOLF-186: candidate rows and their matching numbered map pins. */
@@ -1566,6 +1606,7 @@
 <script src="js/course-id.js?v=4f554adae9"></script>
 <script src="js/affiliate.js?v=4f554adae9"></script>
 <script src="js/timeline.js?v=4f554adae9"></script>
+<script src="js/timeline-ui.js?v=4f554adae9"></script>
 <script src="js/trip-model.js?v=4f554adae9"></script>
 <script src="js/state.js?v=4f554adae9"></script>
 <script src="js/handicap.js?v=4f554adae9"></script>

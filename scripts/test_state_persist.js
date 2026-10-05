@@ -429,7 +429,7 @@ eq('usage: a failing beacon logs nothing', [offline.errors, offline.warns], [[],
   writeRichTrip(a.sandbox);
   const plain = JSON.stringify(a.sandbox.tripBuildSharePayload());
   eq('GOLF-153: an untimed share payload gains no keys',
-     /"t":|"dm":|"flight"/.test(plain), false);
+     /"t":|"dm":|"dt":|"flight"/.test(plain), false);
 
   a.sandbox.tripDays[0].items[0].time = '12:24';
   a.sandbox.tripDays[0].items[0].durationMins = 240;
