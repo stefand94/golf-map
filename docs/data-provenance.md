@@ -242,8 +242,8 @@ No other host is contacted for data. The Worker's upstream URLs are in
 ### 2.12 Booking and site links (`site`, `book`)
 
 - Links to the club's own or a booking site. A link is not a copy. No
-  restriction. Affiliate deeplinks (Travelpayouts, GOLF-230, DEC-038) are
-  covered by that programme's own terms, not by data provenance.
+  restriction. Affiliate deeplinks (Travelpayouts and Stay22, GOLF-230,
+  DEC-038, GOLF-242) are covered by those programmes' own terms, not by data provenance.
 
 ---
 
@@ -318,12 +318,22 @@ No other host is contacted for data. The Worker's upstream URLs are in
 No API key reaches the browser. ORS keys are Worker secrets, set in the
 dashboard by Stefan.
 
-### 6.1 Klook destination ids (`AFF_KLOOK_DESTS` in `js/affiliate.js`)
+### 6.1 Klook destination ids: retired (GOLF-242, 2026-10-05)
 
-- The 10 Klook ids were collected by hand from Klook's public hotel search on
-  2026-10-04 (GOLF-233). No Klook API or live call is made; an id only goes
-  into an outbound link when someone clicks it.
-- Being retired by GOLF-242 (Stay22 links by map position, so no town table).
+- GOLF-233's hand-collected table of 10 Klook destination ids
+  (`AFF_KLOOK_DESTS`) has been **removed from `js/affiliate.js`**. No Klook
+  ids are in the code any more.
+- Hotel "Check prices" links now go to **Stay22**'s Allez deeplink
+  (`stay22.com/allez/roam`, aid `golftripper`, a public partner id). It
+  takes the stay's own lat/lng, so there is no destination table to
+  collect, keep or license. The app sends only the stay's position, the
+  dates when set, the group size and a placement tag (`campaign=hotel`),
+  and only when someone clicks. Stays with no coordinates get no link.
+- Klook remains a joined Travelpayouts programme for a possible tours
+  stage, but nothing links to it today. The car-hire link
+  (EconomyBookings via Travelpayouts) is unchanged.
+- `scripts/output/golf-233-klook-dests.json` (gitignored) is the only
+  remaining copy of the old table, kept for reference.
 - KKday had no hotel coverage in any of the 10 towns, so it was never used.
 
 ---

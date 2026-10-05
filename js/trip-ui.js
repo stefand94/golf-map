@@ -391,8 +391,8 @@ function tbStayControlsHTML(d,st){
      price field starts a drag of the whole stop instead of a text
      selection. */
   const noDrag=`draggable="false" ondragstart="event.preventDefault();event.stopPropagation();"`;
-  /* GOLF-233: null in the shared view, and null when the stay is nowhere
-     near a destination we can actually search — see js/affiliate.js. */
+  /* GOLF-233/242: null in the shared view, and null when the stay has no
+     coordinates of its own (typed in by hand) — see js/affiliate.js. */
   const aff=typeof affHotelLink==='function'?affHotelLink(d,st):null;
   return`<div class="tb-stay-ctl" ${noDrag}>
     <span class="tb-stay-nights">
@@ -411,8 +411,8 @@ function tbStayControlsHTML(d,st){
       title="Pick a different hotel — replaces it on every night of this stay">Change</button>
     ${aff?`<a class="tb-btn is-sm is-quiet tb-aff" ${noDrag} href="${esc(aff.href)}"
       target="_blank" rel="sponsored noopener"
-      title="Search hotels around ${esc(aff.dest)} for these dates">Check prices ↗</a>
-    <p class="tb-aff-note">Hotel search around ${esc(aff.dest)}. ${esc(AFF_DISCLOSURE)}</p>`:''}
+      title="Search hotels around this stay for these dates">Check prices ↗</a>
+    <p class="tb-aff-note">Hotels around this stay, via Stay22. ${esc(AFF_DISCLOSURE)}</p>`:''}
   </div>`;
 }
 /* GOLF-197: the slot is now only ever the empty question. Once a hotel is
@@ -1267,7 +1267,7 @@ function privacyOpen(){
         <li>The map comes from Esri and the fonts from Google Fonts. Like any website, they see your IP address when your browser loads them.</li>
         <li>Feedback you send is emailed to the site owner. It's not stored anywhere else.</li>
         <li>We count, anonymously, how many trips are planned and shared. Nothing about you or your trip is stored.</li>
-        <li>Hotel and car-hire "Check prices" links are affiliate links: they go through Travelpayouts to the booking site, which may pay us a commission. We send the destination and your dates, nothing else, and nothing is sent until you click.</li>
+        <li>Hotel "Check prices" links go through Stay22, and the car-hire link through Travelpayouts, to the booking site, which may pay us a commission. We send the hotel's map position or the destination, your dates and group size, nothing else, and nothing is sent until you click.</li>
       </ul>
       <h3>Credits</h3>
       <ul>
