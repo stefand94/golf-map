@@ -156,7 +156,14 @@ production instead of the keyless ones.
   returns an image. The verdict is cached at the edge for an hour (5
   minutes if Esri couldn't be reached), under a hash of the key, so a new
   secret value is checked straight away. If the key is fixed at Esri without its value changing,
-  bump `ESRI_CHECK_GEN` in `ors-proxy.js` to drop the cached verdict. A dead key therefore gives
+  bump `ESRI_CHECK_GEN` in `ors-proxy.js` to drop the cached verdict.
+- **Vector (GOLF-244):** the same check also asks for the vector streets
+  style (Basemaps → Basemap styles service privilege) and the answer
+  carries `"vector":true|false`. Only with `true` does the page load
+  MapLibre and swap the streets view to Esri's vector basemap
+  (`esriVectorLayer()`, `js/map.js`), after the raster has painted. Without
+  it, or if the style then fails to draw, streets stay raster. Satellite is
+  raster either way. A dead key therefore gives
   `{"key":null}` and keyless tiles, with no 401s in visitors' consoles. The
   key travels in the `X-Esri-Authorization` header, never a URL. Nothing is
   logged, and none of it counts against the GOLF-223 ORS caps.

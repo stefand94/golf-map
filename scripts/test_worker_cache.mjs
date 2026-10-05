@@ -38,16 +38,21 @@ let mirrorBehaviour = {};
    Overpass one, so the routing path can be exercised in the same harness. */
 let orsRouteStub = null;
 
-/* GOLF-234: the Esri key self-check's tile fetch. esriStub() returns the
-   Response Esri would give (or throws, for "unreachable"). */
+/* GOLF-234: the Esri key self-check's fetches (a streets tile, and since
+   GOLF-244 the vector style). esriStub(url) returns the Response Esri would
+   give (or throws, for "unreachable"). */
 let esriCalls = [];
-const esriImage = () => new Response('png', { status: 200, headers: { 'Content-Type': 'image/png' } });
-let esriStub = esriImage;
+const esriRefuse = () => new Response('{"error":{"code":498,"message":"Token Invalid."}}',
+  { status: 401, headers: { 'Content-Type': 'application/json' } });
+const esriAll = (url) => url.includes('/styles/')
+  ? new Response('{"version":8,"layers":[]}', { status: 200, headers: { 'Content-Type': 'application/json' } })
+  : new Response('png', { status: 200, headers: { 'Content-Type': 'image/png' } });
+let esriStub = esriAll;
 
 globalThis.fetch = async (url, opts) => {
   if (String(url).includes('arcgis.com')) {
     esriCalls.push({ url: String(url), headers: opts?.headers || {} });
-    return esriStub();
+    return esriStub(String(url));
   }
   if (orsRouteStub) return new Response(JSON.stringify(orsRouteStub), {
     status: 200, headers: { 'Content-Type': 'application/json' },
@@ -288,6 +293,7 @@ const esriKey = (origin, env) => worker.fetch(new Request('https://w.test/esri-k
 const KEYED = { ESRI_MAP: 'test-esri-key' };
 r = await esriKey('https://golftripper.uk', KEYED);
 j = await r.json();
+const j0 = j;
 check('esri-key: production gets the key, uncached',
   j.key === 'test-esri-key' && r.headers.get('Cache-Control') === 'no-store',
   `key=${j.key} cc=${r.headers.get('Cache-Control')}`);
@@ -303,37 +309,43 @@ check('esri-key: no secret set means key null', r.status === 200 && j.key === nu
 
 /* GOLF-234 self-check: the key is handed out only if Esri accepts it, the
    check carries the key in a header (never the URL), and the verdict is
-   cached so it isn't re-asked on every page load. */
-const esriCall = esriCalls[0];
-check('esri-key: checked once, key in a header and never in the URL',
-  esriCalls.length === 1 && !esriCall.url.includes('test-esri-key')
-  && esriCall.headers['X-Esri-Authorization'] === 'Bearer test-esri-key'
-  && esriCall.headers.Referer === 'https://golftripper.uk/',
+   cached so it isn't re-asked on every page load. GOLF-244: the vector
+   style is checked alongside, and reported as `vector`. */
+check('esri-key: production gets vector:true when the style is served', j0.vector === true, `vector=${j0.vector}`);
+check('esri-key: checked once (tile + style), key in a header and never in the URL',
+  esriCalls.length === 2 && esriCalls.every((c) => !c.url.includes('test-esri-key')
+    && c.headers['X-Esri-Authorization'] === 'Bearer test-esri-key'
+    && c.headers.Referer === 'https://golftripper.uk/'),
   `calls=${esriCalls.length}`);
-check('esri-key: other origins never trigger a check', esriCalls.length === 1, `calls=${esriCalls.length}`);
+check('esri-key: other origins never trigger a check', esriCalls.length === 2, `calls=${esriCalls.length}`);
 await esriKey('https://golftripper.uk', KEYED);
-check('esri-key: verdict cached, no second check', esriCalls.length === 1, `calls=${esriCalls.length}`);
+check('esri-key: verdict cached, no second check', esriCalls.length === 2, `calls=${esriCalls.length}`);
 
-esriStub = () => new Response('{"error":{"code":498,"message":"Token Invalid."}}',
-  { status: 401, headers: { 'Content-Type': 'application/json' } });
+esriStub = esriRefuse;
 r = await esriKey('https://golftripper.uk', { ESRI_MAP: 'dead-key' });
 j = await r.json();
-check('esri-key: a key Esri refuses is not handed out', j.key === null && esriCalls.length === 2,
+check('esri-key: a key Esri refuses is not handed out', j.key === null && j.vector === false && esriCalls.length === 4,
   `key=${j.key} calls=${esriCalls.length}`);
 esriStub = () => new Response('{"error":{"code":200}}', { status: 200, headers: { 'Content-Type': 'application/json' } });
 r = await esriKey('https://golftripper.uk', { ESRI_MAP: 'json-200-key' });
 j = await r.json();
-check('esri-key: a 200 that is not an image counts as refused', j.key === null, `key=${j.key}`);
+check('esri-key: a tile 200 that is not an image counts as refused', j.key === null, `key=${j.key}`);
+esriStub = (url) => url.includes('/styles/') ? esriRefuse() : esriAll(url);
+r = await esriKey('https://golftripper.uk', { ESRI_MAP: 'raster-only-key' });
+j = await r.json();
+check('esri-key: tiles but no style privilege gives the key with vector:false',
+  j.key === 'raster-only-key' && j.vector === false, `key=${j.key} vector=${j.vector}`);
 esriStub = () => { throw new Error('unreachable'); };
 r = await esriKey('https://golftripper.uk', { ESRI_MAP: 'offline-key' });
 j = await r.json();
 check('esri-key: Esri unreachable means key null, still a clean 200', r.status === 200 && j.key === null,
   `status=${r.status} key=${j.key}`);
-esriStub = esriImage;
+esriStub = esriAll;
+const before = esriCalls.length;
 r = await esriKey('https://golftripper.uk', { ESRI_MAP: 'dead-key' });
 j = await r.json();
-check('esri-key: a refused verdict is cached too', j.key === null && esriCalls.length === 4,
-  `key=${j.key} calls=${esriCalls.length}`);
+check('esri-key: a refused verdict is cached too', j.key === null && esriCalls.length === before,
+  `key=${j.key} calls=${esriCalls.length - before}`);
 
 let failed = 0;
 for (const t of results) {

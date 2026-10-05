@@ -736,56 +736,70 @@ const ESRI_KEY_ORIGIN = 'https://golftripper.uk';
    the verdict in the edge cache for an hour (5 minutes if Esri couldn't be
    reached, so a blip isn't remembered for long). A failed or unreachable
    check means {key:null}: keyless tiles, never a broken map.
+   GOLF-244: it also asks for the vector streets style, a separate
+   privilege, and answers {key, vector:true|false}, so the page only tries
+   the vector basemap when Esri will serve it (no 401 in the console).
    - The key goes in a header, never a URL, so it can't surface in a
      subrequest log or trace; the verdict is cached under a hash of the key,
      never the key, and a new secret value gets checked afresh.
    - Nothing here is logged, and it never touches the GOLF-223 ORS counters.
-   - TEST_URL_ESRI_CHECK overrides the tile URL, for a request to localhost
-     only, the same rule as the /health test URLs. */
+   - TEST_URL_ESRI_CHECK / TEST_URL_ESRI_STYLE override the two URLs, for a
+     request to localhost only, the same rule as the /health test URLs. */
 const ESRI_CHECK_URL = 'https://static-map-tiles-api.arcgis.com/arcgis/rest/services/static-basemap-tiles-service/v1/arcgis/streets/static/tile/0/0/0';
+const ESRI_STYLE_CHECK_URL = 'https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/streets';
 const ESRI_CHECK_TTL_S = 3600;
 const ESRI_CHECK_RETRY_S = 300;
 /* Bump to drop every cached verdict at once, e.g. after the key's settings
    are fixed at Esri without its value changing (the hash wouldn't change). */
-const ESRI_CHECK_GEN = 2;
+const ESRI_CHECK_GEN = 3;
 
-async function esriKeyWorks(key, request, env, ctx) {
+/* One probe: {ok, sure}. `sure` is false when Esri couldn't be reached or
+   answered 5xx, which is remembered for 5 minutes rather than an hour. */
+async function esriProbe(url, key, type) {
+  try {
+    const res = await fetch(url, {
+      headers: { 'X-Esri-Authorization': 'Bearer ' + key, Referer: ESRI_KEY_ORIGIN + '/' },
+      signal: AbortSignal.timeout(3000),
+    });
+    const ok = res.status === 200 && type.test(res.headers.get('Content-Type') || '');
+    if (res.body) await res.body.cancel().catch(() => {});
+    return { ok, sure: res.status < 500 };
+  } catch (e) {
+    return { ok: false, sure: false };
+  }
+}
+
+/* Returns 'bad' | 'tiles' | 'vector' ('vector' implies the tiles work too). */
+async function esriKeyVerdict(key, request, env, ctx) {
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key)))]
     .map((b) => b.toString(16).padStart(2, '0')).join('');
   const cacheKey = new Request(`https://esri-check.invalid/${ESRI_CHECK_GEN}/${hash}`, { method: 'GET' });
   const cache = caches.default;
   try {
     const hit = await cache.match(cacheKey);
-    if (hit) return (await hit.text()) === 'ok';
+    if (hit) return await hit.text();
   } catch (e) {
     // cache unavailable: just check again
   }
   const local = new URL(request.url).hostname === 'localhost';
-  const url = local && env.TEST_URL_ESRI_CHECK ? env.TEST_URL_ESRI_CHECK : ESRI_CHECK_URL;
-  let verdict, ttl;
-  try {
-    const res = await fetch(url, {
-      headers: { 'X-Esri-Authorization': 'Bearer ' + key, Referer: ESRI_KEY_ORIGIN + '/' },
-      signal: AbortSignal.timeout(3000),
-    });
-    const image = /^image\//.test(res.headers.get('Content-Type') || '');
-    verdict = res.status === 200 && image ? 'ok' : 'bad';
-    ttl = res.status === 200 || (res.status >= 400 && res.status < 500) ? ESRI_CHECK_TTL_S : ESRI_CHECK_RETRY_S;
-  } catch (e) {
-    verdict = 'bad';
-    ttl = ESRI_CHECK_RETRY_S;
-  }
+  const [tiles, style] = await Promise.all([
+    esriProbe(local && env.TEST_URL_ESRI_CHECK || ESRI_CHECK_URL, key, /^image\//),
+    esriProbe(local && env.TEST_URL_ESRI_STYLE || ESRI_STYLE_CHECK_URL, key, /json/),
+  ]);
+  const verdict = !tiles.ok ? 'bad' : style.ok ? 'vector' : 'tiles';
+  const ttl = tiles.sure && (style.sure || !tiles.ok) ? ESRI_CHECK_TTL_S : ESRI_CHECK_RETRY_S;
   const put = cache.put(cacheKey, new Response(verdict, { headers: { 'Cache-Control': `max-age=${ttl}` } }))
     .catch(() => {});
   if (ctx && ctx.waitUntil) ctx.waitUntil(put);
-  return verdict === 'ok';
+  return verdict;
 }
 
 async function handleEsriKey(request, env, ctx) {
   if (request.method !== 'GET') return json({ error: 'GET only' }, 405, request);
   let key = request.headers.get('Origin') === ESRI_KEY_ORIGIN && env.ESRI_MAP ? env.ESRI_MAP : null;
-  if (key && !(await esriKeyWorks(key, request, env, ctx))) key = null;
-  const res = json({ key }, 200, request);
+  const verdict = key ? await esriKeyVerdict(key, request, env, ctx) : 'bad';
+  if (verdict === 'bad') key = null;
+  const res = json({ key, vector: verdict === 'vector' }, 200, request);
   res.headers.set('Cache-Control', 'no-store');
   return res;
 }

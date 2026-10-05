@@ -163,7 +163,7 @@ map.getPane('bgCoursePins').style.zIndex=350;
    OSM street style; World Topo stays rejected as too busy) — plus a
    "Satellite" (Imagery Hybrid) toggle, switchable via a Leaflet layer
    control. Esri's true OSM-style basemap is vector-only (needs MapLibre) —
-   that's GOLF-106, not this ticket. See
+   that's GOLF-106, not this ticket (now done as GOLF-244: esriVectorLayer()). See
    esriBaseLayers() below. Still a usage policy not a signed contract, but
    far more permissive about app use; a fully-contracted basemap is GOLF-106. */
 
@@ -178,6 +178,8 @@ map.getPane('bgCoursePins').style.zIndex=350;
    keyed World_Imagery for the photography. Without one (previews,
    localhost, Worker down, no ESRI_MAP secret), the long-standing keyless
    arcgisonline endpoints from GOLF-105, exactly as before. */
+const ESRI_STREET_DATA='Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS user community';
+const ESRI_POWERED='Powered by <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a>';
 const ESRI_STATIC='https://static-map-tiles-api.arcgis.com/arcgis/rest/services/static-basemap-tiles-service/v1/';
 function esriBaseLayers(key){
   /* GOLF-151: detectRetina only on the imagery. Esri serves no @2x tiles,
@@ -189,15 +191,17 @@ function esriBaseLayers(key){
   const esriTile=(service,attribution,retina)=>L.tileLayer(
     'https://server.arcgisonline.com/ArcGIS/rest/services/'+service+'/MapServer/tile/{z}/{y}/{x}',
     {attribution,maxNativeZoom:19,maxZoom:19,detectRetina:!!retina});
-  const streetAttr='Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS user community';
+  const streetAttr='Tiles &copy; Esri &mdash; '+ESRI_STREET_DATA;
   const imageryAttr='Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community';
   if(key){
     const t=encodeURIComponent(key);
-    const powered='Powered by <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a>';
+    const powered=ESRI_POWERED;
     const staticTile=(style,attribution)=>L.tileLayer(ESRI_STATIC+style+'/static/tile/{z}/{y}/{x}?token='+t,
       {attribution:attribution?powered+' &mdash; '+attribution:undefined,tileSize:512,zoomOffset:-1,maxNativeZoom:19,maxZoom:19,esriKeyed:true});
+    /* GOLF-244: a group, so the vector layer can join it and take over
+       from these raster tiles once it has drawn (esriAttachBases). */
     return {
-      'Default':staticTile('arcgis/streets',streetAttr.replace('Tiles &copy; Esri &mdash; ','')),
+      'Default':L.layerGroup([staticTile('arcgis/streets',streetAttr.replace('Tiles &copy; Esri &mdash; ',''))]),
       'Satellite':L.layerGroup([
         L.tileLayer('https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token='+t,
           {attribution:powered+' &mdash; '+imageryAttr.replace('Tiles &copy; Esri &mdash; ',''),maxNativeZoom:19,maxZoom:19,detectRetina:true,esriKeyed:true}),
@@ -217,7 +221,8 @@ function esriBaseLayers(key){
 /* GOLF-234 (1): the key comes from the Worker, which hands it out only to
    https://golftripper.uk (see handleEsriKey in ors-proxy.js). One request
    per page, shared by both maps; anything but a key within 2.5s means
-   keyless tiles. Deferred to DOMContentLoaded because ORS_PROXY_URL is
+   keyless tiles. Resolves {key, vector} or null; `vector` is the Worker's
+   word that Esri will serve this key the vector style (GOLF-244). Deferred to DOMContentLoaded because ORS_PROXY_URL is
    declared by js/ors.js, which loads after this file. */
 let esriKeyPromise=null;
 function esriKey(){
@@ -228,7 +233,7 @@ function esriKey(){
       const timer=setTimeout(()=>{if(ctl)ctl.abort();resolve(null);},2500);
       fetch(ORS_PROXY_URL.replace(/\/$/,'')+'/esri-key',{cache:'no-store',signal:ctl&&ctl.signal})
         .then(r=>r.ok?r.json():null)
-        .then(j=>resolve(j&&typeof j.key==='string'&&j.key?j.key:null))
+        .then(j=>resolve(j&&typeof j.key==='string'&&j.key?{key:j.key,vector:j.vector===true}:null))
         .catch(()=>resolve(null))
         .finally(()=>clearTimeout(timer));
     };
@@ -237,6 +242,73 @@ function esriKey(){
   });
   return esriKeyPromise;
 }
+/* GOLF-244: Esri's vector streets basemap (sharper labels at any zoom and
+   pixel density), drawn by MapLibre GL inside Leaflet via the
+   maplibre-gl-leaflet adapter. Leaflet still owns the map: pins, popups,
+   routes and every control are unchanged, and the GL canvas sits in
+   Leaflet's tile pane, below all of them, exactly where raster tiles go.
+   Production only, keyed only: it needs the keyed style (the keyless
+   public vector tiles are not for a commercial site), and the Worker only
+   says vector:true once Esri has served this key the style. ~240 KB of
+   library (gzipped) is fetched only then, after the raster map has
+   painted, so the first paint is never slower than before. MapLibre 5 is
+   the last release with a classic-script build (6 is ES modules only). */
+const MAPLIBRE_CSS={href:'https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.24.0/maplibre-gl.min.css',
+  integrity:'sha384-uTttxo/aOKbdE5RlD/SPzSDoDmNvGlUYPjONi2MN/b7c9HPSvW07OIuyP7uL6jxK'};
+const MAPLIBRE_JS=[
+  {src:'https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.24.0/maplibre-gl.js',
+   integrity:'sha384-5+cfbwT0iiub6VsQAdn6yz16nr6sDiQoHx6tm4O8OVYXHYOxcffFmCJBL0dgdvGp'},
+  {src:'https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js',
+   integrity:'sha384-tXYNKOHx4T02jMP7YYCtBxPIv1B5gaA5mcVPBzqMp6d7VzWzxJgI2aWF/nJLrQdS'}];
+const ESRI_STYLES='https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/';
+let esriVectorLibPromise=null;
+function esriVectorLib(){
+  if(!esriVectorLibPromise)esriVectorLibPromise=new Promise((resolve,reject)=>{
+    const probe=document.createElement('canvas');
+    const ctx=probe.getContext('webgl2')||probe.getContext('webgl');
+    if(!ctx){reject(new Error('no WebGL'));return;}
+    const lose=ctx.getExtension('WEBGL_lose_context');if(lose)lose.loseContext();
+    const css=Object.assign(document.createElement('link'),{rel:'stylesheet',crossOrigin:'anonymous'},MAPLIBRE_CSS);
+    document.head.appendChild(css);
+    const load=f=>new Promise((ok,no)=>{
+      const el=Object.assign(document.createElement('script'),{crossOrigin:'anonymous',onload:ok,onerror:no},f);
+      document.head.appendChild(el);
+    });
+    load(MAPLIBRE_JS[0]).then(()=>load(MAPLIBRE_JS[1]))
+      .then(()=>L.MaplibreGL?resolve():reject(new Error('no adapter')),reject);
+  });
+  return esriVectorLibPromise;
+}
+/* The vector streets layer. Attribution: "Powered by Esri" plus the style's
+   own data credits once it has loaded (the street raster's credits until
+   then); remembered, so Leaflet adds and removes the same string. Esri's
+   TileJSON can give tile URLs relative to the tile service, which MapLibre
+   won't resolve, so they're resolved here; any Esri URL the style hands
+   out without the token gets it. */
+function esriVectorLayer(key){
+  const t=encodeURIComponent(key);
+  let source=null;
+  const Layer=L.MaplibreGL.extend({
+    getAttribution(){
+      if(!this._esriAttr){
+        let a='';
+        try{a=L.MaplibreGL.prototype.getAttribution.call(this);}catch(e){}
+        if(a)this._esriAttr=ESRI_POWERED+' &mdash; '+a;
+      }
+      return this._esriAttr||ESRI_POWERED+' &mdash; '+ESRI_STREET_DATA;
+    }
+  });
+  return new Layer({
+    style:ESRI_STYLES+'arcgis/streets?token='+t,
+    transformRequest:(url,type)=>{
+      if(type==='Source'&&/\/VectorTileServer\b/.test(url))source=url.split('?')[0].replace(/\/?$/,'/');
+      if(!/^[a-z]+:/i.test(url)&&source)url=source+url;
+      if(/^https:\/\/[^/]*\.arcgis\.com\//.test(url)&&!/[?&]token=/.test(url))url+=(url.indexOf('?')<0?'?':'&')+'token='+t;
+      return {url};
+    }
+  });
+}
+let esriVectorFailed=false;
 /* esriAttachBases(m) — puts the Default base layer and the Default/Satellite
    picker on map m once the key question is settled (normally ~100ms; the
    map would otherwise pull keyless tiles on production first). Keyed if a
@@ -251,13 +323,14 @@ let esriKeyFailed=false;
 function esriAttachBases(m){
   let bases=null,control=null;
   const showing=()=>bases&&Object.keys(bases).find(n=>m.hasLayer(bases[n]))||'Default';
-  const attach=(key,current)=>{
+  const attach=(key,current,vector)=>{
     if(control)m.removeControl(control);
     if(bases)Object.values(bases).forEach(l=>m.removeLayer(l));
     bases=esriBaseLayers(key);
     control=L.control.layers(bases,null,{position:'topright'}).addTo(m);
     bases[current].addTo(m);
     if(!key)return;
+    if(vector&&!esriVectorFailed)upgrade(bases,key);
     let ok=0,bad=0;
     const watch=l=>{
       if(l.eachLayer){l.eachLayer(watch);return;}
@@ -270,9 +343,44 @@ function esriAttachBases(m){
     };
     Object.values(bases).forEach(watch);
   };
+  /* GOLF-244: add the vector layer to the Default group once the library is
+     in. The raster tiles stay underneath until the vector map has drawn
+     ('idle'), then leave the group, so switching Satellite <-> Default
+     later is vector only. Any error before that first draw, or no draw
+     within 15s of being visible, and the vector layer is dropped for the
+     page's life: raster as before, nothing for the visitor to notice. A
+     failed library load (offline, CDN down, no WebGL) does the same. */
+  const upgrade=(set,key)=>{
+    esriVectorLib().then(()=>{
+      if(!m._mapPane||bases!==set||esriKeyFailed||esriVectorFailed)return;
+      const group=set['Default'],raster=group.getLayers()[0],gl=esriVectorLayer(key);
+      let ready=false,timer=null;
+      const fail=()=>{
+        clearTimeout(timer);
+        if(ready||esriVectorFailed)return;
+        esriVectorFailed=true;
+        setTimeout(()=>group.removeLayer(gl),0);
+      };
+      const wait=()=>{timer=setTimeout(()=>document.visibilityState==='visible'?fail():wait(),15000);};
+      gl.on('add',()=>{
+        if(ready)return;
+        const glMap=gl.getMaplibreMap();
+        wait();
+        glMap.on('error',fail);
+        glMap.once('idle',()=>{
+          clearTimeout(timer);
+          if(esriVectorFailed)return;
+          ready=true;
+          glMap.off('error',fail);
+          group.removeLayer(raster);
+        });
+      });
+      group.addLayer(gl);
+    },()=>{esriVectorFailed=true;});
+  };
   /* The shared view can tear its map down and rebuild it before the key
      arrives; Leaflet's remove() drops _mapPane, so don't attach to a dead map. */
-  esriKey().then(key=>{if(m._mapPane)attach(esriKeyFailed?null:key,'Default');});
+  esriKey().then(k=>{if(m._mapPane)attach(esriKeyFailed||!k?null:k.key,'Default',k&&k.vector);});
 }
 esriAttachBases(map);
 /* GOLF-232 follow-up: an always-visible Feedback pill. On a phone it floats
