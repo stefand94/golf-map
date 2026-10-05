@@ -162,14 +162,19 @@ map.getPane('bgCoursePins').style.zIndex=350;
    esriBaseLayers() below. Still a usage policy not a signed contract, but
    far more permissive about app use; a fully-contracted basemap is GOLF-106. */
 
-/* esriBaseLayers() — shared factory used by this map and the shared-trip
+/* esriBaseLayers(key) — shared factory used by this map and the shared-trip
    map in js/trip-share.js. Returns a fresh {name: layer} object each call
-   (a Leaflet layer can't live on two map instances). These are Esri's
-   long-standing keyless arcgisonline endpoints (the ones esri-leaflet
-   defaults to); no account, token or domain-locking on this path, none
-   required. Note the {z}/{y}/{x} tile order. A tile 4xx degrades to blank
-   tiles, never a JS error — there is no second fallback provider. */
-function esriBaseLayers(){
+   (a Leaflet layer can't live on two map instances). Note the {z}/{y}/{x}
+   tile order on every Esri endpoint.
+
+   GOLF-234 (1): with a key, Esri's keyed services, which are what its terms
+   allow for a commercial site: the Static Basemap Tiles service for streets
+   and the imagery labels (512px tiles, hence tileSize/zoomOffset), and the
+   keyed World_Imagery for the photography. Without one (previews,
+   localhost, Worker down, no ESRI_KEY yet), the long-standing keyless
+   arcgisonline endpoints from GOLF-105, exactly as before. */
+const ESRI_STATIC='https://static-map-tiles-api.arcgis.com/arcgis/rest/services/static-basemap-tiles-service/v1/';
+function esriBaseLayers(key){
   /* GOLF-151: detectRetina only on the imagery. Esri serves no @2x tiles,
      so detectRetina just fetches the NEXT zoom level and draws it at half
      size — which halves every place name with it. On a retina screen that
@@ -181,6 +186,20 @@ function esriBaseLayers(){
     {attribution,maxNativeZoom:19,maxZoom:19,detectRetina:!!retina});
   const streetAttr='Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS user community';
   const imageryAttr='Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community';
+  if(key){
+    const t=encodeURIComponent(key);
+    const powered='Powered by <a href="https://www.esri.com" target="_blank" rel="noopener">Esri</a>';
+    const staticTile=(style,attribution)=>L.tileLayer(ESRI_STATIC+style+'/static/tile/{z}/{y}/{x}?token='+t,
+      {attribution:attribution?powered+' &mdash; '+attribution:undefined,tileSize:512,zoomOffset:-1,maxNativeZoom:19,maxZoom:19,esriKeyed:true});
+    return {
+      'Default':staticTile('arcgis/streets',streetAttr.replace('Tiles &copy; Esri &mdash; ','')),
+      'Satellite':L.layerGroup([
+        L.tileLayer('https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token='+t,
+          {attribution:powered+' &mdash; '+imageryAttr.replace('Tiles &copy; Esri &mdash; ',''),maxNativeZoom:19,maxZoom:19,detectRetina:true,esriKeyed:true}),
+        staticTile('arcgis/imagery/labels','')
+      ])
+    };
+  }
   return {
     'Default':esriTile('World_Street_Map',streetAttr),
     'Satellite':L.layerGroup([
@@ -190,9 +209,67 @@ function esriBaseLayers(){
     ])
   };
 }
-const esriBases=esriBaseLayers();
-esriBases['Default'].addTo(map);
-L.control.layers(esriBases,null,{position:'topright'}).addTo(map);
+/* GOLF-234 (1): the key comes from the Worker, which hands it out only to
+   https://golftripper.uk (see handleEsriKey in ors-proxy.js). One request
+   per page, shared by both maps; anything but a key within 2.5s means
+   keyless tiles. Deferred to DOMContentLoaded because ORS_PROXY_URL is
+   declared by js/ors.js, which loads after this file. */
+let esriKeyPromise=null;
+function esriKey(){
+  if(!esriKeyPromise)esriKeyPromise=new Promise(resolve=>{
+    const go=()=>{
+      if(typeof ORS_PROXY_URL==='undefined'||!ORS_PROXY_URL||typeof fetch!=='function'){resolve(null);return;}
+      const ctl=typeof AbortController==='function'?new AbortController():null;
+      const timer=setTimeout(()=>{if(ctl)ctl.abort();resolve(null);},2500);
+      fetch(ORS_PROXY_URL.replace(/\/$/,'')+'/esri-key',{cache:'no-store',signal:ctl&&ctl.signal})
+        .then(r=>r.ok?r.json():null)
+        .then(j=>resolve(j&&typeof j.key==='string'&&j.key?j.key:null))
+        .catch(()=>resolve(null))
+        .finally(()=>clearTimeout(timer));
+    };
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go,{once:true});
+    else go();
+  });
+  return esriKeyPromise;
+}
+/* esriAttachBases(m) — puts the Default base layer and the Default/Satellite
+   picker on map m once the key question is settled (normally ~100ms; the
+   map would otherwise pull keyless tiles on production first). Keyed if a
+   key arrived, keyless otherwise. If the keyed tiles fail (key expired,
+   revoked, wrong privilege, Esri down) the map drops back to keyless for
+   the rest of the page's life, keeping whichever base was showing. Esri's
+   imagery endpoint answers a bad token with a 200 JSON body, so failure is
+   read from tileerror (the image won't decode), not from status: two
+   errors before any tile has loaded (a small phone view with 512px tiles
+   may only ask for two). */
+let esriKeyFailed=false;
+function esriAttachBases(m){
+  let bases=null,control=null;
+  const showing=()=>bases&&Object.keys(bases).find(n=>m.hasLayer(bases[n]))||'Default';
+  const attach=(key,current)=>{
+    if(control)m.removeControl(control);
+    if(bases)Object.values(bases).forEach(l=>m.removeLayer(l));
+    bases=esriBaseLayers(key);
+    control=L.control.layers(bases,null,{position:'topright'}).addTo(m);
+    bases[current].addTo(m);
+    if(!key)return;
+    let ok=0,bad=0;
+    const watch=l=>{
+      if(l.eachLayer){l.eachLayer(watch);return;}
+      l.on('tileload',()=>{ok++;});
+      l.on('tileerror',()=>{
+        if(ok||esriKeyFailed||++bad<2)return;
+        esriKeyFailed=true;
+        attach(null,showing());
+      });
+    };
+    Object.values(bases).forEach(watch);
+  };
+  /* The shared view can tear its map down and rebuild it before the key
+     arrives; Leaflet's remove() drops _mapPane, so don't attach to a dead map. */
+  esriKey().then(key=>{if(m._mapPane)attach(esriKeyFailed?null:key,'Default');});
+}
+esriAttachBases(map);
 /* GOLF-232 follow-up: an always-visible Feedback pill. On a phone it floats
    in the map's top-left corner: a Leaflet control, so it stays inside the
    visible strip of map (below the floating search, above the sheet) and

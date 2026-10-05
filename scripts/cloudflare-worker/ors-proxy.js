@@ -716,6 +716,26 @@ function countDone(request, status) {
   return new Response(null, { status, headers: { 'X-Worker-Build': WORKER_BUILD, ...corsHeaders(request) } });
 }
 
+/* GOLF-234 (1): the Esri basemap key, for production only.
+
+   ESRI_KEY is a Worker secret holding a referrer-restricted ArcGIS Location
+   Platform key (golftripper.uk only, basemap privileges only). It has to
+   reach the browser, because the browser fetches the tiles, so the
+   restriction lives at Esri: a copied key is refused from any other site.
+   This route only decides who is handed it: Origin https://golftripper.uk.
+   Previews, localhost and scripts get {key:null} and stay on the keyless
+   tiles. The key is never logged, and no-store keeps it out of every cache
+   between here and the page. */
+const ESRI_KEY_ORIGIN = 'https://golftripper.uk';
+
+function handleEsriKey(request, env) {
+  if (request.method !== 'GET') return json({ error: 'GET only' }, 405, request);
+  const key = request.headers.get('Origin') === ESRI_KEY_ORIGIN && env.ESRI_KEY ? env.ESRI_KEY : null;
+  const res = json({ key }, 200, request);
+  res.headers.set('Cache-Control', 'no-store');
+  return res;
+}
+
 async function handleStats(request, env) {
   if (request.method !== 'GET') return json({ error: 'GET only' }, 405, request);
   if (!env.LOOKUP_QUOTA) return json({ error: 'stats are not set up' }, 503, request);
@@ -876,6 +896,7 @@ export default {
     }
     if (path === '/count') return handleCount(request, env);
     if (path === '/stats') return handleStats(request, env);
+    if (path === '/esri-key') return handleEsriKey(request, env);
     if (request.method !== 'POST') {
       return json({ error: 'POST only' }, 405, request);
     }
@@ -1470,7 +1491,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = '69dc3e8022';
+const WORKER_BUILD = '085519093f';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {

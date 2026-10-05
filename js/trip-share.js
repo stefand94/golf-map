@@ -274,13 +274,11 @@ function renderSharedMap(){
   if(!el||typeof L==='undefined')return;
   if(sharedMapInstance){sharedMapInstance.remove();sharedMapInstance=null;}
   const m=L.map(el,{zoomControl:true,scrollWheelZoom:false,maxZoom:19});
-  /* GOLF-105: same Esri keyless basemap + Default/Satellite toggle as the
-     main map. esriBaseLayers() is a global from js/map.js (loaded first);
-     a fresh set per call since these layers can't be shared with the main
-     map instance. */
-  const sharedBases=esriBaseLayers();
-  sharedBases['Default'].addTo(m);
-  L.control.layers(sharedBases,null,{position:'topright'}).addTo(m);
+  /* GOLF-105: same Esri basemap + Default/Satellite toggle as the main
+     map, keyed on production (GOLF-234). esriAttachBases() is a global from
+     js/map.js (loaded first); it builds a fresh layer set per map, since
+     these layers can't be shared with the main map instance. */
+  esriAttachBases(m);
   m.attributionControl.addAttribution(PRIVACY_LINK); // GOLF-227
   m.attributionControl.addAttribution(FEEDBACK_LINK); // GOLF-232
   m.attributionControl.addAttribution(DATA_CREDIT); // GOLF-240

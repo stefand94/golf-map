@@ -270,6 +270,27 @@ check('a look-alike origin is refused',
   r.headers.get('Access-Control-Allow-Origin') === 'null',
   `acao=${r.headers.get('Access-Control-Allow-Origin')}`);
 
+/* GOLF-234 (1): the Esri key goes to production only, is never cached, and
+   its absence is a clean {key:null}, not an error the page has to handle. */
+const esriKey = (origin, env) => worker.fetch(new Request('https://w.test/esri-key', {
+  headers: origin ? { Origin: origin } : {},
+}), env, ctx);
+const KEYED = { ESRI_KEY: 'test-esri-key' };
+r = await esriKey('https://golftripper.uk', KEYED);
+j = await r.json();
+check('esri-key: production gets the key, uncached',
+  j.key === 'test-esri-key' && r.headers.get('Cache-Control') === 'no-store',
+  `key=${j.key} cc=${r.headers.get('Cache-Control')}`);
+for (const o of ['https://some-branch.golf-map.pages.dev', 'http://localhost:8080',
+  'https://golftripper.uk.evil.example', 'https://www.golftripper.uk', null]) {
+  r = await esriKey(o, KEYED);
+  j = await r.json();
+  check(`esri-key: ${o || 'no Origin'} gets none`, r.status === 200 && j.key === null, `status=${r.status} key=${j.key}`);
+}
+r = await esriKey('https://golftripper.uk', {});
+j = await r.json();
+check('esri-key: no secret set means key null', r.status === 200 && j.key === null, `key=${j.key}`);
+
 let failed = 0;
 for (const t of results) {
   if (!t.pass) failed++;
