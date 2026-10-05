@@ -103,6 +103,38 @@
        that sit inside a ≥44px row and so are already comfortably hit. */
     --tap:44px;--tap-sm:36px;
     --ease:cubic-bezier(.2,.7,.3,1);--dur:.16s;
+    /* ── GOLF-153 calendar palette (owner review 2026-10-05) ──────────
+       "It's all too similar in terms of colour": every kind of block on
+       the hour grid now has a hue of its own, so a day is readable at a
+       glance rather than by stopping to read each label. One family per
+       kind — a fill, a hairline and the colour of the text that sits on
+       the fill — gathered here rather than scattered through the .tl-*
+       rules, so the set can be seen as a set.
+
+       Every ink/fill pair below clears WCAG AA for small text, checked
+       by hand: golf 8.04:1, flight 7.34, train 7.85, activity 7.16,
+       stop 6.88, stay 7.99, arrive-by 7.13 (6.15 over its own stripe),
+       drive 6.46 (5.78 over its stripe). --ink on any fill clears 12:1
+       and --stone, the sub-label, clears 4.66:1 at worst (train).
+       The hairlines are deliberately quiet — 2:1-ish against the grid,
+       which is already a notch stronger than --line's 1.22 — because
+       the fill does the identifying, not the border, and nothing here
+       is carried by colour alone: every block also has its own icon and
+       its name (WCAG 1.4.1).
+
+       Light-only, like the rest of the app — there is no dark theme to
+       check against; when one arrives it is this block that gets the
+       override. */
+    --tl-golf-fill:#E2F0E4;--tl-golf-line:#7FB58A;--tl-golf-ink:#17502A;
+    --tl-flight-fill:#DFEAF8;--tl-flight-line:#8AAFD8;--tl-flight-ink:#134A86;
+    --tl-train-fill:#EBE2F7;--tl-train-line:#A98BD0;--tl-train-ink:#56259B;
+    --tl-activity-fill:#D9F0EE;--tl-activity-line:#78BFB8;--tl-activity-ink:#0C5651;
+    --tl-stop-fill:#FBE6D2;--tl-stop-line:#DDA468;--tl-stop-ink:#7D3C06;
+    --tl-stay-fill:#ECE7E0;--tl-stay-line:#BEB2A1;--tl-stay-ink:#4C4234;
+    --tl-buffer-fill:#FDF2D7;--tl-buffer-stripe:#F7E1A6;
+      --tl-buffer-line:#C9A33C;--tl-buffer-ink:#6E4A05;
+    --tl-drive-fill:#F0F2F4;--tl-drive-stripe:#E2E6EA;
+      --tl-drive-line:#C9D1D8;--tl-drive-ink:#4E5862;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;height:100%}
@@ -758,6 +790,25 @@
      so the grid lives in its own scroller — that is what makes 06:40 and
      23:30 both reachable on a phone. */
   .tl-viewswitch{display:flex;gap:var(--sp-1);padding:var(--sp-2) var(--sp-3)}
+  /* The key to the palette above. Wraps to as many lines as it needs, so
+     it costs two lines at 375px and one on a desktop; shown only while
+     the calendar is the view it explains. */
+  .tl-legend{display:flex;flex-wrap:wrap;gap:var(--sp-1) var(--sp-2);
+    margin:0;padding:0 var(--sp-3) var(--sp-2);list-style:none}
+  .tl-legend li{display:flex;align-items:center;gap:var(--sp-1);
+    font:var(--fs-micro)/1.4 var(--font-sans);color:var(--ink-soft)}
+  .tl-legend i{width:12px;height:12px;flex:none;border-radius:3px;
+    border:1px solid var(--line);background:var(--paper-2)}
+  .tl-legend .is-golf{background:var(--tl-golf-fill);border-color:var(--tl-golf-line)}
+  .tl-legend .is-drive{border-color:var(--tl-drive-line);
+    background:repeating-linear-gradient(135deg,var(--tl-drive-fill) 0 3px,var(--tl-drive-stripe) 3px 6px)}
+  .tl-legend .is-buffer{border-color:var(--tl-buffer-line);
+    background:repeating-linear-gradient(135deg,var(--tl-buffer-fill) 0 3px,var(--tl-buffer-stripe) 3px 6px)}
+  .tl-legend .is-flight{background:var(--tl-flight-fill);border-color:var(--tl-flight-line)}
+  .tl-legend .is-train{background:var(--tl-train-fill);border-color:var(--tl-train-line)}
+  .tl-legend .is-activity{background:var(--tl-activity-fill);border-color:var(--tl-activity-line)}
+  .tl-legend .is-stop{background:var(--tl-stop-fill);border-color:var(--tl-stop-line)}
+  .tl-legend .is-stay{background:var(--tl-stay-fill);border-color:var(--tl-stay-line)}
   /* The day's own scroll surface. Capped at 60vh so the day card, its
      menu and the next day are all still reachable without scrolling the
      calendar past them; overscroll-behavior stops a flick at the bottom
@@ -790,11 +841,23 @@
   .tl-block-body{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;gap:0 var(--sp-1);align-items:baseline}
   .tl-block-name{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
   .tl-block-sub{color:var(--stone);font-size:var(--fs-micro)}
-  .tl-block-golf{background:var(--accent-soft);border-color:#C6D8E6}
-  .tl-block-poi{background:#FFF6E0;border-color:#EFD9A8}
-  .tl-block-flight,.tl-block-train{background:#EDE7F6;border-color:#CFC2E8}
-  .tl-block-activity{background:#E8F5E9;border-color:#BEDCC1}
-  .tl-block-drivefrom{background:var(--paper-2);border-color:var(--line)}
+  /* One hue per kind (owner review) — see the --tl-* tokens at the top.
+     The time is in the kind's own ink, which is what makes a column of
+     blocks scannable before any of them is read. */
+  .tl-block-golf{background:var(--tl-golf-fill);border-color:var(--tl-golf-line)}
+  .tl-block-golf .tl-block-time{color:var(--tl-golf-ink)}
+  .tl-block-poi{background:var(--tl-stop-fill);border-color:var(--tl-stop-line)}
+  .tl-block-poi .tl-block-time{color:var(--tl-stop-ink)}
+  .tl-block-flight{background:var(--tl-flight-fill);border-color:var(--tl-flight-line)}
+  .tl-block-flight .tl-block-time{color:var(--tl-flight-ink)}
+  .tl-block-train{background:var(--tl-train-fill);border-color:var(--tl-train-line)}
+  .tl-block-train .tl-block-time{color:var(--tl-train-ink)}
+  .tl-block-activity{background:var(--tl-activity-fill);border-color:var(--tl-activity-line)}
+  .tl-block-activity .tl-block-time{color:var(--tl-activity-ink)}
+  /* A drive-from is where a drive begins, so it belongs to the drive's
+     grey rather than to a colour of its own. */
+  .tl-block-drivefrom{background:var(--tl-drive-fill);border-color:var(--tl-drive-line)}
+  .tl-block-drivefrom .tl-block-time{color:var(--tl-drive-ink)}
   /* DEC-039 (owner review): a block is dragged to move it and its edges
      are dragged to resize it, so it has to say so before it is touched.
      touch-action:none on the block alone is what lets a held finger drag
@@ -869,8 +932,8 @@
      rather than the drive's grey, since the deadline is the block's,
      not the road's. */
   .tl-buffer{border-radius:var(--radius-sm);
-    background:repeating-linear-gradient(135deg,var(--paper-2) 0 5px,var(--accent-soft) 5px 10px);
-    border:1px dashed #C6D8E6;color:var(--accent-deep);
+    background:repeating-linear-gradient(135deg,var(--tl-buffer-fill) 0 5px,var(--tl-buffer-stripe) 5px 10px);
+    border:1px dashed var(--tl-buffer-line);color:var(--tl-buffer-ink);
     font:600 var(--fs-micro)/1.2 var(--font-sans);padding:1px var(--sp-2);
     display:flex;align-items:center;gap:var(--sp-2);cursor:default;white-space:nowrap}
   /* Dropped first when the band is too short for both halves. */
@@ -886,19 +949,21 @@
   .tl-notebtn:hover{background:var(--paper-2);color:var(--ink)}
   /* A drive is computed, and the one thing it must never do is look
      draggable: no cursor, no hover, no handles. */
-  .tl-drive{background:repeating-linear-gradient(135deg,var(--paper) 0 5px,var(--paper-2) 5px 10px);
-    border-radius:var(--radius-sm);color:var(--stone);
+  .tl-drive{background:repeating-linear-gradient(135deg,var(--tl-drive-fill) 0 5px,var(--tl-drive-stripe) 5px 10px);
+    border-radius:var(--radius-sm);border:1px solid var(--tl-drive-line);color:var(--tl-drive-ink);
     font:var(--fs-micro)/1.2 var(--font-sans);padding:1px var(--sp-2);display:flex;
     align-items:center;gap:var(--sp-1);cursor:default}
   .tl-drive-from{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .tl-checkin{border-top:2px dashed var(--stone);height:0;display:flex;justify-content:flex-end}
-  .tl-checkin span{transform:translateY(-55%);background:var(--paper-2);padding:0 4px;
-    font:var(--fs-micro)/1 var(--font-sans);color:var(--stone)}
+  /* The check-in line belongs to the stay, so it wears the stay's tone. */
+  .tl-checkin{border-top:2px dashed var(--tl-stay-line);height:0;display:flex;justify-content:flex-end}
+  .tl-checkin span{transform:translateY(-55%);background:var(--tl-stay-fill);padding:0 var(--sp-1);
+    border-radius:var(--radius-xs);
+    font:var(--fs-micro)/1.6 var(--font-sans);color:var(--tl-stay-ink)}
   /* The stay is a strip along the bottom of the night it covers, not a
      block on the clock (DEC-039). */
   .tl-stay{margin:0 var(--sp-3) var(--sp-3);padding:var(--sp-2) var(--sp-3);border-radius:var(--radius-sm);
-    background:var(--accent-soft);border:1px solid #C6D8E6;
-    font:var(--fs-caption)/1.3 var(--font-sans);color:var(--ink)}
+    background:var(--tl-stay-fill);border:1px solid var(--tl-stay-line);
+    font:var(--fs-caption)/1.3 var(--font-sans);color:var(--tl-stay-ink)}
   .tl-stay-sub{color:var(--ink-soft);margin-left:var(--sp-2)}
   /* The one field that writes anything: a native time input, so the
      phone gives its own picker. Empty means "no fixed time" — the block

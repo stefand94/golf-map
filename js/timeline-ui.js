@@ -39,9 +39,10 @@ const TL_PX_PER_MIN=TL_PX_PER_HOUR/60;
    drawn at the floor and overlap the following hour line slightly
    rather than becoming a sliver with text spilling out. */
 const TL_MIN_BLOCK_PX=22;
-/* Same idea for a drive leg: 14px is the floor at which "🚗 1h 20m"
-   still fits on its line. */
-const TL_DRIVE_MIN_PX=14;
+/* Same idea for a drive leg: 16px is the floor at which "🚗 1h 20m"
+   still fits on its line, now that the leg has a hairline of its own
+   (owner review 2026-10-05) eating into the height. */
+const TL_DRIVE_MIN_PX=16;
 /* What a marker takes up: its time and its two lines of text. It has no
    duration, so this is the only thing that keeps the next block off it.
    46→48 with the owner review's extra block padding. */
@@ -480,7 +481,21 @@ function tlViewToggleHTML(){
   return`<div class="tl-viewswitch" role="group" aria-label="Itinerary view">
     ${btn('false','List',!tbDetailed,'The day as a list of stops.')}
     ${btn('true','Calendar',!!tbDetailed,'The day on an hour grid you can drag things around on.')}
-  </div>`;
+  </div>${tbDetailed?tlLegendHTML():''}`;
+}
+/* The key to the grid's colours (owner review 2026-10-05). Only under
+   the calendar, because it explains nothing about the list. Order is the
+   order a day tends to run in — you drive, you have to be there by, then
+   whatever it is you came for. The swatch is decorative and the word
+   beside it carries the meaning, so the swatch is aria-hidden. */
+const TL_LEGEND=[
+  ['drive','Drive'],['buffer','Arrive by'],['golf','Round'],['stop','Stop'],
+  ['activity','Activity'],['flight','Flight'],['train','Train'],['stay','Stay'],
+];
+function tlLegendHTML(){
+  return`<ul class="tl-legend" aria-label="What the colours mean">${
+    TL_LEGEND.map(([k,label])=>`<li><i class="is-${k}" aria-hidden="true"></i>${esc(label)}</li>`).join('')
+  }</ul>`;
 }
 
 /* ── The details panel (DEC-039, owner review) ────────────────────────
