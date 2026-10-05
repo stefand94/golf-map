@@ -20,7 +20,7 @@ const path = require('path');
 const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
-const files = ['data/config.js', 'data/stations.js', 'data/courses-london.js', 'data/courses-top100.js', 'data/courses-scotland.js', 'data/courses-wales.js', 'data/courses-ireland.js', 'data/courses-southafrica.js'];
+const files = ['data/config.js', 'data/stations.js', 'data/airports.js', 'data/courses-london.js', 'data/courses-top100.js', 'data/courses-scotland.js', 'data/courses-wales.js', 'data/courses-ireland.js', 'data/courses-southafrica.js'];
 
 const sandbox = {};
 vm.createContext(sandbox);
@@ -186,6 +186,35 @@ C.forEach((c, i) => {
   if (seen.has(key)) fail(`Duplicate entry: "${c.n}" at C[${seen.get(key)}] and C[${i}]`);
   else seen.set(key, i);
 });
+
+/* GOLF-153: data/airports.js. Small file, but it is the only thing
+   standing between a typed flight number and a drive leg to the first
+   tee, and it is machine-generated — so the checks are the ones a bad
+   regenerate would trip, not a careful reading of 133 rows. */
+{
+  const A = sandbox.AIRPORTS;
+  if (!Array.isArray(A) || !A.length) fail('AIRPORTS is missing or empty');
+  else {
+    const seen = new Set();
+    const BOX = { gb: [49, 61, -9, 2], ie: [51, 56, -11, -5], za: [-35, -22, 16, 33] };
+    A.forEach((a, n) => {
+      const at = `airport #${n} (${a && a.iata})`;
+      if (!/^[A-Z]{3}$/.test(a.iata || '')) fail(`${at}: not a 3-letter IATA code`);
+      if (seen.has(a.iata)) fail(`${at}: duplicate IATA code`);
+      seen.add(a.iata);
+      if (!a.name) fail(`${at}: no name`);
+      if (!BOX[a.nation]) { fail(`${at}: nation "${a.nation}" is not gb/ie/za`); return; }
+      const [la0, la1, lo0, lo1] = BOX[a.nation];
+      if (!(typeof a.lat === 'number' && a.lat >= la0 && a.lat <= la1 &&
+            typeof a.lng === 'number' && a.lng >= lo0 && a.lng <= lo1))
+        fail(`${at}: ${a.lat},${a.lng} is outside ${a.nation}`);
+    });
+    // The ones a golf trip actually lands at. If a regenerate drops these,
+    // it has changed what it filters on and wants looking at.
+    ['INV', 'EDI', 'GLA', 'LHR', 'DUB', 'SNN', 'KIR', 'CPT', 'JNB', 'GRJ']
+      .forEach(c => { if (!seen.has(c)) fail(`airports: ${c} is missing`); });
+  }
+}
 
 // ---- report ----
 if (failures.length) {

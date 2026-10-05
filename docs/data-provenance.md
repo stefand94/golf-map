@@ -28,6 +28,7 @@ listed in §1. The sections after it give the detail. **§9 is the open risks.**
 | `data/config.js` | Bands, regions, architects, London rail lines `R`, `ROUTE_LINE`, `ISOLATED` | §4, §5 |
 | `data/stations.js` | GB rail stations | §4 |
 | `data/rail-geometry.js` | TfL track polylines | §4 |
+| `data/airports.js` | 133 GB/IE/ZA airports a trip can fly into | §4 |
 | `data/pois-{england,scotland,wales,ireland,southafrica}.js` | Notable sights for the itinerary | §3 |
 | `data/pois-categories.js` | POI category list | §3 |
 | Worker → `api.heigit.org` | ORS driving directions | §6 |
@@ -268,7 +269,27 @@ No other host is contacted for data. The Worker's upstream URLs are in
 
 ---
 
-## 4. Rail (`data/stations.js`, `data/rail-geometry.js`, rail parts of `data/config.js`)
+## 4. Transport (`data/stations.js`, `data/rail-geometry.js`, `data/airports.js`, rail parts of `data/config.js`)
+
+### 4.1 Airports (`data/airports.js`)
+
+- **Source:** OurAirports (<https://ourairports.com/data/>), via the
+  `davidmegginson/ourairports-data` mirror of `airports.csv`. Fetched
+  2026-10-05 by `scripts/fetch_airports.py`; written to the data file by
+  `scripts/merge_airports.py`.
+- **Terms:** OurAirports places its data in the **public domain** ("you may
+  use it for any purpose"). No attribution is required and none is shown.
+  A credit line is still worth adding if the Credits list is next edited.
+- **Scope:** `large_airport` + `medium_airport` with an IATA code, in GB, IE
+  and ZA — 133 rows (gb 72, ie 8, za 53). Fields: `iata`, `name`, `town`,
+  `nation`, `lat`, `lng`, `big`.
+- **What it is for:** GOLF-153 detailed mode. Picking an arrival airport is
+  what gives a hand-typed flight coordinates, and therefore a drive leg to
+  the first tee. Nothing else in the app reads it.
+- **Shown?** Yes, as the options in the flight form; the airport's name and
+  code appear on the itinerary and on a shared link.
+
+### 4.2 Rail
 
 - **Stations:** `scripts/fetch_rail_stations.py`, fetched 2026-08-25 (file
   header).

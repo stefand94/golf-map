@@ -546,7 +546,10 @@ function tripDayItemRowHTML(d,it){
   const priceLabel=price!=null?` · ${tripPriceLabel(det)}`:'';
   // GOLF-69 (item 10): one icon vocabulary shared by the list rows and the
   // map markers — hotel emoji for stays, location pin for POIs.
-  const icon=it.type==='golf'?'⛳':it.type==='hotel'?'🏨':'📍';
+  // GOLF-153: a flight is a fourth kind of stop, so it gets its own icon
+  // rather than inheriting the POI pin. Its coordinates are the arrival
+  // airport's, which is what earns it a drive leg like any other stop.
+  const icon=it.type==='golf'?'⛳':it.type==='hotel'?'🏨':it.type==='flight'?'✈':'📍';
   const noGeo=it.type!=='golf'&&tripItemPoint(it)==null;
   /* GOLF-71 copy audit: the price used to be repeated in the grey meta
      line AND (on golf) implied by the fee — it now appears once, in the
@@ -563,7 +566,11 @@ function tripDayItemRowHTML(d,it){
     ?(stayNight>0
       ?`<div class="cart-region" title="Change the hotel, its price or how many nights it runs for on night 1 of this stay">Night ${stayNight+1} of ${stayN}</div>`
       :tbStayControlsHTML(d,it))
-    :`<div class="cart-region">Stop${noGeo?' · <span title="No location picked, so no drive time can be calculated to this stop">no location</span>':''}</div>`;
+    :it.type==='flight'&&typeof tlFlightListMetaHTML==='function'
+      // GOLF-153: the flight number and the two airport codes, which is
+      // what the detailed grid shows too — "Stop" told a visitor nothing.
+      ?tlFlightListMetaHTML(it)
+      :`<div class="cart-region">Stop${noGeo?' · <span title="No location picked, so no drive time can be calculated to this stop">no location</span>':''}</div>`;
   const main=it.type==='golf'
     ?`<a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${it.i})">${esc(tripItemName(it))}</a>
        <div class="cart-region">${esc(C[it.i]?C[it.i].r:'')}${((typeof feeCartFor==='function')&&feeCartFor(it.i)||{}).status==='mandatory'?' · <span class="wt">buggy compulsory</span>':''}</div>`
@@ -580,7 +587,10 @@ function tripDayItemRowHTML(d,it){
      fact, the day it sits on, is the "Move to" section of this same menu. */
   const menu=tbRowMenuHTML(
     (it.type==='golf'?`<div class="tb-menu-label">Move to</div>${tbDayMenuItemsHTML(it.i,d.id)}<div class="tb-menu-sep"></div>`
-      :`<button type="button" class="tb-menu-item" onclick="tbEditStop(${d.id},'${it.id}')">✎ Edit</button><div class="tb-menu-sep"></div>`)+
+      // GOLF-153: a flight's Edit opens the flight form instead —
+      // tripDayUpdateStop() behind tbEditStop only accepts hotel/poi,
+      // so routing a flight there would have been a dead button.
+      :`<button type="button" class="tb-menu-item" onclick="${it.type==='flight'?`tlEditFlight(${d.id},'${it.id}')`:`tbEditStop(${d.id},'${it.id}')`}">✎ Edit</button><div class="tb-menu-sep"></div>`)+
     `<button type="button" class="tb-menu-item is-danger" onclick="tripRemoveItem(${d.id},'${it.id}');">🗑 Remove</button>`);
   return`<div class="tb-day-course tb-item-${it.type}" ${tbRowDragAttrs(`tbDragSetItem(${d.id},'${it.id}',event,this);`,`tbDropInDay(${d.id},'${it.id}');`)}>
     <span class="tb-drag-handle" title="Drag to reorder">⠿</span>

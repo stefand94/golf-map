@@ -494,7 +494,11 @@ function tripCostLineItems(){
   // GOLF-63: itemised in the day's own order, so the breakdown reads down
   // the day the same way the itinerary does. GOLF-71 renamed the POI
   // category label to "Stop" (tripCostBreakdown() filters on that string).
-  const CAT={golf:'Golf',hotel:'Stay',poi:'Stop'};
+  // GOLF-153: a flight is its own category. Falling through to 'Stop'
+  // (as any unknown type does) would have put an airfare under "Stops"
+  // next to the lunch, and the "× group size" tag below is already the
+  // right arithmetic for a per-person fare.
+  const CAT={golf:'Golf',hotel:'Stay',poi:'Stop',flight:'Travel'};
   // GOLF-74: a per-person-sharing stay carries its arithmetic into the label
   // so the line item explains its own (doubled) amount.
   // GOLF-87: golf/POI totals scale by the trip's group size — each
@@ -608,9 +612,13 @@ function tripCostBreakdown(){
   const cur=tripPrimaryCurrency();
   const sum=arr=>{const b={[cur]:0};arr.forEach(x=>moneyBucketAdd(b,x.cur||cur,x.amount));return b;};
   const golf=items.filter(x=>x.cat==='Golf'),stay=items.filter(x=>x.cat==='Stay'),poi=items.filter(x=>x.cat==='Stop');
+  // GOLF-153: Travel is the flights bucket, and its group is rendered
+  // only when it has lines — a trip with no flight (every trip before
+  // this ticket) shows the same three groups it always did.
+  const travel=items.filter(x=>x.cat==='Travel');
   const fuelMiles=tripTotalDriveMiles();
   const fuelCost=fuelMiles*FUEL_COST_PER_MILE;
-  const golfTotal=sum(golf),stayTotal=sum(stay),poiTotal=sum(poi);
+  const golfTotal=sum(golf),stayTotal=sum(stay),poiTotal=sum(poi),travelTotal=sum(travel);
   /* GOLF-203: the trip's own "Other" lines, priced here and nowhere else.
      `typed` is what the visitor entered; `amount` is the whole-party
      figure every other cost line in this app is already expressed in, so
@@ -629,14 +637,14 @@ function tripCostBreakdown(){
   if(tbIncludeFuel)moneyBucketAdd(otherTotal,cur,fuelCost);
   customItems.forEach(x=>moneyBucketAdd(otherTotal,x.cur,x.amount));
   const grand={[cur]:0};
-  [golfTotal,stayTotal,poiTotal,otherTotal].forEach(b=>Object.keys(b).forEach(c=>moneyBucketAdd(grand,c,b[c])));
+  [golfTotal,stayTotal,poiTotal,travelTotal,otherTotal].forEach(b=>Object.keys(b).forEach(c=>moneyBucketAdd(grand,c,b[c])));
   // GOLF-87: an even per-person split of the whole trip total — golf/POI
   // are already priced per-traveller above, stays keep their own GOLF-74
   // sharing math untouched, and fuel is one shared trip cost only divided
   // here, at the very last step. Across currencies, each bucket divides on
   // its own (DEC-026).
   const perPerson=gs>1?moneyBucketScale(grand,1/gs):null;
-  return{items,cur,golfTotal,golfCov:golf.filter(x=>x.amount!=null).length,golfOf:golf.length,stayTotal,poiTotal,fuelMiles,fuelCost,customItems,otherTotal,grand,groupSize:gs,perPerson};
+  return{items,cur,golfTotal,golfCov:golf.filter(x=>x.amount!=null).length,golfOf:golf.length,stayTotal,poiTotal,travelTotal,fuelMiles,fuelCost,customItems,otherTotal,grand,groupSize:gs,perPerson};
 }
 /* The headline trip total as display text — navbar pill, Itinerary's
    "Trip total" card and the shared view's pill all read this, so a mixed
@@ -869,6 +877,7 @@ function tbCostsBodyHTML(b,fuelRowLabel,readOnly){
   const cur=b.cur,gs=b.groupSize,multi=gs>1;
   const mixed=moneyBucketCount(b.grand)>1;
   const golf=b.items.filter(x=>x.cat==='Golf'),stay=b.items.filter(x=>x.cat==='Stay'),stop=b.items.filter(x=>x.cat==='Stop');
+  const travel=b.items.filter(x=>x.cat==='Travel'); // GOLF-153
   const mode=tbCostMode==='tot'?'tot':'pp';
   // Control first, note after: the note's length changes with the mode, so
   // it must never be what positions the button the viewer just tapped.
@@ -882,6 +891,8 @@ function tbCostsBodyHTML(b,fuelRowLabel,readOnly){
       ${costGroupHTML('⛳','Golf',b.golfTotal,golf,cur)}
       ${costGroupHTML('🏨','Stays',b.stayTotal,stay,cur)}
       ${costGroupHTML('📍','Stops',b.poiTotal,stop,cur)}
+      ${/* GOLF-153: only when the trip has flights — see tripCostBreakdown(). */''}
+      ${travel.length?costGroupHTML('✈','Travel',b.travelTotal,travel,cur):''}
       ${costOtherGroupHTML(b,readOnly)}
     </div>
     <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?' This trip spans more than one currency, so each is totalled separately — nothing is converted.':''}</p></div>`;
@@ -980,6 +991,9 @@ function tbDayCardHTML(d,idx){
            hotel picker's own list (tbOpenHotelPicker, js/ors.js), so this
            order is what actually renders "search on top, options below". */''}
       ${tbAddStopFormHTML(d.id)}
+      ${/* GOLF-153: the flight form is its own thing (js/timeline-ui.js),
+           sharing this slot but not tbAddStop's geocoder/nights state. */''}
+      ${typeof tlFlightFormHTML==='function'?tlFlightFormHTML(d.id):''}
       ${tbHotelPickerHTML(d)}
       ${/* GOLF-150 I2: one quiet "+ Add" per day instead of two full-width
            buttons (12 buttons on a 6-day trip). */''}
@@ -992,6 +1006,10 @@ function tbDayCardHTML(d,idx){
                   day kinds have no slot and still need the entry point. */''}
             ${kind==='golf'?'':`<button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbOpenHotelPicker(${d.id})">🏨 A place to stay</button>`}
             <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbPromptPoi(${d.id})">📍 A stop (sight, lunch…)</button>
+            ${/* GOLF-153: a flight is trip data, not view data — it is
+                 offered in both views, or you would have to switch to
+                 Detailed to record the one that gets you there. */''}
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptFlight(${d.id})">✈ A flight</button>
           </div>
         </details>
       </div>

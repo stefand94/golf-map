@@ -316,6 +316,29 @@ committed file smaller.
 python3 scripts/merge_rail_geometry.py
 ```
 
+### `fetch_airports.py` + `merge_airports.py`
+GOLF-153: the airports a trip can fly into, for detailed mode's flight
+entry. `fetch_airports.py` pulls OurAirports' `airports.csv` (**public
+domain**) and keeps the scheduled passenger airports — `large_airport` and
+`medium_airport` carrying an IATA code — in GB, IE and ZA, writing
+`scripts/output/airports.json`. `merge_airports.py` turns that into
+`data/airports.js` (an `AIRPORTS` global, same convention as every other
+`data/*.js` file).
+
+Unlike the course files this one is written **whole** each run rather than
+patched in place: nothing references an airport by array position, only by
+its IATA code, so there is no GOLF-163 identity to protect. Do not copy
+that habit to a `data/courses-*.js` script.
+
+Takes a local CSV path as an optional argument, so a re-run can be done
+from an already-downloaded file without hitting the mirror again.
+
+```bash
+python3 scripts/fetch_airports.py        # or: ... path/to/airports.csv
+python3 scripts/merge_airports.py
+node scripts/test_data.js                # checks the result
+```
+
 ### `test_data.js`
 GOLF-17: automated data-integrity checks (no browser needed) — every course
 has its required fields, valid access/region/band values, resolvable `stn`
@@ -475,6 +498,7 @@ separate step needed. Safe to also run by hand any time:
 | `fetch_ireland_golf_clubs.py` | 2026-08-30 | Sourced the 37 Ireland entries in `data/courses-ireland.js` (GOLF-77) |
 | `fetch_south_africa_golf_clubs.py` | 2026-08-30 | Sourced the 19 South Africa entries in `data/courses-southafrica.js` (GOLF-78) |
 | `compute_nearest_stations.py` + `merge_nearest_stations.py` | 2026-08-26 | Populated `nearStation` on all 41 Scotland + 22 Wales entries |
+| `fetch_airports.py` + `merge_airports.py` | 2026-10-05 | Wrote `data/airports.js` — 133 GB/IE/ZA airports (gb 72, ie 8, za 53) for GOLF-153 flight entry |
 | `fetch_course_stats.py` + `merge_course_stats.py` | 2026-08-25 | Populated `courseStats` on 66 of 221 entries (GOLF-12/13) — London 18-hole + England Top 30 scope, first of two monthly batches (free-tier quota) |
 
 ### `fetch_pois.py`

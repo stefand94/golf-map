@@ -234,3 +234,187 @@ function tlViewToggleHTML(){
     ${btn('true','Detailed',!!tbDetailed,'The day on an hour grid, with times worked out from the ones you set.')}
   </div>`;
 }
+
+/* ── Adding a flight ──────────────────────────────────────────────────
+   DEC-039: flights are hand-typed. There is no flight data in this app
+   and no API behind this form — a visitor copies the four facts off
+   their booking (where they land, when, the number, where from) and
+   that is the whole model.
+
+   Picking the arrival airport off data/airports.js is what gives the
+   item lat/lng, and therefore a drive leg to the first course, with no
+   change to js/trip-geo.js: tripItemPoint() accepts any non-golf item
+   carrying numeric coordinates. "Somewhere else" keeps the form honest
+   for an airport outside the three countries the app covers — that
+   flight is a time on the grid with no leg, exactly like a hand-typed
+   hotel with no location.
+
+   Deliberately kept out of trip-model.js's tbAddStop machinery: that
+   form is a geocoder, a price and a night count, none of which a
+   flight has. Sharing it would have meant four `type==='flight'`
+   branches through code the default view depends on. */
+let tlFlightDraft=null;
+const TL_NATION_LABEL={gb:'Britain',ie:'Ireland',za:'South Africa'};
+function tlAirportByCode(code){
+  if(typeof AIRPORTS==='undefined'||!Array.isArray(AIRPORTS)||!code)return null;
+  const c=String(code).trim().toUpperCase();
+  return AIRPORTS.find(a=>a.iata===c)||null;
+}
+function tlAirportLabel(a){return`${a.town||a.name} (${a.iata})`;}
+function tlPromptFlight(dayId){
+  /* One form open at a time per day — the hotel/POI form is the other
+     one, and it owns the map picker, so it yields to nothing. */
+  tbAddStop=null;
+  tlFlightDraft={dayId,itemId:null,toCode:'',name:'',flightNo:'',fromCode:'',
+    depart:'',arrive:'',price:'',other:false};
+  renderTripBuilder();
+}
+function tlEditFlight(dayId,itemId){
+  const it=tripDayFindItem(dayId,itemId);
+  if(!it||it.type!=='flight')return;
+  tbAddStop=null;
+  tlFlightDraft={dayId,itemId,toCode:it.toCode||'',name:it.name||'',
+    flightNo:it.flightNo||'',fromCode:it.fromCode||'',
+    depart:it.depart||'',arrive:it.arrive||'',
+    price:it.price!=null?String(it.price):'',
+    other:!tlAirportByCode(it.toCode)};
+  renderTripBuilder();
+}
+function tlFlightCancel(){tlFlightDraft=null;renderTripBuilder();}
+/* The airport <select> re-renders the form (to show or hide the
+   free-text fields), so every other field has to be read back out of
+   the DOM first or the visitor loses what they had typed. */
+function tlFlightHarvest(){
+  const s=tlFlightDraft;if(!s)return;
+  const g=id=>{const el=document.getElementById(id);return el?el.value:null;};
+  const to=g('tl-fl-to');
+  if(to!==null){s.other=to==='*';if(!s.other)s.toCode=to;}
+  ['name','flightNo','fromCode','depart','arrive','price'].forEach(k=>{
+    const v=g('tl-fl-'+k.toLowerCase());
+    if(v!==null)s[k]=v;
+  });
+  const oc=g('tl-fl-othercode');
+  if(oc!==null)s.toCode=oc;
+}
+function tlFlightPickAirport(){tlFlightHarvest();renderTripBuilder();}
+/* Writes only the fields that have a value, which is exactly what the
+   GOLF-224 load whitelist keeps (js/state.js) — so a flight in memory
+   and the same flight after a reload are the same object, and a
+   re-save of an untouched trip moves no bytes. */
+function tlFlightCommit(){
+  tlFlightHarvest();
+  const s=tlFlightDraft;if(!s)return;
+  const ap=s.other?null:tlAirportByCode(s.toCode);
+  const code=v=>String(v||'').trim().toUpperCase().slice(0,8);
+  const name=(ap?tlAirportLabel(ap):String(s.name||'').trim()).slice(0,80);
+  if(!name){
+    const el=document.getElementById(s.other?'tl-fl-name':'tl-fl-to');
+    if(el)el.focus();
+    return;
+  }
+  const canonTime=v=>{const m=tlParseTime(v);return m==null?null:tlFormatTime(m);};
+  const price=parseFloat(s.price);
+  const fields={name};
+  const fno=String(s.flightNo||'').trim().slice(0,12);if(fno)fields.flightNo=fno;
+  const fc=code(s.fromCode);if(fc)fields.fromCode=fc;
+  const tc=ap?ap.iata:code(s.toCode);if(tc)fields.toCode=tc;
+  const dep=canonTime(s.depart);if(dep)fields.depart=dep;
+  const arr=canonTime(s.arrive);if(arr)fields.arrive=arr;
+  if(Number.isFinite(price))fields.price=price;
+  if(ap){fields.lat=ap.lat;fields.lng=ap.lng;}
+  const d=tripDays.find(x=>x.id===s.dayId);
+  if(!d)return;
+  if(s.itemId){
+    const it=tripDayItems(d).find(x=>x.id===s.itemId);
+    if(!it)return;
+    /* Rebuilt rather than patched: clearing a field has to remove it,
+       not leave the old value behind under a key the form no longer
+       shows. The id and the item's position in d.items are what must
+       survive, and both do. */
+    Object.keys(it).forEach(k=>{if(k!=='id'&&k!=='type')delete it[k];});
+    Object.assign(it,fields);
+  }else{
+    if(!Array.isArray(d.items))d.items=[];
+    d.items.push(Object.assign({id:tripItemNewId(),type:'flight'},fields));
+  }
+  tlFlightDraft=null;
+  saveState();
+  renderTripBuilder();
+  tbDrawMap(false);
+}
+function tlFlightOptionsHTML(sel){
+  if(typeof AIRPORTS==='undefined'||!Array.isArray(AIRPORTS))return'';
+  return Object.keys(TL_NATION_LABEL).map(nat=>{
+    const rows=AIRPORTS.filter(a=>a.nation===nat)
+      .map(a=>({v:a.iata,l:tlAirportLabel(a)}))
+      .sort((a,b)=>a.l.localeCompare(b.l));
+    if(!rows.length)return'';
+    return`<optgroup label="${esc(TL_NATION_LABEL[nat])}">${rows.map(r=>
+      `<option value="${esc(r.v)}"${r.v===sel?' selected':''}>${esc(r.l)}</option>`).join('')}</optgroup>`;
+  }).join('');
+}
+function tlFlightFormHTML(dayId){
+  if(!tlFlightDraft||tlFlightDraft.dayId!==dayId)return'';
+  /* The hotel/POI form takes the day's one form slot when both are
+     somehow open — it is the one with a map picker behind it. The
+     flight draft is kept, not dropped, so cancelling that form brings
+     this one back as it was. */
+  if(typeof tbAddStop!=='undefined'&&tbAddStop&&tbAddStop.dayId===dayId)return'';
+  const s=tlFlightDraft;
+  const dayObj=tripDays.find(d=>d.id===dayId);
+  const cur=curSym(typeof tripStayCurrency==='function'?tripStayCurrency(dayObj,s):'GBP');
+  const gs=groupSizeFor();
+  const priceNum=parseFloat(s.price);
+  return`<div class="tb-addstop">
+    <div class="tb-addstop-title">${s.itemId?'Edit this flight':'Add a flight'}</div>
+    <label class="tl-fl-label" for="tl-fl-to">Flying into</label>
+    <select class="tb-field" id="tl-fl-to" onchange="tlFlightPickAirport()"
+      title="Picking a listed airport gives the flight its location, so the drive from the airport to your first stop is worked out for you.">
+      ${tlFlightOptionsHTML(s.other?'':s.toCode)}
+      <option value="*"${s.other?' selected':''}>Somewhere else — type it</option>
+    </select>
+    ${s.other?`<div class="tb-addstop-row">
+      <input class="tb-field" type="text" id="tl-fl-name" maxlength="80"
+        placeholder="Airport, e.g. Faro" value="${esc(s.name)}">
+      <input class="tb-field" type="text" id="tl-fl-othercode" maxlength="8"
+        placeholder="Code" value="${esc(s.toCode)}" style="max-width:88px">
+    </div>
+    <p class="hint" style="margin:var(--sp-2) 0 0">No drive time can be worked out from an airport that isn't on the list.</p>`:''}
+    <div class="tb-addstop-row">
+      <input class="tb-field" type="text" id="tl-fl-flightno" maxlength="12"
+        placeholder="Flight no — optional" value="${esc(s.flightNo)}">
+      <input class="tb-field" type="text" id="tl-fl-fromcode" maxlength="8"
+        placeholder="From" title="The airport you fly out of — shown as text on the flight, since it happens before the trip starts." value="${esc(s.fromCode)}" style="max-width:88px">
+    </div>
+    ${/* DEC-039: the trip starts from the arrival, so the landing time
+         is the one the rest of the day hangs off. A flight with no
+         landing time still records the booking; it just floats to the
+         start of the day like any untimed stop. */''}
+    <div class="tb-addstop-row">
+      <label class="tl-fl-label" for="tl-fl-depart">Departs</label>
+      <input class="tb-field tl-time" type="time" id="tl-fl-depart" value="${esc(s.depart)}">
+      <label class="tl-fl-label" for="tl-fl-arrive">Lands</label>
+      <input class="tb-field tl-time" type="time" id="tl-fl-arrive" value="${esc(s.arrive)}">
+    </div>
+    <div class="tb-addstop-row">
+      <input class="tb-field" type="number" id="tl-fl-price" min="0" step="5"
+        placeholder="${cur} per person — optional" value="${esc(s.price)}">
+    </div>
+    ${gs>1&&Number.isFinite(priceNum)?`<p class="hint" style="margin:var(--sp-2) 0 0">${cur}${priceNum.toFixed(0)} × ${gs} people = <b>${cur}${(priceNum*gs).toFixed(0)}</b>.</p>`:''}
+    <div class="tb-addstop-row" style="margin-top:var(--sp-2)">
+      <button class="tb-btn is-primary" onclick="tlFlightCommit()">${s.itemId?'Save':'Add'}</button>
+      <button class="tb-btn is-quiet" onclick="tlFlightCancel()">Cancel</button>
+    </div>
+  </div>`;
+}
+/* The list view's own line for a flight (js/trip-add.js calls this):
+   the same facts the grid shows, without the clock. */
+function tlFlightListMetaHTML(it){
+  const bits=[];
+  if(it.flightNo)bits.push(esc(it.flightNo));
+  if(it.fromCode&&it.toCode)bits.push(esc(it.fromCode)+'→'+esc(it.toCode));
+  else if(it.toCode)bits.push('to '+esc(it.toCode));
+  if(it.arrive)bits.push('lands '+esc(it.arrive));
+  else if(it.depart)bits.push('departs '+esc(it.depart));
+  return`<div class="cart-region">${bits.length?bits.join(' · '):'Flight'}</div>`;
+}
