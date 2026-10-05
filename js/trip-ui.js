@@ -191,6 +191,12 @@ function tripDayLegs(dayIdx){
     const leg=tripLegEstimate(prev,cur);
     const isDayFirst=pos===firstPos;
     const overridden=isDayFirst&&d.driveIn!=null;
+    /* A leg you did not drive gets no drive row at all — not a "Drive
+       0 min" one. That covers the pair between a flight's two points
+       (GOLF-153) and, since DEC-039's owner review, the first stop after
+       a train. An override the visitor typed still wins: they are
+       telling us there IS a drive. */
+    if(leg&&leg.flown&&!overridden)return null;
     const mins=overridden?d.driveIn:(leg?leg.minutes:null);
     /* GOLF-118: ferry info for this leg. In the read-only shared view the
        live ORS cache isn't populated, so the day-first leg's ferry facts
@@ -208,9 +214,9 @@ function tripDayLegs(dayIdx){
        (train, drive-from, activity). They are ordinary items and they
        get ordinary rows here — anything added in one view has to be
        visible in the other, or switching back makes it disappear.
-       Nothing about this function changes to accommodate them: a train
-       has no location, so posOf has no entry for it and it gets no
-       drive row, which is exactly how a hand-typed hotel behaves. */
+       A train has no location, so posOf has no entry for it and it gets
+       no drive row of its own; the stop AFTER it is marked flown by
+       tripDayStops(), so the leg across the train gets no row either. */
     const pos=it.type==='flight'
       ?(posOf.has(it.id+'|depart')?posOf.get(it.id+'|depart'):posOf.get(it.id))
       :posOf.get(it.id);

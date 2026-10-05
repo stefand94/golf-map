@@ -539,6 +539,76 @@ ok('a missing driveFn is survivable',
   rs.tripDays[1].items[1].fromLat = 55.95;
   ok('changing the departure airport changes the chain signature',
      rs.tripStopChainSig() !== sigBefore);
+
+  // ── 13b. A train breaks the chain the way a flown leg does ─────────
+  /* DEC-039 (owner review). A train has no coordinates, so it is not a
+   * stop — but a stop that is merely ABSENT lets the chain close over
+   * it, and an Edinburgh hotel followed by a train to Inverness became
+   * an Edinburgh→Inverness car drive: costed, fuelled and drawn across
+   * Scotland. The stop after a train is marked flown instead. */
+  rs.tripDays = [
+    { id: 1, items: [
+      { id: 'h', type: 'hotel', name: 'Edinburgh hotel', lat: 55.9533, lng: -3.1883 },
+      { id: 't', type: 'train', name: 'Inverness', fromName: 'Edinburgh Waverley',
+        depart: '08:40', arrive: '12:15' } ] },
+    { id: 2, items: [
+      { id: 'g', type: 'golf', i: 0, time: '14:00' } ] },
+  ];
+  rs.tripStopChainInvalidate();
+  const t1 = rs.tripDayStops(0), t2 = rs.tripDayStops(1);
+  check('a train is not a stop', t1.length, 1);
+  check('and the day after it has its own', t2.length, 1);
+  ok('the first stop after the train is flown', t2[0].flown === true,
+     'that is what stops the chain closing over the train');
+  ok('and is marked as a rail break, not an air one', t2[0].railed === true);
+
+  orsAsked = [];
+  const rail = rs.tripLegEstimate(t1[0], t2[0]);
+  check('so the leg across the train is zero minutes', rail.minutes, 0);
+  check('and zero miles, so it is not in the fuel', rail.miles, 0);
+  check('and it never reaches ORS', orsAsked, []);
+
+  rs.tripStopChainInvalidate();
+  ok('the whole trip drives nothing at all', rs.tripTotalDriveMiles() === 0,
+     'Edinburgh to Inverness was the only pair, and it was taken by train');
+
+  // The break lasts exactly one leg: drive on from where the train left
+  // you and that IS a drive.
+  rs.tripDays[1].items.push({ id: 'p', type: 'poi', name: 'Castle', lat: 57.6, lng: -4.1 });
+  rs.tripStopChainInvalidate();
+  const t2b = rs.tripDayStops(1);
+  ok('the stop after that one is driven to normally', !t2b[1].flown);
+  ok('and it does ask ORS', (() => { orsAsked = []; rs.tripLegEstimate(t2b[0], t2b[1]);
+     return orsAsked.length === 1; })());
+
+  // A day's own place is a stop too, so the break has to survive it —
+  // otherwise the drive reappears as "Edinburgh hotel → Inverness".
+  rs.tripDays[1].placeLat = 57.4778; rs.tripDays[1].placeLng = -4.2247;
+  rs.tripDays[1].place = 'Inverness';
+  rs.tripStopChainInvalidate();
+  const t2c = rs.tripDayStops(1);
+  check('the day place leads the day', t2c[0].type, 'place');
+  ok('and IT is the stop the train exempts', t2c[0].flown === true);
+  ok('while the round after it is driven to', !t2c[1].flown);
+
+  // The same thing within one day, which is the commoner shape: breakfast
+  // in Edinburgh, train up, tee off at Castle Stuart that afternoon.
+  rs.tripDays = [
+    { id: 1, items: [
+      { id: 'h', type: 'hotel', name: 'Edinburgh hotel', lat: 55.9533, lng: -3.1883 },
+      { id: 't', type: 'train', name: 'Inverness', fromName: 'Edinburgh Waverley',
+        depart: '08:40', arrive: '12:15' },
+      { id: 'g', type: 'golf', i: 0, time: '14:00' } ] },
+  ];
+  rs.tripStopChainInvalidate();
+  const one = rs.tripDayStops(0);
+  check('a one-day train trip has two stops, not three', one.length, 2);
+  ok('and the round after the train is flown', one[1].flown === true,
+     'within a single day the break is carried by the item walk itself');
+  orsAsked = [];
+  check('zero miles within the day too', rs.tripLegEstimate(one[0], one[1]).miles, 0);
+  check('and still no ORS call', orsAsked, []);
+  ok('and nothing in the fuel', rs.tripTotalDriveMiles() === 0);
 }
 
 if (failures) {

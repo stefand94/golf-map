@@ -514,11 +514,26 @@ function tbResultsHTML(items){
 function tripDayStops(dayIdx){
   const d=tripDays[dayIdx];if(!d)return[];
   const stops=[];
-  if(d.placeLat!=null&&d.placeLng!=null)stops.push({type:'place',lat:d.placeLat,lng:d.placeLng,name:d.place||'Place',day:dayIdx+1});
+  /* DEC-039 (owner review): a train BREAKS the chain, the way a flown
+     leg does. Having no coordinates is what keeps a train from being a
+     stop — but a stop that is merely absent lets the chain close over
+     it, and an Edinburgh hotel followed by a train to Inverness then
+     became an Edinburgh→Inverness CAR drive: costed, fuelled and drawn
+     across Scotland. So the first stop after a train is marked flown,
+     which is the existing mechanism for "you did not drive this".
+     `brk` carries that across the push of the day's place stop and
+     across a day boundary (tripTrainBreakPending). */
+  let brk=tripTrainBreakPending(dayIdx);
+  const push=st=>{
+    if(brk){st.flown=true;st.railed=true;brk=false;}
+    stops.push(st);
+  };
+  if(d.placeLat!=null&&d.placeLng!=null)push({type:'place',lat:d.placeLat,lng:d.placeLng,name:d.place||'Place',day:dayIdx+1});
   /* GOLF-153: which flight is arrival-only. Derived from the whole
      trip, so it is computed once here rather than per stop. */
   const inboundId=(typeof tlInboundFlightId==='function')?tlInboundFlightId(tripDays):null;
   tripDayItems(d).forEach(it=>{
+    if(it.type==='train'){brk=true;return;}
     /* GOLF-153 (DEC-039): a flight you fly OUT on is two points, not
        one. You drive to the departure airport, and you carry on from
        the arrival airport — one point would have routed the whole trip
@@ -531,21 +546,46 @@ function tripDayStops(dayIdx){
     if(fp&&it.id!==inboundId){
       const pt2=tripItemPoint(it);
       if(pt2){
-        stops.push({type:'flight',legPart:'depart',lat:fp.lat,lng:fp.lng,
+        push({type:'flight',legPart:'depart',lat:fp.lat,lng:fp.lng,
           name:tripFlightDepartName(it),day:dayIdx+1,itemId:it.id});
-        stops.push({type:'flight',legPart:'arrive',flown:true,lat:pt2.lat,lng:pt2.lng,
+        push({type:'flight',legPart:'arrive',flown:true,lat:pt2.lat,lng:pt2.lng,
           name:tripItemName(it),day:dayIdx+1,itemId:it.id});
         return;
       }
     }
     const pt=tripItemPoint(it);
     if(!pt)return;
-    stops.push(it.type==='golf'
+    push(it.type==='golf'
       ?{type:'course',i:it.i,lat:pt.lat,lng:pt.lng,name:tripItemName(it),day:dayIdx+1,itemId:it.id}
       :{type:it.type,lat:pt.lat,lng:pt.lng,name:tripItemName(it),day:dayIdx+1,itemId:it.id,
         legPart:it.type==='flight'?'arrive':undefined});
   });
   return stops;
+}
+/* Whether the trip reaches this day on rails — that is, whether the last
+   thing in it before today that moved anybody was a train (DEC-039,
+   owner review).
+
+   Walked backwards rather than carried forwards, because tripDayStops()
+   is called for one day at a time all over the app (ors.js, poi.js,
+   trip-share.js) and must give the same answer however it is reached.
+   The first thing found decides: a train means the chain is still
+   broken, anything with a location means something has been driven from
+   since, and a day's own place counts as a location. */
+function tripTrainBreakPending(dayIdx){
+  for(let k=dayIdx-1;k>=0;k--){
+    const d=tripDays[k];
+    if(!d)continue;
+    const items=tripDayItems(d);
+    for(let j=items.length-1;j>=0;j--){
+      const it=items[j];
+      if(!it)continue;
+      if(it.type==='train')return true;
+      if(tripItemPoint(it)||tripFlightDepartPoint(it))return false;
+    }
+    if(d.placeLat!=null&&d.placeLng!=null)return false;
+  }
+  return false;
 }
 /* The departure airport, when the visitor gave it one. Optional and
    additive (GOLF-153): a flight without it keeps the single-point
