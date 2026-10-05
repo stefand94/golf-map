@@ -361,6 +361,9 @@
   .tb-menu-item{display:flex;align-items:center;gap:var(--sp-2);width:100%;min-height:var(--tap);
     padding:0 var(--sp-3);border:none;border-radius:var(--radius-sm);background:none;cursor:pointer;
     font:600 var(--fs-small) var(--font-sans);color:var(--ink);text-align:left;transition:background var(--dur) var(--ease)}
+  .tb-menu-ico{flex:0 0 1.25em;text-align:center}
+  /* GOLF-246: an emoji before inline text gets a real gap, not one narrow space. */
+  .ico-gap{margin-right:var(--sp-2)}
   .tb-menu-item:hover{background:var(--accent-soft);color:var(--accent-deep)}
   .tb-menu-item.is-danger{color:#9A3412}
   .tb-menu-item.is-danger:hover{background:#FBEEE7}
@@ -435,7 +438,7 @@
     overflow:hidden;text-overflow:ellipsis;min-width:0}
   .tb-day-sum{font:800 var(--fs-title) var(--font-sans);color:var(--accent-deep);font-variant-numeric:tabular-nums;white-space:nowrap}
   /* The thin divider under the header, straight from the sketch. */
-  .tb-day-rule{height:1px;background:var(--line);margin:0 var(--sp-3)}
+  .tb-day-rule{height:1px;background:var(--line);margin:0 var(--sp-3) var(--sp-1)}
 
   /* Drag handle — was a bare 14px glyph with no padding (~10×14px of
      grabbable area). Now a full-height 32×44 target. */
@@ -449,7 +452,7 @@
   /* A stop row. Golf reads heaviest; hotel/POI are the connective tissue. */
   .tb-day-course{position:relative;display:flex;align-items:center;gap:var(--sp-2);
     padding:var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-2);cursor:grab;
-    user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;border-radius:var(--radius-md);margin:2px var(--sp-2);
+    user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;border-radius:var(--radius-md);margin:var(--sp-1) var(--sp-2);
     background:#fff;transition:background var(--dur) var(--ease),box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease)}
   .tb-day-course:hover{background:var(--paper-2)}
   .tb-day-course:active{cursor:grabbing}
@@ -470,9 +473,10 @@
      leads into, exactly as sketched. Not a chip, not its own row of
      furniture; it is a label on the stop below it. */
   .tb-drive-cap{display:flex;align-items:center;gap:var(--sp-1);
-    padding:var(--sp-1) var(--sp-3) 0 44px;font:600 var(--fs-micro) var(--font-sans);
+    padding:var(--sp-2) var(--sp-3) var(--sp-1) 44px;font:600 var(--fs-micro) var(--font-sans);
     letter-spacing:.02em;color:var(--stone);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .tb-drive-cap .tb-drive-real{color:#1a7a3e}
+  .tb-drive-ico{margin-right:var(--sp-1)}
   /* GOLF-118: a ferry leg's caption carries an extra tag and a longer
      "drive + ferry" string — let it wrap instead of ellipsing it away. */
   .tb-drive-cap.has-ferry{white-space:normal}
@@ -880,6 +884,8 @@
      and restyled as a clearer "+"/"–" per the stakeholder's request
      (was a barely-visible 9px "▸"). */
   .cost-group-label{font-size:var(--fs-small);color:var(--ink);display:flex;align-items:center;gap:var(--sp-2);text-align:left}
+  /* GOLF-246: icon and label are one text node — widen that one space so the emoji stops touching the word. */
+  .cost-group-label{word-spacing:var(--sp-1)}
   .cost-group-toggle{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:var(--paper-2);
     color:var(--ink);font:700 14px/20px var(--font-sans);text-align:center}
   .cost-group[open] .cost-group-toggle{background:var(--accent-soft);color:var(--accent)}

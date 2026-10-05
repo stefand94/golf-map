@@ -409,7 +409,7 @@ function tbSearchCourseRowHTML(e,day){
   const i=e.i;
   const why=e.reason?` · <span class="tb-why">${esc(e.reason)}</span>`:'';
   return`<div class="tb-row tb-sr-row" onclick="if(!event.target.closest('button'))tbSearchGoToCourse(${i})" title="Show ${esc(V(i,'n'))} on the map">
-    <div>⛳ <a href="#" class="linkbtn" onclick="event.preventDefault();event.stopPropagation();tbSearchGoToCourse(${i})">${esc(V(i,'n'))}</a>
+    <div><span class="ico-gap" aria-hidden="true">⛳</span><a href="#" class="linkbtn" onclick="event.preventDefault();event.stopPropagation();tbSearchGoToCourse(${i})">${esc(V(i,'n'))}</a>
       <div class="cart-region">${esc(C[i].r)}${tbSearchFeeHTML(i)} · ${ACCESS[V(i,'a')].label.toLowerCase()}${why}</div></div>
     <div style="display:flex;gap:var(--sp-2);flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
       <button class="tb-btn is-sm is-primary" onclick="event.stopPropagation();tbAddToWishlist(${i})">＋ Add to trip</button>

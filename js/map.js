@@ -15,6 +15,11 @@
    visitor manually zoomed out with no on-screen hint to do so. Default
    to a GB+Ireland-wide view instead; South Africa stays reachable via
    its own nation pill (js/trip-ui.js), which flies the map there. */
+/* GOLF-246: popups auto-pan clear of the top-corner map buttons (fullscreen,
+   layers) instead of Leaflet's 5px default, which left a popup's title
+   sitting underneath them. Sideways stays at the 5px default: a 340px
+   popup has to fit a desktop map column that can be only ~344px wide. */
+L.Popup.mergeOptions({autoPanPaddingTopLeft:L.point(5,64)});
 const startView=restoredView||{center:[54.3,-4.2],zoom:5};
 map=L.map('map',{scrollWheelZoom:true,zoomControl:false,maxZoom:19}).setView(startView.center,startView.zoom);
 L.control.zoom({position:'bottomright'}).addTo(map);
