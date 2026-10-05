@@ -171,7 +171,7 @@ map.getPane('bgCoursePins').style.zIndex=350;
    allow for a commercial site: the Static Basemap Tiles service for streets
    and the imagery labels (512px tiles, hence tileSize/zoomOffset), and the
    keyed World_Imagery for the photography. Without one (previews,
-   localhost, Worker down, no ESRI_KEY yet), the long-standing keyless
+   localhost, Worker down, no ESRI_MAP secret), the long-standing keyless
    arcgisonline endpoints from GOLF-105, exactly as before. */
 const ESRI_STATIC='https://static-map-tiles-api.arcgis.com/arcgis/rest/services/static-basemap-tiles-service/v1/';
 function esriBaseLayers(key){

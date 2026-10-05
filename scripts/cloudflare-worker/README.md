@@ -147,7 +147,7 @@ The site is commercial (DEC-038), so the map uses Esri's keyed tiles on
 production instead of the keyless ones.
 
 - `GET /esri-key` returns `{"key":"…"}` only when Origin is exactly
-  `https://golftripper.uk` **and** the `ESRI_KEY` secret is set. Otherwise
+  `https://golftripper.uk` **and** the `ESRI_MAP` secret is set. Otherwise
   it returns `{"key":null}`: previews, localhost, `www.`, scripts with no
   Origin, and a Worker with no secret. Always `Cache-Control: no-store`.
   Never logged.
@@ -165,7 +165,7 @@ production instead of the keyless ones.
 1. In the ArcGIS Location Platform dashboard, create an API key with the
    **Basemaps** privileges, including **Static basemap tiles**, and the
    referrer `https://golftripper.uk`. Note its expiry date.
-2. Worker → Settings → Variables and Secrets → add `ESRI_KEY` as a
+2. Worker → Settings → Variables and Secrets → add `ESRI_MAP` as a
    **Secret** → Deploy.
 3. Check without printing the key:
    `curl -s -H 'Origin: https://golftripper.uk' https://api.golftripper.uk/esri-key | grep -c '"key":"'`

@@ -275,7 +275,7 @@ check('a look-alike origin is refused',
 const esriKey = (origin, env) => worker.fetch(new Request('https://w.test/esri-key', {
   headers: origin ? { Origin: origin } : {},
 }), env, ctx);
-const KEYED = { ESRI_KEY: 'test-esri-key' };
+const KEYED = { ESRI_MAP: 'test-esri-key' };
 r = await esriKey('https://golftripper.uk', KEYED);
 j = await r.json();
 check('esri-key: production gets the key, uncached',

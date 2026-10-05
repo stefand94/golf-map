@@ -718,8 +718,8 @@ function countDone(request, status) {
 
 /* GOLF-234 (1): the Esri basemap key, for production only.
 
-   ESRI_KEY is a Worker secret holding a referrer-restricted ArcGIS Location
-   Platform key (golftripper.uk only, basemap privileges only). It has to
+   ESRI_MAP is a Worker secret (named by the owner) holding a
+   referrer-restricted ArcGIS Location Platform key (golftripper.uk only, basemap privileges only). It has to
    reach the browser, because the browser fetches the tiles, so the
    restriction lives at Esri: a copied key is refused from any other site.
    This route only decides who is handed it: Origin https://golftripper.uk.
@@ -730,7 +730,7 @@ const ESRI_KEY_ORIGIN = 'https://golftripper.uk';
 
 function handleEsriKey(request, env) {
   if (request.method !== 'GET') return json({ error: 'GET only' }, 405, request);
-  const key = request.headers.get('Origin') === ESRI_KEY_ORIGIN && env.ESRI_KEY ? env.ESRI_KEY : null;
+  const key = request.headers.get('Origin') === ESRI_KEY_ORIGIN && env.ESRI_MAP ? env.ESRI_MAP : null;
   const res = json({ key }, 200, request);
   res.headers.set('Cache-Control', 'no-store');
   return res;
@@ -1491,7 +1491,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = '085519093f';
+const WORKER_BUILD = 'fc4b0e0801';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {
