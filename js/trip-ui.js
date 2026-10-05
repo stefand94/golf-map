@@ -192,7 +192,8 @@ function tripDayLegs(dayIdx){
     const fin=(isDayFirst&&d.ferryIn)?d.ferryIn:leg;
     const hasFerry=!!(fin&&fin.hasFerry),ferryMinutes=(fin&&fin.ferryMinutes)||0;
     return{type:'drive',label:`${prev.name} → ${cur.name}`,mins,real:!!(leg&&leg.real),
-      dayFirst:isDayFirst,overridden,hasFerry,ferryMinutes};
+      dayFirst:isDayFirst,overridden,hasFerry,ferryMinutes,
+      samePoint:prev.lat===cur.lat&&prev.lng===cur.lng};
   };
   const legs=[];
   if(placePos>=0){const r=driveRow(placePos);if(r)legs.push(r);}
@@ -229,6 +230,11 @@ function tripDayTotal(dayIdx){
    the stop names for attention. */
 function tbDriveCapHTML(l){
   if(l.mins==null&&!l.label)return'';
+  /* GOLF-248: a day's place and its hotel on the same point made a
+     "Drive 0 min" row. Hide same-point or zero-length legs; the leg itself
+     stays in tripDayLegs, so totals don't move. A manual driveIn or a
+     ferry still shows. */
+  if(!l.overridden&&!l.hasFerry&&(l.samePoint||(l.mins!=null&&l.mins<0.5)))return'';
   /* GOLF-118: when the leg crosses water, split the time into drive + ferry
      ("2h 0m driving + ~55m ferry") and add a ⛴ tag. A manual driveIn
      override keeps its own number (no split) but still shows the tag so the
