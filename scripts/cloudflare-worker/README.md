@@ -132,6 +132,9 @@ links created (`share`) and share links opened in the shared view
   shares, 20,000 opens), plus a per-visitor ceiling (10 / 10 / 30) held
   only in the object's memory. The memory cap resets whenever the object
   goes idle, so it stops bursts rather than a slow script.
+- Production only (GOLF-241): the app sends only on `golftripper.uk`, and
+  `/count` answers 403 to any other Origin, previews and localhost
+  included, so testing never reaches the stats.
 - Every `POST /count` answer is a bare 204, so a script can't tell
   whether it was counted.
 - Read the totals: `curl https://api.golftripper.uk/stats`. It returns

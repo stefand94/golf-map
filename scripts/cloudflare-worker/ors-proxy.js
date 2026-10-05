@@ -686,10 +686,13 @@ const COUNT_LIMITS = {
   open: { visitor: 30, site: 20000 },
 };
 const STATS_DAYS = 120;
+const COUNT_ORIGIN = 'https://golftripper.uk';
 
 async function handleCount(request, env) {
   if (request.method !== 'POST') return json({ error: 'POST only' }, 405, request);
-  if (!isAllowedOrigin(request.headers.get('Origin'))) return countDone(request, 403);
+  // GOLF-241: production only. Previews and localhost are allowed
+  // origins everywhere else, but their testing must never reach the stats.
+  if (request.headers.get('Origin') !== COUNT_ORIGIN) return countDone(request, 403);
   let event;
   try {
     const raw = await request.text();

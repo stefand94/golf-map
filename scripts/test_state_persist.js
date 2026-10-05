@@ -279,6 +279,7 @@ function withBeacons(b) {
   const sent = [];
   b.sandbox.navigator = { sendBeacon: (url, body) => { sent.push(JSON.parse(body).e); return true; } };
   b.sandbox.ORS_PROXY_URL = 'https://worker.test/';
+  b.sandbox.location = { hostname: 'golftripper.uk' }; // GOLF-241: production only
   return sent;
 }
 const savedTrip = JSON.parse(SAVED).trips.mine;
@@ -314,6 +315,16 @@ const openSent = withBeacons(opener);
 opener.sandbox.usageShareOpened('#share=abc'); opener.sandbox.usageShareOpened('#share=abc');
 opener.sandbox.usageLinkFirstSeen('#share=mine'); opener.sandbox.usageShareOpened('#share=mine');
 eq('usage: an open counts once per link, and never for your own link', openSent, ['open']);
+/* GOLF-241: local and preview pages never count. */
+for (const host of ['127.0.0.1', 'localhost', 'main.golf-map.pages.dev', 'www.golftripper.uk']) {
+  const dev = boot({}, BUILD_A);
+  const devSent = withBeacons(dev);
+  dev.sandbox.location = { hostname: host };
+  dev.sandbox.tripDays = [{ id: 1, kind: 'golf', items: [] }, { id: 2, kind: 'free', items: [] }];
+  dev.sandbox.saveState();
+  dev.sandbox.usageShareOpened('#share=dev');
+  eq(`usage: ${host} sends nothing`, devSent, []);
+}
 const offline = boot({}, BUILD_A);
 offline.sandbox.navigator = { sendBeacon: () => { throw new Error('down'); } };
 offline.sandbox.ORS_PROXY_URL = 'https://worker.test/';
@@ -325,4 +336,4 @@ if (failures.length) {
   failures.forEach(f => console.error('  - ' + f));
   process.exit(1);
 }
-console.log('test_state_persist: OK — trips survive a release, old formats migrate, one bad value costs one value, share links agree, usage counts once.');
+console.log('test_state_persist: OK — trips survive a release, old formats migrate, one bad value costs one value, share links agree, usage counts once, and only in production.');

@@ -221,6 +221,8 @@ function loadStoredState(){
 const USAGE_OPENED_KEY='golfmap:usage-opened:v1', USAGE_OPENED_MAX=200;
 function usagePing(e){
   try{
+    // GOLF-241: production only, so local and preview testing never counts.
+    if(typeof location==='undefined'||location.hostname!=='golftripper.uk')return;
     if(typeof navigator==='undefined'||!navigator.sendBeacon||navigator.onLine===false)return;
     if(typeof ORS_PROXY_URL==='undefined'||!ORS_PROXY_URL)return;
     navigator.sendBeacon(ORS_PROXY_URL.replace(/\/$/,'')+'/count',JSON.stringify({e}));
