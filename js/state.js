@@ -56,6 +56,18 @@ function validateTripEntry(t){
     const s=v.trim().slice(0,NOTE_MAX);
     return s?s:null;
   };
+  /* GOLF-247: the three optional cost fields every item can carry. Read
+     through the same "only when set" pattern as withTiming above, so a
+     trip saved before this shipped loads to exactly the object it did
+     before, and a hand-edited value can only ever be dropped. `fee` is
+     golf-only; `per` is ignored on a hotel, whose price is per person per
+     night by definition (GOLF-91). */
+  const validCost=(out,it)=>{
+    if(out.type==='golf'&&typeof it.fee==='number'&&isFinite(it.fee)&&it.fee>=0&&it.fee<=1e6)out.fee=it.fee;
+    if(out.type!=='hotel'&&it.per==='group')out.per='group';
+    if(typeof it.cur==='string'&&CURRENCY_SYMS[it.cur])out.cur=it.cur;
+    return out;
+  };
   const withTiming=(out,it)=>{
     const t=validTime(it.time); if(t!==null)out.time=t;
     const d=validDur(it.durationMins); if(d!==null)out.durationMins=d;
@@ -66,7 +78,10 @@ function validateTripEntry(t){
        them. */
     const b=validDur(it.bufferMins); if(b!==null)out.bufferMins=b;
     const n=validNote(it.note); if(n!==null)out.note=n;
-    return out;
+    /* Every type already returns through here, so hanging the GOLF-247
+       cost fields off withTiming is what makes them universal without
+       touching each of the five per-type branches below. */
+    return validCost(out,it);
   };
   const validItems=(d)=>{
     if(!Array.isArray(d.items))return null;
@@ -191,7 +206,11 @@ function validateTripEntry(t){
         label:typeof c.label==='string'?c.label.slice(0,80):'',
         amount:(typeof c.amount==='number'&&isFinite(c.amount))?Math.min(1e6,Math.max(0,c.amount)):null,
         per:c.per==='person'?'person':'group',
-        cur:(typeof c.cur==='string'&&CURRENCY_SYMS[c.cur])?c.cur:'GBP'};
+        cur:(typeof c.cur==='string'&&CURRENCY_SYMS[c.cur])?c.cur:'GBP',
+        /* GOLF-247: which day this cost belongs to, when it belongs to
+           one. Validated against the days we just loaded, so a line whose
+           day is gone falls back to the trip instead of disappearing. */
+        ...(Number.isInteger(c.day)&&tripDays.some(d=>d.id===c.day)?{day:c.day}:{})};
     }).filter(Boolean),
     tripDayNextId:Math.max(0,...tripDays.map(d=>d.id))+1,
     /* GOLF-235: which usage events this trip has already been counted

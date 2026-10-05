@@ -34,7 +34,13 @@ const FILES = [
   'data/courses-top100.js', 'data/courses-scotland.js', 'data/courses-wales.js',
   'data/courses-ireland.js', 'data/courses-southafrica.js',
   'data/course-ids.js', 'js/util.js', 'js/course-id.js', 'js/app-version.js',
-  'js/timeline.js', 'js/trip-model.js', 'js/state.js', 'js/trip-share.js',
+  'js/timeline.js', 'js/trip-model.js', 'js/state.js',
+  /* GOLF-247: the pricing helpers, so this file can check that a price the
+     visitor set is not only stored but actually priced the way the editor
+     told them it would be. In the app's own load order: after state.js,
+     before trip-share.js. */
+  'js/trip-geo.js',
+  'js/trip-share.js',
 ];
 const SRC = {};
 for (const f of FILES) SRC[f] = fs.readFileSync(path.join(ROOT, f), 'utf8').replace(/^(const|let) /gm, 'var ');
@@ -63,6 +69,15 @@ function boot(initial, appVersion) {
       setItem: (k, v) => { store[k] = String(v); },
       removeItem: (k) => { delete store[k]; },
     },
+    /* GOLF-247: js/trip-geo.js builds a Leaflet layer at its own top
+       level, so loading it here needs a Leaflet shaped enough to get past
+       that line. Nothing in this file touches the map — the pricing
+       functions below it are what we are after. */
+    /* `map` is deliberately left undefined, exactly as it was before this
+       file loaded trip-geo.js: saveState() reads map.getCenter() behind a
+       truthiness check, and a half-stubbed map would make it throw where a
+       missing one correctly means "no map on this page". */
+    L: { layerGroup: () => ({ addTo: () => ({}), clearLayers() {}, addLayer() {} }) },
   };
   vm.createContext(sandbox);
   for (const f of FILES) {
@@ -628,6 +643,97 @@ eq('usage: a failing beacon logs nothing', [offline.errors, offline.warns], [[],
   eq('DEC-039: a day note on an old link is simply ignored',
      safe.days[0].note, undefined,
      'the field is gone; a link carrying one must not resurrect it');
+}
+
+// ── GOLF-247: the visitor's own prices ────────────────────────────────
+// The three things that can go wrong with an optional field added to a
+// record that is already in people's localStorage and in links they have
+// already shared: it must survive a release, a bad value must cost the
+// field and not the item, and a trip that never used it must still encode
+// to exactly the bytes it did before.
+{
+  const t = boot({}, BUILD_A);
+  writeRichTrip(t.sandbox);
+  const d0 = t.sandbox.tripDays[0];
+  const golf = d0.items.find(x => x.type === 'golf');
+  const hotel = d0.items.find(x => x.type === 'hotel');
+  const poi = d0.items.find(x => x.type === 'poi');
+  golf.fee = 120;            // a round the visitor priced themselves
+  golf.cur = 'EUR';
+  poi.per = 'group';         // one charge for the party, not per head
+  hotel.per = 'group';       // meaningless on a stay: must be dropped
+  t.sandbox.tripCustom = [
+    { id: 'cc1', label: 'Caddie', amount: 60, per: 'person', cur: 'GBP', day: d0.id },
+    { id: 'cc2', label: 'Car hire', amount: 300, per: 'group', cur: 'GBP' },
+  ];
+  t.sandbox.saveState();
+  const stored = t.store['golfmap:v1'];
+
+  const rel = boot({ 'golfmap:v1': stored }, 'golfmap-shell-v5-deadbeef99');
+  const items = (rel.sandbox.tripDays[0] || {}).items || [];
+  const rGolf = items.find(x => x.type === 'golf') || {};
+  const rHotel = items.find(x => x.type === 'hotel') || {};
+  const rPoi = items.find(x => x.type === 'poi') || {};
+  eq('GOLF-247: an own green fee survives a release', rGolf.fee, 120);
+  eq('GOLF-247: an item currency survives a release', rGolf.cur, 'EUR');
+  eq('GOLF-247: a group basis survives a release', rPoi.per, 'group');
+  eq('GOLF-247: a basis on a hotel is dropped', rHotel.per, undefined,
+     'GOLF-91 settled that a stay is priced per person per night');
+  eq('GOLF-247: a day cost keeps its day', (rel.sandbox.tripCustom[0] || {}).day, rel.sandbox.tripDays[0].id);
+  eq('GOLF-247: a trip-level cost has no day', 'day' in (rel.sandbox.tripCustom[1] || {}), false);
+
+  // ... and it prices the way the editor said it would.
+  const detG = rel.sandbox.tripItemPriceDetail(rel.sandbox.tripDays[0], rGolf);
+  eq('GOLF-247: the own fee is what gets multiplied',
+     [detG.base, detG.total, detG.cur], [120, 120 * rel.sandbox.groupSize, 'EUR']);
+  eq('GOLF-247: an overridden fee shows no published range', detG.feeRange, null,
+     'a row reading "£120 (£65–£90)" would price a round nobody is paying');
+  const detP = rel.sandbox.tripItemPriceDetail(rel.sandbox.tripDays[0], rPoi);
+  eq('GOLF-247: a group-basis item is not multiplied', detP.total, detP.base);
+
+  // ... a bad value costs the field, not the item.
+  const bad = JSON.parse(stored);
+  const bd = bad.trips[bad.activeTripId].tripDays[0];
+  bd.items.find(x => x.type === 'golf').fee = 'a monkey';
+  bd.items.find(x => x.type === 'golf').cur = 'DOGE';
+  bd.items.find(x => x.type === 'poi').per = { not: 'a basis' };
+  const cr = boot({ 'golfmap:v1': JSON.stringify(bad) }, 'golfmap-shell-v5-deadbeef99');
+  const ci = (ty) => ((cr.sandbox.tripDays[0] || {}).items || []).find(x => x.type === ty) || {};
+  eq('GOLF-247: a corrupt fee is dropped', ci('golf').fee, undefined);
+  eq('GOLF-247: an unknown currency is dropped', ci('golf').cur, undefined);
+  eq('GOLF-247: ...but the round survives', ci('golf').type, 'golf');
+  eq('GOLF-247: a corrupt basis is dropped', ci('poi').per, undefined);
+  eq('GOLF-247: nothing was logged as an error', cr.errors, []);
+
+  // ... and a trip that never priced anything encodes as it always did.
+  const plain = boot({}, BUILD_A);
+  writeRichTrip(plain.sandbox);
+  plain.sandbox.tripCustom = [];
+  const json = JSON.stringify(plain.sandbox.tripBuildSharePayload());
+  eq('GOLF-247: an unpriced trip carries none of the new share keys',
+     /"(fe|pb|cu)":/.test(json), false,
+     'a link already in someone\'s hands has to stay byte-for-byte what it was');
+
+  // ... while a priced one round-trips through the hash intact.
+  const p2 = plain.sandbox.tripBuildSharePayload();
+  const pg = p2.days[0].items.find(x => x.type === 'golf');
+  pg.fe = 95; pg.cu = 'ZAR';
+  p2.oth = [{ l: 'Caddie', a: 60, p: 'person', c: 'GBP', d: p2.days[0].id }];
+  const back = plain.sandbox.tripDecodeSharePayload(
+    '#share=' + encodeURIComponent(JSON.stringify(p2)));
+  const bg = back.days[0].items.find(x => x.type === 'golf') || {};
+  eq('GOLF-247: a shared own fee decodes', [bg.fee, bg.cur], [95, 'ZAR']);
+  eq('GOLF-247: a shared day cost keeps its day', (back.oth[0] || {}).day, back.days[0].id);
+
+  // ... and a crafted link cannot reprice a stay by flipping its basis.
+  const hostile = plain.sandbox.tripBuildSharePayload();
+  const hh = hostile.days[0].items.find(x => x.type === 'hotel');
+  hh.pb = 'group'; hh.fe = 999;
+  const hb = plain.sandbox.tripDecodeSharePayload(
+    '#share=' + encodeURIComponent(JSON.stringify(hostile)));
+  const bh = hb.days[0].items.find(x => x.type === 'hotel') || {};
+  eq('GOLF-247: a shared basis on a hotel is ignored', bh.per, undefined);
+  eq('GOLF-247: a shared fee on a non-golf item is ignored', bh.fee, undefined);
 }
 
 if (failures.length) {

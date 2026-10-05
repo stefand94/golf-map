@@ -588,12 +588,20 @@ function tripDayItemRowHTML(d,it){
      nothing editable here — name, fee and coordinates all come from the
      course dataset (edited in the corrections editor), and its one trip-level
      fact, the day it sits on, is the "Move to" section of this same menu. */
+  /* GOLF-247: every row can have its price edited, including a golf row —
+     which until now had nothing editable at all, because everything about
+     a round came from the course data. A fee the visitor negotiated is the
+     one fact about a round that is theirs, so it lives on the item and
+     gets its own entry here. */
+  const costItem=it.type==='drivefrom'?''
+    :`<button type="button" class="tb-menu-item" onclick="tbToggleCostEdit('${it.id}')">${
+        it.type==='golf'?'💷 Green fee':'💷 Price'}</button>`;
   const menu=tbRowMenuHTML(
-    (it.type==='golf'?`<div class="tb-menu-label">Move to</div>${tbDayMenuItemsHTML(it.i,d.id)}<div class="tb-menu-sep"></div>`
+    (it.type==='golf'?`<div class="tb-menu-label">Move to</div>${tbDayMenuItemsHTML(it.i,d.id)}<div class="tb-menu-sep"></div>${costItem}<div class="tb-menu-sep"></div>`
       // GOLF-153: a flight's Edit opens the flight form instead —
       // tripDayUpdateStop() behind tbEditStop only accepts hotel/poi,
       // so routing a flight there would have been a dead button.
-      :`<button type="button" class="tb-menu-item" onclick="${it.type==='flight'?`tlEditFlight(${d.id},'${it.id}')`:`tbEditStop(${d.id},'${it.id}')`}">✎ Edit</button><div class="tb-menu-sep"></div>`)+
+      :`<button type="button" class="tb-menu-item" onclick="${it.type==='flight'?`tlEditFlight(${d.id},'${it.id}')`:`tbEditStop(${d.id},'${it.id}')`}">✎ Edit</button>${costItem}<div class="tb-menu-sep"></div>`)+
     `<button type="button" class="tb-menu-item is-danger" onclick="tripRemoveItem(${d.id},'${it.id}');">🗑 Remove</button>`);
   return`<div class="tb-day-course tb-item-${it.type}" ${tbRowDragAttrs(`tbDragSetItem(${d.id},'${it.id}',event,this);`,`tbDropInDay(${d.id},'${it.id}');`)}>
     <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
@@ -605,7 +613,21 @@ function tripDayItemRowHTML(d,it){
          column with "£90 × 2 (sharing) = £180". The full worked label still
          renders in the Itinerary tab and the Costs breakdown, which have the
          width for it. */''}
-    <span class="tb-item-price"${det.sharing?` title="${esc(priceLabel.replace(/^ · /,''))}"`:''}>${estMark(!!det.est)}${tbDualPriceHTML(price,det.cur||'GBP')}</span>
+    ${/* GOLF-247: the price column is now the way in to editing it. A
+         golf row with no fee in the data says so in words rather than
+         showing a bare dash the visitor can't act on. */''}
+    ${it.type==='drivefrom'
+      /* A place you set off from is not something you buy, so it keeps a
+         plain, unclickable cell (and has no price to show). */
+      ?`<span class="tb-item-price"></span>`
+      :`<button type="button" class="tb-item-price is-editable"
+      aria-expanded="${tbCostEditId===it.id?'true':'false'}"
+      title="${esc(det.sharing?priceLabel.replace(/^ · /,''):(it.type==='golf'?'Set your own green fee':'Set this price'))}"
+      onclick="event.stopPropagation();tbToggleCostEdit('${it.id}')">${
+        price==null&&it.type==='golf'?'<span class="tb-price-ask">Add fee</span>'
+          :estMark(!!det.est)+tbDualPriceHTML(price,det.cur||'GBP')
+      }</button>`}
     <div class="tb-item-actions">${menu}</div>
-  </div>`;
+  </div>
+  ${tbCostEditId===it.id?tbCostEditHTML(d,it):''}`;
 }

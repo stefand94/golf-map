@@ -773,14 +773,73 @@ let groupSize=2;
    null and counts as 0, so a line can be labelled before it is priced.
    `cur` is only ever shown (and editable) on a trip that already spans
    more than one currency — see costOtherGroupHTML(). */
+/* ── GOLF-247: the visitor's own price on an itinerary item ───────────
+   Field-at-a-time, like tripCustomUpdate() below and for the same reason:
+   these run from `oninput` on every keystroke, so they must not re-render
+   the pane out from under the cursor. tbCostLiveRefresh() repaints the
+   figures that moved.
+
+   `price` is the field hotels, stops, flights, trains and activities
+   already had — it is here so there is ONE validated way in, instead of
+   the three forms that each parsed it their own way. `fee` is the golf
+   override (kept on the item, never written to course data). A multi-night
+   stay fans out across every night sharing its stayId, exactly as
+   tripDayUpdateStop() does, so a rate change cannot leave night three
+   disagreeing with night one. */
+const TRIP_ITEM_MAX_PRICE=1e6;
+function tripItemLocate(itemId){
+  for(const d of tripDays){
+    const it=tripDayItems(d).find(x=>x&&x.id===itemId);
+    if(it)return{day:d,item:it};
+  }
+  return null;
+}
+function tripItemCostTargets(it){
+  return it.stayId?tripDays.flatMap(d=>tripDayItems(d).filter(x=>x.stayId===it.stayId)):[it];
+}
+function tripItemSetCost(itemId,patch){
+  const found=tripItemLocate(itemId);
+  if(!found||!patch)return null;
+  const it=found.item;
+  const num=v=>{const n=parseFloat(v);return Number.isFinite(n)?Math.min(TRIP_ITEM_MAX_PRICE,Math.max(0,n)):null;};
+  const targets=tripItemCostTargets(it);
+  targets.forEach(x=>{
+    if('price' in patch&&x.type!=='golf'){const n=num(patch.price);if(n==null)delete x.price;else x.price=n;}
+    /* A blank fee is a DELETED fee, not a zero one: the row goes back to
+       showing what the course data says (or "Add your fee" when it says
+       nothing), which is the only way back from a mistyped override. */
+    if('fee' in patch&&x.type==='golf'){const n=num(patch.fee);if(n==null)delete x.fee;else x.fee=n;}
+    if('per' in patch&&x.type!=='hotel'){if(patch.per==='group')x.per='group';else delete x.per;}
+    if('cur' in patch){if(CURRENCY_SYMS[patch.cur])x.cur=patch.cur;else delete x.cur;}
+  });
+  saveState();
+  return it;
+}
+/* The basis toggle, which unlike a typed field does want the figures
+   repainted straight away — there is no cursor to protect. */
+function tripItemSetBasis(itemId,per,btn){
+  const found=tripItemLocate(itemId);
+  if(!found)return;
+  tripItemSetCost(itemId,{per});
+  const row=btn&&typeof btn.closest==='function'?btn.closest('.cost-edit'):null;
+  if(row)row.querySelectorAll('.cost-per button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.per===per)));
+  if(typeof tbCostLiveRefresh==='function')tbCostLiveRefresh();
+}
 let tripCustom=[];
 const TRIP_CUSTOM_MAX=40, TRIP_CUSTOM_MAX_AMOUNT=1e6;
 function tripCustomNewId(){return 'cc'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function tripCustomFind(id){return tripCustom.find(c=>c.id===id)||null;}
-function tripCustomAdd(){
+/* GOLF-247: a cost can now belong to a DAY as well as to the trip —
+   dinner on Tuesday, a caddie at the Wednesday round — so `day` holds a
+   trip day's id, or stays absent for the whole-trip lines GOLF-203
+   shipped. Absent is what every saved trip and every shared link already
+   says, so they all keep reading as trip-level with no migration. */
+function tripCustomAdd(dayId){
   if(tripCustom.length>=TRIP_CUSTOM_MAX)return;
   const id=tripCustomNewId();
-  tripCustom.push({id,label:'',amount:null,per:'group',cur:tripPrimaryCurrency()});
+  const onDay=dayId!=null&&tripDays.some(d=>d.id===dayId);
+  tripCustom.push({id,label:'',amount:null,per:'group',cur:tripPrimaryCurrency(),
+    ...(onDay?{day:dayId}:{})});
   saveState();
   if(!tripBuilderOn)return;
   renderTripBuilder();
@@ -803,7 +862,25 @@ function tripCustomUpdate(id,patch){
   }
   if('per' in patch)c.per=patch.per==='person'?'person':'group';
   if('cur' in patch&&CURRENCY_SYMS[patch.cur])c.cur=patch.cur;
+  /* Moving a cost between a day and the trip: null/absent means the trip,
+     and a day that no longer exists means the trip too, so deleting a day
+     cannot strand a line where nothing renders it. */
+  if('day' in patch){
+    if(patch.day!=null&&tripDays.some(d=>d.id===patch.day))c.day=patch.day;
+    else delete c.day;
+  }
   saveState();
+}
+/* A day's own cost lines, and the trip's. Both read through here so the
+   Costs tab and a day's card can never disagree about which bucket a line
+   is in — and an orphan (its day deleted while the line survived in a
+   snapshot) falls to the trip rather than vanishing. */
+function tripCustomForDay(dayId){
+  return(Array.isArray(tripCustom)?tripCustom:[]).filter(c=>c.day!=null&&c.day===dayId);
+}
+function tripCustomTripLevel(){
+  return(Array.isArray(tripCustom)?tripCustom:[])
+    .filter(c=>c.day==null||!tripDays.some(d=>d.id===c.day));
 }
 function tripCustomSetPer(id,per,btn){
   const c=tripCustomFind(id);

@@ -559,6 +559,7 @@ function tlPanelHTML(d){
         <input type="time" class="tl-time" value="${esc(it.arrive||'')}"
           title="When it gets in. This is what makes the block as long as it is."
           onchange="tlSetLegArrive(${d.id},${q(it.id)},this.value)"></label>`:''}
+      ${tlPanelCostFieldHTML(d,it)}
       <label class="tl-f"><span>Be there</span>
         <input type="number" class="tl-field" min="0" max="1440" step="5"
           value="${esc(it.bufferMins!=null?String(it.bufferMins):'')}"
@@ -566,6 +567,7 @@ function tlPanelHTML(d){
           title="Minutes before it starts that you have to be there. The drive has to land by then. Clear it for the usual ${TL_DEFAULT_BUFFER[it.type]||0}."
           onchange="${set('tlSetItemBuffer')}"></label>
     </div>
+    ${tlPanelBasisHTML(d,it)}
     <label class="tl-f tl-f-wide"><span>Note</span>
       <textarea class="tl-field tl-note-field" rows="2" maxlength="${TL_NOTE_MAX}"
         placeholder="Anything worth remembering — ${TL_NOTE_MAX} characters."
@@ -576,6 +578,72 @@ function tlPanelHTML(d){
         onclick="tlRemoveFromPanel(${d.id},${q(it.id)})">🗑 Remove</button>
     </div>
   </div>`;
+}
+/* ── GOLF-247 in the calendar ─────────────────────────────────────────
+   The same price the list view's row editor sets, in the details panel
+   the calendar already opens for a block — so a visitor working in
+   detailed mode never has to switch views to price something. It writes
+   through tripItemSetCost(), the one validated way in, so the two
+   surfaces cannot drift.
+
+   A golf block gets a fee field here for the first time: until this
+   ticket everything about a round came from the course data, and
+   tlPanelEditBtnHTML() below still has no "Edit the rest" for one,
+   because the fee is the only part of a round that is the visitor's. */
+function tlPanelCostFieldHTML(d,it){
+  if(!it||it.type==='drivefrom')return'';
+  const det=tripItemPriceDetail(d,it);
+  const isGolf=it.type==='golf';
+  const cur=det.cur||'GBP';
+  const dataFee=isGolf?feeNumberForDate(it.i,d&&d.date):null;
+  const typed=isGolf?(det.own?det.base:null):(it.price??null);
+  const label=isGolf?'Green fee':it.type==='hotel'?'Per person'
+    :(it.type==='flight'||it.type==='train')?'Fare':'Price';
+  const ph=isGolf&&dataFee!=null?String(dataFee.toFixed(0)):curSym(cur);
+  const title=isGolf
+    ?(dataFee!=null?`Your own fee for this round, in ${cur}. Clear it to go back to the club's ${curSym(cur)}${dataFee.toFixed(0)}.`
+      :`Nobody has published a fee for this course, so this is the only one the trip has.`)
+    :it.type==='hotel'?`Per person, per night, in ${cur}.`:`In ${cur}.`;
+  return`<label class="tl-f"><span>${esc(label)}</span>
+    <input type="number" class="tl-field" min="0" step="5" inputmode="decimal"
+      value="${typed!=null?esc(String(typed)):''}" placeholder="${esc(ph)}"
+      title="${esc(title)}"
+      oninput="tripItemSetCost('${esc(it.id)}',{${isGolf?'fee':'price'}:this.value});tlPanelCostRefresh('${esc(it.id)}');"></label>`;
+}
+/* The currency and the per-person/whole-group basis, on their own wide
+   row: three controls in the four-up grid above would wrap badly at 375,
+   and this row is also where the arithmetic gets spelled out. */
+function tlPanelBasisHTML(d,it){
+  if(!it||it.type==='drivefrom')return'';
+  const det=tripItemPriceDetail(d,it);
+  const cur=det.cur||'GBP';
+  const basis=det.basis||'person';
+  const id=esc(it.id);
+  return`<div class="tl-f tl-f-wide tl-cost-row cost-edit" data-cost-edit="${id}">
+    <span>Cost</span>
+    <div class="tl-cost-controls">
+      <select class="tl-field tl-cost-cur" aria-label="Currency"
+        onchange="tripItemSetCost('${id}',{cur:this.value});renderTripBuilder();">${
+          ['GBP','EUR','ZAR'].map(c=>`<option value="${c}"${cur===c?' selected':''}>${curSym(c)} ${c}</option>`).join('')
+        }</select>
+      ${it.type==='hotel'?'':`<div class="tb-seg cost-per" role="group" aria-label="How this price is counted">${
+        [['person','Per person'],['group','Whole group']].map(([k,l])=>
+          `<button type="button" data-per="${k}" aria-pressed="${basis===k}" onclick="tripItemSetBasis('${id}','${k}',this)">${l}</button>`).join('')
+      }</div>`}
+      <span class="cost-edit-sum" data-cost-sum="${id}">${tbCostEditSumHTML(d,it)}</span>
+    </div>
+  </div>`;
+}
+/* Repaint the panel's own sum and the figures around it without
+   re-rendering: these run from `oninput`, and the field the visitor is
+   typing in lives inside what a re-render would replace. */
+function tlPanelCostRefresh(itemId){
+  const found=(typeof tripItemLocate==='function')?tripItemLocate(itemId):null;
+  if(found){
+    const sum=document.querySelector(`[data-cost-sum="${itemId}"]`);
+    if(sum)sum.innerHTML=tbCostEditSumHTML(found.day,found.item);
+  }
+  if(typeof tbCostLiveRefresh==='function')tbCostLiveRefresh();
 }
 /* The one button that leads out of the panel and into the kind's own
    form. A round has none — everything about a round comes from the

@@ -25,7 +25,11 @@ function tripBuildSharePayload(){
      "no custom costs"). No existing field changes meaning. */
   const oth=(Array.isArray(tripCustom)?tripCustom:[]).map(c=>({
     l:c.label||'',a:(typeof c.amount==='number'&&isFinite(c.amount))?c.amount:null,
-    p:c.per==='person'?'person':'group',c:c.cur||'GBP'}));
+    p:c.per==='person'?'person':'group',c:c.cur||'GBP',
+    /* GOLF-247: the day a cost sits on, written only when it sits on one,
+       so a trip whose costs are all trip-level encodes to the bytes
+       GOLF-203 produced. */
+    ...(Number.isInteger(c.day)?{d:c.day}:{})}));
   return{
     v:1,
     gs:groupSize,
@@ -78,6 +82,15 @@ function shareItemTiming(out,it){
   if(typeof it.durationMins==='number'&&isFinite(it.durationMins))out.dm=it.durationMins;
   if(typeof it.bufferMins==='number'&&isFinite(it.bufferMins))out.bf=it.bufferMins;
   if(typeof it.note==='string'&&it.note)out.nt=it.note;
+  /* GOLF-247: the visitor's own prices ride in the same "only when set"
+     convoy, and for the same reason — a trip where nobody edited a price
+     encodes to byte-for-byte the link it did before this shipped, and
+     every link already shared decodes with no cost fields, which reads as
+     "use the data fee, per person, derived currency": what those links
+     have always meant. */
+  if(typeof it.fee==='number'&&isFinite(it.fee))out.fe=it.fee;
+  if(it.per==='group')out.pb='group';
+  if(typeof it.cur==='string'&&CURRENCY_SYMS[it.cur])out.cu=it.cur;
   return out;
 }
 function shareFlightFields(it){
@@ -180,6 +193,13 @@ function shareReadTiming(out,it){
   const d=shareNum(it.dm,0,1440); if(d!=null)out.durationMins=Math.round(d);
   const b=shareNum(it.bf,0,1440); if(b!=null)out.bufferMins=Math.round(b);
   const n=shareStr(it.nt,SHARE_NOTE_MAX); if(n)out.note=n;
+  /* GOLF-247, off an untrusted URL: clamped like every other field, and a
+     bad value is simply absent rather than fatal. `fe` is golf-only and
+     `pb` meaningless on a hotel, enforced here so a crafted link can't
+     reprice a stay by flipping its basis. */
+  if(out.type==='golf'){const f=shareNum(it.fe,0,1e6); if(f!=null)out.fee=f;}
+  if(out.type!=='hotel'&&it.pb==='group')out.per='group';
+  if(typeof it.cu==='string'&&CURRENCY_SYMS[it.cu])out.cur=it.cu;
   return out;
 }
 function tripDecodeSharePayload(hash){
@@ -278,7 +298,9 @@ function tripDecodeSharePayload(hash){
       return{id:'sc'+n,label:shareStr(c.l,80)||'',
         amount:shareNum(c.a,0,1e6),
         per:c.p==='person'?'person':'group',
-        cur:(typeof c.c==='string'&&CURRENCY_SYMS[c.c])?c.c:'GBP'};
+        cur:(typeof c.c==='string'&&CURRENCY_SYMS[c.c])?c.c:'GBP',
+        // GOLF-247: checked against the days decoded above, same as state.js.
+        ...(Number.isInteger(c.d)&&days.some(d=>d.id===c.d)?{day:c.d}:{})};
     }).filter(Boolean);
     return{v:1,gs:gs!=null?Math.round(gs):1,nm:shareStr(p.nm,80),seq,days,oth,dt:p.dt===1}; // GOLF-153
   }catch(e){return null;}

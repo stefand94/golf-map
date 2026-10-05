@@ -537,6 +537,49 @@ function tripDayAccomFallback(d){
 // "per person sharing". groupSizeFor() degrades to 1 (today's pre-GOLF-87
 // behaviour) if the live global is somehow missing/invalid.
 function groupSizeFor(){return(typeof groupSize==='number'&&groupSize>0)?groupSize:1;}
+/* ── GOLF-247: the visitor's own prices ───────────────────────────────
+   Every itinerary item can carry three optional cost fields, and all
+   three are read HERE and nowhere else, so the itinerary row, the Costs
+   tab and the trip total cannot disagree about a price the visitor set.
+
+   `fee`  — golf only: what this round actually costs this party. Kept on
+            the ITEM, never written back to the course data, because it is
+            one trip's negotiated or society rate, not a published green
+            fee. It wins over the data fee outright, including over a
+            course whose fee is unknown ("Ask club", 90 of them after
+            GOLF-239 — the case that made this ticket urgent).
+   `per`   — the basis: 'person' multiplies by the trip's group size,
+            'group' is one charge for the party. Absent means 'person'
+            for everything except a hotel, which is the arithmetic the app
+            has always done (GOLF-87), so an existing trip prices
+            identically with no migration.
+   `cur`   — a currency the visitor picked, overriding the one derived
+            from the item's own coordinates (GOLF-173). Absent = derived,
+            exactly as before.
+
+   A hotel ignores `per` on purpose: GOLF-91 settled that a hotel price is
+   per person per night, the night rows carry the nights, and letting the
+   basis flip there would quietly change what the number the visitor
+   already typed means. */
+function tripItemBasis(it){
+  if(!it||it.type==='hotel')return'person';
+  return it.per==='group'?'group':'person';
+}
+/* The currency an item is priced in: the visitor's choice first, then the
+   GOLF-173 derivation from its coordinates. One function so a new reader
+   can't accidentally skip the override. */
+function tripItemCurrency(d,it){
+  if(it&&typeof it.cur==='string'&&CURRENCY_SYMS[it.cur])return it.cur;
+  if(it&&it.type==='golf')return courseCurrency(it.i);
+  return tripStayCurrency(d,it);
+}
+/* The visitor's own green fee for one round, or null. Validated here so a
+   hand-edited localStorage value can't put NaN into a total. */
+function tripItemOwnFee(it){
+  if(!it||it.type!=='golf')return null;
+  const v=it.fee;
+  return(typeof v==='number'&&isFinite(v)&&v>=0)?v:null;
+}
 function tripItemPriceDetail(d,it){
   if(!it)return{base:null,guests:1,sharing:false,total:null,cur:'GBP'};
   const gs=groupSizeFor();
@@ -549,18 +592,25 @@ function tripItemPriceDetail(d,it){
     // label logic misfire (and throw on an unpriced course, base===null).
     // The "× groupSize" tag these items get instead is computed
     // independently in tripCostLineItems() from gs itself.
-    const p=feeNumberForDate(it.i,d&&d.date);
-    const range=feeRangeForDate(it.i,d&&d.date);
-    return{base:p,guests:gs,sharing:false,total:p==null?null:p*gs,cur:courseCurrency(it.i),feeRange:range};
+    /* GOLF-247: the visitor's own fee wins, and when it does the course's
+       published range is NOT returned — a row reading "£120 (£65–£90)"
+       would be showing a price nobody is paying next to the one they are. */
+    const own=tripItemOwnFee(it);
+    const p=own!=null?own:feeNumberForDate(it.i,d&&d.date);
+    const range=own!=null?null:feeRangeForDate(it.i,d&&d.date);
+    const mult=tripItemBasis(it)==='person'?gs:1;
+    return{base:p,guests:mult,sharing:false,total:p==null?null:p*mult,
+      cur:tripItemCurrency(d,it),feeRange:range,own:own!=null,basis:tripItemBasis(it)};
   }
   // GOLF-173: hotel/POI currency comes from the item's own coordinates,
-  // falling back to the day's (then the trip's) currency when it has none.
-  const cur=tripStayCurrency(d,it);
+  // falling back to the day's (then the trip's) currency when it has none
+  // — or from the item itself, when the visitor chose one (GOLF-247).
+  const cur=tripItemCurrency(d,it);
   if(it.type==='hotel'){
     const entered=it.price??null;
     if(entered!=null){
       const g=gs;
-      return{base:entered,guests:g,sharing:g>1,total:entered*g,cur};
+      return{base:entered,guests:g,sharing:g>1,total:entered*g,cur,basis:'person'};
     }
     /* GOLF-193: this is the app's own regional guess, not a price anyone
        typed or a rate anyone published — so it is flagged at the single
@@ -573,7 +623,9 @@ function tripItemPriceDetail(d,it){
   // GOLF-87: same reasoning as the golf branch above — sharing stays false
   // for a POI, the × groupSize tag is computed separately in the consumer.
   const p=it.price??null;
-  return{base:p,guests:gs,sharing:false,total:p==null?null:p*gs,cur};
+  const basis=tripItemBasis(it);
+  const mult=basis==='person'?gs:1;
+  return{base:p,guests:mult,sharing:false,total:p==null?null:p*mult,cur,basis};
 }
 function tripItemPrice(d,it){return tripItemPriceDetail(d,it).total;}
 /* GOLF-44: fuel-cost estimate — same straight-line leg distances as the
