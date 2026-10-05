@@ -61,26 +61,35 @@ Costs).
   consecutive located stops, never a manually-added item type.
 - Multi-trip: `trips{tripId:{...snapshot}}` + `activeTripId`, snapshotted
   on every `saveState()`.
-- GOLF-153 detailed mode stores only the times the visitor FIXED —
-  `time` on an item (a tee time, a check-in), `arrive`/`depart` on a
-  flight, `durationMins`, and `bufferMins` (the arrival buffer: golf 45,
-  flight 120, editable per item). Every other time on the grid is derived
-  at render time by `js/timeline.js` and never written back.
+- GOLF-153 detailed mode — the **calendar** view since DEC-039's owner
+  review — stores only the times the visitor FIXED: `time` on an item (a
+  tee time, a check-in), `arrive`/`depart` on a flight or a train,
+  `durationMins`, and `bufferMins` (the arrival buffer: golf 45, flight
+  120, train 15, editable per item). Every other time on the grid is
+  derived at render time by `js/timeline.js` and never written back.
+  Blocks are dragged to move (sets `time`, snapped to 5 min) and
+  edge-dragged to resize (sets `durationMins`); a drag re-seats the item
+  in `items[]` by the clock, so the engine's order matches the eye's.
 - A flight is **two points**: `lat`/`lng` are the arrival airport and
   `fromLat`/`fromLng`/`fromName` the departure one, looked up from the
   IATA code on the form. Every flight is planned in full (drive →
   check-in buffer → flight → arrival) EXCEPT the inbound one, which is
   arrival-only. Which flight is inbound is **derived, never stored** —
   `tlInboundFlightId()` takes the first item in the trip that is in the
-  chain (hotels and notes are not), and it counts only if it is a
-  flight. The stop between a flight's two points carries `flown:true`:
+  chain (a hotel is not), and it counts only if it is a flight. The stop between a flight's two points carries `flown:true`:
   it never reaches ORS, the fuel total or the map.
-- Notes are `note` on an item or a day, plus `{id,type:'note',text}` as
-  an item for a note in a gap, capped at `TL_NOTE_MAX` (300) because
-  they ride in `#share=` links. They render in **detailed mode only**
-  (DEC-039, revised 2026-10-05) — `tripDayLegs()` drops note items so
-  the default list view, editable and shared alike, is exactly what it
-  was before notes existed.
+- Three further hand-typed item types, added by DEC-039's owner review:
+  `train` (`fromName`/`name` stations + `depart`/`arrive`; **no lat/lng
+  at all**, which is the whole mechanism by which it is never routed and
+  never fuelled), `drivefrom` (a located zero-duration start point, so
+  the existing routing machinery computes the drive out of it) and
+  `activity` (name, time, length, optional place, price and note). The
+  calendar's right-click/long-press menu adds them at the clicked time;
+  the `＋ Add` menu adds them without one.
+- A note is a **field on an item** (`note`, capped at `TL_NOTE_MAX` =
+  300 because it rides in `#share=` links), edited in the block's
+  details panel. The old `{type:'note'}` gap item and the day-level note
+  are gone (DEC-039 owner review, pre-release — nothing migrates).
 - Course green fees: legacy free-text `wd`/`we` strings, being migrated
   course-by-course to a structured `fee:{weekday,weekend,weekendTwilight?,
   confidence,lastVerified}` object (GOLF-97/98, in progress — see

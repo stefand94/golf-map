@@ -204,13 +204,13 @@ function tripDayLegs(dayIdx){
   const legs=[];
   if(placePos>=0){const r=driveRow(placePos);if(r)legs.push(r);}
   tripDayItems(d).forEach(it=>{
-    /* DEC-039 as revised 2026-10-05: notes live in detailed mode only.
-       This function feeds BOTH list renderings — the editable one and
-       the read-only shared one — so skipping a note item here is what
-       keeps the default view exactly as it was before notes existed.
-       It is skipped before the drive row too: a note has no location,
-       so it was never a stop, and posOf has no entry for it. */
-    if(it.type==='note')return;
+    /* DEC-039's owner review added three kinds the calendar can create
+       (train, drive-from, activity). They are ordinary items and they
+       get ordinary rows here — anything added in one view has to be
+       visible in the other, or switching back makes it disappear.
+       Nothing about this function changes to accommodate them: a train
+       has no location, so posOf has no entry for it and it gets no
+       drive row, which is exactly how a hand-typed hotel behaves. */
     const pos=it.type==='flight'
       ?(posOf.has(it.id+'|depart')?posOf.get(it.id+'|depart'):posOf.get(it.id))
       :posOf.get(it.id);
@@ -461,7 +461,8 @@ function itinLegRowHTML(l){
      renderer the read-only shared view uses, and it was showing a
      flight as a 📍. Notes never reach this row (DEC-039: detailed mode
      only); tripDayLegs() drops them. */
-  const icon=l.type==='golf'?'⛳':l.type==='hotel'?'🏨':l.type==='flight'?'✈':'📍';
+  const icon=(typeof tlItemIcon==='function')?tlItemIcon(l.type)
+    :(l.type==='golf'?'⛳':l.type==='hotel'?'🏨':l.type==='flight'?'✈':'📍');
   /* Merge (GOLF-71 + GOLF-74): GOLF-71's price column is a single nowrap
      figure and stays exactly that — the sharing arithmetic would have burst
      it. Instead a per-person stay explains itself on GOLF-71's own existing
@@ -518,7 +519,9 @@ function tripCostLineItems(){
   // (as any unknown type does) would have put an airfare under "Stops"
   // next to the lunch, and the "× group size" tag below is already the
   // right arithmetic for a per-person fare.
-  const CAT={golf:'Golf',hotel:'Stay',poi:'Stop',flight:'Travel'};
+  /* A train is Travel for the same reason a flight is; an activity is a
+     Stop, like a sight. */
+  const CAT={golf:'Golf',hotel:'Stay',poi:'Stop',flight:'Travel',train:'Travel',activity:'Stop'};
   // GOLF-74: a per-person-sharing stay carries its arithmetic into the label
   // so the line item explains its own (doubled) amount.
   // GOLF-87: golf/POI totals scale by the trip's group size — each
@@ -555,10 +558,10 @@ function tripCostLineItems(){
     +'|'+(typeof it.lat==='number'?it.lat.toFixed(3):'?')
     +'|'+(typeof it.lng==='number'?it.lng.toFixed(3):'?'));
   tripDays.forEach((d,idx)=>tripDayItems(d).forEach(it=>{
-    /* GOLF-153: a note is not a cost. Left to fall through it would have
-       pushed a nameless £0 line into "Stops" for every note in the
-       trip. */
-    if(it.type==='note')return;
+    /* A drive-from is a place you set off from, not something you buy.
+       Left to fall through it would have pushed a £0 line into "Stops"
+       for every one of them. */
+    if(it.type==='drivefrom')return;
     const det=tripItemPriceDetail(d,it);
     if(it.type==='hotel'){
       const flat=it.priceType==='total'||it.priceType==='flat';
@@ -1018,6 +1021,10 @@ function tbDayCardHTML(d,idx){
       ${/* GOLF-153: the flight form is its own thing (js/timeline-ui.js),
            sharing this slot but not tbAddStop's geocoder/nights state. */''}
       ${typeof tlFlightFormHTML==='function'?tlFlightFormHTML(d.id):''}
+      ${/* DEC-039 (owner review): the one form behind the calendar's add
+           menu — a train, a drive-from or an activity. Same slot, same
+           rule, its own draft. */''}
+      ${typeof tlBlockFormHTML==='function'?tlBlockFormHTML(d.id):''}
       ${tbHotelPickerHTML(d)}
       ${/* GOLF-150 I2: one quiet "+ Add" per day instead of two full-width
            buttons (12 buttons on a 6-day trip). */''}
@@ -1034,6 +1041,13 @@ function tbDayCardHTML(d,idx){
                  offered in both views, or you would have to switch to
                  Detailed to record the one that gets you there. */''}
             <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptFlight(${d.id})">✈ A flight</button>
+            ${/* The same three the calendar's right-click menu offers, for
+                 the same reason the flight is here: they are trip data,
+                 not view data. The calendar adds the one thing this menu
+                 cannot — a TIME to put them at. */''}
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptBlock(${d.id},'train')">🚆 A train</button>
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptBlock(${d.id},'drivefrom')">🚗 Drive from another place</button>
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptBlock(${d.id},'activity')">📌 An activity</button>
           </div>
         </details>
       </div>
@@ -1631,4 +1645,9 @@ function renderTripBuilder(){
     }
   }
   if(typeof mobAfterRender==='function')mobAfterRender(); // GOLF-185a: phone sheet, floating search, tab bar
+  /* DEC-039 (owner review): the calendar's scrollers keep the position
+     the visitor left them at, and its forms bind the shared geocoder.
+     Called directly rather than from a rAF — a background pane renders
+     no frames, so a rAF there never fires (see memory). */
+  if(typeof tlAfterRender==='function')tlAfterRender();
 }

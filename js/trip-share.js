@@ -49,8 +49,6 @@ function tripBuildSharePayload(){
       id:d.id,kind:d.kind,place:d.place||null,
       placeLat:d.placeLat??null,placeLng:d.placeLng??null,
       date:d.date||null,driveIn:d.driveIn??null,
-      /* GOLF-153: the day's own note, written only when there is one. */
-      ...(d.note?{nt:d.note}:{}),
       /* GOLF-118: freeze the inbound leg's ferry facts (the viewer's ORS
          cache is empty, so the shared itinerary can't recompute them).
          Presence of the object = "this leg has a ferry". */
@@ -59,10 +57,12 @@ function tripBuildSharePayload(){
         ?{id:it.id,type:'golf',c:courseRefEncode(it.i)}
         :it.type==='flight'
           ?shareFlightFields(it)
-          :it.type==='note'
-            /* GOLF-153: a gap note carries its text and nothing else —
-               no price, no coordinates, nothing to route. */
-            ?{id:it.id,type:'note',tx:it.text}
+          :it.type==='train'
+            /* DEC-039 (owner review): a train is two station names and
+               two times. No coordinates — that is what keeps it out of
+               the routing and out of the fuel. */
+            ?{id:it.id,type:'train',name:it.name,fnm:it.fromName||null,
+              dep:it.depart||null,arr:it.arrive||null,price:it.price??null}
             :{id:it.id,type:it.type,name:it.name,price:it.price,lat:it.lat,lng:it.lng},it))
     }))
   };
@@ -224,11 +224,21 @@ function tripDecodeSharePayload(hash){
           if(la!=null&&ln!=null){out.lat=la;out.lng=ln;}
           return shareReadTiming(out,it);
         }
-        if(it.type==='note'){
-          const tx=shareStr(it.tx,SHARE_NOTE_MAX);
-          return tx?{id,type:'note',text:tx}:null;
+        if(it.type==='train'){
+          const name=shareStr(it.name,80);
+          if(!name)return null;
+          const out={id,type:'train',name};
+          const fnm=shareStr(it.fnm,80); if(fnm)out.fromName=fnm;
+          const dep=shareTime(it.dep); if(dep)out.depart=dep;
+          const arr=shareTime(it.arr); if(arr)out.arrive=arr;
+          const pr=shareNum(it.price,0,1e6); if(pr!=null)out.price=pr;
+          return shareReadTiming(out,it);
         }
-        if(it.type!=='hotel'&&it.type!=='poi')return null;
+        /* DEC-039 (owner review): a drive-from and an activity are
+           shaped exactly like a hotel or a sight — a name, an optional
+           price and an optional location — so they decode through the
+           same branch, which is the branch below. */
+        if(it.type!=='hotel'&&it.type!=='poi'&&it.type!=='drivefrom'&&it.type!=='activity')return null;
         const name=shareStr(it.name,80);
         if(!name)return null;
         const out={id,type:it.type,name,
@@ -249,7 +259,6 @@ function tripDecodeSharePayload(hash){
         placeLat:shareNum(d.placeLat,-90,90),placeLng:shareNum(d.placeLng,-180,180),
         date:(typeof d.date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d.date))?d.date:null,
         driveIn:shareNum(d.driveIn,0,10000),
-        note:shareStr(d.nt,SHARE_NOTE_MAX), // GOLF-153
         /* GOLF-118 — object present ⇒ inbound leg has a ferry; mins clamped. */
         ferryIn:(d.ferryIn&&typeof d.ferryIn==='object')
           ?{hasFerry:true,ferryMinutes:Math.round(shareNum(d.ferryIn.mins,0,10000)||0)}:null,
@@ -327,6 +336,10 @@ function renderSharedTrip(){
       <div class="tb-section" style="padding:0 var(--sp-4) var(--sp-6)"><h3 style="font-size:var(--fs-title);margin:var(--sp-4) 0 var(--sp-2)">Costs</h3>${tbCostsTabReadOnlyHTML()}</div>
     </div>`;
     renderSharedMap();
+    /* DEC-039 (owner review): the calendar's hour scrollers open on the
+       first thing in each day. Called inside the try, because the finally
+       below hands tripDays back to the viewer's own trip. */
+    if(typeof tlAfterRender==='function')tlAfterRender();
     const printBtn=document.getElementById('shared-print');
     if(printBtn)printBtn.addEventListener('click',()=>window.print());
   }catch(e){

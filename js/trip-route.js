@@ -749,9 +749,11 @@ function tbDrawTripItems(){
     let fallbackN=0;
     tripDayItems(d).forEach(it=>{
       if(it.type==='golf')return; // already drawn as a numbered route stop
-      // GOLF-153: a note has nowhere to be, so it gets no pin — without
-      // this it would be dropped on the day's fallback point as a 📍.
-      if(it.type==='note')return;
+      // DEC-039 (owner review): a train has nowhere to be — it carries no
+      // coordinates at all, by design — so it gets no pin. Without this it
+      // would be dropped on the day's fallback point as a 📍, which would
+      // put Penzance station in a field outside Newquay.
+      if(it.type==='train')return;
       let pt=tripItemPoint(it),approx=false;
       /* A hotel with no address of its own resolves to the day's fallback
          point, so key it on that *pre-jitter* point: the jitter offset

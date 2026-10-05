@@ -249,9 +249,8 @@ check('junk buffer ignored', run('tlBufferFor({type:"golf",bufferMins:"early"})'
   check('inbound: a hotel before the flight does not count',
         inboundOf([{ items: [
           { id: 'h', type: 'hotel', name: 'Airport Inn' },
-          { id: 'n', type: 'note', text: 'book parking' },
           flight] }]), 'f1',
-        'hotels and notes are outside the chain, so the flight is still first');
+        'a hotel is outside the chain, so the flight is still first');
   check('inbound: the only flight in the trip, after a round, is NOT inbound',
         inboundOf([{ items: [{ id: 'g', type: 'golf', i: 0 }, flight] }]), null,
         'you drove to that one, so it is planned in full');
@@ -350,43 +349,87 @@ check('junk buffer ignored', run('tlBufferFor({type:"golf",bufferMins:"early"})'
 check('empty day has no range', run('tlDayRange([])'), null);
 check('null is survivable', run('tlDayRange(null)'), null);
 
-// ── 11. Notes: in the day, out of the clock ───────────────────────────
+// ── 11. The three hand-typed kinds (DEC-039, owner review) ───────────
+/* A train, a drive-from and an activity. The {type:'note'} gap item that
+ * used to be tested here is gone — a note is a field on a block now — and
+ * this is pre-release, so there is nothing to migrate. */
 {
-  drives['g>p'] = 10;
-  const withNote = compute([
-    { id: 'g', type: 'golf', i: 0, time: '09:00' },
-    { id: 'n', type: 'note', text: 'book the ferry' },
+  drives['a>p'] = 10;
+  const rows = compute([
+    { id: 'a', type: 'activity', name: 'Boat trip', time: '10:00' },
     { id: 'p', type: 'poi', name: 'Castle' }
   ]);
-  const without = compute([
-    { id: 'g', type: 'golf', i: 0, time: '09:00' },
-    { id: 'p', type: 'poi', name: 'Castle' }
-  ]);
-  check('a note in a gap pushes nothing',
-        at(withNote[2].startMins), at(without[1].startMins));
-  check('and does not absorb the drive it sits in', withNote[2].driveMins, 10);
-  check('the note consumes no time', withNote[1].durationMins, 0);
-  ok('the note is a marker', withNote[1].marker === true);
-  check('it marks the time the day has reached: the end of the round',
-        at(withNote[1].startMins), '14:00');
+  check('an activity is an hour by default', rows[0].durationMins, 60);
+  check('it starts when it says it does', at(rows[0].startMins), '10:00');
+  check('and what follows it follows it', at(rows[1].startMins), '11:10',
+        '11:00 plus the 10-minute drive');
+  ok('an activity is not a marker', rows[0].marker === false);
 }
 {
-  // A note before anything else has no cursor to sit at, so it takes the
-  // day's own start rather than NaN.
   const rows = compute([
-    { id: 'n', type: 'note', text: 'passports!' },
+    { id: 't', type: 'train', name: 'Penzance', fromName: 'London Paddington',
+      depart: '09:06', arrive: '14:12' },
     { id: 'g', type: 'golf', i: 0 }
   ]);
-  check('a leading note sits at the day start', at(rows[0].startMins), '09:00');
-  check('and the round still starts the day', at(rows[1].startMins), '09:00');
-  check('no drive is attributed to a note', rows[0].driveMins, 0);
+  check('a train is anchored on its departure', at(rows[0].startMins), '09:06');
+  ok('and that counts as a time the visitor set', rows[0].fixed === true);
+  check('its length is the gap between its own two times', rows[0].durationMins, 306);
+  check('so the round starts when it pulls in', at(rows[1].startMins), '14:12');
+  check('a train with one time is a marker', 
+        compute([{ id: 't', type: 'train', name: 'Truro', depart: '09:06' }])[0].durationMins, 0);
+  check('and a train that arrives before it leaves, too',
+        compute([{ id: 't', type: 'train', name: 'Truro', depart: '14:00', arrive: '09:06' }])[0].durationMins, 0);
+  /* The reason a train is never routed and never fuelled is that it has
+   * no coordinates to route BETWEEN — not a type check in trip-route.js.
+   * Section 13 below proves the routing half of that; this is the half
+   * the engine is responsible for. */
+  ok('a train carries no location to route from',
+     !('lat' in rows[0].item) && !('lng' in rows[0].item));
 }
 {
-  // A note can be pinned to a time like anything else.
-  const rows = compute([{ id: 'n', type: 'note', text: 'low tide', time: '16:20' }]);
-  check('a pinned note honours its time', at(rows[0].startMins), '16:20');
-  ok('and is marked fixed', rows[0].fixed === true);
+  drives['s>g'] = 35;
+  const rows = compute([
+    { id: 's', type: 'drivefrom', name: 'Truro', time: '08:00', lat: 50.26, lng: -5.05 },
+    { id: 'g', type: 'golf', i: 0 }
+  ]);
+  check('a drive-from takes no time of its own', rows[0].durationMins, 0);
+  ok('it is a marker', rows[0].marker === true);
+  check('it is where you set off from', at(rows[0].startMins), '08:00');
+  check('and the drive out of it is timed', at(rows[1].startMins), '08:35');
 }
+
+// ── 11b. The drive in from last night's hotel ─────────────────────────
+/* DEC-039's owner review: last night's hotel is the first point of the
+ * day's chain, so the morning drive from it is drawn and timed. The
+ * number is handed in (the app takes it from tripDayLegs(), which already
+ * measures it for the list view) and it never produces a conflict —
+ * nothing fixed precedes it, so there is no departure it could be late
+ * against. */
+{
+  const items = [{ id: 'g', type: 'golf', i: 0, time: '10:00' }];
+  const plain = compute(items);
+  check('without it the first block has no drive', plain[0].driveMins, 0);
+  const withDrive = compute(items, { inboundDriveMins: 40 });
+  check('with it, the drive is on the first block', withDrive[0].driveMins, 40);
+  check('and the tee time is untouched', at(withDrive[0].startMins), '10:00');
+  ok('a drive in from a hotel is never a conflict', withDrive[0].conflict === null,
+     'there is no fixed departure from a hotel to be late from');
+  check('a nonsense value is ignored',
+        compute(items, { inboundDriveMins: 'soon' })[0].driveMins, 0);
+  check('and a negative one', compute(items, { inboundDriveMins: -30 })[0].driveMins, 0);
+  drives['g>p'] = 12;
+  check('it only ever applies to the FIRST block',
+        compute([{ id: 'g', type: 'golf', i: 0, time: '10:00' },
+                 { id: 'p', type: 'poi', name: 'Castle' }],
+                { inboundDriveMins: 40 })[1].driveMins, 12,
+        'the second block gets its own leg, not the one in from the hotel');
+}
+
+// ── 11c. The drag snap ────────────────────────────────────────────────
+/* Five minutes (DEC-039, owner review). The snapping itself is in
+ * js/timeline-ui.js, which needs a DOM; the constant it snaps to is
+ * here, and a change to it is the kind that would go unnoticed. */
+check('blocks snap to five minutes', run('TL_SNAP_MINS'), 5);
 
 // ── 12. Degenerate input never throws ─────────────────────────────────
 check('no items', compute([]).length, 0);
@@ -504,5 +547,6 @@ if (failures) {
 }
 console.log('test_timeline: OK — times compute, fixed times push and never move, ' +
             'the drive is judged against the arrival buffer and not the tee time, ' +
-            'hotels, flights and notes stay markers, and the owner\'s worked ' +
+            'hotels and drive-froms stay markers, trains and flights are as ' +
+            'long as their own two times, and the owner\'s worked ' +
             'example builds end to end.');

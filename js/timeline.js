@@ -18,7 +18,8 @@
 /* Default block lengths, in minutes (DEC-039, owner 2026-10-05).
    A value of 0 means "a marker, not a block": it takes a line on the
    grid but consumes no time, so nothing after it is pushed. */
-const TL_DEFAULT_MINS={golf:300,poi:90,hotel:0,flight:0};
+const TL_DEFAULT_MINS={golf:300,poi:90,activity:60,hotel:0,flight:0,train:0,
+  drivefrom:0};
 /* Where a day starts when NOTHING in it carries a fixed time. Without an
    anchor there is no clock at all and the grid has nothing to draw. */
 const TL_DAY_START=9*60;
@@ -37,7 +38,17 @@ const TL_DEFAULT_CHECKIN=15*60;
    not how long anything takes. The drive has to land by the buffer, and
    landing after it is the conflict. A hotel or a POI has nothing to be
    early for, so neither has one. */
-const TL_DEFAULT_BUFFER={golf:45,flight:120};
+const TL_DEFAULT_BUFFER={golf:45,flight:120,train:15};
+/* The two types whose length is the gap between two times the visitor
+   typed rather than a duration they chose: a flight and a train (DEC-039,
+   owner review 2026-10-05). Neither is ever routed — a train has no
+   coordinates at all, so it contributes no leg and no fuel by exactly the
+   same mechanism a hand-typed hotel does. */
+const TL_TIMED_LEG={flight:1,train:1};
+/* Snap for a dragged block (DEC-039, owner review): five minutes. A
+   calendar you can drag to 11:03 is a calendar that lies about its own
+   precision. */
+const TL_SNAP_MINS=5;
 /* One cap for a note, read by the model, the loader and the share codec
    alike — notes ride in share URLs, which is what makes a cap a
    correctness concern rather than a tidiness one. */
@@ -90,10 +101,10 @@ function tlBufferFor(it){
    landing; if anything else comes first, every flight in the trip is
    one you have to get yourself to.
 
-   Hotels and notes are skipped because they are not in the chain at
-   all — a hotel booked for the night you land is still "before" the
-   flight in items[], and it must not make that flight look like a
-   departure you need two hours of check-in for.
+   Hotels are skipped because they are not in the chain at all — a hotel
+   booked for the night you land is still "before" the flight in
+   items[], and it must not make that flight look like a departure you
+   need two hours of check-in for.
 
    Returns the inbound flight's id, or null when there isn't one. */
 function tlInboundFlightId(days){
@@ -114,9 +125,12 @@ function tlInboundFlightId(days){
 
    Time zones are still out of scope (DEC-039), so this is only true for
    a flight within one zone. That is what the trip is: GB, Ireland and
-   South Africa, each internally single-zone. */
+   South Africa, each internally single-zone.
+
+   A train is measured the same way, off the same two fields, which is
+   why this is one function and not two. */
 function tlFlightDuration(it){
-  if(!it||it.type!=='flight')return 0;
+  if(!it||!TL_TIMED_LEG[it.type])return 0;
   const dep=tlParseTime(it.depart),arr=tlParseTime(it.arrive);
   if(dep==null||arr==null||arr<=dep)return 0;
   return Math.min(1440,arr-dep);
@@ -133,14 +147,20 @@ function tlFixedStart(it,inbound){
   if(!it)return null;
   if(it.type==='flight')
     return inbound?tlParseTime(it.arrive):(tlParseTime(it.depart)??tlParseTime(it.arrive));
+  /* A train is anchored on its departure for the same reason a flight you
+     fly out on is: the departure is the end you have to reach. There is no
+     inbound exception — a trip that starts with a train still starts at
+     the station you boarded at, which is somewhere this trip has to get
+     you to. */
+  if(it.type==='train')return tlParseTime(it.depart)??tlParseTime(it.arrive);
   return tlParseTime(it.time);
 }
 /* Hotels are a strip along the bottom of the day, not a stop in the
    chain: you do not "spend" the evening before driving on. Excluding
-   them here is what stops a hotel pushing the next morning. A note is
-   out of the chain for the same reason: it is something written about
-   the time it sits in, and reading it costs the day nothing. */
-function tlInChain(it){return!!it&&it.type!=='hotel'&&it.type!=='note';}
+   them here is what stops a hotel pushing the next morning — and, since
+   DEC-039's owner review, what lets last night's hotel be the point the
+   NEXT morning is driven from without also being a block in it. */
+function tlInChain(it){return!!it&&it.type!=='hotel';}
 
 /* ── The engine ───────────────────────────────────────────────────────
    Walks a day's items in order and returns one row per item:
@@ -166,25 +186,36 @@ function tlInChain(it){return!!it&&it.type!=='hotel'&&it.type!=='note';}
 
    opts.inboundFlightId names the one flight that is arrival-only, from
    tlInboundFlightId(). Omitting it plans every flight in full, which is
-   right for a day considered on its own. */
+   right for a day considered on its own.
+
+   opts.inboundDriveMins is the drive INTO the day's first stop from where
+   the trip spent last night (DEC-039, owner review 2026-10-05: "last
+   night's hotel is the first point of the day's chain"). It is drawn and
+   it is timed — the first block's "be there by" is the hotel's checkout
+   in all but name — but it never produces a conflict: nothing fixed
+   precedes it, so there is no departure time it could be late against. */
 function tlComputeDay(items,driveFn,opts){
   const list=Array.isArray(items)?items:[];
   const inboundId=(opts&&opts.inboundFlightId)||null;
+  const inboundDrive=(opts&&typeof opts.inboundDriveMins==='number'&&isFinite(opts.inboundDriveMins))
+    ?Math.max(0,Math.round(opts.inboundDriveMins)):0;
   const rows=[];
-  let cursor=null,prevStop=null;
+  let cursor=null,prevStop=null,firstDrive=0;
   list.forEach(it=>{
     const isFlight=!!it&&it.type==='flight';
     const inbound=isFlight&&!!it.id&&it.id===inboundId;
-    const dur=isFlight?(inbound?0:tlFlightDuration(it)):tlDurationFor(it);
+    /* A flight and a train are as long as the gap between the two times
+       they were typed with; everything else is as long as its duration
+       says. The inbound flight is the exception to the exception: it is
+       drawn at its landing, so the hours in the air are behind you. */
+    const dur=TL_TIMED_LEG[it&&it.type]?(inbound?0:tlFlightDuration(it)):tlDurationFor(it);
     const fixed=tlFixedStart(it,inbound);
     /* A hotel sits outside the chain entirely: it gets its check-in
-       marker and leaves the cursor exactly where it was. A note in a
-       gap marks the time the day has reached at that position — the
-       cursor, not a convention — and likewise consumes none of it. */
+       marker and leaves the cursor exactly where it was. Everything
+       else — including the three kinds DEC-039's owner review added — is
+       a point the day actually passes through. */
     if(!tlInChain(it)){
-      const at=fixed!=null?fixed
-        :(it&&it.type==='note')?(cursor!=null?cursor:TL_DAY_START)
-        :TL_DEFAULT_CHECKIN;
+      const at=fixed!=null?fixed:TL_DEFAULT_CHECKIN;
       rows.push({item:it,startMins:at,endMins:at,durationMins:0,
         bufferMins:0,readyMins:at,
         fixed:fixed!=null,driveMins:0,conflict:null,marker:true});
@@ -209,6 +240,10 @@ function tlComputeDay(items,driveFn,opts){
          time here can never be late. */
       start=fixed!=null?fixed:TL_DAY_START;
       ready=start-buffer;
+      /* The drive in from last night's hotel. Drawn and subtracted from
+         the clock, never judged: there is no fixed departure from a
+         hotel, so this leg cannot be late. */
+      firstDrive=inboundDrive;
     }else{
       const earliest=cursor+drive;
       start=fixed!=null?fixed:earliest;
@@ -219,7 +254,7 @@ function tlComputeDay(items,driveFn,opts){
     }
     rows.push({item:it,startMins:start,endMins:start+dur,durationMins:dur,
       bufferMins:buffer,readyMins:ready,
-      fixed:fixed!=null,driveMins:cursor===null?0:drive,conflict,marker:dur===0});
+      fixed:fixed!=null,driveMins:cursor===null?firstDrive:drive,conflict,marker:dur===0});
     cursor=start+dur;
     prevStop=it;
   });

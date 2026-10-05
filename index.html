@@ -751,9 +751,21 @@
      Blocks are absolutely positioned over an hour ruler because the
      times are real (a 12:24 tee time), not slots. Built at 375px first:
      the hour gutter is 38px, which leaves 44px of tap target on the
-     narrowest phone we support, and a 90-minute POI is 84px tall. */
+     narrowest phone we support, and a 90-minute POI is 84px tall.
+
+     DEC-039's owner review made it the whole 24 hours, which is 1344px,
+     so the grid lives in its own scroller — that is what makes 06:40 and
+     23:30 both reachable on a phone. */
   .tl-viewswitch{display:flex;gap:var(--sp-1);padding:0 var(--sp-3) var(--sp-2)}
-  .tl-grid{position:relative;margin:var(--sp-2) var(--sp-3) var(--sp-2) 0}
+  /* The day's own scroll surface. Capped at 60vh so the day card, its
+     menu and the next day are all still reachable without scrolling the
+     calendar past them; overscroll-behavior stops a flick at the bottom
+     of the hours from carrying on into the page behind it. */
+  .tl-scroll{max-height:min(60vh,520px);overflow-y:auto;overscroll-behavior:contain;
+    margin:var(--sp-2) var(--sp-3) var(--sp-2) 0;
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .tl-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .tl-grid{position:relative}
   .tl-hour{position:absolute;left:0;right:0;height:0;border-top:1px solid var(--line)}
   .tl-hour-label{position:absolute;left:0;top:-.55em;width:34px;text-align:right;
     font:var(--fs-micro)/1 var(--font-sans);color:var(--stone);background:var(--paper-2);padding-right:2px}
@@ -769,7 +781,63 @@
   .tl-block-sub{color:var(--stone);font-size:var(--fs-micro)}
   .tl-block-golf{background:var(--accent-soft);border-color:#C6D8E6}
   .tl-block-poi{background:#FFF6E0;border-color:#EFD9A8}
-  .tl-block-flight{background:#EDE7F6;border-color:#CFC2E8}
+  .tl-block-flight,.tl-block-train{background:#EDE7F6;border-color:#CFC2E8}
+  .tl-block-activity{background:#E8F5E9;border-color:#BEDCC1}
+  .tl-block-drivefrom{background:var(--paper-2);border-color:var(--line)}
+  /* DEC-039 (owner review): a block is dragged to move it and its edges
+     are dragged to resize it, so it has to say so before it is touched.
+     touch-action:none on the block alone is what lets a held finger drag
+     it without the scroller taking the gesture — the rest of the grid
+     keeps its normal scrolling. */
+  .tl-block.is-live{cursor:grab;touch-action:none}
+  .tl-block.is-live:hover{box-shadow:0 1px 4px rgba(0,0,0,.14)}
+  .tl-block.is-open{outline:2px solid var(--accent);outline-offset:-2px}
+  .tl-block.is-dragging{cursor:grabbing;opacity:.92;box-shadow:0 4px 14px rgba(0,0,0,.22);z-index:5}
+  /* While a block is being dragged nothing else on the page should be
+     selecting text or deciding it was hovered. */
+  body.tl-dragging{user-select:none}
+  body.tl-dragging .tl-block:not(.is-dragging){pointer-events:none}
+  /* The two resize edges. Invisible until the block is hovered, because
+     a block carries enough ink already. */
+  .tl-handle{position:absolute;left:0;right:0;height:10px;cursor:ns-resize}
+  .tl-handle-t{top:0}
+  .tl-handle-b{bottom:0}
+  .tl-block.is-live:hover .tl-handle::after{content:'';position:absolute;left:50%;
+    width:26px;height:3px;margin-left:-13px;border-radius:2px;background:var(--stone);opacity:.5}
+  .tl-handle-t::after{top:2px}
+  .tl-handle-b::after{bottom:2px}
+  .tl-howto{margin:0 var(--sp-3) var(--sp-2) 38px}
+  /* A mouse has the right-click and the drag; a touch screen has the
+     hold. Each is told about its own. */
+  .tl-howto-touch{display:none}
+  @media (hover:none){
+    .tl-howto-touch{display:inline}
+    .tl-handle::after{display:none}
+  }
+  /* The add menu, on <body> so the scroller it was opened over cannot
+     clip it. Positioned in script, at the pointer. */
+  .tl-menu{position:fixed;z-index:4000;min-width:210px;padding:var(--sp-1);
+    background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-md);
+    box-shadow:0 8px 24px rgba(0,0,0,.18)}
+  .tl-menu-label{padding:var(--sp-1) var(--sp-2);font:var(--fs-micro) var(--font-sans);
+    color:var(--stone)}
+  /* The details panel — DEC-039's owner review made this the one place a
+     block's time, length, buffer and note are edited. */
+  .tl-panel{margin:0 var(--sp-3) var(--sp-2);padding:var(--sp-2) var(--sp-3) var(--sp-3);
+    border:1px solid var(--accent);border-radius:var(--radius-md);background:var(--paper)}
+  .tl-panel-head{display:flex;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-2)}
+  .tl-panel-title{flex:1 1 auto;min-width:0;font:600 var(--fs-caption)/1.3 var(--font-sans);
+    color:var(--ink);overflow-wrap:anywhere}
+  .tl-panel-grid{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+  .tl-panel-actions{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-top:var(--sp-2)}
+  .tl-f{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .tl-f>span{font:var(--fs-micro) var(--font-sans);color:var(--ink-soft)}
+  .tl-f-wide{width:100%;margin-top:var(--sp-2)}
+  .tl-f-static{font:var(--fs-caption)/1.9 var(--font-sans);color:var(--stone)}
+  .tl-field{width:96px;height:28px;padding:0 4px;border:1px solid var(--line);
+    border-radius:var(--radius-xs);background:#fff;
+    font:var(--fs-caption) var(--font-sans);color:var(--ink)}
+  .tl-note-field{width:100%;height:auto;padding:4px;line-height:1.4;resize:vertical}
   /* A marker has no duration, so nothing but this height tells the
      layout how much room to keep clear below it — 46px, two lines, and
      it must stay equal to TL_MARKER_PX in js/timeline-ui.js. Its two
@@ -791,30 +859,21 @@
     border-radius:var(--radius-sm);
     background:repeating-linear-gradient(135deg,var(--paper-2) 0 5px,var(--accent-soft) 5px 10px)}
   .tl-block-ready{flex:none;color:var(--accent-deep);font-size:var(--fs-micro);font-weight:600}
-  /* Minutes, editable, next to the time the buffer is measured from.
-     Narrow on purpose: it takes 45 or 120, never a sentence. */
-  .tl-buffer-field{flex:none;width:4.2em;padding:1px 2px;border:1px solid var(--line);
-    border-radius:var(--radius-sm);background:var(--paper);color:var(--ink-soft);
-    font:var(--fs-micro)/1.4 var(--font-sans)}
-  /* A note item in a gap, and a note attached to a stop. Both are the
-     visitor's own words, so both stay quiet. */
-  .tl-block-note{background:#FFFDE7;border-color:#E8DFA8}
+  /* A note is a field on a block now (DEC-039, owner review) and shows
+     on the block as one quiet line. */
   .tl-note-line{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;
     white-space:nowrap;color:var(--ink-soft);font-size:var(--fs-micro)}
-  /* The bar above the grid: the day's note, and the visible way in.
-     DEC-039 keeps notes out of the list view entirely, so this is the
-     only place that announces they exist. */
-  .tl-notebar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);
-    margin:0 var(--sp-3) var(--sp-2) 38px}
-  .tl-daynote{flex:1 1 100%;font:var(--fs-micro)/1.4 var(--font-sans);
-    color:var(--ink-soft);overflow-wrap:anywhere;cursor:pointer}
   .tl-notebtn{flex:none;padding:2px var(--sp-2);border:1px solid var(--line);
     border-radius:var(--radius-sm);background:var(--paper);color:var(--ink-soft);
     font:var(--fs-micro)/1.6 var(--font-sans);cursor:pointer}
   .tl-notebtn:hover{background:var(--paper-2);color:var(--ink)}
+  /* A drive is computed, and the one thing it must never do is look
+     draggable: no cursor, no hover, no handles. */
   .tl-drive{background:repeating-linear-gradient(135deg,var(--paper) 0 5px,var(--paper-2) 5px 10px);
     border-radius:var(--radius-sm);color:var(--stone);
-    font:var(--fs-micro)/1.2 var(--font-sans);padding:1px var(--sp-2);display:flex;align-items:center}
+    font:var(--fs-micro)/1.2 var(--font-sans);padding:1px var(--sp-2);display:flex;
+    align-items:center;gap:var(--sp-1);cursor:default}
+  .tl-drive-from{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tl-checkin{border-top:2px dashed var(--stone);height:0;display:flex;justify-content:flex-end}
   .tl-checkin span{transform:translateY(-55%);background:var(--paper-2);padding:0 4px;
     font:var(--fs-micro)/1 var(--font-sans);color:var(--stone)}

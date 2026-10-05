@@ -45,24 +45,26 @@ function validateTripEntry(t){
     return m==null?null:tlFormatTime(m);
   };
   const validDur=v=>(typeof v==='number'&&isFinite(v)&&v>=0)?Math.min(1440,Math.round(v)):null;
-  /* GOLF-153 notes (DEC-039): free text the visitor attached to an item,
-     a day, or a gap. Capped on the way in, because a note travels in a
-     share URL; escaped on the way out, everywhere it renders. */
+  /* GOLF-153 notes (DEC-039, revised by the owner review): free text the
+     visitor attached to one block, in its details panel — there is no
+     longer a note on the day as a whole. Capped on the way in, because a
+     note travels in a share URL; escaped on the way out, everywhere it
+     renders. */
   const NOTE_MAX=typeof TL_NOTE_MAX==='number'?TL_NOTE_MAX:300;
   const validNote=v=>{
     if(typeof v!=='string')return null;
     const s=v.trim().slice(0,NOTE_MAX);
     return s?s:null;
   };
-  const noteKey=v=>{const n=validNote(v);return n?{note:n}:{};};
   const withTiming=(out,it)=>{
     const t=validTime(it.time); if(t!==null)out.time=t;
     const d=validDur(it.durationMins); if(d!==null)out.durationMins=d;
-    /* The editable arrival buffer, on the two types that have one —
-       there is nothing to be early for at a hotel or a sight. */
-    if(it.type==='golf'||it.type==='flight'){
-      const b=validDur(it.bufferMins); if(b!==null)out.bufferMins=b;
-    }
+    /* The editable arrival buffer. Offered on every block since
+       DEC-039's owner review put it in the details panel — a default of
+       zero for the kinds that have nothing to be early for (tlBufferFor),
+       but a visitor who wants fifteen minutes before a sight can have
+       them. */
+    const b=validDur(it.bufferMins); if(b!==null)out.bufferMins=b;
     const n=validNote(it.note); if(n!==null)out.note=n;
     return out;
   };
@@ -98,14 +100,29 @@ function validateTripEntry(t){
         }
         return withTiming(out,it);
       }
-      /* GOLF-153: a note written into a gap is an item of its own, so it
-         keeps its place in items[] when the day is reordered. It has no
-         location, so tripItemPoint() returns null and it never becomes a
-         routing stop; it is outside the timeline chain, so it pushes
-         nothing. An empty note is not an item. */
-      if(it.type==='note'){
-        const tx=validNote(it.text);
-        return tx?{id:it.id,type:'note',text:tx}:null;
+      /* DEC-039 (owner review 2026-10-05): the three hand-typed kinds the
+         calendar adds. All three are a name plus times, and the two that
+         can carry a location carry it the way a hotel does — optional,
+         and worth nothing to the router when absent.
+
+         A train keeps NO coordinates at all, deliberately: that is the
+         whole mechanism by which it is never routed and never counted in
+         the fuel total (tripItemPoint() returns null for it), rather than
+         a `type==='train'` exception threaded through trip-route.js. */
+      if(it.type==='train'||it.type==='drivefrom'||it.type==='activity'){
+        const str=(v,max)=>(typeof v==='string'&&v.trim())?v.trim().slice(0,max):null;
+        const name=str(it.name,80);
+        if(!name)return null;
+        const out={id:it.id,type:it.type,name};
+        if(it.type==='train'){
+          const fnm=str(it.fromName,80); if(fnm)out.fromName=fnm;
+          const dep=validTime(it.depart); if(dep)out.depart=dep;
+          const arr=validTime(it.arrive); if(arr)out.arrive=arr;
+        }else if(typeof it.lat==='number'&&isFinite(it.lat)&&typeof it.lng==='number'&&isFinite(it.lng)){
+          out.lat=it.lat;out.lng=it.lng;
+        }
+        if(it.type!=='drivefrom'&&typeof it.price==='number'&&isFinite(it.price))out.price=it.price;
+        return withTiming(out,it);
       }
       if(it.type!=='hotel'&&it.type!=='poi')return null;
       if(typeof it.name!=='string'||!it.name.trim())return null;
@@ -131,10 +148,6 @@ function validateTripEntry(t){
       items:validItems(d),
       courses:Array.isArray(d.courses)?d.courses.filter(i=>validSet.has(i)):[],
       driveIn:typeof d.driveIn==='number'?d.driveIn:null,
-      /* GOLF-153: a note on the day as a whole. Spread rather than
-         assigned, so a day without one saves exactly the keys it always
-         did. */
-      ...noteKey(d.note),
       /* GOLF-48: optional real calendar date (YYYY-MM-DD), user-entered.
          Validated as a plain well-formed date string here — actual use
          (picking wd vs we for the cost estimate) lives in

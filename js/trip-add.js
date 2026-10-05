@@ -566,9 +566,12 @@ function tripDayItemRowHTML(d,it){
     ?(stayNight>0
       ?`<div class="cart-region" title="Change the hotel, its price or how many nights it runs for on night 1 of this stay">Night ${stayNight+1} of ${stayN}</div>`
       :tbStayControlsHTML(d,it))
-    :it.type==='flight'&&typeof tlFlightListMetaHTML==='function'
+    :typeof tlIsCalendarType==='function'&&tlIsCalendarType(it.type)
+       &&typeof tlFlightListMetaHTML==='function'
       // GOLF-153: the flight number and the two airport codes, which is
       // what the detailed grid shows too — "Stop" told a visitor nothing.
+      // DEC-039's owner review added three more kinds with the same
+      // problem, so the same function now answers for all four.
       ?tlFlightListMetaHTML(it)
       :`<div class="cart-region">Stop${noGeo?' · <span title="No location picked, so no drive time can be calculated to this stop">no location</span>':''}</div>`;
   const main=it.type==='golf'
