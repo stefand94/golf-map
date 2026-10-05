@@ -42,6 +42,38 @@ function tlSetDetailed(on){
   renderTripBuilder();
 }
 
+/* ── Setting a time ───────────────────────────────────────────────────
+   The only times ever written are the ones typed here. Clearing the
+   field removes the field rather than storing an empty string, so an
+   item that has had a time and lost it is indistinguishable from one
+   that never had one — which is what keeps old trips and new ones the
+   same shape. A golf item's time is its tee time; a hotel's is its
+   check-in; a flight's arrival is edited as part of the flight. */
+function tlSetItemTime(dayId,itemId,v){
+  if(appMode==='shared')return; // a shared trip is someone else's
+  const d=tripDays.find(x=>x.id===dayId);if(!d)return;
+  const it=tripDayItems(d).find(x=>x.id===itemId);if(!it)return;
+  const mins=tlParseTime(v);
+  if(mins==null)delete it.time;
+  else it.time=tlFormatTime(mins);
+  /* A stay's check-in belongs to the stay, not to one of its nights —
+     the same rule tripDayUpdateStop() follows for name and price. */
+  if(it.type==='hotel'&&it.stayId)
+    tripDays.forEach(dd=>tripDayItems(dd).forEach(x=>{
+      if(x.stayId!==it.stayId)return;
+      if(mins==null)delete x.time; else x.time=it.time;
+    }));
+  saveState();
+  renderTripBuilder();
+}
+function tlTimeFieldHTML(d,it,label){
+  if(appMode==='shared')return'';
+  return`<input type="time" class="tl-time" value="${esc(it.time||'')}"
+    aria-label="${esc(label)}" title="${esc(label)} — everything after it follows from here. Clear it to let it float."
+    onchange="tlSetItemTime(${d.id},'${esc(it.id)}',this.value)"
+    onclick="event.stopPropagation()">`;
+}
+
 /* ── Drive minutes ────────────────────────────────────────────────────
    Taken from tripDayLegs(), not recomputed: that function already owns
    the day-first override (d.driveIn), the GOLF-118 ferry split and the
@@ -118,7 +150,15 @@ function tlDayGridHTML(d,dayIdx,firstNights){
   if(!rows.length)return'';
   const range=tlDayRange(chain);
   /* A day with nothing but a hotel has no clock to draw, only a strip. */
-  if(!range)return tlStayStripHTML(stays,firstNights,null);
+  if(!range)return tlStayStripHTML(d,stays,firstNights);
+  /* ...but once there IS a clock, it has to reach the check-in line: an
+     18:00 check-in after a round that ended at 16:54 would otherwise be
+     set and then silently not drawn. */
+  const firstStays=stays.filter(r=>firstNights.has(r.item.id));
+  firstStays.forEach(r=>{
+    range.startHour=Math.min(range.startHour,Math.floor(r.startMins/60));
+    range.endHour=Math.max(range.endHour,Math.ceil(r.startMins/60));
+  });
 
   const top=mins=>(mins-range.startHour*60)*TL_PX_PER_MIN;
   const hours=[];
@@ -150,32 +190,35 @@ function tlDayGridHTML(d,dayIdx,firstNights){
       tlFormatTime(r.conflict.fixedMins)} start.">⚠ arrive ${tlFormatTime(r.conflict.arriveMins)}</span>`:'';
     parts.push(`<div class="${cls.join(' ')}" style="top:${top(r.startMins).toFixed(1)}px${h?`;height:${h.toFixed(1)}px`:''}">
       <span class="tl-block-time">${tlFormatTime(r.startMins)}${r.fixed?'<span class="tl-pin" title="A time you set. Everything after it follows from here.">•</span>':''}</span>
-      <span class="tl-block-body">${tlItemIcon(r.item.type)} ${tlBlockLabelHTML(r)}${warn}</span>
+      <span class="tl-block-body">${tlItemIcon(r.item.type)} ${tlBlockLabelHTML(r)}${warn}${
+        r.item.type==='flight'?'':tlTimeFieldHTML(d,r.item,r.item.type==='golf'?'Tee time':'Start time')}</span>
     </div>`);
     return parts.join('');
   }).join('');
   /* The check-in line is a marker: it sits on the grid and pushes
      nothing (DEC-039). Drawn only on a stay's first night. */
-  const checkins=stays.filter(r=>firstNights.has(r.item.id)
-      &&r.startMins>=range.startHour*60&&r.startMins<=range.endHour*60)
-    .map(r=>`<div class="tl-checkin" style="top:${top(r.startMins).toFixed(1)}px">
+  const checkins=firstStays.map(r=>`<div class="tl-checkin" style="top:${top(r.startMins).toFixed(1)}px">
       <span>🏨 check in ${tlFormatTime(r.startMins)}</span></div>`).join('');
   const height=(range.endHour-range.startHour)*TL_PX_PER_HOUR;
   return`<div class="tl-grid" style="height:${height}px">${hours.join('')}${blocks}${checkins}</div>
-    ${tlStayStripHTML(stays,firstNights,range)}`;
+    ${tlStayStripHTML(d,stays,firstNights)}`;
 }
 /* DEC-039: a stay is a strip along the bottom of the night it covers,
    not a timed block — you do not "spend" the evening before driving on,
    and drawing it as a block made every hotel look like a 12-hour
    commitment that pushed the next morning. */
-function tlStayStripHTML(stays,firstNights,_range){
+function tlStayStripHTML(d,stays,firstNights){
   if(!stays.length)return'';
   return stays.map(r=>{
     const it=r.item;
     const n=Number(it.nights)>1?` · ${Number(it.nights)} nights`:'';
     const first=firstNights.has(it.id);
+    /* Check-in is editable on the night it happens, and 15:00 until
+       someone says otherwise (DEC-039) — a default, not a lookup: no
+       check-in data exists anywhere in data/. */
     return`<div class="tl-stay">🏨 <b>${esc(tripItemName(it))}</b>${n}
-      <span class="tl-stay-sub">${first?`check-in ${tlFormatTime(r.startMins)}`:'continuing stay'}</span></div>`;
+      <span class="tl-stay-sub">${first?`check-in ${tlFormatTime(r.startMins)}`:'continuing stay'}</span>
+      ${first?tlTimeFieldHTML(d,it,'Check-in time'):''}</div>`;
   }).join('');
 }
 
