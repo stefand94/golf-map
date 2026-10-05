@@ -940,4 +940,9 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   - Tours, meals, trains and ferries as timed items wait for a later version.
   - **No print or PDF in v1.** The share link shows the timed plan read-only.
 - **Context:** GOLF-153 was named as the next step (DEC-035). Drive legs are now trustworthy (GOLF-149/172/176). `items[]` is already the ordered source of truth, so this adds to the model rather than rewriting it.
+- **Owner answers to Gavin's shape questions (2026-10-05):**
+  - **Hotel:** a strip along the bottom of each night's day, not a timed block. On the **first night** it also draws a **check-in time line** on the grid (editable; default 15:00, the BA's pick).
+  - **Day labels:** days show as "Day 1", "Day 2"… until a real date is added.
+  - **Default POI length:** 90 minutes. **Golf:** 270 minutes.
+  - **Time zones:** none. Everything is local time, because **a trip starts from arrival**. A flight is drawn from its arrival; the departure time and airport are shown as text, not as a block.
 - **Date:** 2026-10-05 · **Affects:** GOLF-153, GOLF-99 (share), GOLF-224 (load whitelist), GOLF-235 (share counting unchanged).
