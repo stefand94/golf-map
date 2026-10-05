@@ -217,7 +217,12 @@ function tlDriveMinsByItem(dayIdx){
   const by=new Map();
   let pending=0;
   (tripDayLegs(dayIdx)||[]).forEach(l=>{
-    if(l.type==='drive'){pending=(l.mins==null?0:l.mins);return;}
+    /* GOLF-248: a leg the list view hides as same-point or zero-length is
+       not a drive here either — no block, and nothing subtracted from the
+       item's start time. Routing can hand back a minute or two for two
+       stops on one point; that is noise, not a journey. The leg stays in
+       tripDayLegs, so distance and fuel are untouched. */
+    if(l.type==='drive'){pending=(tbDriveLegHidden(l)||l.mins==null)?0:l.mins;return;}
     by.set(l.id,pending);
     pending=0;
   });

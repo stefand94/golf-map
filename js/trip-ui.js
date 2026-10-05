@@ -245,6 +245,15 @@ function tripDayTotal(dayIdx){
   });
   return buckets;
 }
+/* GOLF-248: a day's place and its hotel on the same point made a
+   "Drive 0 min" row. Hide same-point or zero-length legs; the leg itself
+   stays in tripDayLegs, so totals and fuel don't move. A manual driveIn or
+   a ferry still shows. Shared with detailed mode (tlDriveMinsByItem in
+   js/timeline-ui.js), so the two views never disagree about whether a leg
+   happened. */
+function tbDriveLegHidden(l){
+  return !l.overridden&&!l.hasFerry&&(!!l.samePoint||(l.mins!=null&&l.mins<0.5));
+}
 /* GOLF-71: the drive leg is a small indented caption sitting directly
    above the stop it leads into — the sketch's "Drive X min" label — not
    the chip-and-full-route-string row it used to be. The from → to string
@@ -252,11 +261,7 @@ function tripDayTotal(dayIdx){
    the stop names for attention. */
 function tbDriveCapHTML(l){
   if(l.mins==null&&!l.label)return'';
-  /* GOLF-248: a day's place and its hotel on the same point made a
-     "Drive 0 min" row. Hide same-point or zero-length legs; the leg itself
-     stays in tripDayLegs, so totals don't move. A manual driveIn or a
-     ferry still shows. */
-  if(!l.overridden&&!l.hasFerry&&(l.samePoint||(l.mins!=null&&l.mins<0.5)))return'';
+  if(tbDriveLegHidden(l))return'';
   /* GOLF-118: when the leg crosses water, split the time into drive + ferry
      ("2h 0m driving + ~55m ferry") and add a ⛴ tag. A manual driveIn
      override keeps its own number (no split) but still shows the tag so the
