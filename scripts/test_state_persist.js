@@ -505,10 +505,10 @@ eq('usage: a failing beacon logs nothing', [offline.errors, offline.warns], [[],
   ld.items[0].note = 'x'.repeat(900);
   ld.note = 'y'.repeat(900);
   const lr = boot({ 'golfmap:v1': JSON.stringify(long) }, BUILD_A);
-  eq('GOLF-153: an over-long item note is capped at 500',
-     (lr.sandbox.tripDays[0].items[0].note || '').length, 500);
+  eq('GOLF-153: an over-long item note is capped at 300',
+     (lr.sandbox.tripDays[0].items[0].note || '').length, 300);
   eq('GOLF-153: so is an over-long day note',
-     (lr.sandbox.tripDays[0].note || '').length, 500);
+     (lr.sandbox.tripDays[0].note || '').length, 300);
 
   // Share: the new fields ride along only when set, and round-trip.
   const payload = rl.sandbox.tripBuildSharePayload();
@@ -520,6 +520,69 @@ eq('usage: a failing beacon logs nothing', [offline.errors, offline.warns], [[],
   eq('GOLF-153: share round-trips an item note', dd.items[0].note, 'ask about buggy hire');
   eq('GOLF-153: share round-trips the day note', dd.note, 'pack for rain');
   eq('GOLF-153: share round-trips a gap note', dnote.text, 'book the Mull ferry');
+}
+
+{
+  /* GOLF-153 (approved 2026-10-05): the DEPARTURE airport. Additive and
+     optional, so a flight without one keeps the single-point behaviour
+     it had, and a corrupt pair costs the pair rather than the flight. */
+  const t = boot({}, BUILD_A);
+  writeRichTrip(t.sandbox);
+  const d0 = t.sandbox.tripDays[0];
+  d0.items.push({ id: 'fl', type: 'flight', name: 'London City (LCY)',
+    flightNo: 'BA943', fromCode: 'INV', toCode: 'LCY',
+    depart: '16:00', arrive: '17:30', lat: 51.5053, lng: 0.0553,
+    fromName: 'Inverness (INV)', fromLat: 57.5425, fromLng: -4.0475 });
+  t.sandbox.saveState();
+  const stored = t.store['golfmap:v1'];
+
+  const rl = boot({ 'golfmap:v1': stored }, 'golfmap-shell-v5-deadbeef99');
+  const fl = (rl.sandbox.tripDays[0].items || []).find(x => x.type === 'flight') || {};
+  eq('GOLF-153: a departure airport survives a release',
+     [fl.fromLat, fl.fromLng], [57.5425, -4.0475]);
+  eq('GOLF-153: so does its name', fl.fromName, 'Inverness (INV)');
+
+  // Corrupt coordinates cost the pair, not the flight (GOLF-224).
+  const bad = JSON.parse(stored);
+  const bi = bad.trips[bad.activeTripId].tripDays[0].items;
+  const bf = bi.find(x => x.type === 'flight');
+  bf.fromLat = 'Inverness'; bf.fromLng = -4.0475;
+  const cr = boot({ 'golfmap:v1': JSON.stringify(bad) }, BUILD_A);
+  const cf = (cr.sandbox.tripDays[0].items || []).find(x => x.type === 'flight') || {};
+  eq('GOLF-153: half a departure point is dropped', cf.fromLat, undefined);
+  eq('GOLF-153: ...and so is the other half', cf.fromLng, undefined);
+  eq('GOLF-153: but the flight itself survives', cf.toCode, 'LCY');
+  eq('GOLF-153: nothing was logged as an error', cr.errors, []);
+
+  // Share: rides along only when set, and round-trips.
+  const payload = rl.sandbox.tripBuildSharePayload();
+  const dec = rl.sandbox.tripDecodeSharePayload(
+    '#share=' + encodeURIComponent(JSON.stringify(payload)));
+  const df = (dec.days[0].items || []).find(x => x.type === 'flight') || {};
+  eq('GOLF-153: share round-trips the departure airport',
+     [df.fromLat, df.fromLng], [57.5425, -4.0475]);
+  eq('GOLF-153: and its name', df.fromName, 'Inverness (INV)');
+
+  /* Off the hash it is untrusted like everything else. shareNum CLAMPS
+     rather than rejects, which is this codec's rule for every lat/lng
+     it carries (the arrival airport and every hotel included), so the
+     departure airport follows it rather than inventing a second one.
+     The value is held inside the range; it is never fatal, and never
+     reaches the page as typed. */
+  const nastyF = JSON.parse(JSON.stringify(payload));
+  const nf = nastyF.days[0].items.find(x => x.type === 'flight');
+  nf.flat = 999; nf.flng = -4.0475;
+  const safeF = rl.sandbox.tripDecodeSharePayload(
+    '#share=' + encodeURIComponent(JSON.stringify(nastyF)));
+  const sf = (safeF.days[0].items || []).find(x => x.type === 'flight') || {};
+  eq('GOLF-153: an out-of-range shared latitude is clamped, not fatal', sf.fromLat, 90);
+  // A non-numeric one has nothing to clamp, so the pair goes.
+  const junkF = JSON.parse(JSON.stringify(payload));
+  junkF.days[0].items.find(x => x.type === 'flight').flat = 'Inverness';
+  const safeJ = rl.sandbox.tripDecodeSharePayload(
+    '#share=' + encodeURIComponent(JSON.stringify(junkF)));
+  const sj = (safeJ.days[0].items || []).find(x => x.type === 'flight') || {};
+  eq('GOLF-153: a non-numeric shared latitude drops the pair', sj.fromLat, undefined);
 
   // Hostile input off the hash: clamped and kept verbatim for esc() to
   // handle at render time — never unescaped here, never re-interpreted.
@@ -534,7 +597,7 @@ eq('usage: a failing beacon logs nothing', [offline.errors, offline.warns], [[],
   eq('GOLF-153: a hostile note is carried verbatim, for esc() to render',
      safe.days[0].items[0].note, '<img src=x onerror=alert(1)>');
   eq('GOLF-153: an over-long shared day note is capped',
-     (safe.days[0].note || '').length, 500);
+     (safe.days[0].note || '').length, 300);
 }
 
 if (failures.length) {

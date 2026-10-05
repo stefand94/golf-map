@@ -37,10 +37,20 @@ function ok(name, cond, detail) {
  * trial. Keyed by the pair of item ids. */
 const drives = {};
 ctx.driveFn = (a, b) => drives[a.id + '>' + b.id] || 0;
-const compute = items => {
+const compute = (items, opts) => {
   ctx.__items = items;
-  return run('tlComputeDay(__items, driveFn)');
+  ctx.__opts = opts || null;
+  return run('tlComputeDay(__items, driveFn, __opts)');
 };
+/* The way the app itself computes a day: the inbound flight is derived
+ * from the whole trip, never passed in by hand. `days` is the trip;
+ * `idx` is the day to compute. */
+const computeTrip = (days, idx) => {
+  ctx.__days = days;
+  const id = run('tlInboundFlightId(__days)');
+  return compute(days[idx || 0].items, { inboundFlightId: id });
+};
+const inboundOf = days => { ctx.__days = days; return run('tlInboundFlightId(__days)'); };
 const at = mins => run(`tlFormatTime(${mins})`);
 
 // ── 1. Time parsing ───────────────────────────────────────────────────
@@ -86,12 +96,15 @@ check('junk buffer ignored', run('tlBufferFor({type:"golf",bufferMins:"early"})'
 {
   drives['fl>golf'] = 5;    // Inverness airport → Cabot Highlands
   drives['golf>hotel'] = 55; // Cabot Highlands → Dufftown (not in the chain)
-  const rows = compute([
+  /* Computed as the app does it, through the derived inbound rule —
+   * this flight is the first thing in the trip that is in the chain,
+   * so it is the one that brings you, and it is arrival-only. */
+  const rows = computeTrip([{ items: [
     { id: 'fl', type: 'flight', flightNo: 'BA942', fromCode: 'LCY', toCode: 'INV',
       depart: '09:40', arrive: '10:55', lat: 57.5425, lng: -4.0475 },
     { id: 'golf', type: 'golf', i: 0, time: '12:24' },
     { id: 'hotel', type: 'hotel', name: 'Dufftown Inn', nights: 1, stayId: 's1' }
-  ]);
+  ] }]);
 
   check('example: three rows', rows.length, 3);
   check('example: flight anchored on ARRIVAL 10:55', at(rows[0].startMins), '10:55');
@@ -224,32 +237,92 @@ check('junk buffer ignored', run('tlBufferFor({type:"golf",bufferMins:"early"})'
   check('the POI still starts the day at 09:00', at(rows[1].startMins), '09:00');
 }
 
-// ── 9. Flights: arrival only, departure never drawn ───────────────────
+// ── 9. Flights (DEC-039 as revised 2026-10-05) ────────────────────────
+/* The inbound flight is arrival-only; every other flight is planned in
+ * full. Which one is inbound is DERIVED — no flag, no stored field —
+ * from the first item in the trip that is in the chain. */
 {
-  const rows = compute([
+  // The BA's three cases for the derivation, each one a whole trip.
+  const flight = { id: 'f1', type: 'flight', toCode: 'INV', depart: '09:40', arrive: '10:55' };
+  check('inbound: Day 1 is the flight alone',
+        inboundOf([{ items: [flight] }, { items: [{ id: 'g', type: 'golf', i: 0 }] }]), 'f1');
+  check('inbound: a hotel before the flight does not count',
+        inboundOf([{ items: [
+          { id: 'h', type: 'hotel', name: 'Airport Inn' },
+          { id: 'n', type: 'note', text: 'book parking' },
+          flight] }]), 'f1',
+        'hotels and notes are outside the chain, so the flight is still first');
+  check('inbound: the only flight in the trip, after a round, is NOT inbound',
+        inboundOf([{ items: [{ id: 'g', type: 'golf', i: 0 }, flight] }]), null,
+        'you drove to that one, so it is planned in full');
+  check('inbound: a trip with no flight at all',
+        inboundOf([{ items: [{ id: 'g', type: 'golf', i: 0 }] }]), null);
+  check('inbound: an empty trip', inboundOf([]), null);
+}
+{
+  /* The inbound flight: a marker at its landing, no block, no buffer.
+     A cross-zone flight is exactly why it is not drawn depart→arrive. */
+  const rows = computeTrip([{ items: [
     { id: 'f', type: 'flight', flightNo: 'BA6392', fromCode: 'LHR', toCode: 'CPT',
       depart: '22:10', arrive: '11:35' } // crosses a night AND two time zones
-  ]);
-  check('anchored on arrival', at(rows[0].startMins), '11:35');
-  check('no block drawn', rows[0].durationMins, 0);
+  ] }]);
+  check('inbound flight anchored on arrival', at(rows[0].startMins), '11:35');
+  check('inbound flight draws no block', rows[0].durationMins, 0);
+  check('inbound flight draws no check-in buffer', rows[0].bufferMins, 0);
   ok('so a cross-zone flight can never draw backwards', rows[0].endMins >= rows[0].startMins,
      'depart 22:10 > arrive 11:35 would be negative if we drew depart→arrive');
 }
 {
-  /* A flight's buffer is NOT drawn in front of its arrival: it is a
-     check-in buffer, and it belongs before the departure. Until the
-     full two-point flight model lands, a flight anchored on its arrival
-     carries no buffer at all — "be at Inverness two hours before you
-     land" is worse than nothing. */
+  /* A flight you fly OUT on: drive → check-in → the flight itself →
+     the arrival. The round ends at 13:00, the drive to the airport is
+     20 minutes, and check-in is two hours before a 16:00 departure, so
+     you have to be there by 14:00 — which you make with an hour spare. */
   drives['g>f'] = 20;
-  const rows = compute([
+  const rows = computeTrip([{ items: [
     { id: 'g', type: 'golf', i: 0, time: '08:00' },          // ends 13:00
-    { id: 'f', type: 'flight', toCode: 'INV', arrive: '13:10' }
-  ]);
-  check('a flight draws no buffer before its landing', rows[1].bufferMins, 0);
-  check('so "be there by" is simply the landing', at(rows[1].readyMins), '13:10');
-  ok('and the drive is judged against the landing itself',
-     rows[1].conflict !== null, '13:00 + 20 min = 13:20, after a 13:10 landing');
+    { id: 'f', type: 'flight', fromCode: 'INV', toCode: 'LCY',
+      depart: '16:00', arrive: '17:30' }
+  ] }]);
+  check('a departure flight is anchored on its DEPARTURE', at(rows[1].startMins), '16:00');
+  check('and runs to its arrival', at(rows[1].endMins), '17:30');
+  check('so it is a block, not a marker', rows[1].durationMins, 90);
+  ok('and not a marker', rows[1].marker === false);
+  check('check-in is 120 minutes by default', rows[1].bufferMins, 120);
+  check('so you have to be at the airport by 14:00', at(rows[1].readyMins), '14:00');
+  check('the drive to the airport runs into it', rows[1].driveMins, 20);
+  ok('and 13:20 beats a 14:00 check-in', rows[1].conflict === null);
+}
+{
+  // Miss the check-in and it is a conflict, said against the check-in
+  // time and not against the departure.
+  drives['g>f'] = 90;
+  const rows = computeTrip([{ items: [
+    { id: 'g', type: 'golf', i: 0, time: '09:00' },          // ends 14:00
+    { id: 'f', type: 'flight', toCode: 'LCY', depart: '16:00', arrive: '17:30' }
+  ] }]);
+  ok('arriving after check-in is a conflict', rows[1].conflict !== null);
+  check('due at the check-in time', at(rows[1].conflict.dueMins), '14:00');
+  check('arriving at 15:30', at(rows[1].conflict.arriveMins), '15:30');
+}
+{
+  // The check-in buffer is editable, like the golf one.
+  drives['g>f'] = 20;
+  const rows = computeTrip([{ items: [
+    { id: 'g', type: 'golf', i: 0, time: '08:00' },
+    { id: 'f', type: 'flight', toCode: 'LCY', depart: '16:00', arrive: '17:30', bufferMins: 45 }
+  ] }]);
+  check('an edited check-in buffer is honoured', rows[1].bufferMins, 45);
+  check('so you are due at 15:15', at(rows[1].readyMins), '15:15');
+}
+{
+  // A departure flight missing one of its two times has no honest
+  // length, so it stays a marker rather than drawing a guess.
+  const rows = computeTrip([{ items: [
+    { id: 'g', type: 'golf', i: 0, time: '08:00' },
+    { id: 'f', type: 'flight', toCode: 'LCY', depart: '16:00' }
+  ] }]);
+  check('a one-time flight draws no block', rows[1].durationMins, 0);
+  check('but is still anchored on its departure', at(rows[1].startMins), '16:00');
 }
 {
   // A flight with an unparseable arrival falls back into the flow rather
@@ -324,6 +397,106 @@ ok('a null item in the list does not throw',
 ok('a missing driveFn is survivable',
    (() => { try { run('tlComputeDay([{id:"a",type:"golf"},{id:"b",type:"poi"}], null)'); return true; }
             catch (e) { return false; } })());
+
+// ── 13. A flight is two points, and the pair between them is FLOWN ────
+/* The engine above knows nothing about routing. This section loads the
+ * real js/trip-route.js beside it, with the handful of globals it needs
+ * stubbed, and asserts the three things a flown leg must never do:
+ * reach ORS, enter the fuel total, or be drawn on the map. */
+{
+  const rs = { console, Date, Math, JSON,
+    // trip-route.js touches these at load time only.
+    map: { on() {}, off() {} }, L: {}, document: { addEventListener() {} },
+    // The bits of the model it reads.
+    C: [{ lat: 57.47, lng: -4.45, n: 'Castle Stuart' }],
+    tripDayItems: d => (d && d.items) || [],
+    tripItemName: it => (it && (it.name || 'Course')) || '',
+    tripItemPoint: it => {
+      if (!it) return null;
+      if (it.type === 'golf') return { lat: 57.47, lng: -4.45 };
+      return (typeof it.lat === 'number' && typeof it.lng === 'number')
+        ? { lat: it.lat, lng: it.lng } : null;
+    },
+    tripSeq: [], tripUnscheduled: () => [],
+    haversineMiles: (a, b, c, d) => Math.abs(a - c) * 69 + Math.abs(b - d) * 40,
+    DRIVE_INEFFICIENCY: 1.2, DRIVE_AVG_MPH: 45,
+    // ORS is "configured", so a leg that is allowed to consult it will.
+    ORS_PROXY_URL: 'https://example.invalid',
+    orsLegKey: (a, b) => `${a.lat},${a.lng}>${b.lat},${b.lng}`,
+    orsCacheLoad: () => ({}),
+  };
+  let orsAsked = [];
+  rs.orsEnsureLeg = (key) => { orsAsked.push(key); };
+  vm.createContext(rs);
+  for (const f of ['js/timeline.js', 'js/trip-route.js']) {
+    vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8')
+      .replace(/^(const|let) /gm, 'var '), rs, { filename: f });
+  }
+
+  // Day 1: land at Inverness (inbound). Day 2: play, then fly home from
+  // Inverness to London City.
+  rs.tripDays = [
+    { id: 1, items: [
+      { id: 'in', type: 'flight', name: 'Inverness (INV)', toCode: 'INV',
+        arrive: '10:55', lat: 57.5425, lng: -4.0475,
+        fromCode: 'LCY', fromLat: 51.5053, fromLng: 0.0553 } ] },
+    { id: 2, items: [
+      { id: 'g', type: 'golf', i: 0, time: '09:00' },
+      { id: 'out', type: 'flight', name: 'London City (LCY)', toCode: 'LCY',
+        depart: '16:00', arrive: '17:30', lat: 51.5053, lng: 0.0553,
+        fromCode: 'INV', fromLat: 57.5425, fromLng: -4.0475 } ] },
+  ];
+
+  const d1 = rs.tripDayStops(0), d2 = rs.tripDayStops(1);
+  check('the inbound flight stays ONE point', d1.length, 1);
+  check('and that point is where it lands', [d1[0].lat, d1[0].lng], [57.5425, -4.0475]);
+  ok('the inbound flight is not flown-marked', !d1[0].flown,
+     'nothing precedes it, so there is no leg into it to exempt');
+
+  check('a flight you fly out on is TWO points', d2.length, 3);  // golf + depart + arrive
+  check('the first is the departure airport', [d2[1].lat, d2[1].lng], [57.5425, -4.0475]);
+  check('and it is the depart part', d2[1].legPart, 'depart');
+  check('the second is where it lands', [d2[2].lat, d2[2].lng], [51.5053, 0.0553]);
+  check('and it is the arrive part', d2[2].legPart, 'arrive');
+  ok('only the arrival is marked flown', d2[2].flown === true && !d2[1].flown,
+     'the leg INTO the arrival is the one that was flown');
+
+  // The drive to the airport is a real road leg and does consult ORS.
+  orsAsked = [];
+  const road = rs.tripLegEstimate(d2[0], d2[1]);
+  ok('the drive to the airport is still a road leg', road.miles > 0);
+  ok('and it does ask ORS', orsAsked.length === 1);
+
+  // The flown pair is not.
+  orsAsked = [];
+  const air = rs.tripLegEstimate(d2[1], d2[2]);
+  check('a flown leg is zero minutes', air.minutes, 0);
+  check('a flown leg is zero miles', air.miles, 0);
+  ok('a flown leg is marked as flown', air.flown === true);
+  check('a flown leg NEVER reaches ORS', orsAsked, []);
+
+  // ...and so it is not in the fuel total either. The whole trip's
+  // mileage must equal the road legs alone.
+  rs.tripStopChainInvalidate();
+  const total = rs.tripTotalDriveMiles();
+  const chain = rs.tripStopChain();
+  let roadOnly = 0;
+  for (let k = 1; k < chain.length; k++) {
+    if (chain[k].flown) continue;
+    roadOnly += rs.tripLegEstimate(chain[k - 1], chain[k]).miles;
+  }
+  ok('the flown leg is not in the fuel total', Math.abs(total - roadOnly) < 1e-9,
+     `total ${total} vs road-only ${roadOnly}`);
+  ok('and the road legs are actually non-zero', roadOnly > 0,
+     'otherwise the assertion above passes for the wrong reason');
+
+  // Editing the departure airport has to invalidate the cached chain,
+  // or the second point would go on being computed from stale data.
+  const sigBefore = rs.tripStopChainSig();
+  rs.tripDays[1].items[1].fromLat = 55.95;
+  ok('changing the departure airport changes the chain signature',
+     rs.tripStopChainSig() !== sigBefore);
+}
 
 if (failures) {
   console.log(`\ntest_timeline: ${failures} failure(s).`);

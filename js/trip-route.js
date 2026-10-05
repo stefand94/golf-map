@@ -139,6 +139,10 @@ function tripShowOrdered(order,clear=true,fit=true){
      course->place, and place->place legs. */
   for(let idx=1;idx<order.length;idx++){
     const a=order[idx-1],b=order[idx];
+    /* GOLF-153: no air line in v1. A great circle drawn as a straight
+       segment reads exactly like a road leg, and the one thing it must
+       not say is "you drive this". */
+    if(b.flown)continue;
     const segDay=b.day??a.day;
     const segColor=segDay!=null?TRIP_DAY_COLORS[(segDay-1)%TRIP_DAY_COLORS.length]:'#1B2733';
     /* GOLF-118: a leg that crosses water is drawn as road → straight
@@ -511,14 +515,49 @@ function tripDayStops(dayIdx){
   const d=tripDays[dayIdx];if(!d)return[];
   const stops=[];
   if(d.placeLat!=null&&d.placeLng!=null)stops.push({type:'place',lat:d.placeLat,lng:d.placeLng,name:d.place||'Place',day:dayIdx+1});
+  /* GOLF-153: which flight is arrival-only. Derived from the whole
+     trip, so it is computed once here rather than per stop. */
+  const inboundId=(typeof tlInboundFlightId==='function')?tlInboundFlightId(tripDays):null;
   tripDayItems(d).forEach(it=>{
+    /* GOLF-153 (DEC-039): a flight you fly OUT on is two points, not
+       one. You drive to the departure airport, and you carry on from
+       the arrival airport — one point would have routed the whole trip
+       to wherever it lands and silently charged you the drive there.
+       The inbound flight stays one point: nothing precedes it, so its
+       departure airport is not somewhere this trip has to reach.
+       `flown:true` marks the pair BETWEEN the two, so the leg into the
+       arrival is never costed, driven or drawn. */
+    const fp=tripFlightDepartPoint(it);
+    if(fp&&it.id!==inboundId){
+      const pt2=tripItemPoint(it);
+      if(pt2){
+        stops.push({type:'flight',legPart:'depart',lat:fp.lat,lng:fp.lng,
+          name:tripFlightDepartName(it),day:dayIdx+1,itemId:it.id});
+        stops.push({type:'flight',legPart:'arrive',flown:true,lat:pt2.lat,lng:pt2.lng,
+          name:tripItemName(it),day:dayIdx+1,itemId:it.id});
+        return;
+      }
+    }
     const pt=tripItemPoint(it);
     if(!pt)return;
     stops.push(it.type==='golf'
       ?{type:'course',i:it.i,lat:pt.lat,lng:pt.lng,name:tripItemName(it),day:dayIdx+1,itemId:it.id}
-      :{type:it.type,lat:pt.lat,lng:pt.lng,name:tripItemName(it),day:dayIdx+1,itemId:it.id});
+      :{type:it.type,lat:pt.lat,lng:pt.lng,name:tripItemName(it),day:dayIdx+1,itemId:it.id,
+        legPart:it.type==='flight'?'arrive':undefined});
   });
   return stops;
+}
+/* The departure airport, when the visitor gave it one. Optional and
+   additive (GOLF-153): a flight without it keeps the single-point
+   behaviour it had before, rather than becoming unroutable. */
+function tripFlightDepartPoint(it){
+  if(!it||it.type!=='flight')return null;
+  const la=it.fromLat,ln=it.fromLng;
+  return(typeof la==='number'&&isFinite(la)&&typeof ln==='number'&&isFinite(ln))?{lat:la,lng:ln}:null;
+}
+function tripFlightDepartName(it){
+  if(!it)return'Airport';
+  return it.fromName||(it.fromCode?String(it.fromCode):'Departure airport');
 }
 function tripDayFirstStop(dayIdx){const s=tripDayStops(dayIdx);return s.length?s[0]:null;}
 function tripDayLastStop(dayIdx){const s=tripDayStops(dayIdx);return s.length?s[s.length-1]:null;}
@@ -545,7 +584,10 @@ function tripStopChainSig(){
   let sig=tripSeq.join(',')+'|';
   for(const d of tripDays){
     sig+=d.id+'~'+(d.place||'')+'~'+d.placeLat+'~'+d.placeLng+'~';
-    for(const it of tripDayItems(d))sig+=it.id+':'+it.type+':'+(it.type==='golf'?it.i:it.lat+','+it.lng)+';';
+    for(const it of tripDayItems(d))sig+=it.id+':'+it.type+':'+(it.type==='golf'?it.i:it.lat+','+it.lng)
+      /* GOLF-153: the departure airport is part of what the chain is
+         derived from, so editing it has to invalidate the cache. */
+      +(it.type==='flight'?'>'+it.fromLat+','+it.fromLng:'')+';';
     sig+='|';
   }
   return sig;
@@ -568,6 +610,12 @@ function tripPrevStop(chain,pos){return pos>0?chain[pos-1]:null;}
    tripDayRealEstimate(), which this generalizes. */
 function tripLegEstimate(a,b){
   if(!a||!b)return null;
+  /* GOLF-153: you did not drive this one. Returned before ORS is
+     consulted at all — asking for driving directions from London City
+     to Inverness would both burn a request and come back with a
+     ten-hour road trip nobody is taking. Zero miles keeps it out of the
+     fuel total too. `real:true` because this figure is not a guess. */
+  if(b.flown)return{minutes:0,miles:0,real:true,flown:true,hasFerry:false,ferryMinutes:0};
   const miles=haversineMiles(a.lat,a.lng,b.lat,b.lng)*DRIVE_INEFFICIENCY;
   if(ORS_PROXY_URL){
     const key=orsLegKey(a,b);

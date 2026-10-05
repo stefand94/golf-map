@@ -41,7 +41,7 @@ const TL_DEFAULT_BUFFER={golf:45,flight:120};
 /* One cap for a note, read by the model, the loader and the share codec
    alike — notes ride in share URLs, which is what makes a cap a
    correctness concern rather than a tidiness one. */
-const TL_NOTE_MAX=500;
+const TL_NOTE_MAX=300;
 
 /* ── Time values ──────────────────────────────────────────────────────
    A stored time is "HH:MM", 24h, local wall-clock at that place. Time
@@ -83,13 +83,56 @@ function tlBufferFor(it){
   const def=TL_DEFAULT_BUFFER[it.type];
   return typeof def==='number'?def:0;
 }
+/* Which flight is the one that BRINGS you, given the whole trip. The
+   rule is derived, never stored (DEC-039): the first item in the trip
+   that is part of the chain decides it. If that item is a flight, that
+   flight is the inbound one and the trip genuinely starts at its
+   landing; if anything else comes first, every flight in the trip is
+   one you have to get yourself to.
+
+   Hotels and notes are skipped because they are not in the chain at
+   all — a hotel booked for the night you land is still "before" the
+   flight in items[], and it must not make that flight look like a
+   departure you need two hours of check-in for.
+
+   Returns the inbound flight's id, or null when there isn't one. */
+function tlInboundFlightId(days){
+  const list=Array.isArray(days)?days:[];
+  for(const d of list){
+    const items=(d&&Array.isArray(d.items))?d.items:[];
+    for(const it of items){
+      if(!tlInChain(it))continue;
+      return(it&&it.type==='flight')?(it.id||null):null;
+    }
+  }
+  return null;
+}
+/* How long a flight is in the air: the gap between the two times the
+   visitor typed. Zero (a marker) unless both are set and the arrival is
+   after the departure — a flight with one time, or one that lands
+   "before" it left, has no honest length to draw.
+
+   Time zones are still out of scope (DEC-039), so this is only true for
+   a flight within one zone. That is what the trip is: GB, Ireland and
+   South Africa, each internally single-zone. */
+function tlFlightDuration(it){
+  if(!it||it.type!=='flight')return 0;
+  const dep=tlParseTime(it.depart),arr=tlParseTime(it.arrive);
+  if(dep==null||arr==null||arr<=dep)return 0;
+  return Math.min(1440,arr-dep);
+}
 /* The fixed start the visitor typed, or null when this item just flows
-   from the one before it. A flight is anchored on ARRIVAL: the departure
-   is shown as text but never drawn, because across a time zone a
-   depart→arrive block is a lie and we are not storing offsets. */
-function tlFixedStart(it){
+   from the one before it.
+
+   A flight is anchored on whichever end the visitor has to BE at. The
+   inbound flight is anchored on its ARRIVAL — you were not planned to
+   the airport you left from, the trip starts when you land. Every other
+   flight is anchored on its DEPARTURE, because that is the end you have
+   to drive to and check in for, and the arrival simply follows. */
+function tlFixedStart(it,inbound){
   if(!it)return null;
-  if(it.type==='flight')return tlParseTime(it.arrive);
+  if(it.type==='flight')
+    return inbound?tlParseTime(it.arrive):(tlParseTime(it.depart)??tlParseTime(it.arrive));
   return tlParseTime(it.time);
 }
 /* Hotels are a strip along the bottom of the day, not a stop in the
@@ -117,14 +160,23 @@ function tlInChain(it){return!!it&&it.type!=='hotel'&&it.type!=='note';}
 
    driveFn(prevItem,item) → minutes is supplied by the caller, so this
    module never reaches into the routing cache and the tests can hand it
-   fixed numbers. */
-function tlComputeDay(items,driveFn){
+   fixed numbers. For a flight that is driven to, the minutes it returns
+   are the drive to the DEPARTURE airport — the leg into the arrival
+   airport is flown, and costs the road nothing.
+
+   opts.inboundFlightId names the one flight that is arrival-only, from
+   tlInboundFlightId(). Omitting it plans every flight in full, which is
+   right for a day considered on its own. */
+function tlComputeDay(items,driveFn,opts){
   const list=Array.isArray(items)?items:[];
+  const inboundId=(opts&&opts.inboundFlightId)||null;
   const rows=[];
   let cursor=null,prevStop=null;
   list.forEach(it=>{
-    const dur=tlDurationFor(it);
-    const fixed=tlFixedStart(it);
+    const isFlight=!!it&&it.type==='flight';
+    const inbound=isFlight&&!!it.id&&it.id===inboundId;
+    const dur=isFlight?(inbound?0:tlFlightDuration(it)):tlDurationFor(it);
+    const fixed=tlFixedStart(it,inbound);
     /* A hotel sits outside the chain entirely: it gets its check-in
        marker and leaves the cursor exactly where it was. A note in a
        gap marks the time the day has reached at that position — the
@@ -145,13 +197,12 @@ function tlComputeDay(items,driveFn){
        FIXED. There is nothing to be early for when the start itself is
        derived from when you happen to arrive.
 
-       A flight is the exception, and deliberately gets none here: the
-       time it is anchored on is its ARRIVAL, and a check-in buffer
-       belongs in front of its DEPARTURE. Drawing one before a landing
-       says "be at Inverness two hours before you land", which is what
-       this produced until it was seen on screen. The flight's own
-       buffer is wired up with the rest of the two-point flight model. */
-    const buffer=(fixed!=null&&it.type!=='flight')?tlBufferFor(it):0;
+       The inbound flight is the one exception: it is anchored on its
+       ARRIVAL, and a check-in buffer in front of a landing would tell
+       you to be at Inverness two hours before you get there. Every
+       other flight is anchored on its departure, which is exactly what
+       a check-in buffer belongs in front of. */
+    const buffer=(fixed!=null&&!inbound)?tlBufferFor(it):0;
     let start,conflict=null,ready;
     if(cursor===null){
       /* First timed item of the day: nothing precedes it, so a fixed

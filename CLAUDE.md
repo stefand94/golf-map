@@ -64,10 +64,23 @@ Costs).
 - GOLF-153 detailed mode stores only the times the visitor FIXED —
   `time` on an item (a tee time, a check-in), `arrive`/`depart` on a
   flight, `durationMins`, and `bufferMins` (the arrival buffer: golf 45,
-  flight 120). Every other time on the grid is derived at render time by
-  `js/timeline.js` and never written back. Notes are `note` on an item or
-  a day, plus `{id,type:'note',text}` as an item for a note in a gap;
-  they are capped at `TL_NOTE_MAX` because they ride in `#share=` links.
+  flight 120, editable per item). Every other time on the grid is derived
+  at render time by `js/timeline.js` and never written back.
+- A flight is **two points**: `lat`/`lng` are the arrival airport and
+  `fromLat`/`fromLng`/`fromName` the departure one, looked up from the
+  IATA code on the form. Every flight is planned in full (drive →
+  check-in buffer → flight → arrival) EXCEPT the inbound one, which is
+  arrival-only. Which flight is inbound is **derived, never stored** —
+  `tlInboundFlightId()` takes the first item in the trip that is in the
+  chain (hotels and notes are not), and it counts only if it is a
+  flight. The stop between a flight's two points carries `flown:true`:
+  it never reaches ORS, the fuel total or the map.
+- Notes are `note` on an item or a day, plus `{id,type:'note',text}` as
+  an item for a note in a gap, capped at `TL_NOTE_MAX` (300) because
+  they ride in `#share=` links. They render in **detailed mode only**
+  (DEC-039, revised 2026-10-05) — `tripDayLegs()` drops note items so
+  the default list view, editable and shared alike, is exactly what it
+  was before notes existed.
 - Course green fees: legacy free-text `wd`/`we` strings, being migrated
   course-by-course to a structured `fee:{weekday,weekend,weekendTwilight?,
   confidence,lastVerified}` object (GOLF-97/98, in progress — see

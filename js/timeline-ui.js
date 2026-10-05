@@ -83,6 +83,31 @@ function tlTimeFieldHTML(d,it,label){
     onchange="tlSetItemTime(${d.id},'${esc(it.id)}',this.value)"
     onclick="event.stopPropagation()">`;
 }
+/* DEC-039: both buffers are editable. Shown only where there is a fixed
+   time to be early FOR, in minutes, and empty means "the default for
+   this kind of thing" rather than zero — clearing it has to give you
+   the 45 or the 120 back, not take the buffer away. */
+function tlBufferFieldHTML(d,it,r){
+  if(appMode==='shared'||!r||!r.fixed||!(r.bufferMins>0))return'';
+  const what=it.type==='flight'?'Check in':'Be there';
+  return`<input type="number" class="tl-buffer-field" min="0" max="1440" step="5"
+    value="${esc(it.bufferMins!=null?String(it.bufferMins):'')}"
+    placeholder="${TL_DEFAULT_BUFFER[it.type]||0}"
+    aria-label="${esc(what)} how many minutes before"
+    title="${esc(what)} this many minutes before. Clear it for the usual ${TL_DEFAULT_BUFFER[it.type]||0}."
+    onchange="tlSetItemBuffer(${d.id},'${esc(it.id)}',this.value)"
+    onclick="event.stopPropagation()">`;
+}
+function tlSetItemBuffer(dayId,itemId,v){
+  if(appMode==='shared')return;
+  const d=tripDays.find(x=>x.id===dayId);if(!d)return;
+  const it=tripDayItems(d).find(x=>x.id===itemId);if(!it)return;
+  const n=parseInt(v,10);
+  if(!Number.isFinite(n)||n<0)delete it.bufferMins;   // back to the default
+  else it.bufferMins=Math.min(1440,n);
+  saveState();
+  renderTripBuilder();
+}
 
 /* ── Drive minutes ────────────────────────────────────────────────────
    Taken from tripDayLegs(), not recomputed: that function already owns
@@ -111,7 +136,11 @@ function tlRowsForDay(dayIdx){
   const d=tripDays[dayIdx];
   if(!d)return[];
   const by=tlDriveMinsByItem(dayIdx);
-  return tlComputeDay(tripDayItems(d),(_prev,it)=>by.get(it.id)||0);
+  /* GOLF-153: which flight is arrival-only is a property of the whole
+     trip, not of this day, so it is worked out across tripDays and
+     handed in. */
+  return tlComputeDay(tripDayItems(d),(_prev,it)=>by.get(it.id)||0,
+    {inboundFlightId:tlInboundFlightId(tripDays)});
 }
 /* The day on which each stay's first night falls — the only day that
    draws a check-in line (DEC-039). A one-night stay carries no stayId,
@@ -150,11 +179,16 @@ function tlBlockLabelHTML(r){
   /* A note attached to an item rides under that item's name. */
   const note=it.note?`<span class="tl-note-line" title="${esc(it.note)}">📝 ${esc(it.note)}</span>`:'';
   if(it.type==='flight'){
-    /* DEC-039: the departure is TEXT, never a block — a trip "only
-       starts from arrival", and with time zones out of scope a
-       depart→arrive bar would be drawn wrong as often as right. */
+    /* DEC-039 as revised 2026-10-05: a flight you fly OUT on is drawn
+       as a real block from departure to arrival, so the second line
+       says when it LANDS — the block's own time is already the
+       departure. The inbound flight is still a marker at its landing,
+       and shows its departure as text, because nothing on this trip
+       happened before it. */
     const from=[it.flightNo,it.fromCode&&it.toCode?it.fromCode+'→'+it.toCode:''].filter(Boolean).join(' ');
-    const dep=tlParseTime(it.depart)!=null?`dep ${esc(it.depart)}`:'';
+    const dep=r.durationMins>0
+      ?(tlParseTime(it.arrive)!=null?`lands ${esc(it.arrive)}`:'')
+      :(tlParseTime(it.depart)!=null?`dep ${esc(it.depart)}`:'');
     return`<span class="tl-block-name">${esc(tripItemName(it)||'Flight')}</span>
       ${from||dep?`<span class="tl-block-sub">${[esc(from),dep].filter(Boolean).join(' · ')}</span>`:''}${note}`;
   }
@@ -164,10 +198,13 @@ function tlDayGridHTML(d,dayIdx,firstNights){
   const rows=tlRowsForDay(dayIdx);
   const chain=rows.filter(r=>r.item&&r.item.type!=='hotel');
   const stays=rows.filter(r=>r.item&&r.item.type==='hotel');
-  if(!rows.length)return'';
+  /* The note bar goes out even when there is no clock to draw: an
+     empty day, or one holding only a hotel, can still be written on,
+     and this view is now the only place that offers it. */
+  if(!rows.length)return tlDayNoteBarHTML(d);
   const range=tlDayRange(chain);
   /* A day with nothing but a hotel has no clock to draw, only a strip. */
-  if(!range)return tlStayStripHTML(d,stays,firstNights);
+  if(!range)return tlDayNoteBarHTML(d)+tlStayStripHTML(d,stays,firstNights);
   /* ...but once there IS a clock, it has to reach the check-in line: an
      18:00 check-in after a round that ended at 16:54 would otherwise be
      set and then silently not drawn. */
@@ -236,7 +273,8 @@ function tlDayGridHTML(d,dayIdx,firstNights){
       oncontextmenu="return tlNoteContextItem(event,${d.id},'${esc(r.item.id)}')">
       <span class="tl-block-time">${tlFormatTime(r.startMins)}${r.fixed?'<span class="tl-pin" title="A time you set. Everything after it follows from here.">•</span>':''}</span>
       <span class="tl-block-body">${tlItemIcon(r.item.type)} ${tlBlockLabelHTML(r)}${ready}${warn}${
-        r.item.type==='flight'||r.item.type==='note'?'':tlTimeFieldHTML(d,r.item,r.item.type==='golf'?'Tee time':'Start time')}</span>
+        r.item.type==='flight'||r.item.type==='note'?'':tlTimeFieldHTML(d,r.item,r.item.type==='golf'?'Tee time':'Start time')}${
+        tlBufferFieldHTML(d,r.item,r)}</span>
     </div>`);
     return parts.join('');
   }).join('');
@@ -251,11 +289,33 @@ function tlDayGridHTML(d,dayIdx,firstNights){
      gap you clicked, not at the end of the day — which is the whole
      point of a note in a gap. The start hour travels on the element so
      the handler can turn a y offset back into a time. */
-  return`<div class="tl-grid" style="height:${height}px"
+  return`${tlDayNoteBarHTML(d)}
+    <div class="tl-grid" style="height:${height}px"
       data-tlnote="gap" data-tlday="${d.id}" data-tlstart="${range.startHour}"
       oncontextmenu="return tlNoteContextGap(event,${d.id},${range.startHour})">${hours.join('')}${blocks}${checkins}</div>
     ${tlStayStripHTML(d,stays,firstNights)}`;
 }
+/* The day's own note, and the one control that says out loud that
+   notes exist. DEC-039 as revised 2026-10-05 puts notes in this view
+   only, which makes this the only place either can go: right-click and
+   long-press are quick but silent, and the list view no longer offers
+   anything. Read-only when the trip is someone else's. */
+function tlDayNoteBarHTML(d){
+  const ro=appMode==='shared';
+  const note=d.note
+    ?`<span class="tl-daynote"${ro?'':` onclick="tlEditDayNote(${d.id})" title="Click to edit this day's note"`}>📝 ${esc(d.note)}</span>`
+    :'';
+  if(ro)return note?`<div class="tl-notebar">${note}</div>`:'';
+  /* Two doors, because they do different things: one writes on the day,
+     the other drops a note into the day's timeline. */
+  return`<div class="tl-notebar">${note}
+    <button type="button" class="tl-notebtn" onclick="tlEditDayNote(${d.id})"
+      title="A note about the whole day">📝 ${d.note?'Edit day note':'Day note'}</button>
+    <button type="button" class="tl-notebtn" onclick="tlAddNote(${d.id})"
+      title="A note in the day's timeline. You can also right-click the grid, or press and hold it on a phone.">＋ Note</button>
+  </div>`;
+}
+
 /* DEC-039: a stay is a strip along the bottom of the night it covers,
    not a timed block — you do not "spend" the evening before driving on,
    and drawing it as a block made every hotel look like a 12-hour
@@ -380,7 +440,17 @@ function tlFlightCommit(){
   const price=parseFloat(s.price);
   const fields={name};
   const fno=String(s.flightNo||'').trim().slice(0,12);if(fno)fields.flightNo=fno;
-  const fc=code(s.fromCode);if(fc)fields.fromCode=fc;
+  /* GOLF-153: the departure airport's coordinates, looked up from the
+     code the form already asks for rather than from a second picker.
+     A code that isn't on the list contributes no point, and the flight
+     stays the single arrival point it was — the same convention a
+     hand-typed hotel follows. */
+  const fc=code(s.fromCode);
+  if(fc){
+    fields.fromCode=fc;
+    const fa=tlAirportByCode(fc);
+    if(fa){fields.fromLat=fa.lat;fields.fromLng=fa.lng;fields.fromName=tlAirportLabel(fa);}
+  }
   const tc=ap?ap.iata:code(s.toCode);if(tc)fields.toCode=tc;
   const dep=canonTime(s.depart);if(dep)fields.depart=dep;
   const arr=canonTime(s.arrive);if(arr)fields.arrive=arr;
@@ -399,7 +469,10 @@ function tlFlightCommit(){
     Object.assign(it,fields);
   }else{
     if(!Array.isArray(d.items))d.items=[];
-    d.items.splice(tlFlightInsertAt(d,fields.arrive),0,
+    /* GOLF-153: a flight you fly out on takes its place in the day
+       from when it LEAVES, which is the end of it you have to be
+       driven to. Only the inbound one is placed by its landing. */
+    d.items.splice(tlFlightInsertAt(d,fields.depart||fields.arrive),0,
       Object.assign({id:tripItemNewId(),type:'flight'},fields));
   }
   tlFlightDraft=null;

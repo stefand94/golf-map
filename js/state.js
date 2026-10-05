@@ -48,7 +48,7 @@ function validateTripEntry(t){
   /* GOLF-153 notes (DEC-039): free text the visitor attached to an item,
      a day, or a gap. Capped on the way in, because a note travels in a
      share URL; escaped on the way out, everywhere it renders. */
-  const NOTE_MAX=typeof TL_NOTE_MAX==='number'?TL_NOTE_MAX:500;
+  const NOTE_MAX=typeof TL_NOTE_MAX==='number'?TL_NOTE_MAX:300;
   const validNote=v=>{
     if(typeof v!=='string')return null;
     const s=v.trim().slice(0,NOTE_MAX);
@@ -82,6 +82,14 @@ function validateTripEntry(t){
         const fno=str(it.flightNo,12); if(fno)out.flightNo=fno;
         const fc=str(it.fromCode,8); if(fc)out.fromCode=fc;
         const tc=str(it.toCode,8); if(tc)out.toCode=tc;
+        /* GOLF-153 (DEC-039, approved 2026-10-05): the DEPARTURE
+           airport. Additive and optional — without it a flight is the
+           single point it always was, which is exactly right for the
+           one that brings you. */
+        const fnm=str(it.fromName,80); if(fnm)out.fromName=fnm;
+        if(typeof it.fromLat==='number'&&isFinite(it.fromLat)&&typeof it.fromLng==='number'&&isFinite(it.fromLng)){
+          out.fromLat=it.fromLat;out.fromLng=it.fromLng;
+        }
         const dep=validTime(it.depart); if(dep)out.depart=dep;
         const arr=validTime(it.arrive); if(arr)out.arrive=arr;
         if(typeof it.price==='number'&&isFinite(it.price))out.price=it.price;

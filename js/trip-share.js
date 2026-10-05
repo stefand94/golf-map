@@ -86,6 +86,10 @@ function shareFlightFields(it){
   if(it.flightNo)out.fn=it.flightNo;
   if(it.fromCode)out.fc=it.fromCode;
   if(it.toCode)out.tc=it.toCode;
+  // GOLF-153: the departure airport, only when the visitor set one.
+  if(it.fromName)out.fnm=it.fromName;
+  if(typeof it.fromLat==='number'&&isFinite(it.fromLat))out.flat=it.fromLat;
+  if(typeof it.fromLng==='number'&&isFinite(it.fromLng))out.flng=it.fromLng;
   if(it.depart)out.dep=it.depart;
   if(it.arrive)out.arr=it.arrive;
   if(typeof it.price==='number'&&isFinite(it.price))out.price=it.price;
@@ -155,7 +159,7 @@ function tbShareTrip(btn){
 const SHARE_MAX_DAYS=30, SHARE_MAX_ITEMS_PER_DAY=20, SHARE_MAX_STR=120, SHARE_MAX_CUSTOM=40;
 /* GOLF-153: the same cap the model enforces, so a note that was saved
    whole travels whole — and a hand-edited hash cannot smuggle in more. */
-const SHARE_NOTE_MAX=typeof TL_NOTE_MAX==='number'?TL_NOTE_MAX:500;
+const SHARE_NOTE_MAX=typeof TL_NOTE_MAX==='number'?TL_NOTE_MAX:300;
 function shareStr(v,max){
   if(typeof v!=='string')return null;
   const s=String(v).trim().slice(0,max||SHARE_MAX_STR);
@@ -210,6 +214,9 @@ function tripDecodeSharePayload(hash){
           const fno=shareStr(it.fn,12); if(fno)out.flightNo=fno;
           const fc=shareStr(it.fc,8); if(fc)out.fromCode=fc;
           const tc=shareStr(it.tc,8); if(tc)out.toCode=tc;
+          const fnm=shareStr(it.fnm,80); if(fnm)out.fromName=fnm;
+          const fla=shareNum(it.flat,-90,90),flo=shareNum(it.flng,-180,180);
+          if(fla!=null&&flo!=null){out.fromLat=fla;out.fromLng=flo;}
           const dep=shareTime(it.dep); if(dep)out.depart=dep;
           const arr=shareTime(it.arr); if(arr)out.arrive=arr;
           const pr=shareNum(it.price,0,1e6); if(pr!=null)out.price=pr;
