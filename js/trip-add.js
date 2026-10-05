@@ -575,7 +575,7 @@ function tripDayItemRowHTML(d,it){
   /* GOLF-153: a note attached to this stop, shown in the list view as
      well as the day view — it is trip content, not view content. The
      visitor's own text, so escaped here like everywhere else. */
-  const noteLine=it.note?`<div class="tb-item-note" title="${esc(it.note)}">📝 ${esc(it.note)}</div>`:'';
+  const noteLine=it.note?`<div class="tb-item-noteline" title="${esc(it.note)}">📝 ${esc(it.note)}</div>`:'';
   const main=it.type==='note'
     ?`<span class="tb-item-name">${esc(it.text||'')}</span><div class="cart-region">Note</div>`
     :it.type==='golf'

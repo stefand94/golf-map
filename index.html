@@ -796,7 +796,10 @@
   .tl-block-note{background:#FFFDE7;border-color:#E8DFA8}
   .tl-note-line{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;
     white-space:nowrap;color:var(--ink-soft);font-size:var(--fs-micro)}
-  .tb-item-note{font:var(--fs-micro)/1.4 var(--font-sans);color:var(--ink-soft);overflow-wrap:anywhere}
+  /* "noteline", not "tb-item-note": a note ITEM's row already carries
+     tb-item-note from tb-item-${type}, and it would have inherited this
+     micro grey type for its whole row. */
+  .tb-item-noteline{font:var(--fs-micro)/1.4 var(--font-sans);color:var(--ink-soft);overflow-wrap:anywhere}
   .tb-day-note{margin:0 var(--sp-3) var(--sp-2) 44px;
     font:var(--fs-micro)/1.4 var(--font-sans);color:var(--ink-soft);overflow-wrap:anywhere}
   .tl-drive{background:repeating-linear-gradient(135deg,var(--paper) 0 5px,var(--paper-2) 5px 10px);

@@ -462,7 +462,7 @@ function itinLegRowHTML(l){
     <span class="tb-item-icon">${icon}</span>
     <div class="tb-item-main"><span class="tb-item-name">${esc(l.name)}</span>
       ${sharing?`<div class="cart-region">${sym}${l.detail.base.toFixed(0)} × ${l.detail.guests} people = ${sym}${l.detail.total.toFixed(0)}</div>`:''}
-      ${l.note?`<div class="tb-item-note" title="${esc(l.note)}">📝 ${esc(l.note)}</div>`:''}</div>
+      ${l.note?`<div class="tb-item-noteline" title="${esc(l.note)}">📝 ${esc(l.note)}</div>`:''}</div>
     <span class="tb-item-price">${estMark(!!(l.detail&&l.detail.est))}${tbDualPriceHTML(l.price,cur)}</span>
   </div>`;
 }
