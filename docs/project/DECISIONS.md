@@ -943,6 +943,13 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 - **Owner answers to Gavin's shape questions (2026-10-05):**
   - **Hotel:** a strip along the bottom of each night's day, not a timed block. On the **first night** it also draws a **check-in time line** on the grid (editable; default 15:00, the BA's pick).
   - **Day labels:** days show as "Day 1", "Day 2"… until a real date is added.
-  - **Default POI length:** 90 minutes. **Golf:** 270 minutes.
-  - **Time zones:** none. Everything is local time, because **a trip starts from arrival**. A flight is drawn from its arrival; the departure time and airport are shown as text, not as a block.
+  - **Default POI length:** 90 minutes.
+  - **Time zones:** none. Everything is local time, because **a trip starts from arrival**. The **first, inbound flight** is drawn from its arrival; its departure details are text only.
+  - **Flights within the trip, and the departure home (owner, 2026-10-05):** these are planned in full, in this order:
+    1. the drive to the departure airport;
+    2. a **check-in buffer**: be at the airport this long before departure;
+    3. the flight block with its details;
+    4. for an internal flight, the arrival, from which the rest of the day flows.
+    The departure airport becomes a located stop, so the drive to it is computed. Default buffer: **2 hours**, editable per flight. This is the BA's pick.
+  - **Golf (owner, 2026-10-05):** **5 hours** from the tee time. Plus an **arrival buffer of 45 minutes**: for a 10:00 tee, be at the course by 09:15. That is the time the drive must arrive by, and a later arrival triggers the conflict warning.
 - **Date:** 2026-10-05 · **Affects:** GOLF-153, GOLF-99 (share), GOLF-224 (load whitelist), GOLF-235 (share counting unchanged).

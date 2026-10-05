@@ -15,7 +15,7 @@ A **toggle on the Itinerary tab** ("Detailed") that turns each day into a **cale
    - New `type:'flight'` with: flight number; from and to airport; depart and arrive times; optional price.
    - The arrival airport is a **located stop**, so the drive from the airport to the first course is computed like any other leg.
    - The model only *stores* fixed times. Computed times are derived at render time and never stored.
-2. **Tee times:** let a golf item take a tee time. Default round length is about 4h30 (18 holes plus clubhouse); the visitor can edit it. Propose sensible defaults for a hotel (check-in end of day, no block?) and for POIs, and tell the BA what you picked.
+2. **Tee times:** let a golf item take a tee time. **Superseded by DEC-039's owner answers:** 5h from the tee time plus a 45-minute arrival buffer; flights within the trip and the flight home get a drive to the airport plus a check-in buffer. Propose sensible defaults for a hotel (check-in end of day, no block?) and for POIs, and tell the BA what you picked.
 3. **Day view:** the hour grid shows only the hours in use (e.g. 07:00–21:00). It must work at 375 wide, and that's the real test. Desktop gets the same view, wider.
 4. **Conflicts:** if a fixed time can't be met, show a clear warning on that block, e.g. "Arrives 12:40, tee time 12:24". Never silently move a fixed time.
 5. **Share:** the read-only shared view shows the timed plan.
