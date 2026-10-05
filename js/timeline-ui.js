@@ -278,7 +278,18 @@ function tlAirportByCode(code){
   const c=String(code).trim().toUpperCase();
   return AIRPORTS.find(a=>a.iata===c)||null;
 }
-function tlAirportLabel(a){return`${a.town||a.name} (${a.iata})`;}
+/* "Inverness (INV)", not OurAirports' own "Inverness Airport" or its
+   `town` of "Inverness, Highland" — the first is redundant next to the
+   ✈, and the second reads as the wrong place for the ones written the
+   other way round ("Ingliston, Edinburgh"). The code is always kept, so
+   the two Newcastles stay distinguishable. "City" is deliberately not
+   stripped: London City is not London. */
+function tlAirportLabel(a){
+  const n=String(a.name||'')
+    .replace(/\s*\b(International|Intl\.?|Regional|Municipal)?\s*Airport\b.*$/i,'')
+    .replace(/\s*\bAirfield\b.*$/i,'').trim();
+  return`${n||a.town||a.name} (${a.iata})`;
+}
 function tlPromptFlight(dayId){
   /* One form open at a time per day — the hotel/POI form is the other
      one, and it owns the map picker, so it yields to nothing. */

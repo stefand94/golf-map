@@ -770,7 +770,14 @@
   .tl-block-golf{background:var(--accent-soft);border-color:#C6D8E6}
   .tl-block-poi{background:#FFF6E0;border-color:#EFD9A8}
   .tl-block-flight{background:#EDE7F6;border-color:#CFC2E8}
-  .tl-block.is-marker{min-height:22px;border-style:dashed;flex-wrap:wrap}
+  /* A marker has no duration, so nothing but this height tells the
+     layout how much room to keep clear below it — 38px, two lines, and
+     it must stay equal to TL_MARKER_PX in js/timeline-ui.js. Its two
+     lines are each held to one line so that stays true for a long
+     airport name. */
+  .tl-block.is-marker{height:38px;border-style:dashed;flex-wrap:wrap;overflow:hidden}
+  .tl-block.is-marker .tl-block-name,.tl-block.is-marker .tl-block-sub{
+    display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   /* A missed fixed time is never moved, so it has to be visible as well
      as said — the ⚠ carries the words, this carries the glance. */
   .tl-block.is-conflict{border-color:#B3261E;box-shadow:inset 3px 0 0 #B3261E}
