@@ -151,6 +151,14 @@ production instead of the keyless ones.
   it returns `{"key":null}`: previews, localhost, `www.`, scripts with no
   Origin, and a Worker with no secret. Always `Cache-Control: no-store`.
   Never logged.
+- **Self-check:** before handing the key out, the Worker fetches one tiny
+  streets tile with it, as golftripper.uk, and hands it out only if Esri
+  returns an image. The verdict is cached at the edge for an hour (5
+  minutes if Esri couldn't be reached), under a hash of the key, so a new
+  secret value is checked straight away. A dead key therefore gives
+  `{"key":null}` and keyless tiles, with no 401s in visitors' consoles. The
+  key travels in the `X-Esri-Authorization` header, never a URL. Nothing is
+  logged, and none of it counts against the GOLF-223 ORS caps.
 - The key reaches the browser, because the browser fetches the tiles.
   What protects it is Esri's referrer restriction on the key itself, not
   this route.
@@ -169,7 +177,9 @@ production instead of the keyless ones.
    **Secret** → Deploy.
 3. Check without printing the key:
    `curl -s -H 'Origin: https://golftripper.uk' https://api.golftripper.uk/esri-key | grep -c '"key":"'`
-   prints `1`. With any other Origin it prints `0`.
+   prints `1`. With any other Origin it prints `0`. A `0` from
+   golftripper.uk too means Esri refused the key (self-check above):
+   recheck its privileges, referrer and expiry, and the secret's value.
 4. Before the key expires, make a new one and replace the secret.
 
 ## Deploying it

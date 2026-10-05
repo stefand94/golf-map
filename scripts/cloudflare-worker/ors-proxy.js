@@ -728,9 +728,60 @@ function countDone(request, status) {
    between here and the page. */
 const ESRI_KEY_ORIGIN = 'https://golftripper.uk';
 
-function handleEsriKey(request, env) {
+/* GOLF-234 self-check: the key is handed out only if Esri accepts it. A
+   dead key (expired, revoked, missing privilege, wrong value pasted) would
+   otherwise reach the page, and every visitor's first tiles would fail with
+   401s in the console before the map fell back to keyless. So the Worker
+   fetches one tiny streets tile itself, as golftripper.uk, and remembers
+   the verdict in the edge cache for an hour (5 minutes if Esri couldn't be
+   reached, so a blip isn't remembered for long). A failed or unreachable
+   check means {key:null}: keyless tiles, never a broken map.
+   - The key goes in a header, never a URL, so it can't surface in a
+     subrequest log or trace; the verdict is cached under a hash of the key,
+     never the key, and a new secret value gets checked afresh.
+   - Nothing here is logged, and it never touches the GOLF-223 ORS counters.
+   - TEST_URL_ESRI_CHECK overrides the tile URL, for a request to localhost
+     only, the same rule as the /health test URLs. */
+const ESRI_CHECK_URL = 'https://static-map-tiles-api.arcgis.com/arcgis/rest/services/static-basemap-tiles-service/v1/arcgis/streets/static/tile/0/0/0';
+const ESRI_CHECK_TTL_S = 3600;
+const ESRI_CHECK_RETRY_S = 300;
+
+async function esriKeyWorks(key, request, env, ctx) {
+  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key)))]
+    .map((b) => b.toString(16).padStart(2, '0')).join('');
+  const cacheKey = new Request('https://esri-check.invalid/' + hash, { method: 'GET' });
+  const cache = caches.default;
+  try {
+    const hit = await cache.match(cacheKey);
+    if (hit) return (await hit.text()) === 'ok';
+  } catch (e) {
+    // cache unavailable: just check again
+  }
+  const local = new URL(request.url).hostname === 'localhost';
+  const url = local && env.TEST_URL_ESRI_CHECK ? env.TEST_URL_ESRI_CHECK : ESRI_CHECK_URL;
+  let verdict, ttl;
+  try {
+    const res = await fetch(url, {
+      headers: { 'X-Esri-Authorization': 'Bearer ' + key, Referer: ESRI_KEY_ORIGIN + '/' },
+      signal: AbortSignal.timeout(3000),
+    });
+    const image = /^image\//.test(res.headers.get('Content-Type') || '');
+    verdict = res.status === 200 && image ? 'ok' : 'bad';
+    ttl = res.status === 200 || (res.status >= 400 && res.status < 500) ? ESRI_CHECK_TTL_S : ESRI_CHECK_RETRY_S;
+  } catch (e) {
+    verdict = 'bad';
+    ttl = ESRI_CHECK_RETRY_S;
+  }
+  const put = cache.put(cacheKey, new Response(verdict, { headers: { 'Cache-Control': `max-age=${ttl}` } }))
+    .catch(() => {});
+  if (ctx && ctx.waitUntil) ctx.waitUntil(put);
+  return verdict === 'ok';
+}
+
+async function handleEsriKey(request, env, ctx) {
   if (request.method !== 'GET') return json({ error: 'GET only' }, 405, request);
-  const key = request.headers.get('Origin') === ESRI_KEY_ORIGIN && env.ESRI_MAP ? env.ESRI_MAP : null;
+  let key = request.headers.get('Origin') === ESRI_KEY_ORIGIN && env.ESRI_MAP ? env.ESRI_MAP : null;
+  if (key && !(await esriKeyWorks(key, request, env, ctx))) key = null;
   const res = json({ key }, 200, request);
   res.headers.set('Cache-Control', 'no-store');
   return res;
@@ -896,7 +947,7 @@ export default {
     }
     if (path === '/count') return handleCount(request, env);
     if (path === '/stats') return handleStats(request, env);
-    if (path === '/esri-key') return handleEsriKey(request, env);
+    if (path === '/esri-key') return handleEsriKey(request, env, ctx);
     if (request.method !== 'POST') {
       return json({ error: 'POST only' }, 405, request);
     }
