@@ -952,4 +952,9 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
     4. for an internal flight, the arrival, from which the rest of the day flows.
     The departure airport becomes a located stop, so the drive to it is computed. Default buffer: **2 hours**, editable per flight. This is the BA's pick.
   - **Golf (owner, 2026-10-05):** **5 hours** from the tee time. Plus an **arrival buffer of 45 minutes**: for a 10:00 tee, be at the course by 09:15. That is the time the drive must arrive by, and a later arrival triggers the conflict warning.
+  - **Notes (owner, 2026-10-05):** right-click (long-press on a phone) adds a note to whatever was clicked:
+    - **an item** (round, hotel, flight, tour): the note is attached to it and moves with it;
+    - **the day header** ("Day 1"): a note for the whole day;
+    - **a gap between activities**: a note in that free time, sitting in the gap.
+    Notes are **shared** (read-only in the share link).
 - **Date:** 2026-10-05 · **Affects:** GOLF-153, GOLF-99 (share), GOLF-224 (load whitelist), GOLF-235 (share counting unchanged).
