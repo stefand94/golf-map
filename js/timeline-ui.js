@@ -335,12 +335,35 @@ function tlFlightCommit(){
     Object.assign(it,fields);
   }else{
     if(!Array.isArray(d.items))d.items=[];
-    d.items.push(Object.assign({id:tripItemNewId(),type:'flight'},fields));
+    d.items.splice(tlFlightInsertAt(d,fields.arrive),0,
+      Object.assign({id:tripItemNewId(),type:'flight'},fields));
   }
   tlFlightDraft=null;
   saveState();
   renderTripBuilder();
   tbDrawMap(false);
+}
+/* Where a new flight goes in the day's list. Every other stop is
+   appended, and a flight appended after the round reads as "play, then
+   drive to the airport, then land" — which the engine then correctly
+   flags as a conflict, for a trip that is not what anyone typed.
+
+   So it lands by its clock: before the first stop that starts after it.
+   A morning arrival goes to the top of the day, an evening departure to
+   the bottom, and a flight with no time typed is appended like anything
+   else. Positions are never adjusted again — dragging stays the way you
+   change your mind. */
+function tlFlightInsertAt(d,arrive){
+  const items=tripDayItems(d);
+  const mins=tlParseTime(arrive);
+  if(mins==null)return items.length;
+  const rows=tlRowsForDay(tripDays.indexOf(d));
+  for(let k=0;k<items.length;k++){
+    if(items[k].type==='hotel')continue; // a stay is a strip, not a point in the day
+    const r=rows.find(x=>x.item===items[k]);
+    if(r&&r.startMins>mins)return k;
+  }
+  return items.length;
 }
 function tlFlightOptionsHTML(sel){
   if(typeof AIRPORTS==='undefined'||!Array.isArray(AIRPORTS))return'';
