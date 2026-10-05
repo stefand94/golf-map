@@ -155,7 +155,8 @@ production instead of the keyless ones.
   streets tile with it, as golftripper.uk, and hands it out only if Esri
   returns an image. The verdict is cached at the edge for an hour (5
   minutes if Esri couldn't be reached), under a hash of the key, so a new
-  secret value is checked straight away. A dead key therefore gives
+  secret value is checked straight away. If the key is fixed at Esri without its value changing,
+  bump `ESRI_CHECK_GEN` in `ors-proxy.js` to drop the cached verdict. A dead key therefore gives
   `{"key":null}` and keyless tiles, with no 401s in visitors' consoles. The
   key travels in the `X-Esri-Authorization` header, never a URL. Nothing is
   logged, and none of it counts against the GOLF-223 ORS caps.

@@ -745,11 +745,14 @@ const ESRI_KEY_ORIGIN = 'https://golftripper.uk';
 const ESRI_CHECK_URL = 'https://static-map-tiles-api.arcgis.com/arcgis/rest/services/static-basemap-tiles-service/v1/arcgis/streets/static/tile/0/0/0';
 const ESRI_CHECK_TTL_S = 3600;
 const ESRI_CHECK_RETRY_S = 300;
+/* Bump to drop every cached verdict at once, e.g. after the key's settings
+   are fixed at Esri without its value changing (the hash wouldn't change). */
+const ESRI_CHECK_GEN = 2;
 
 async function esriKeyWorks(key, request, env, ctx) {
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key)))]
     .map((b) => b.toString(16).padStart(2, '0')).join('');
-  const cacheKey = new Request('https://esri-check.invalid/' + hash, { method: 'GET' });
+  const cacheKey = new Request(`https://esri-check.invalid/${ESRI_CHECK_GEN}/${hash}`, { method: 'GET' });
   const cache = caches.default;
   try {
     const hit = await cache.match(cacheKey);
