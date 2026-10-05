@@ -750,31 +750,42 @@
   /* ── GOLF-153: detailed mode, the day on an hour grid ──────────────
      Blocks are absolutely positioned over an hour ruler because the
      times are real (a 12:24 tee time), not slots. Built at 375px first:
-     the hour gutter is 38px, which leaves 44px of tap target on the
-     narrowest phone we support, and a 90-minute POI is 84px tall.
+     the hour gutter is 40px, which still leaves over 40px of tap target
+     on the narrowest phone we support, and a 90-minute POI is 84px
+     tall.
 
      DEC-039's owner review made it the whole 24 hours, which is 1344px,
      so the grid lives in its own scroller — that is what makes 06:40 and
      23:30 both reachable on a phone. */
-  .tl-viewswitch{display:flex;gap:var(--sp-1);padding:0 var(--sp-3) var(--sp-2)}
+  .tl-viewswitch{display:flex;gap:var(--sp-1);padding:var(--sp-2) var(--sp-3)}
   /* The day's own scroll surface. Capped at 60vh so the day card, its
      menu and the next day are all still reachable without scrolling the
      calendar past them; overscroll-behavior stops a flick at the bottom
      of the hours from carrying on into the page behind it. */
   .tl-scroll{max-height:min(60vh,520px);overflow-y:auto;overscroll-behavior:contain;
-    margin:var(--sp-2) var(--sp-3) var(--sp-2) 0;
-    border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    margin:0 var(--sp-3) var(--sp-3);padding:var(--sp-2) 0;
+    border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--paper-2)}
   .tl-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
   .tl-grid{position:relative}
-  .tl-hour{position:absolute;left:0;right:0;height:0;border-top:1px solid var(--line)}
+  .tl-hour{position:absolute;left:0;right:var(--sp-2);height:0;border-top:1px solid var(--line)}
   .tl-hour-label{position:absolute;left:0;top:-.55em;width:34px;text-align:right;
-    font:var(--fs-micro)/1 var(--font-sans);color:var(--stone);background:var(--paper-2);padding-right:2px}
-  .tl-block,.tl-drive,.tl-checkin{position:absolute;left:38px;right:0;box-sizing:border-box}
-  .tl-block,.tl-drive{overflow:hidden}
+    font:var(--fs-micro)/1 var(--font-sans);color:var(--stone);background:var(--paper-2);
+    padding-right:var(--sp-1)}
+  /* Every layer on the grid sits in the same column: clear of the hour
+     gutter on the left, and off the scroller's right edge rather than
+     flush against it (owner review — things were touching the edges). */
+  .tl-block,.tl-drive,.tl-buffer,.tl-checkin{position:absolute;left:40px;right:var(--sp-2);
+    box-sizing:border-box}
+  .tl-block,.tl-drive,.tl-buffer{overflow:hidden}
   .tl-block{border-radius:var(--radius-sm);border:1px solid var(--line);
-    background:var(--paper-2);padding:2px var(--sp-2);display:flex;gap:var(--sp-2);
+    background:var(--paper-2);padding:3px var(--sp-2);display:flex;gap:var(--sp-2);
     align-items:baseline;font:var(--fs-caption)/1.3 var(--font-sans)}
   .tl-block-time{flex:none;font-weight:700;color:var(--accent-deep);font-variant-numeric:tabular-nums}
+  /* The tee time is the thing the whole day is built around (owner
+     review), so on a round it is the one piece of type that steps up a
+     size. "Arrive by" moved out to its own block in front, which is what
+     leaves the round with a single time on it. */
+  .tl-block-golf .tl-block-time{font-size:var(--fs-small);line-height:1.15}
   .tl-pin{margin-left:2px;color:var(--accent)}
   .tl-block-body{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;gap:0 var(--sp-1);align-items:baseline}
   .tl-block-name{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
@@ -806,7 +817,7 @@
     width:26px;height:3px;margin-left:-13px;border-radius:2px;background:var(--stone);opacity:.5}
   .tl-handle-t::after{top:2px}
   .tl-handle-b::after{bottom:2px}
-  .tl-howto{margin:0 var(--sp-3) var(--sp-2) 38px}
+  .tl-howto{margin:0 var(--sp-3) var(--sp-3) calc(var(--sp-3) + 40px)}
   /* A mouse has the right-click and the drag; a touch screen has the
      hold. Each is told about its own. */
   .tl-howto-touch{display:none}
@@ -823,7 +834,7 @@
     color:var(--stone)}
   /* The details panel — DEC-039's owner review made this the one place a
      block's time, length, buffer and note are edited. */
-  .tl-panel{margin:0 var(--sp-3) var(--sp-2);padding:var(--sp-2) var(--sp-3) var(--sp-3);
+  .tl-panel{margin:var(--sp-2) var(--sp-3) var(--sp-3);padding:var(--sp-3);
     border:1px solid var(--accent);border-radius:var(--radius-md);background:var(--paper)}
   .tl-panel-head{display:flex;align-items:center;gap:var(--sp-2);margin-bottom:var(--sp-2)}
   .tl-panel-title{flex:1 1 auto;min-width:0;font:600 var(--fs-caption)/1.3 var(--font-sans);
@@ -839,26 +850,32 @@
     font:var(--fs-caption) var(--font-sans);color:var(--ink)}
   .tl-note-field{width:100%;height:auto;padding:4px;line-height:1.4;resize:vertical}
   /* A marker has no duration, so nothing but this height tells the
-     layout how much room to keep clear below it — 46px, two lines, and
+     layout how much room to keep clear below it — 48px, two lines, and
      it must stay equal to TL_MARKER_PX in js/timeline-ui.js. Its two
      lines are each held to one line so that stays true for a long
      airport name. */
-  .tl-block.is-marker{height:46px;border-style:dashed;flex-wrap:wrap;overflow:hidden}
+  .tl-block.is-marker{height:48px;border-style:dashed;flex-wrap:wrap;overflow:hidden}
   .tl-block.is-marker .tl-block-name,.tl-block.is-marker .tl-block-sub{
     display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   /* A missed fixed time is never moved, so it has to be visible as well
      as said — the ⚠ carries the words, this carries the glance. */
   .tl-block.is-conflict{border-color:#B3261E;box-shadow:inset 3px 0 0 #B3261E}
   .tl-warn{color:#B3261E;font-weight:700;font-size:var(--fs-micro)}
-  /* GOLF-153: the arrival buffer (DEC-039) — the time before a fixed
-     start that you have to be there by. Hatched like a drive leg,
-     because it is the same kind of thing: time the day spends getting
-     ready rather than doing something. No text of its own; the block
-     says "Arrive by 09:15". */
-  .tl-buffer{position:absolute;left:38px;right:0;box-sizing:border-box;
-    border-radius:var(--radius-sm);
-    background:repeating-linear-gradient(135deg,var(--paper-2) 0 5px,var(--accent-soft) 5px 10px)}
-  .tl-block-ready{flex:none;color:var(--accent-deep);font-size:var(--fs-micro);font-weight:600}
+  /* GOLF-153: the arrival buffer (DEC-039, owner review 2026-10-05) — a
+     block of its own directly in front of the one it protects, so the
+     day reads drive, then arrive-by, then the tee time. Styled like a
+     drive leg because it is the same kind of thing: time the day spends
+     getting there rather than doing something. Hatched in the accent
+     rather than the drive's grey, since the deadline is the block's,
+     not the road's. */
+  .tl-buffer{border-radius:var(--radius-sm);
+    background:repeating-linear-gradient(135deg,var(--paper-2) 0 5px,var(--accent-soft) 5px 10px);
+    border:1px dashed #C6D8E6;color:var(--accent-deep);
+    font:600 var(--fs-micro)/1.2 var(--font-sans);padding:1px var(--sp-2);
+    display:flex;align-items:center;gap:var(--sp-2);cursor:default;white-space:nowrap}
+  /* Dropped first when the band is too short for both halves. */
+  .tl-buffer-len{overflow:hidden;text-overflow:ellipsis;font-weight:400;
+    color:var(--ink-soft)}
   /* A note is a field on a block now (DEC-039, owner review) and shows
      on the block as one quiet line. */
   .tl-note-line{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;
@@ -879,7 +896,7 @@
     font:var(--fs-micro)/1 var(--font-sans);color:var(--stone)}
   /* The stay is a strip along the bottom of the night it covers, not a
      block on the clock (DEC-039). */
-  .tl-stay{margin:0 var(--sp-3) var(--sp-2);padding:var(--sp-2);border-radius:var(--radius-sm);
+  .tl-stay{margin:0 var(--sp-3) var(--sp-3);padding:var(--sp-2) var(--sp-3);border-radius:var(--radius-sm);
     background:var(--accent-soft);border:1px solid #C6D8E6;
     font:var(--fs-caption)/1.3 var(--font-sans);color:var(--ink)}
   .tl-stay-sub{color:var(--ink-soft);margin-left:var(--sp-2)}

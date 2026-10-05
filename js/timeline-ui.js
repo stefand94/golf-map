@@ -43,11 +43,14 @@ const TL_MIN_BLOCK_PX=22;
    still fits on its line. */
 const TL_DRIVE_MIN_PX=14;
 /* What a marker takes up: its time and its two lines of text. It has no
-   duration, so this is the only thing that keeps the next block off it. */
-const TL_MARKER_PX=46;
-/* A buffer is drawn as a hatched band in front of its block. 12px is the
-   floor: below that it is a hint rather than a band. */
-const TL_BUFFER_MIN_PX=12;
+   duration, so this is the only thing that keeps the next block off it.
+   46→48 with the owner review's extra block padding. */
+const TL_MARKER_PX=48;
+/* A buffer is a block of its own in front of the one it protects
+   (DEC-039, owner review 2026-10-05) — it reads "Arrive by 09:15", so it
+   needs a floor of its own: 16px is where that line clears its dashed
+   border. */
+const TL_BUFFER_MIN_PX=16;
 /* Long-press, for a phone with no right-click. Deliberately the same
    half-second GOLF-215 uses, so the two gestures feel like one. */
 const TL_PRESS_MS=500;
@@ -342,7 +345,9 @@ function tlDayGridHTML(d,dayIdx,firstNights){
     /* DEC-039: the arrival buffer — the time before a fixed start that
        you have to be there by. Drawn between the drive and the block,
        because that is the order it happens in, and because it is what
-       the drive is now judged against. */
+       the drive is now judged against. The owner's review made it a
+       block in its own right rather than a wordless band: drive, then
+       arrive-by, then the tee time. */
     const bufH=r.bufferMins>0?Math.max(TL_BUFFER_MIN_PX,r.bufferMins*TL_PX_PER_MIN):0;
     const y=Math.max(top(r.startMins),cursor+driveH+bufH);
     if(driveH){
@@ -355,8 +360,14 @@ function tlDayGridHTML(d,dayIdx,firstNights){
         title="Drive${esc(from)} to ${esc(tripItemName(r.item))}. Computed, so it can't be dragged.">🚗 ${esc(fmtDriveMinutes(r.driveMins))}${from?` <span class="tl-drive-from">${esc(from.trim())}</span>`:''}</div>`);
     }
     if(bufH){
+      /* Styled like a drive leg, because it is the same kind of thing:
+         time the day spends getting there rather than doing something.
+         It says its own deadline, so the block it protects no longer
+         has to carry "Arrive by" inside it and the tee time is left as
+         the one time on the block. */
       parts.push(`<div class="tl-buffer" style="top:${(y-bufH).toFixed(1)}px;height:${bufH.toFixed(1)}px"
-        title="Be here by ${tlFormatTime(r.readyMins)} — ${esc(fmtDriveMinutes(r.bufferMins))} before it starts. The drive has to land by then, not by ${tlFormatTime(r.startMins)}."></div>`);
+        title="Be here by ${tlFormatTime(r.readyMins)} — ${esc(fmtDriveMinutes(r.bufferMins))} before it starts. The drive has to land by then, not by ${tlFormatTime(r.startMins)}. Editable in the block's details."
+        >⏱ Arrive by ${tlFormatTime(r.readyMins)}<span class="tl-buffer-len">${esc(fmtDriveMinutes(r.bufferMins))} before</span></div>`);
     }
     /* A marker (no duration) is sized by its own text instead — it
        carries a second line, and a fixed height would cut that off. It
@@ -375,10 +386,6 @@ function tlDayGridHTML(d,dayIdx,firstNights){
        typed and the visitor is told they cannot make it (DEC-039). */
     const warn=r.conflict?`<span class="tl-warn" title="You'd arrive at ${tlFormatTime(r.conflict.arriveMins)}, and you need to be here by ${
       tlFormatTime(r.conflict.dueMins)} for a ${tlFormatTime(r.conflict.fixedMins)} start.">⚠ arrive ${tlFormatTime(r.conflict.arriveMins)}</span>`:'';
-    /* DEC-039 asks for this in words on the block, not only as the band
-       in front of it: for a 10:00 tee, "Arrive by 09:15". */
-    const ready=r.bufferMins>0
-      ?`<span class="tl-block-ready" title="${esc(fmtDriveMinutes(r.bufferMins))} before it starts.">Arrive by ${tlFormatTime(r.readyMins)}</span>`:'';
     /* The drag contract travels on the element: everything the pointer
        handlers need to turn a y delta into a new time is here, so they
        never have to look the item up in the model mid-gesture. */
@@ -388,7 +395,7 @@ function tlDayGridHTML(d,dayIdx,firstNights){
       data-tlblock="1" data-tlday="${d.id}" data-tlitem="${esc(r.item.id)}"${dragAttrs}
       title="${ro?'':esc(tlBlockHint(r,kind))}">
       <span class="tl-block-time">${tlFormatTime(r.startMins)}${r.fixed?'<span class="tl-pin" title="A time you set. Everything after it follows from here.">•</span>':''}</span>
-      <span class="tl-block-body">${kind.icon} ${tlBlockLabelHTML(r)}${ready}${warn}</span>
+      <span class="tl-block-body">${kind.icon} ${tlBlockLabelHTML(r)}${warn}</span>
       ${kind.resize&&!ro?'<span class="tl-handle tl-handle-t" aria-hidden="true"></span><span class="tl-handle tl-handle-b" aria-hidden="true"></span>':''}
     </div>`);
     return parts.join('');
