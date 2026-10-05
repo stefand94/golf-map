@@ -370,6 +370,10 @@ function tlFlightFormHTML(dayId){
     <label class="tl-fl-label" for="tl-fl-to">Flying into</label>
     <select class="tb-field" id="tl-fl-to" onchange="tlFlightPickAirport()"
       title="Picking a listed airport gives the flight its location, so the drive from the airport to your first stop is worked out for you.">
+      ${/* An empty first option, or the select opens pre-set to the first
+           airport alphabetically and a visitor who never touches it gets
+           a flight to Aberdeen. Add is refused while it is chosen. */''}
+      <option value=""${!s.other&&!tlAirportByCode(s.toCode)?' selected':''}>Pick an airport…</option>
       ${tlFlightOptionsHTML(s.other?'':s.toCode)}
       <option value="*"${s.other?' selected':''}>Somewhere else — type it</option>
     </select>
