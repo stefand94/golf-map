@@ -64,22 +64,37 @@ No other host is contacted for data. The Worker's upstream URLs are in
 ### 2.2 Coordinates (`lat`, `lng`, `coordSrc`, `osm`)
 
 - **Source:**
-  - 292 records carry `coordSrc:"osm"` and an `osm` element reference.
+  - 339 records carry `coordSrc:"osm"` and an `osm` element reference.
     Their position is the OpenStreetMap golf-course feature. Scripts:
     `scripts/fetch_osm_golf_courses.py` and `scripts/merge_osm_coords.py`
-    (GOLF-161, `637a36f`; complete per board commit `fd6f179`). SA's OSM
-    pass is `scripts/fetch_sa_golf_overpass.py` (GOLF-121a).
-  - The remaining 587 have no `coordSrc`. Wales, Ireland and South Africa
+    (GOLF-161, `637a36f`; complete per board commit `fd6f179`) for 292, and
+    `scripts/fetch_golf238_osm.py` and `scripts/merge_golf238_coords.py`
+    (GOLF-238, 2026-10-05) for 47 more. SA's OSM pass is
+    `scripts/fetch_sa_golf_overpass.py` (GOLF-121a).
+  - The remaining 540 have no `coordSrc`. Wales, Ireland and South Africa
     came from DotGolf or hand placement. DEC-023 records that those bodies'
     terms don't restrict this.
   - GOLF-183 (`9863425`) hand-corrected 11 flagged positions.
-- **The England/Scotland gap:** DEC-023 says England and Scotland
-  coordinates must be OSM. Of the shown England/Scotland records,
-  **49 have no `coordSrc:"osm"`**: 12 London, 19 Top 100 and 18 Scotland.
-  The 5 `dupOf` London records are excluded from that count. The 49 are
-  either not mapped in OSM or failed the GOLF-161 match. Their positions
-  are likely DotGolf-derived or hand-placed, and nothing in the data says
-  which. This is open risk R3.
+- **The England/Scotland gap (GOLF-238):** DEC-023 says England and
+  Scotland coordinates must be OSM. GOLF-161 left 49 shown records without
+  it (12 London, 19 Top 100, 18 Scotland; the 5 `dupOf` London records are
+  excluded). Most were multi-course venues that GOLF-161's matcher refused
+  on purpose, because one OSM object backed several of our courses.
+  GOLF-238 matched them by hand against a fresh Overpass pull:
+  - **47 re-sourced.** A course-specific OSM polygon where one exists
+    (Carnoustie, Peterhead, Monifieth, Royal Dornoch), otherwise the venue's
+    polygon, shared by its sibling courses (the map de-stacks those pins).
+    Two unnamed polygons were accepted because each is the only course at
+    that spot (Godstone, Kington).
+  - **43 moved more than 300 m.** All are the same club's feature. The old
+    pins mostly sat on the clubhouse (consistent with a directory address);
+    the new ones are the course centroid, as GOLF-161 used. The largest is
+    Walton Heath (New), 1.4 km. Full list:
+    `scripts/output/golf238_merge_report.json` (gitignored).
+  - **2 unresolved, old coordinate kept:** Sevenoaks Town (OSM has only an
+    unnamed clubhouse) and Cabot Highlands Old Petty (not mapped; the nearest
+    feature is Castle Stuart, a different course). Their source is still
+    unrecorded. Open risk R3.
 - **Licence:** OSM data is © OpenStreetMap contributors, **ODbL 1.0**.
 - **Attribution shown:** "Data © OpenStreetMap contributors (ODbL)" (widened
   from "Course positions" in GOLF-240). It is in the map's credits on every
@@ -343,7 +358,7 @@ dashboard by Stefan.
 ODbL's share-alike applies to a **Derivative Database** that is **publicly
 used**. In plain terms:
 
-- **What is ODbL-derived here:** 292 course positions, every POI in
+- **What is ODbL-derived here:** 339 course positions, every POI in
   `pois-*.js`, `rail-geometry.js`, SA positions from the OSM pass, and live
   hotel/POI results.
 - **Showing it on a map** (a "Produced Work") needs only the attribution we
@@ -390,9 +405,10 @@ Ordered by how much they would matter to a buyer or licensee.
    Golf blurbs, the higher risk here, were removed in GOLF-237.)
 2. **R2. Closed by GOLF-237.** The 71 England Golf club logos and their
    files were removed, and `test_data.js` blocks their return.
-3. **R3. 49 England/Scotland coordinates are not from OSM.** This breaks
-   DEC-023's own rule for 49 shown courses (12 London, 19 Top 100,
-   18 Scotland). Nothing in the record says where their positions came from.
+3. **R3. 2 England/Scotland coordinates are not from OSM** (was 49;
+   GOLF-238 re-sourced 47). Sevenoaks Town and Cabot Highlands Old Petty
+   still break DEC-023's rule, because OSM has nothing that can be tied to
+   them. Nothing in the record says where their positions came from.
 4. **R4. Tiles and routing are not cleared for commercial use.** Esri was
    accepted as keyless only while the site was non-commercial. ORS
    commercial terms are unconfirmed. DEC-038 makes the site commercial the

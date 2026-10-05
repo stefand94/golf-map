@@ -379,6 +379,22 @@ found real failures:
   maps the venue, so every contested group is left alone and reported —
   moving one course and not its siblings is worse than moving none.
 
+### `fetch_golf238_osm.py` + `merge_golf238_coords.py`
+GOLF-238: the 49 England/Scotland records the GOLF-161 merge left alone,
+mostly the contested multi-course venues above. One Overpass pull of golf
+courses and clubhouses within 3 km of each point, then a **hand-written**
+match table (`MATCHES` in the merge script), applied in place the same way.
+
+```bash
+python3 scripts/fetch_golf238_osm.py points.json   # [{id,lat,lng}, ...]
+python3 scripts/merge_golf238_coords.py --dry-run
+python3 scripts/merge_golf238_coords.py
+```
+
+Sibling courses deliberately share their venue's polygon here; the map
+de-stacks coincident pins (`jitteredLatLng()`, `js/map.js`). The report goes
+to `scripts/output/golf238_merge_report.json`.
+
 ### `update_worker_build.py`
 GOLF-164: stamps a content hash of `scripts/cloudflare-worker/ors-proxy.js`
 into its own `WORKER_BUILD` constant, which the Worker returns as
