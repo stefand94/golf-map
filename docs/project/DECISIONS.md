@@ -957,4 +957,5 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
     - **the day header** ("Day 1"): a note for the whole day;
     - **a gap between activities**: a note in that free time, sitting in the gap.
     Notes are **shared** (read-only in the share link).
+    Notes show **in detailed mode only**, not in the default list view (owner, 2026-10-05). Desktop uses right-click; a phone uses long-press on detailed-view blocks plus an "Add note" menu item. Cap: 300 characters.
 - **Date:** 2026-10-05 · **Affects:** GOLF-153, GOLF-99 (share), GOLF-224 (load whitelist), GOLF-235 (share counting unchanged).
