@@ -116,7 +116,12 @@ function tbAttachSearch(id,opts){
     input.setAttribute('aria-expanded',String(!!list.length));
   };
   const pick=row=>{
-    const r={label:row.dataset.label,lat:parseFloat(row.dataset.lat),lng:parseFloat(row.dataset.lng)};
+    /* GOLF-243: a row may say what kind of thing it is (an airport, a
+       station, a plain place) and carry its code. Additive — every other
+       caller reads label/lat/lng and ignores the rest — and `undefined`
+       when the row is one of the place rows that have always been here. */
+    const r={label:row.dataset.label,lat:parseFloat(row.dataset.lat),lng:parseFloat(row.dataset.lng),
+      kind:row.dataset.kind||undefined,code:row.dataset.code||undefined};
     close();
     opts.onPick(r,input);
   };
@@ -518,13 +523,190 @@ function itinLegRowHTML(l){
     <span class="tb-item-price">${estMark(!!(l.detail&&l.detail.est))}${tbDualPriceHTML(l.price,cur)}</span>
   </div>`;
 }
+/* ════════════════════════════════════════════════════════════════════
+   GOLF-243 — Start and End rows
+
+   A row above Day 1 and a row below the last day, in both the list and
+   the calendar view, because they are facts about the trip rather than
+   about a day. Each is either an invitation ("＋ Add start point") or a
+   chip naming the place, with the drive into or out of it underneath
+   when the place has coordinates.
+
+   The picker searches data we already shipped — data/airports.js and
+   GOLF-243's data/rail-stations.js — so finding "Inverness Airport" or
+   "Edinburgh Waverley" needs no network at all, which matters because
+   the Worker's geocoder is the one part of this app that regularly
+   isn't there (see the known-issues note in CLAUDE.md). Place search is
+   offered underneath as a fallback, and anything typed can be used as a
+   plain label with no coordinates.
+   ════════════════════════════════════════════════════════════════════ */
+let tbEndpointPicker=null; // {which:'start'|'end'} while the field is open
+const TB_EP_MAX_ROWS=8;
+function tbEndpointPickerOpen(which){
+  tbEndpointPicker={which};
+  renderTripBuilder();
+  const el=document.getElementById('tb-ep-q');
+  if(el)el.focus();
+}
+function tbEndpointPickerClose(){tbEndpointPicker=null;renderTripBuilder();}
+/* The static index, built once per keystroke from two arrays we already
+   have in memory. Matched on a word boundary rather than anywhere in the
+   string, so "inv" finds Inverness and not every "...ville". An exact
+   IATA code always wins — three letters is how people say an airport. */
+function tbEndpointStaticMatches(q){
+  const s=String(q||'').trim().toLowerCase();
+  if(s.length<2)return[];
+  const out=[];
+  const hit=(name,extra)=>{
+    const n=name.toLowerCase();
+    if(n.startsWith(s))return 2;                      // "Inverness…"
+    if(new RegExp('\\b'+s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).test(n))return 1; // "… Waverley"
+    if(extra&&extra.toLowerCase().startsWith(s))return 1;
+    return 0;
+  };
+  if(typeof AIRPORTS!=='undefined'&&Array.isArray(AIRPORTS))AIRPORTS.forEach(a=>{
+    const exact=a.iata&&a.iata.toLowerCase()===s;
+    const r=exact?3:hit(a.name,a.town);
+    if(r)out.push({rank:r+(a.big?0.5:0),kind:'airport',label:a.name,code:a.iata,lat:a.lat,lng:a.lng,meta:a.town||''});
+  });
+  if(typeof RAIL_STATIONS!=='undefined'&&Array.isArray(RAIL_STATIONS))RAIL_STATIONS.forEach(st=>{
+    const r=hit(st.name,null);
+    if(r)out.push({rank:r+(st.big?0.5:0),kind:'station',label:st.name,lat:st.lat,lng:st.lng,
+      meta:st.big?'Main line station':'Station'});
+  });
+  return out.sort((a,b)=>b.rank-a.rank||a.label.length-b.label.length).slice(0,TB_EP_MAX_ROWS);
+}
+/* The results panel. Painted on every keystroke from the static data
+   alone, then repainted when the geocoder answers — so the list is never
+   empty while a request is in flight, and a failed request costs the
+   place rows and nothing else. */
+function tbEndpointResultsHTML(q,places){
+  const s=String(q||'').trim();
+  if(!s)return'';
+  const stat=tbEndpointStaticMatches(s);
+  const rows=stat.map(r=>`<div class="tb-place-row" role="option"
+    data-label="${esc(r.label)}" data-lat="${r.lat}" data-lng="${r.lng}"
+    data-kind="${r.kind}"${r.code?` data-code="${esc(r.code)}"`:''}
+    >${r.kind==='airport'?'✈':'🚆'} ${esc(r.label)}${r.code?` <span class="tb-ep-code">${esc(r.code)}</span>`:''}${
+      r.meta?`<span class="tb-ep-meta">${esc(r.meta)}</span>`:''}</div>`).join('');
+  let placeRows='';
+  if(Array.isArray(places))placeRows=places.slice(0,TB_EP_MAX_ROWS).map(p=>`<div class="tb-place-row" role="option"
+    data-label="${esc(p.label)}" data-lat="${p.lat}" data-lng="${p.lng}" data-kind="place"
+    >📍 ${esc(p.label)}</div>`).join('');
+  else if(places===undefined&&!stat.length)
+    placeRows=`<div class="tb-place-empty">Place search is temporarily unavailable — airports and stations still work.</div>`;
+  /* Always offered, last: an endpoint is allowed to be a name with no
+     coordinates ("Edinburgh", "my brother's house"), and the row says
+     plainly what that costs you. */
+  const typed=`<div class="tb-place-row is-typed" role="option"
+    data-label="${esc(s.slice(0,80))}" data-kind="place"
+    >✏️ Use “${esc(s.slice(0,40))}” as typed<span class="tb-ep-meta">No location, so no drive leg</span></div>`;
+  return rows+placeRows+typed;
+}
+function tbEndpointPickerHTML(which){
+  const ep=tripEndpointGet(which);
+  return`<div class="tb-ep-pick">
+    <div class="tb-search-wrap">
+      <input id="tb-ep-q" class="tb-field" type="search" autocomplete="off" role="combobox"
+        aria-expanded="false" aria-controls="tb-ep-q-results"
+        placeholder="Airport, station or place" value="${esc(ep?ep.label:'')}">
+    </div>
+    <div id="tb-ep-q-results" class="tb-place-results tb-ep-results" role="listbox"></div>
+    <button type="button" class="tb-btn is-sm is-quiet" onclick="tbEndpointPickerClose()">Cancel</button>
+  </div>`;
+}
+/* Wired after every render, like the pane's other search fields. The
+   static rows are painted from onType — synchronously, before any
+   request exists — which is what makes an airport findable with the
+   Worker blocked. */
+function tbEndpointAttachSearch(){
+  if(!tbEndpointPicker)return;
+  const resEl=document.getElementById('tb-ep-q-results');
+  if(!resEl)return;
+  const q=()=>{const el=document.getElementById('tb-ep-q');return el?el.value:'';};
+  tbAttachSearch('tb-ep-q',{
+    country:()=>tbTripCountryCode(null),
+    layers:'coarse',
+    onType(text){resEl.innerHTML=tbEndpointResultsHTML(text,null);},
+    render(list){resEl.innerHTML=tbEndpointResultsHTML(q(),list);},
+    onPick(r){
+      const which=tbEndpointPicker?tbEndpointPicker.which:'start';
+      tripEndpointSet(which,{label:r.label,kind:r.kind||'place',
+        lat:r.lat,lng:r.lng,code:r.code});
+      tbEndpointPicker=null;
+      renderTripBuilder();tbDrawMap();
+    }
+  });
+  resEl.innerHTML=tbEndpointResultsHTML(q(),null);
+}
+function tbEndpointClearRow(which){
+  tripEndpointClear(which);
+  tbEndpointPicker=null;
+  renderTripBuilder();tbDrawMap();
+}
+function tbEndpointSameAsStart(){
+  if(!tripEndpointCopyStart())return;
+  tbEndpointPicker=null;
+  renderTripBuilder();tbDrawMap();
+}
+/* The drive into the start's next stop, or out of the last stop into the
+   end. Read off the same chain tripDayLegs() reads, so the number under
+   the chip and the number in the fuel total are the same number. */
+function tripEndpointDriveRow(which){
+  const chain=tripStopChain();
+  if(chain.length<2)return null;
+  const isEnd=which==='end';
+  const me=isEnd?chain[chain.length-1]:chain[0];
+  if(me.type!==(isEnd?'tripend':'tripstart'))return null;
+  const other=isEnd?chain[chain.length-2]:chain[1];
+  const leg=isEnd?tripLegEstimate(other,me):tripLegEstimate(me,other);
+  if(!leg||leg.flown)return null;
+  return{type:'drive',mins:leg.minutes,real:!!leg.real,
+    label:isEnd?`${other.name} → ${me.name}`:`${me.name} → ${other.name}`,
+    hasFerry:!!leg.hasFerry,ferryMinutes:leg.ferryMinutes||0,
+    samePoint:me.lat===other.lat&&me.lng===other.lng};
+}
+function tbEndpointRowHTML(which,readOnly){
+  const ep=tripEndpointGet(which);
+  const isEnd=which==='end';
+  const word=isEnd?'End':'Start';
+  if(!ep){
+    if(readOnly)return''; // nothing to say in a shared trip that has none
+    return`<div class="tb-ep-row is-empty">
+      <span class="tb-ep-lbl">${word}</span>
+      <button type="button" class="tb-btn is-sm is-quiet" onclick="tbEndpointPickerOpen('${which}')"
+        >＋ Add ${isEnd?'end':'start'} point</button>
+      ${isEnd&&tripStart?`<button type="button" class="tb-btn is-sm is-quiet"
+        onclick="tbEndpointSameAsStart()" title="Finish where the trip started">Same as start</button>`:''}
+      ${tbEndpointPicker&&tbEndpointPicker.which===which?tbEndpointPickerHTML(which):''}
+    </div>`;
+  }
+  const drive=tripEndpointDriveRow(which);
+  return`<div class="tb-ep-row">
+    <span class="tb-ep-lbl">${word}</span>
+    <span class="tb-ep-chip"><span class="tb-ep-chip-ico" aria-hidden="true">${tripEndpointIcon(ep)}</span>
+      <span class="tb-ep-chip-name">${esc(tripEndpointName(ep))}</span></span>
+    ${tripEndpointLocated(ep)?'':`<span class="wt tb-ep-nogeo" title="This is a name only, so it has no drive leg, no mileage and no pin on the map">No location</span>`}
+    ${readOnly?'':`<span class="tb-ep-acts">
+      <button type="button" class="tb-btn is-sm is-quiet" onclick="tbEndpointPickerOpen('${which}')" title="Change ${word.toLowerCase()} point">Edit</button>
+      <button type="button" class="tb-btn is-sm is-quiet" onclick="tbEndpointClearRow('${which}')" title="Remove ${word.toLowerCase()} point">Clear</button>
+    </span>`}
+    ${tbEndpointPicker&&tbEndpointPicker.which===which&&!readOnly?tbEndpointPickerHTML(which):''}
+    ${drive?tbDriveCapHTML(drive):''}
+  </div>`;
+}
 function tbItinAllHTML(){
   if(!tripDays.length)return`<p class="hint">Add a day to start building your itinerary.</p>`;
   /* GOLF-153: the same two views the trip's owner had. The toggle is the
      only thing added when detailed mode is off — the day markup below is
      untouched, so an existing share link renders exactly as it did. */
   const firstNights=tlFirstNightItemIds();
-  return tlViewToggleHTML()+tripDays.map((d,idx)=>{
+  /* GOLF-243: where the trip starts and ends, above and below the days.
+     Read-only in the shared view, where there is nothing to edit — and
+     omitted there entirely when unset, rather than inviting a recipient
+     to add one to someone else's trip. */
+  const ro=(typeof appMode!=='undefined'&&appMode==='shared');
+  return tlViewToggleHTML()+tbEndpointRowHTML('start',ro)+tripDays.map((d,idx)=>{
     const legs=tripDayLegs(idx);
     const dow=d.date?new Date(d.date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short'}):'';
     return`<div class="tb-day">
@@ -543,7 +725,7 @@ function tbItinAllHTML(){
            sheet render in both views. */''}
       ${tbDayCostsReadHTML(d)}
     </div>`;
-  }).join('');
+  }).join('')+tbEndpointRowHTML('end',ro);
 }
 /* GOLF-207: the Itinerary "Show: Everything / Golf only / Stays only /
    Stops only" filter is gone, and with it tbItinGolfListHTML(),
@@ -1451,7 +1633,12 @@ function tripDayScheduleHTML(){
       <button class="tb-btn" onclick="setAppMode('plan')">Browse courses</button></div>`;
   const unscheduled=tripUnscheduled();
   const reorderHTML=tbReorderSuggestionHTML();
-  const daysHTML=tlViewToggleHTML()+tripDays.map((d,idx)=>tbDayCardHTML(d,idx)).join('');
+  /* GOLF-243: the Start and End rows wrap the days in the live itinerary
+     too — in both views, since this is above and below the day cards and
+     tbDayCardHTML() is what switches between the list and the calendar. */
+  const daysHTML=tlViewToggleHTML()+tbEndpointRowHTML('start',false)
+    +tripDays.map((d,idx)=>tbDayCardHTML(d,idx)).join('')
+    +tbEndpointRowHTML('end',false);
   const unschedHTML=unscheduled.length?`
     <div class="tb-day tb-day-wish" ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
       ondrop="event.preventDefault();tbDropOut(this);tbDropOn(null,null);">
@@ -1960,6 +2147,9 @@ function renderTripBuilder(){
     tbFocusPlaceOnMap(parseFloat(focus.dataset.lat),parseFloat(focus.dataset.lng),focus.dataset.label);
   });
   }
+
+  /* ── GOLF-243: the start/end point picker, when one is open. ── */
+  tbEndpointAttachSearch();
 
   /* ── Call site 2: the open "add a stop" form's location field. ── */
   if(tbAddStop&&document.getElementById('tb-addstop-name')){

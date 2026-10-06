@@ -1085,6 +1085,7 @@ function tbResetTransients(){
   tbBorder=8;
   tbPoiOn.clear();tbPoiMore.clear();
   tbHotelPickerFor=null;
+  tbEndpointPicker=null; // GOLF-243
 }
 function tripSwitchTo(id){
   if(id===activeTripId||!trips[id])return;

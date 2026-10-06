@@ -510,6 +510,41 @@
   .tb-drive-cap.has-ferry{white-space:normal}
   .tb-ferry-tag{background:#E1EAF4;color:#1B2A4A}
 
+  /* GOLF-243: the trip's Start and End rows, above Day 1 and below the
+     last day. Deliberately flatter than a day card — a day is a container
+     and these are one fact each — and the row wraps, so at 375px the
+     chip, the actions and the open picker stack instead of clipping. */
+  .tb-ep-row{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);
+    padding:var(--sp-2) var(--sp-3);margin:var(--sp-2) 0}
+  .tb-ep-lbl{font:700 var(--fs-micro) var(--font-sans);letter-spacing:.06em;
+    text-transform:uppercase;color:var(--stone);min-width:3.2em}
+  .tb-ep-chip{display:inline-flex;align-items:center;gap:var(--sp-1);
+    padding:2px var(--sp-2);border-radius:999px;background:var(--accent-soft);
+    font:600 var(--fs-small) var(--font-sans);max-width:100%;min-width:0}
+  .tb-ep-chip-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tb-ep-acts{display:inline-flex;gap:var(--sp-1);margin-left:auto}
+  .tb-ep-nogeo{background:#F0EDE6;color:#5B5347}
+  /* The picker takes the whole width of the row once it opens. */
+  .tb-ep-pick{flex:1 0 100%;display:flex;align-items:flex-start;gap:var(--sp-2);
+    position:relative;margin-top:var(--sp-1)}
+  .tb-ep-pick .tb-search-wrap{flex:1 1 auto;min-width:0}
+  .tb-ep-results{left:0;right:auto;width:100%;max-width:420px}
+  /* A result row here is two lines — the name, then what it is — so it
+     overrides the shared .tb-place-row's single-line flex layout. */
+  .tb-ep-results .tb-place-row{display:block;line-height:1.35}
+  .tb-ep-code{font:700 var(--fs-micro) var(--font-sans);color:var(--stone);margin-left:6px}
+  .tb-ep-meta{display:block;margin-top:1px;font:400 var(--fs-micro) var(--font-sans);color:var(--stone)}
+  .tb-ep-row .tb-drive-cap{flex:1 0 100%;padding-left:0}
+  /* The map's start/end markers: a small flag-on-a-stick, not a teardrop.
+     Courses, hotels and stops are already teardrops and emoji markers, and
+     "where the trip begins" is a different kind of thing from "somewhere
+     you are going" (GOLF-243). */
+  .tb-ep-pin{display:block;width:18px;height:18px;border-radius:4px;
+    background:#1B2A4A;color:#fff;border:2px solid #fff;
+    box-shadow:0 1px 3px rgba(0,0,0,.4);
+    font:700 10px/14px var(--font-sans);text-align:center}
+  .tb-ep-pin.is-end{background:#8C2F39;border-radius:50%}
+
   /* Day footer: the two add actions, sized as real targets. */
   .tb-day-add{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3) var(--sp-3);flex-wrap:wrap}
   .tb-day-add .tb-btn{flex:1 1 auto}

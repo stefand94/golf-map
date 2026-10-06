@@ -7,9 +7,9 @@
       "runtimeArgs": [
         "-m",
         "http.server",
-        "8934"
+        "8961"
       ],
-      "port": 8934
+      "port": 8961
     }
   ]
 }

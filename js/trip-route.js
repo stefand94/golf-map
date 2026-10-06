@@ -97,6 +97,19 @@ function tripShowOrdered(order,clear=true,fit=true){
         L.circleMarker([stop.lat,stop.lng],{radius:8,color:fill,weight:3,fillColor:'#fff',fillOpacity:1})
           .bindTooltip(esc(stop.name||''),{direction:'top'}).addTo(tripLayer);
       }
+      /* GOLF-243: the trip's own start and end. Deliberately a small
+         flag-on-a-stick rather than anything teardrop-shaped — a course
+         pin, a hotel and a POI are all teardrops or emoji markers
+         already, and "where the trip begins" is a different kind of
+         thing from "somewhere you are going". */
+      else if(stop.type==='tripstart'||stop.type==='tripend'){
+        const isEnd=stop.type==='tripend';
+        L.marker([stop.lat,stop.lng],{icon:L.divIcon({className:'',
+          html:`<span class="tb-ep-pin${isEnd?' is-end':''}">${isEnd?'◼':'▶'}</span>`,
+          iconSize:[18,18],iconAnchor:[9,9],tooltipAnchor:[0,-10]})})
+          .bindTooltip(`${isEnd?'Trip ends':'Trip starts'}: ${esc(stop.name||'')}`,{direction:'top'})
+          .addTo(tripLayer);
+      }
     }else{
       /* GOLF-130: a trip stop is now just the shared teardrop pin (yellow,
          since it's in the trip) — no numbered badge. Sequence is still
@@ -630,13 +643,59 @@ function tripStopChainSig(){
       +(it.type==='flight'?'>'+it.fromLat+','+it.fromLng:'')+';';
     sig+='|';
   }
+  /* GOLF-243: the endpoints are part of what the chain is derived from,
+     so setting or clearing one has to invalidate the cache. */
+  const epSig=e=>e?e.label+'@'+e.lat+','+e.lng:'';
+  if(typeof tripStart!=='undefined')sig+='<'+epSig(tripStart)+'>'+epSig(tripEnd);
   return sig;
+}
+/* ── GOLF-243: the trip's start and end points, as stops ──────────────
+   An endpoint with coordinates is an ordinary member of the stop chain,
+   which is the whole trick: every piece of machinery downstream — the
+   drive estimate, the fuel total, the route line, the costs — reads
+   {lat,lng} off a stop and needs no special case. An endpoint the
+   visitor only typed has no coordinates, so it never becomes a stop and
+   is a label in the itinerary and nothing else.
+   `dayIdx` pins the start to day 1 and the end to the last day so the
+   route line keeps its per-day colour; a distinct `type` keeps either
+   from being mistaken for GOLF-56's day place-anchor. */
+function tripEndpointStop(which){
+  /* typeof-guarded because scripts/test_timeline.js exercises this module
+     without js/trip-model.js loaded — the same guard tbDetailed and
+     tlInboundFlightId already carry in here. */
+  if(typeof tripEndpointGet!=='function')return null;
+  const ep=tripEndpointGet(which);
+  const pt=tripEndpointPoint(ep);
+  if(!pt)return null;
+  const idx=which==='end'?Math.max(0,tripDays.length-1):0;
+  return{type:which==='end'?'tripend':'tripstart',endpoint:which,
+    lat:pt.lat,lng:pt.lng,name:tripEndpointName(ep),
+    dayIdx:idx,day:tripDays.length?idx+1:null};
 }
 function tripStopChain(){
   const sig=tripStopChainSig();
   if(sig===_stopChainSig&&_stopChainCache)return _stopChainCache;
   const chain=[];
   tripDays.forEach((d,idx)=>tripDayStops(idx).forEach(s=>chain.push(Object.assign({dayIdx:idx},s))));
+  /* GOLF-243. The start goes on the front unless the trip already opens
+     with the inbound flight's arrival: that stop IS where the trip starts,
+     and a second point in front of it would invent a drive to the airport
+     the visitor flew out of. The end goes on the back, flown when the
+     chain reaches it on rails — the same rule DEC-039 applies to any stop
+     after a train, and what stops an Edinburgh→Inverness train home being
+     costed and fuelled as a drive. */
+  /* A trip with no days is not a trip yet: the itinerary shows "Nothing
+     scheduled yet" and no Start/End rows, so letting the two endpoints
+     form a leg between them would have put miles and fuel on a trip that
+     has nothing in it. */
+  if(!tripDays.length){_stopChainSig=sig;_stopChainCache=chain;return chain;}
+  const st=tripEndpointStop('start');
+  if(st&&!(chain.length&&chain[0].type==='flight'&&chain[0].legPart==='arrive'))chain.unshift(st);
+  const en=tripEndpointStop('end');
+  if(en){
+    if(tripTrainBreakPending(tripDays.length)){en.flown=true;en.railed=true;}
+    chain.push(en);
+  }
   _stopChainSig=sig;_stopChainCache=chain;
   return chain;
 }
@@ -684,7 +743,11 @@ function tripTotalDriveMiles(){
 }
 function tripDayOrder(){
   if(!tripDays.length)return tripSeq.map(i=>({type:'course',i,lat:C[i].lat,lng:C[i].lng,name:V(i,'n'),day:null}));
-  const order=[...tripDays.flatMap((d,idx)=>tripDayStops(idx)),
+  /* GOLF-243: the map draws the trip's start and end too, and draws them
+     in the right place in the line — taken from the chain rather than
+     rebuilt here, so the picture and the mileage can never disagree. */
+  const chain=tripStopChain();
+  const order=[...chain,
     ...tripUnscheduled().map(i=>({type:'course',i,lat:C[i].lat,lng:C[i].lng,name:V(i,'n'),day:null}))];
   return order;
 }
