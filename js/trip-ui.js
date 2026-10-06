@@ -611,23 +611,27 @@ function tripCostLineItems(){
       const flat=it.priceType==='total'||it.priceType==='flat';
       const key=stayKey(it);
       const name=tripItemName(it);
-      const sharingBit=det.sharing?` (${curSym(det.cur)}${(det.base||0).toFixed(0)} × ${det.guests} people)`:'';
+      /* GOLF-249: the "× N people" tag is the one place the sharing
+         basis is stated. The label used to repeat it as "(£90 × 4
+         people)", and a multi-night label quoted the whole party's
+         nightly rate beside that tag, which read as a second multiply. */
       if(stayGroups.has(key)){
         const row=items[stayGroups.get(key)];
         row._nights++;
         if(!flat)row.amount=(row.amount||0)+(det.total||0);
-        row.label=row._nights>1
-          ? `${row._name} (${curSym(row._cur)}${(row.amount/row._nights).toFixed(0)}/night × ${row._nights} nights)`
-          : row._name+sharingBit;
+        /* A stay mixing a typed price with the regional guess has no single
+           per-person rate, so it falls back to the party's nightly rate. */
+        if(!det.sharing&&row._guests>1){row._guests=1;row.tag=det.est?'estimated':null;}
+        row.label=`${row._name} (${curSym(row._cur)}${(row.amount/row._nights/row._guests).toFixed(0)}/night × ${row._nights} nights)`;
       }else{
         stayGroups.set(key,items.length);
-        items.push({label:name+sharingBit,cat:'Stay',amount:det.total,day:idx+1,cur:det.cur,
+        items.push({label:name,cat:'Stay',amount:det.total,day:idx+1,cur:det.cur,
           /* GOLF-193: was `det.sharing?'× N people':'estimated'`, which
              tagged a price the visitor had typed as "estimated" whenever
              the party was one (sharing is only true for gs>1). det.est is
              the fact being described. */
           tag:det.sharing?`× ${det.guests} people`:(det.est?'estimated':null),
-          _nights:1,_name:name,_cur:det.cur});
+          _nights:1,_name:name,_cur:det.cur,_guests:det.sharing?det.guests:1});
       }
       return;
     }
