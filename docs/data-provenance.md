@@ -335,6 +335,35 @@ No other host is contacted for data. The Worker's upstream URLs are in
   - The `davwheat/uk-railway-stations` GitHub CSV gives National Rail. It
     is **ODbL 1.0** (repo licence, checked 2026-10-04), and its README asks
     for credit to its author, Trainline EU and Trainline's sources.
+- **Trip start/end stations (GOLF-243):** `data/rail-stations.js`, a
+  SEPARATE file from `stations.js` above and a different job — `stations.js`
+  is the London network drawn on the map, this is the national network a
+  trip can start from or end at. 1,872 stations: GB 1,415, Ireland 99,
+  South Africa 358.
+  - **Source:** OpenStreetMap `railway=station`, via Overpass, fetched
+    2026-10-06 by `scripts/fetch_main_stations.py`, cut and ranked by
+    `scripts/merge_main_stations.py`. Not hand-edited; re-runnable.
+  - **Licence:** ODbL 1.0, © OpenStreetMap contributors. Terms check
+    2026-10-06: OSM is already a cleared, credited source here (golf-course
+    coordinates and the whole POI layer come from it), the attribution the
+    map already shows covers this file too, and Overpass fair use is
+    respected the same way `fetch_pois.py` does it — a real User-Agent, the
+    big mirrors only, and backoff between regions.
+  - **Why not all of it:** the full OSM set is 3,732 stations and 59KB
+    gzipped, which is a 30% rise in what every visit downloads before the
+    map draws. Cut to stations within 10km of a course in `courses-*.js`,
+    plus every `big` intercity station, which is 1,872 and 30KB. Anything
+    else falls through to place search. South Africa is further cut to
+    stations carrying a passenger network or operator (Metrorail, Gautrain,
+    PRASA); 852 of OSM's 1,262 South African stations carry no operator at
+    all and are Transnet freight sidings or long-closed halts.
+  - **Derived field:** `big` marks the 104 stations the picker floats to
+    the top — six or more platforms in OSM, or a name in the merge
+    script's hand-kept `TERMINI` list (the intercity stations whose OSM
+    record carries no platform count; Inverness is the example that
+    started the list).
+  - **Shown?** Yes — as the options in the trip start/end picker, and on
+    the itinerary and a shared link once picked.
 - **Track geometry:** `rail-geometry.js` was traced from OpenStreetMap
   route relations by `scripts/fetch_rail_geometry.py` and
   `scripts/merge_rail_geometry.py`. ODbL.

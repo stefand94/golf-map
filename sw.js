@@ -128,6 +128,7 @@ const PRECACHE_URLS = [
   './data/stations.js',
   './data/rail-geometry.js',
   './data/airports.js',
+  './data/rail-stations.js',
   './data/courses-london.js',
   './data/courses-top100.js',
   './data/courses-scotland.js',

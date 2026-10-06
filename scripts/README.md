@@ -346,6 +346,35 @@ python3 scripts/merge_airports.py
 node scripts/test_data.js                # checks the result
 ```
 
+### `fetch_main_stations.py` + `merge_main_stations.py`
+GOLF-243: the railway stations a trip can start from or end at, for the
+Itinerary's start/end picker. `fetch_main_stations.py` pulls OSM
+`railway=station` through Overpass for the six regions (same mirrors, same
+User-Agent and the same fair-use backoff as `fetch_pois.py`) into
+`scripts/output/stations_raw.json`. `merge_main_stations.py` cuts and ranks
+it into `data/rail-stations.js` (a `RAIL_STATIONS` global).
+
+**Not `data/stations.js`** — that one is the London Underground and
+Overground drawn on the map, a different file for a different job.
+
+The cut matters: the whole OSM set is 3,732 stations and 59KB gzipped, a
+30% rise in what every visit downloads before the map draws. The merge
+keeps a station only if it is within 10km of a course in `data/courses-*.js`
+or is `big` (6+ platforms in OSM, or a name in the script's hand-kept
+`TERMINI` list). That is 1,872 stations and 30KB. Anything else falls
+through to the app's existing place search. See `docs/data-provenance.md`
+for the rest, including why South Africa is cut further.
+
+Written **whole** each run, like `merge_airports.py` and for the same
+reason: nothing references a station by array position. Do not copy that
+habit to a `data/courses-*.js` script.
+
+```bash
+python3 scripts/fetch_main_stations.py   # ~3 min, six Overpass queries
+python3 scripts/merge_main_stations.py
+node scripts/check_js.js                 # the file is loaded by index.html
+```
+
 ### `test_data.js`
 GOLF-17: automated data-integrity checks (no browser needed) — every course
 has its required fields, valid access/region/band values, resolvable `stn`
@@ -522,6 +551,7 @@ separate step needed. Safe to also run by hand any time:
 | `fetch_south_africa_golf_clubs.py` | 2026-08-30 | Sourced the 19 South Africa entries in `data/courses-southafrica.js` (GOLF-78) |
 | `compute_nearest_stations.py` + `merge_nearest_stations.py` | 2026-08-26 | Populated `nearStation` on all 41 Scotland + 22 Wales entries |
 | `fetch_airports.py` + `merge_airports.py` | 2026-10-05 | Wrote `data/airports.js` — 133 GB/IE/ZA airports (gb 72, ie 8, za 53) for GOLF-153 flight entry |
+| `fetch_main_stations.py` + `merge_main_stations.py` | 2026-10-06 | Wrote `data/rail-stations.js` — 1,872 GB/IE/ZA stations (gb 1,415, ie 99, za 358) for GOLF-243 trip start/end points |
 | `fetch_course_stats.py` + `merge_course_stats.py` | 2026-08-25 | Populated `courseStats` on 66 of 221 entries (GOLF-12/13) — London 18-hole + England Top 30 scope, first of two monthly batches (free-tier quota) |
 
 ### `fetch_pois.py`
