@@ -774,6 +774,84 @@ eq('usage: a failing beacon logs nothing', [offline.errors, offline.warns], [[],
      !!onDay.id && s.tripCustomTripLevel().some(c => c.id === onDay.id), true);
 }
 
+// ── GOLF-243: a trip's start and end points survive, and stay optional ──
+// Three things are load-bearing. They are part of the trip, so they come
+// back after a release; they are optional, so a trip that has never had
+// one must save and share exactly the bytes it did before GOLF-243; and
+// they are routed against, so a half-built endpoint must be dropped on
+// the way in rather than reaching the router as a NaN.
+{
+  const t = boot({}, BUILD_A);
+  writeRichTrip(t.sandbox);
+  const bytesBefore = t.store['golfmap:v1'];
+  const shareBefore = JSON.stringify(t.sandbox.tripBuildSharePayload());
+  eq('GOLF-243: a trip with no endpoints saves no endpoint keys',
+     /"trip(Start|End)"/.test(bytesBefore), false,
+     'an absent endpoint must not change a saved trip\'s bytes');
+  eq('GOLF-243: ...and no endpoint keys in its share link',
+     /"(st|en)":/.test(shareBefore), false,
+     'an old link would then decode differently from the one it was');
+
+  t.sandbox.tripEndpointSet('start', { label: 'Inverness Airport', kind: 'airport', lat: 57.5425, lng: -4.0475, code: 'inv' });
+  t.sandbox.tripEndpointSet('end', { label: 'Edinburgh Waverley', kind: 'station', lat: 55.9521, lng: -3.1892 });
+  eq('GOLF-243: a code is kept, upper-cased', t.sandbox.tripStart.code, 'INV');
+
+  // Across a release, through the real save/load path.
+  const after = boot({ 'golfmap:v1': t.store['golfmap:v1'] }, BUILD_A + '-next');
+  eq('GOLF-243: the start point survives a release',
+     [after.sandbox.tripStart.label, after.sandbox.tripStart.kind, after.sandbox.tripStart.code],
+     ['Inverness Airport', 'airport', 'INV']);
+  eq('GOLF-243: the end point survives with its coordinates',
+     [after.sandbox.tripEnd.lat, after.sandbox.tripEnd.lng], [55.9521, -3.1892]);
+
+  // A plain typed place is allowed, and is a label only — no coordinates,
+  // so nothing downstream ever tries to drive to it.
+  t.sandbox.tripEndpointSet('start', { label: 'Edinburgh', kind: 'place' });
+  eq('GOLF-243: a typed place keeps no coordinates',
+     t.sandbox.tripEndpointLocated(t.sandbox.tripStart), false);
+  const plain = boot({ 'golfmap:v1': t.store['golfmap:v1'] }, BUILD_A);
+  eq('GOLF-243: ...and loads back as a label', plain.sandbox.tripStart.label, 'Edinburgh');
+  eq('GOLF-243: ...still with no coordinates', 'lat' in plain.sandbox.tripStart, false);
+
+  // Half a coordinate pair, an unknown kind, a nameless endpoint, and a
+  // non-object: each dropped or defaulted, never half-built.
+  const n = t.sandbox.tripEndpointNorm;
+  eq('GOLF-243: half a coordinate pair is dropped', 'lat' in n({ label: 'X', lat: 55 }), false);
+  eq('GOLF-243: an unknown kind falls back to a place', n({ label: 'X', kind: 'teleport' }).kind, 'place');
+  eq('GOLF-243: an endpoint with no label is no endpoint', n({ lat: 55, lng: -3 }), null);
+  eq('GOLF-243: a non-object is no endpoint', [n('Inverness'), n(null), n(['a'])], [null, null, null]);
+  eq('GOLF-243: an out-of-range coordinate is dropped', 'lat' in n({ label: 'X', lat: 999, lng: -3 }), false);
+
+  // A corrupt stored endpoint costs that endpoint and nothing else.
+  const corrupt = JSON.parse(t.store['golfmap:v1']);
+  corrupt.trips[t.sandbox.activeTripId].tripStart = { label: '', kind: 'airport' };
+  corrupt.trips[t.sandbox.activeTripId].tripEnd = 'Waverley';
+  const salvaged = boot({ 'golfmap:v1': JSON.stringify(corrupt) }, BUILD_A);
+  eq('GOLF-243: a corrupt endpoint is dropped, not half-loaded',
+     [salvaged.sandbox.tripStart, salvaged.sandbox.tripEnd], [null, null]);
+  eq('GOLF-243: ...and the rest of the trip is untouched',
+     [salvaged.sandbox.TRIP.size, salvaged.sandbox.tripDays.length, salvaged.sandbox.groupSize], [3, 2, 5]);
+
+  // Round-trip through a share link, including the "end where I started"
+  // shortcut, and nothing of either endpoint leaks into the viewer's own.
+  t.sandbox.tripEndpointSet('start', { label: 'Inverness Airport', kind: 'airport', lat: 57.5425, lng: -4.0475, code: 'INV' });
+  t.sandbox.tripEndpointCopyStart();
+  eq('GOLF-243: "same as start" copies, it does not share the object',
+     t.sandbox.tripEnd !== t.sandbox.tripStart && t.sandbox.tripEnd.label === t.sandbox.tripStart.label, true);
+  const hash = '#share=' + encodeURIComponent(JSON.stringify(t.sandbox.tripBuildSharePayload()));
+  const dec = t.sandbox.tripDecodeSharePayload(hash);
+  eq('GOLF-243: a shared link carries both endpoints',
+     [dec.st.label, dec.st.kind, dec.st.code, dec.en.label], ['Inverness Airport', 'airport', 'INV', 'Inverness Airport']);
+  eq('GOLF-243: a link with no endpoints decodes to none',
+     [t.sandbox.tripDecodeSharePayload('#share=' + encodeURIComponent(shareBefore)).st,
+      t.sandbox.tripDecodeSharePayload('#share=' + encodeURIComponent(shareBefore)).en], [null, null]);
+  const forged = JSON.parse(JSON.stringify(t.sandbox.tripBuildSharePayload()));
+  forged.st = { l: 'Nowhere', k: 'airport', y: 1e9, x: 200 };
+  const fdec = t.sandbox.tripDecodeSharePayload('#share=' + encodeURIComponent(JSON.stringify(forged)));
+  eq('GOLF-243: a forged endpoint keeps its label and loses its coordinates',
+     [fdec.st.label, 'lat' in fdec.st], ['Nowhere', false]);
+}
+
 if (failures.length) {
   console.error(`test_state_persist: ${failures.length} failure(s)\n`);
   failures.forEach(f => console.error('  - ' + f));

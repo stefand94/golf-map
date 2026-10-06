@@ -213,6 +213,14 @@ function validateTripEntry(t){
         ...(Number.isInteger(c.day)&&tripDays.some(d=>d.id===c.day)?{day:c.day}:{})};
     }).filter(Boolean),
     tripDayNextId:Math.max(0,...tripDays.map(d=>d.id))+1,
+    /* GOLF-243: where the trip starts and ends. Held to the same shape as
+       one set by a click (tripEndpointNorm is the single validator), and
+       spread in only when it survives that — so a trip saved before this
+       shipped, or one carrying a corrupt value, loads with the field
+       simply absent rather than with a half-built endpoint the router
+       would then try to drive to. */
+    ...(tripEndpointNorm(t.tripStart)?{tripStart:tripEndpointNorm(t.tripStart)}:{}),
+    ...(tripEndpointNorm(t.tripEnd)?{tripEnd:tripEndpointNorm(t.tripEnd)}:{}),
     /* GOLF-235: which usage events this trip has already been counted
        for. A trip saved before the counter shipped has no flags; one that
        already has 2+ days is marked as counted rather than counted now,

@@ -44,6 +44,74 @@ let tripDayNextId=1;
    result keeps placeLat/placeLng null and stays purely cosmetic, exactly
    as before this ticket. */
 const TRIP_DAY_KINDS={golf:'Golf day',start:'Start point',free:'Free day',end:'End point'};
+/* ── GOLF-243: where the trip starts and where it ends ────────────────
+   Trip-level, not a day: "we fly into Inverness and leave from Edinburgh
+   Waverley" is a fact about the whole trip, and holding it on a day meant
+   it moved, duplicated or vanished every time the days were reordered.
+   tripStart is the first stop of day 1 and tripEnd the last stop of the
+   final day, whatever the days then do.
+
+     {label, kind:'airport'|'station'|'place', lat?, lng?, code?}
+
+   lat/lng are OPTIONAL and absent together: a visitor is allowed to type
+   "Edinburgh" with no coordinates, and that endpoint is then a label only
+   — never routed, never fuelled, never drawn — which is the same
+   degrade-gracefully rule a hand-typed hotel has followed since GOLF-63.
+   `code` is the IATA/station code, kept only to show beside the name.
+
+   GOLF-51's 'start'/'end' DAY kinds are untouched and keep working. This
+   is additive: a trip with neither field is every trip saved so far. */
+const TRIP_ENDPOINT_KINDS={airport:'Airport',station:'Station',place:'Place'};
+const TRIP_ENDPOINT_ICONS={airport:'✈',station:'🚆',place:'📍'};
+let tripStart=null,tripEnd=null;
+/* The one validator. Used by the setter, by the per-trip snapshot restore,
+   by js/state.js's load whitelist and by the share decoder, so an endpoint
+   off a URL is held to exactly the same shape as one off a click. Returns
+   a fresh object or null — never the input — so no caller can keep a
+   reference into untrusted data. */
+function tripEndpointNorm(x){
+  if(!x||typeof x!=='object'||Array.isArray(x))return null;
+  const label=typeof x.label==='string'?x.label.trim().slice(0,80):'';
+  if(!label)return null; // an endpoint with no name is not an endpoint
+  const out={label,kind:TRIP_ENDPOINT_KINDS[x.kind]?x.kind:'place'};
+  const num=(v,lo,hi)=>(typeof v==='number'&&isFinite(v)&&v>=lo&&v<=hi)?v:null;
+  const lat=num(x.lat,-90,90),lng=num(x.lng,-180,180);
+  /* Both or neither: half a coordinate pair would reach the router as a
+     NaN and take the whole route down with it. */
+  if(lat!=null&&lng!=null){out.lat=lat;out.lng=lng;}
+  const code=typeof x.code==='string'?x.code.trim().toUpperCase().slice(0,8):'';
+  if(code)out.code=code;
+  return out;
+}
+function tripEndpointGet(which){return which==='end'?tripEnd:tripStart;}
+function tripEndpointPoint(ep){
+  return(ep&&typeof ep.lat==='number'&&typeof ep.lng==='number')?{lat:ep.lat,lng:ep.lng}:null;
+}
+function tripEndpointLocated(ep){return !!tripEndpointPoint(ep);}
+function tripEndpointName(ep){
+  if(!ep)return'';
+  return ep.code?`${ep.label} (${ep.code})`:ep.label;
+}
+function tripEndpointIcon(ep){return(ep&&TRIP_ENDPOINT_ICONS[ep.kind])||TRIP_ENDPOINT_ICONS.place;}
+function tripEndpointSet(which,ep){
+  const v=tripEndpointNorm(ep);
+  if(!v)return false;
+  if(which==='end')tripEnd=v;else tripStart=v;
+  saveState();
+  return true;
+}
+function tripEndpointClear(which){
+  if(which==='end')tripEnd=null;else tripStart=null;
+  saveState();
+}
+/* The round-trip shortcut: "I end where I started". Copied rather than
+   shared, so clearing one never empties the other. */
+function tripEndpointCopyStart(){
+  if(!tripStart)return false;
+  tripEnd=tripEndpointNorm(tripStart);
+  saveState();
+  return !!tripEnd;
+}
 /* GOLF-63: a day's stops are now ONE ordered `items` array — the single
    source of truth, replacing the old parallel `courses[]` / `hotel` /
    `pois[]` trio. Each item is:
@@ -952,6 +1020,10 @@ function tripSnapshotActive(){
   t.tripLastAdded=tripLastAdded;t.tbAnchor=tbAnchor;t.tripDayNextId=tripDayNextId;
   t.groupSize=groupSize;
   t.tripCustom=JSON.parse(JSON.stringify(tripCustom)); // GOLF-203
+  /* GOLF-243: written only when set, and deleted when not, so a trip
+     that has no start or end point saves the bytes it always did. */
+  if(tripStart)t.tripStart=tripEndpointNorm(tripStart);else delete t.tripStart;
+  if(tripEnd)t.tripEnd=tripEndpointNorm(tripEnd);else delete t.tripEnd;
   t.modified=Date.now();
 }
 function tripRestoreActive(){
@@ -968,6 +1040,10 @@ function tripRestoreActive(){
   // GOLF-203: absent on every trip saved before this shipped, and on the
   // default/"start fresh" literals — reads as "no custom costs".
   tripCustom=(t&&Array.isArray(t.tripCustom))?JSON.parse(JSON.stringify(t.tripCustom)):[];
+  // GOLF-243: absent on every trip saved before this shipped, and on the
+  // default/"start fresh" literals — reads as "no start or end point".
+  tripStart=tripEndpointNorm(t&&t.tripStart);
+  tripEnd=tripEndpointNorm(t&&t.tripEnd);
 }
 /* Fresh course count per trip needs the active trip's own snapshot to be
    current, hence the snapshot call here too — cheap and idempotent. */

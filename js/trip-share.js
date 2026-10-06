@@ -39,6 +39,12 @@ function tripBuildSharePayload(){
        the same one. Written only when detailed — an untimed, list-view
        trip encodes to exactly the bytes it did before detailed mode. */
     ...(typeof tbDetailed!=='undefined'&&tbDetailed?{dt:1}:{}),
+    /* GOLF-243: the trip's start and end points, each written only when
+       set, so a trip without them encodes to exactly the bytes it did
+       before this shipped and every link already in someone's hands
+       decodes as "no start or end point". */
+    ...(tripStart?{st:shareEndpoint(tripStart)}:{}),
+    ...(tripEnd?{en:shareEndpoint(tripEnd)}:{}),
 
     /* GOLF-163: courses travel as stable ids (`c`), not array indices.
        A share link is the one reference we can never migrate — it is a
@@ -202,6 +208,27 @@ function shareReadTiming(out,it){
   if(typeof it.cu==='string'&&CURRENCY_SYMS[it.cu])out.cur=it.cu;
   return out;
 }
+/* GOLF-243: a trip's start/end point, short-keyed like everything else in
+   the payload and written with lat/lng/code only when the endpoint has
+   them, so a plain typed place stays a label on the other side too. */
+function shareEndpoint(ep){
+  if(!ep)return undefined;
+  return{l:ep.label,k:ep.kind,
+    ...(typeof ep.lat==='number'?{y:ep.lat,x:ep.lng}:{}),
+    ...(ep.code?{c:ep.code}:{})};
+}
+/* Read back through the model's own validator — one definition of a valid
+   endpoint, whether it arrived from a click, from localStorage or from
+   someone else's URL. */
+function shareReadEndpoint(e){
+  if(!e||typeof e!=='object')return null;
+  /* The coordinates are handed over raw on purpose: shareNum() CLAMPS,
+     and clamping a latitude of 1e9 to 90 would turn a mangled link into a
+     confident drive to the North Pole. tripEndpointNorm() range-checks
+     and drops instead, which is the right answer for a point on a map. */
+  return tripEndpointNorm({label:shareStr(e.l,80),kind:e.k,
+    lat:e.y,lng:e.x,code:shareStr(e.c,8)});
+}
 function tripDecodeSharePayload(hash){
   try{
     if(!hash||hash.indexOf('#share=')!==0)return null;
@@ -302,7 +329,12 @@ function tripDecodeSharePayload(hash){
         // GOLF-247: checked against the days decoded above, same as state.js.
         ...(Number.isInteger(c.d)&&days.some(d=>d.id===c.d)?{day:c.d}:{})};
     }).filter(Boolean);
-    return{v:1,gs:gs!=null?Math.round(gs):1,nm:shareStr(p.nm,80),seq,days,oth,dt:p.dt===1}; // GOLF-153
+    // GOLF-243 — optional, and run through the same validator as a saved
+    // one, so a mangled endpoint off the hash is dropped and the rest of
+    // the link still opens.
+    const st=shareReadEndpoint(p.st),en=shareReadEndpoint(p.en);
+    return{v:1,gs:gs!=null?Math.round(gs):1,nm:shareStr(p.nm,80),seq,days,oth,dt:p.dt===1, // GOLF-153
+      st,en}; // GOLF-243
   }catch(e){return null;}
 }
 
@@ -335,6 +367,7 @@ function renderSharedTrip(){
      shared link never writes to this browser's state. */
   if(!tlSharedViewApplied){tlSharedViewApplied=true;tbDetailed=!!payload.dt;}
   const savedTrip=new Set(TRIP),savedSeq=tripSeq,savedDays=tripDays,savedGS=groupSize,savedFuel=tbIncludeFuel,savedCustom=tripCustom;
+  const savedStart=tripStart,savedEnd=tripEnd; // GOLF-243
   try{
     /* tripDecodeSharePayload() has already rebuilt every field of this
        payload from scratch and validated it — nothing here is copied
@@ -344,6 +377,7 @@ function renderSharedTrip(){
     tripDays=payload.days.map(d=>({...d,items:d.items.map(it=>({...it}))}));
     groupSize=payload.gs;
     tripCustom=payload.oth.map(c=>({...c})); // GOLF-203
+    tripStart=payload.st;tripEnd=payload.en; // GOLF-243
     tbIncludeFuel=true;
     tbCostMode='pp'; // GOLF-178: a shared link always opens on Per person
     tbCostModeApply(); // GOLF-193: ...and the whole shared view follows it
@@ -371,6 +405,7 @@ function renderSharedTrip(){
   }finally{
     TRIP.clear();savedTrip.forEach(i=>TRIP.add(i));
     tripSeq=savedSeq;tripDays=savedDays;groupSize=savedGS;tbIncludeFuel=savedFuel;tripCustom=savedCustom;
+    tripStart=savedStart;tripEnd=savedEnd; // GOLF-243
   }
 }
 /* A read-only twin of tbCostsTabHTML() — identical output except the fuel
