@@ -254,16 +254,58 @@ function tlInboundOriginName(dayIdx){
   }
   return null;
 }
+/* ── GOLF-243: the trip's start and end, as blocks on the calendar ────
+   The endpoint is one object, not two: there is no item in items[] for
+   it, nothing to drag and nothing to save, and the block is derived from
+   tripStart/tripEnd on every render. A start at an airport IS 153's
+   inbound arrival flight, so when the trip already begins with a real
+   flight item that flight is the start and no second block is drawn.
+
+   The kind decides the block: an airport is a flight, a station is a
+   train, and a plain place is DEC-039's zero-duration drive-from
+   marker — "a plain place has no transport block, just the drive". An
+   endpoint with no coordinates draws nothing at all, because there is
+   no leg to or from a name. */
+const TL_EP_TRAIN_BUFFER=20; // minutes at the station before a train home
+function tlEndpointItem(which){
+  if(typeof tripEndpointGet!=='function')return null;
+  const ep=tripEndpointGet(which);
+  if(!ep||!tripEndpointLocated(ep))return null;
+  /* "One object, not two": the real inbound flight already is the start. */
+  if(which==='start'&&ep.kind==='airport'&&tlInboundFlightId(tripDays))return null;
+  const type=ep.kind==='airport'?'flight':ep.kind==='station'?'train':'drivefrom';
+  return{id:'ep-'+which,type,epSynth:which,epKind:ep.kind,
+    name:tripEndpointName(ep),lat:ep.lat,lng:ep.lng,
+    /* The advice the block carries instead of a buffer band: with no
+       departure time typed there is nothing for a buffer to be early
+       for, and drawing one anyway would invent a deadline. */
+    epAllow:which==='end'?(ep.kind==='airport'?TL_DEFAULT_BUFFER.flight
+      :ep.kind==='station'?TL_EP_TRAIN_BUFFER:0):0};
+}
+function tlIsEndpointItem(it){return!!(it&&it.epSynth);}
 function tlRowsForDay(dayIdx){
   const d=tripDays[dayIdx];
   if(!d)return[];
   const by=tlDriveMinsByItem(dayIdx);
+  /* GOLF-243: the start opens day 1 and the end closes the last day. */
+  const startIt=dayIdx===0?tlEndpointItem('start'):null;
+  const endIt=dayIdx===tripDays.length-1?tlEndpointItem('end'):null;
+  if(endIt){
+    const row=(typeof tripEndpointDriveRow==='function')?tripEndpointDriveRow('end'):null;
+    by.set(endIt.id,(row&&row.mins!=null)?row.mins:0);
+  }
+  const items=[...(startIt?[startIt]:[]),...tripDayItems(d),...(endIt?[endIt]:[])];
   /* GOLF-153: which flight is arrival-only is a property of the whole
      trip, not of this day, so it is worked out across tripDays and
-     handed in. */
-  return tlComputeDay(tripDayItems(d),(_prev,it)=>by.get(it.id)||0,
-    {inboundFlightId:tlInboundFlightId(tripDays),
-     inboundDriveMins:tlInboundDriveMins(dayIdx,by)});
+     handed in. A synthesised start at an airport only exists when there
+     is no real inbound flight, so when it exists it is the inbound one. */
+  const inboundFlightId=(startIt&&startIt.type==='flight')?startIt.id:tlInboundFlightId(tripDays);
+  return tlComputeDay(items,(_prev,it)=>by.get(it.id)||0,
+    {inboundFlightId,
+     /* The drive the engine hands to the day's FIRST item. A synthesised
+        start is that item, and nothing precedes it — the drive out of it
+        belongs to the stop after, which tripDayLegs() already measures. */
+     inboundDriveMins:startIt?0:tlInboundDriveMins(dayIdx,by)});
 }
 /* The day on which each stay's first night falls — the only day that
    draws a check-in line (DEC-039). A one-night stay carries no stayId,
@@ -310,12 +352,18 @@ function tlBlockLabelHTML(r){
     const when=r.durationMins>0
       ?(tlParseTime(it.arrive)!=null?`${it.type==='flight'?'lands':'arrives'} ${it.arrive}`:'')
       :(tlParseTime(it.depart)!=null?`dep ${it.depart}`:'');
+    /* GOLF-243: a derived endpoint block has no times to show, so it says
+       what it is for instead — and, at the end of the trip, how long to
+       allow once you are there. */
+    const epSub=it.epSynth==='start'?'where the trip starts'
+      :it.epSynth==='end'?`where the trip ends${it.epAllow?` · allow ${fmtDriveMinutes(it.epAllow)}`:''}`:'';
     return`<span class="tl-block-name">${esc(tripItemName(it)||tlKind(it.type).label)}</span>
-      ${route||when?`<span class="tl-block-sub">${[esc(route),esc(when)].filter(Boolean).join(' · ')}</span>`:''}${note}`;
+      ${epSub?`<span class="tl-block-sub">${esc(epSub)}</span>`
+        :route||when?`<span class="tl-block-sub">${[esc(route),esc(when)].filter(Boolean).join(' · ')}</span>`:''}${note}`;
   }
   if(it.type==='drivefrom')
     return`<span class="tl-block-name">${esc(tripItemName(it)||'Start point')}</span>
-      <span class="tl-block-sub">you set off from here</span>${note}`;
+      <span class="tl-block-sub">${it.epSynth==='end'?'where the trip ends':'you set off from here'}</span>${note}`;
   return`<span class="tl-block-name">${esc(tripItemName(it))}</span>${note}`;
 }
 function tlDayGridHTML(d,dayIdx,firstNights){
@@ -386,7 +434,8 @@ function tlDayGridHTML(d,dayIdx,firstNights){
     const cls=['tl-block','tl-block-'+(r.item.type||'poi')];
     if(r.marker)cls.push('is-marker');
     if(r.conflict)cls.push('is-conflict');
-    if(!ro)cls.push('is-live');
+    if(tlIsEndpointItem(r.item))cls.push('is-endpoint'); // GOLF-243
+    if(!ro&&!tlIsEndpointItem(r.item))cls.push('is-live');
     if(tlPanel&&tlPanel.dayId===d.id&&tlPanel.itemId===r.item.id)cls.push('is-open');
     /* A conflict is said in words, not just colour: the time stands as
        typed and the visitor is told they cannot make it (DEC-039). */
@@ -395,14 +444,19 @@ function tlDayGridHTML(d,dayIdx,firstNights){
     /* The drag contract travels on the element: everything the pointer
        handlers need to turn a y delta into a new time is here, so they
        never have to look the item up in the model mid-gesture. */
-    const dragAttrs=ro?'':` data-tldrag="1" data-tlstart="${r.startMins}" data-tldur="${r.durationMins}"${
+    /* GOLF-243: a derived endpoint block is not in items[], so there is
+       nothing for a drag or a details panel to write to. It is marked
+       read-only here rather than filtered out, so it still takes its
+       place in the chain and in the clock. */
+    const ep=tlIsEndpointItem(r.item);
+    const dragAttrs=(ro||ep)?'':` data-tldrag="1" data-tlstart="${r.startMins}" data-tldur="${r.durationMins}"${
       kind.resize?' data-tlresize="1"':''}`;
     parts.push(`<div class="${cls.join(' ')}" style="top:${y.toFixed(1)}px${h?`;height:${h.toFixed(1)}px`:''}"
       data-tlblock="1" data-tlday="${d.id}" data-tlitem="${esc(r.item.id)}"${dragAttrs}
-      title="${ro?'':esc(tlBlockHint(r,kind))}">
+      title="${(ro||ep)?(ep?esc(`Set on the ${r.item.epSynth==='end'?'End':'Start'} row above the days — not a block you drag.`):''):esc(tlBlockHint(r,kind))}">
       <span class="tl-block-time">${tlFormatTime(r.startMins)}${r.fixed?'<span class="tl-pin" title="A time you set. Everything after it follows from here.">•</span>':''}</span>
       <span class="tl-block-body">${kind.icon} ${tlBlockLabelHTML(r)}${warn}</span>
-      ${kind.resize&&!ro?'<span class="tl-handle tl-handle-t" aria-hidden="true"></span><span class="tl-handle tl-handle-b" aria-hidden="true"></span>':''}
+      ${kind.resize&&!ro&&!ep?'<span class="tl-handle tl-handle-t" aria-hidden="true"></span><span class="tl-handle tl-handle-b" aria-hidden="true"></span>':''}
     </div>`);
     return parts.join('');
   }).join('');
@@ -516,6 +570,11 @@ function tlLegendHTML(){
 let tlPanel=null;
 function tlOpenPanel(dayId,itemId){
   if(appMode==='shared')return;
+  /* GOLF-243: a derived endpoint block has nothing in items[] to edit —
+     it is changed on the Start/End row. Guarded here as well as by
+     leaving the drag attributes off it, so no other path can open a
+     panel whose fields would write into a throwaway object. */
+  if(typeof itemId==='string'&&itemId.indexOf('ep-')===0)return;
   tlPanel=(tlPanel&&tlPanel.dayId===dayId&&tlPanel.itemId===itemId)?null:{dayId,itemId};
   tlDraft=null;
   renderTripBuilder();

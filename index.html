@@ -544,6 +544,11 @@
     box-shadow:0 1px 3px rgba(0,0,0,.4);
     font:700 10px/14px var(--font-sans);text-align:center}
   .tb-ep-pin.is-end{background:#8C2F39;border-radius:50%}
+  /* GOLF-243: the calendar's own start/end blocks. Quieter than a block
+     you can touch, and with the cursor to match — the thing to click is
+     the Start or End row above the days, not this. */
+  .tl-block.is-endpoint{cursor:default;opacity:.92;
+    border-style:dashed;background:var(--paper,#fff)}
 
   /* Day footer: the two add actions, sized as real targets. */
   .tb-day-add{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3) var(--sp-3);flex-wrap:wrap}
