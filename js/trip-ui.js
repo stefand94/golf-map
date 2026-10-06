@@ -351,6 +351,15 @@ function tbDualPriceHTML(v,cur){
    looks like a researched number. */
 const EST_TITLE='Includes an estimate the app filled in — not a quoted price';
 const estMark=on=>on?`<span class="cost-est" title="${EST_TITLE}">~</span>`:'';
+/* GOLF-247 (owner review): a price the visitor set themselves, marked
+   wherever the figure appears. Same idiom as GOLF-193's "~" for an
+   estimate — one character beside the money, because the price column of
+   a 375px row has no room for a badge — and the tooltip names the listed
+   fee it is standing in for, when the course has one. The words "your
+   price" are spelt out in the places that do have room: the editor, and
+   the Costs tab's row tag. */
+const ownMark=(on,listed,cur)=>on?`<span class="cost-own" title="Your price${
+  listed!=null?` — ${tbMoney(listed,cur||'GBP')} is the listed fee`:', not a listed fee'}">✎</span>`:'';
 /* Does this day contain a figure the app estimated? Today that is a stay
    with no price entered (tripItemPriceDetail sets det.est, js/trip-geo.js).
    Driving fuel is a trip-level estimate and is handled with the trip
@@ -528,6 +537,11 @@ function tbItinAllHTML(){
       <div class="tb-day-rule"></div>
       ${tbDetailed?tlDayGridHTML(d,idx,firstNights)
         :legs.length?legs.map(itinLegRowHTML).join(''):`<p class="hint" style="margin:var(--sp-3)">${d.kind!=='golf'?TRIP_DAY_KINDS[d.kind]:'No stops yet.'}</p>`}
+      ${/* GOLF-247 (owner review): a day's own costs sit under that day
+           here too — this is the read-only twin of the day card's
+           tbDayCostsHTML(), and it is what the shared link and the print
+           sheet render in both views. */''}
+      ${tbDayCostsReadHTML(d)}
     </div>`;
   }).join('');
 }
@@ -625,7 +639,7 @@ function tripCostLineItems(){
     /* A fee the visitor typed is theirs; it gets neither the published
        range nor the data's confidence tag, both of which describe a
        number that is no longer on the row. */
-    if(it.type==='golf'&&det.own)tag=tag?`${tag} · your fee`:'your fee';
+    if(it.type==='golf'&&det.own)tag=tag?`${tag} · your price`:'your price';
     if(it.type==='golf'&&det.feeRange&&det.feeRange.confidence){
       label+=feeRangeLabel(det.feeRange);
       const confTag=FEE_CONF_TAG[det.feeRange.confidence];
@@ -702,20 +716,34 @@ function tripCostBreakdown(){
       amount:c.per==='person'?typed*gs:typed,
       day:onDay?c.day:null,dayNo:onDay?dayNoById.get(c.day):null};
   });
-  /* Fuel moved in here (owner item 7): it was its own row under the three
-     category groups, which made it the one cost with no home. */
-  const otherTotal={[cur]:0};
-  if(tbIncludeFuel)moneyBucketAdd(otherTotal,cur,fuelCost);
-  customItems.forEach(x=>moneyBucketAdd(otherTotal,x.cur,x.amount));
+  /* GOLF-247 (owner review): the custom lines split in two. A line added
+     against a day reports under that day; a whole-trip line reports under
+     "Trip costs", which is also where fuel lives (owner item 7 moved it
+     off the loose row it used to sit on). Every line is in exactly one of
+     the two buckets, so the grand total still counts it once — which is
+     the whole reason this is a split of one list rather than two lists.
+     The old single "Other" group, and its otherTotal, are gone. */
+  const dayLines=customItems.filter(x=>x.day!=null);
+  const tripLines=customItems.filter(x=>x.day==null);
+  const dayCustom=new Map();
+  dayLines.forEach(x=>{
+    const e=dayCustom.get(x.day)||{lines:[],total:{[cur]:0}};
+    e.lines.push(x);moneyBucketAdd(e.total,x.cur,x.amount);
+    dayCustom.set(x.day,e);
+  });
+  const tripCostsTotal={[cur]:0};
+  if(tbIncludeFuel)moneyBucketAdd(tripCostsTotal,cur,fuelCost);
+  tripLines.forEach(x=>moneyBucketAdd(tripCostsTotal,x.cur,x.amount));
   const grand={[cur]:0};
-  [golfTotal,stayTotal,poiTotal,travelTotal,otherTotal].forEach(b=>Object.keys(b).forEach(c=>moneyBucketAdd(grand,c,b[c])));
+  [golfTotal,stayTotal,poiTotal,travelTotal,tripCostsTotal].forEach(b=>Object.keys(b).forEach(c=>moneyBucketAdd(grand,c,b[c])));
+  dayCustom.forEach(e=>Object.keys(e.total).forEach(c=>moneyBucketAdd(grand,c,e.total[c])));
   // GOLF-87: an even per-person split of the whole trip total — golf/POI
   // are already priced per-traveller above, stays keep their own GOLF-74
   // sharing math untouched, and fuel is one shared trip cost only divided
   // here, at the very last step. Across currencies, each bucket divides on
   // its own (DEC-026).
   const perPerson=gs>1?moneyBucketScale(grand,1/gs):null;
-  return{items,cur,golfTotal,golfCov:golf.filter(x=>x.amount!=null).length,golfOf:golf.length,stayTotal,poiTotal,travelTotal,fuelMiles,fuelCost,customItems,otherTotal,grand,groupSize:gs,perPerson};
+  return{items,cur,golfTotal,golfCov:golf.filter(x=>x.amount!=null).length,golfOf:golf.length,stayTotal,poiTotal,travelTotal,fuelMiles,fuelCost,customItems,dayLines,tripLines,dayCustom,tripCostsTotal,grand,groupSize:gs,perPerson};
 }
 /* The headline trip total as display text — navbar pill, Itinerary's
    "Trip total" card and the shared view's pill all read this, so a mixed
@@ -884,6 +912,26 @@ function tbDayCostsHTML(d){
       onclick="tripCustomAdd(${d.id})">＋ Add a cost</button>
   </div>`;
 }
+/* The same lines, read-only: the shared itinerary and the print sheet.
+   Priced here exactly as the Costs tab prices them, so a frozen link and
+   its own Costs card can never show a day two different ways. */
+function tbDayCostsReadHTML(d){
+  const lines=(typeof tripCustomForDay==='function')?tripCustomForDay(d.id):[];
+  if(!lines.length)return'';
+  const gs=groupSizeFor();
+  return`<div class="tb-day-costs is-read">${lines.map(c=>{
+    const cur=CURRENCY_SYMS[c.cur]?c.cur:tripPrimaryCurrency();
+    const typed=(typeof c.amount==='number'&&isFinite(c.amount))?c.amount:0;
+    const amount=c.per==='person'?typed*gs:typed;
+    const tag=c.per==='person'&&gs>1?`× ${gs}`:null;
+    return`<div class="tb-daycost is-read">
+      <span class="tb-daycost-ico" aria-hidden="true">💷</span>
+      <span class="tb-daycost-read">${esc((c.label||'').trim()||'Other cost')}${
+        tag?` <span class="wt">${esc(tag)}</span>`:''}</span>
+      <span class="tb-item-price">${costCustomAmtHTML({amount,cur},gs)}</span>
+    </div>`;
+  }).join('')}</div>`;
+}
 /* ── GOLF-247: the per-item cost editor ───────────────────────────────
    One editor for every kind of item, opened from the row's own price (and
    from its ⋯ menu, so it is findable without knowing the price is a
@@ -938,12 +986,19 @@ function tbCostEditHTML(d,it){
     :`${curSym(cur)} amount`;
   const basis=det.basis||'person';
   const label=TB_COST_LABEL[it.type]||'Price';
+  /* The listed fee stays visible, greyed, once the visitor has typed over
+     it (owner review) — the placeholder alone vanished the moment they
+     did, which left no way to see what you had overridden or to judge
+     whether to go back to it. */
+  const listed=own&&dataFee!=null
+    ?`<span class="cost-edit-listed" title="What the course data says this round costs">Listed ${esc(tbMoney(dataFee,cur))}</span>`:'';
   const perSeg=it.type==='hotel'?'':`<div class="tb-seg cost-per" role="group" aria-label="How this price is counted">${
     [['person','Per person'],['group','Whole group']].map(([k,l])=>
       `<button type="button" data-per="${k}" aria-pressed="${basis===k}" onclick="tripItemSetBasis('${id}','${k}',this)">${l}</button>`).join('')
   }</div>`;
   return`<div class="cost-edit" data-cost-edit="${id}">
-    <label class="cost-edit-label" for="tb-cost-amt-${id}">${esc(label)}</label>
+    <label class="cost-edit-label" for="tb-cost-amt-${id}">${esc(label)}${
+      own?'<span class="cost-own-flag">your price</span>':''}</label>
     <div class="cost-edit-row">
       <select class="tb-field cost-cur" aria-label="Currency"
         onchange="tripItemSetCost('${id}',{cur:this.value});renderTripBuilder();">${
@@ -954,12 +1009,14 @@ function tbCostEditHTML(d,it){
         placeholder="${esc(ph)}" value="${typed!=null?esc(String(typed)):''}"
         oninput="tripItemSetCost('${id}',{${field}:this.value});tbCostLiveRefresh();">
       ${perSeg}
+      ${listed}
     </div>
     <div class="cost-edit-foot">
       <span class="cost-edit-sum" data-cost-sum="${id}">${tbCostEditSumHTML(d,it)}</span>
       ${own?`<button type="button" class="tb-btn is-sm is-quiet"
-        title="Go back to the fee in the course data"
-        onclick="tripItemSetCost('${id}',{fee:''});renderTripBuilder();">Use the club's fee</button>`:''}
+        title="${dataFee!=null?'Drop your price and go back to the fee in the course data'
+          :'Drop your price. This course has no listed fee, so it goes back to \'Add fee\'.'}"
+        onclick="tripItemSetCost('${id}',{fee:''});renderTripBuilder();">Use listed fee</button>`:''}
       <button type="button" class="tb-btn is-sm is-quiet" onclick="tbToggleCostEdit('${id}')">Done</button>
     </div>
   </div>`;
@@ -977,76 +1034,133 @@ function tbCostEditSumHTML(d,it){
     return esc(`${tbMoney(det.base,cur)} × ${gs} = ${tbMoney(det.total,cur)}`);
   return esc(tbMoney(det.total,cur));
 }
-/* GOLF-203: "Other" — fuel plus whatever the visitor adds themselves.
-   Not costGroupHTML(): its rows are editable and it has a footer button,
-   and the read-only #share= twin renders the same rows as plain text.
+/* ── GOLF-247 (owner review): the two homes a custom cost can have ────
+   GOLF-203 shipped one "Other" group holding every line the visitor had
+   typed plus fuel. The owner's review split it: a line added against a
+   day belongs to that day, and only the whole-trip ones (car hire, a
+   caddie package for the week) are "Trip costs". Both are the same
+   record — one list, one cap, one share key — so a line is counted once
+   wherever it is shown, and moving it between the two is a matter of
+   which day it names.
 
-   Judgement call (the ticket leaves it to the dev): the per-line currency
-   picker only appears once the trip already spans more than one currency
-   — or once a line carries something other than the primary one, so a
-   line can always be changed back. A single-nation trip never sees it.
+   Not costGroupHTML(): these rows are editable, they have footer
+   buttons, and the read-only #share= twin renders the same rows as
+   plain text.
 
-   GOLF-203 opened it by default, unlike the other three, on the grounds
-   that it is the only interactive group and absorbed a fuel row that used
-   to be permanently visible. GOLF-219 overrides that: the owner wants
-   Costs to open as four matching collapsed groups, the total on each
-   summary row doing the talking. It still has to stay open once the
-   visitor opens it, because a custom-cost keystroke can trigger a full
-   re-render and a group that snapped shut mid-edit would be worse than
-   either default — hence tbCostOtherOpen, which lives for the visit only
-   (remembering it across visits is explicitly out of scope). */
-let tbCostOtherOpen=false;
-function costOtherGroupHTML(b,readOnly){
+   Judgement call (GOLF-203 left it to the dev): the per-line currency
+   picker only appears once the trip already spans more than one
+   currency — or once a line carries something other than the primary
+   one, so a line can always be changed back. A single-nation trip never
+   sees it.
+
+   GOLF-219 wants Costs to open as matching collapsed groups, the total
+   on each summary row doing the talking. A group still has to stay open
+   once the visitor opens it: a custom-cost keystroke can trigger a full
+   re-render, and a group that snapped shut mid-edit would be worse than
+   either default — hence tbCostGroupsOpen, which lives for the visit
+   only (remembering it across visits is explicitly out of scope). It is
+   keyed, not a single flag, because there is now more than one of
+   these groups on the card at a time. */
+let tbCostGroupsOpen=new Set();
+function tbCostGroupOpen(key,open){if(open)tbCostGroupsOpen.add(key);else tbCostGroupsOpen.delete(key);}
+/* True once the visitor could need to say which currency a line is in. */
+function costCustomMixed(b){
+  return moneyBucketCount(b.grand)>1||(b.customItems||[]).some(x=>x.cur!==b.cur);
+}
+/* One editable line. `dayPick` is the day chooser, offered only in the
+   Trip costs group and only when the trip has days — it is how a line
+   typed in the wrong place gets moved without being retyped. */
+function costCustomRowHTML(x,gs,mixed,dayPick){
+  const id=esc(x.id);
+  return`<div class="cc-row" data-cc="${id}">
+    <input class="tb-field cc-label" id="tb-cc-label-${id}" type="text" maxlength="80"
+      aria-label="What is this cost?" placeholder="Car hire" value="${esc(x.label)}"
+      oninput="tripCustomUpdate('${id}',{label:this.value})">
+    <div class="cc-row-2">
+      ${mixed?`<select class="tb-field cc-cur" aria-label="Currency"
+        onchange="tripCustomUpdate('${id}',{cur:this.value});tbCostLiveRefresh();">${
+          ['GBP','EUR','ZAR'].map(c=>`<option value="${c}"${x.cur===c?' selected':''}>${curSym(c)}</option>`).join('')
+        }</select>`:''}
+      <input class="tb-field cc-amount" type="number" min="0" step="5" inputmode="decimal"
+        aria-label="Amount in ${esc(curSym(x.cur))}" placeholder="${esc(curSym(x.cur))} amount"
+        value="${x.typed?esc(String(x.typed)):''}"
+        oninput="tripCustomUpdate('${id}',{amount:this.value});tbCostLiveRefresh();">
+      <div class="tb-seg cc-per" role="group" aria-label="Who pays this cost">${
+        [['group','Whole group'],['person','Per person']].map(([k,l])=>
+          `<button type="button" data-per="${k}" aria-pressed="${x.per===k}" onclick="tripCustomSetPer('${id}','${k}',this)">${l}</button>`).join('')
+      }</div>
+      ${dayPick||''}
+      <span class="cost-group-amt cc-amt" data-cc-amt="${id}">${costCustomAmtHTML(x,gs)}</span>
+      <button type="button" class="tb-btn is-icon is-sm is-quiet cc-del" title="Remove this cost"
+        aria-label="Remove this cost" onclick="tripCustomRemove('${id}')">✕</button>
+    </div>
+  </div>`;
+}
+function costCustomReadRowHTML(x,gs){
+  const tag=x.per==='person'&&gs>1?`× ${gs}`:null;
+  return`<tr><td>${esc(x.label.trim()||'Other cost')}${tag?` <span class="wt">${esc(tag)}</span>`:''}</td><td>${costCustomAmtHTML(x,gs)}</td></tr>`;
+}
+/* The shell both kinds of group share: a collapsed summary carrying the
+   group's own total, and a body of editable (or read-only) lines. */
+function costCustomGroupHTML(b,readOnly,o){
   const cur=b.cur,gs=b.groupSize;
-  const lines=b.customItems||[];
-  const mixed=moneyBucketCount(b.grand)>1||lines.some(x=>x.cur!==cur);
+  const open=tbCostGroupsOpen.has(o.key);
+  const lines=o.lines;
+  const mixed=costCustomMixed(b);
+  const body=readOnly
+    ?(lines.length?`<table class="cost-line-table cost-group-lines">${lines.map(x=>costCustomReadRowHTML(x,gs)).join('')}</table>`:'')
+    :lines.map(x=>costCustomRowHTML(x,gs,mixed,o.dayPick?o.dayPick(x):'')).join('');
+  const full=(Array.isArray(tripCustom)?tripCustom:[]).length>=TRIP_CUSTOM_MAX;
+  const addBtn=readOnly?'':`<button type="button" class="tb-btn is-sm is-quiet cc-add"
+    ${full?'disabled title="That is as many as one trip can hold."':''}
+    onclick="tripCustomAdd(${o.dayId==null?'':o.dayId})">+ Add a cost</button>`;
+  return`<details class="cost-group cost-other-group"${open?' open':''}
+      ontoggle="tbCostGroupOpen('${esc(o.key)}',this.open)"><summary class="cost-group-summary">
+      <span class="cost-group-label"><span class="cost-group-toggle" aria-hidden="true"></span>${o.icon} ${esc(o.label)}</span>
+      <span class="cost-group-amt" data-group-amt="${esc(o.key)}">${costDual(moneyBucketFmt(o.total,cur),costPPBucketFmt(o.total,gs,cur),gs)}</span>
+    </summary>
+    <div class="cost-other-body">${o.head||''}${body}${addBtn}${o.foot||''}</div>
+  </details>`;
+}
+/* Moving a cost between the trip and a day, in place. Offered in both
+   kinds of group and with the same options in each, so nothing is a
+   one-way door: a line typed on the wrong day is moved, not retyped. */
+function costDayPickFn(){
+  if(!tripDays.length)return null;
+  return x=>`<select class="tb-field cc-dayto" aria-label="Which day is this cost on?"
+    onchange="tripCustomUpdate('${esc(x.id)}',{day:this.value});renderTripBuilder();">
+    <option value=""${x.day==null?' selected':''}>Whole trip</option>${
+      tripDays.map((d,i)=>`<option value="${d.id}"${x.day===d.id?' selected':''}>Day ${i+1}</option>`).join('')
+    }</select>`;
+}
+/* A group per day that has costs of its own, in trip order. A day with
+   none gets no group — the Costs tab should not grow seven empty
+   headings because the trip is a week long. */
+function costDayGroupsHTML(b,readOnly){
+  if(!b.dayCustom||!b.dayCustom.size)return'';
+  const dayPick=costDayPickFn();
+  return tripDays.map((d,idx)=>{
+    const e=b.dayCustom.get(d.id);
+    if(!e)return'';
+    const place=d.place?tripShortPlace(d.place):'';
+    return costCustomGroupHTML(b,readOnly,{
+      key:'day:'+d.id,icon:'📅',
+      label:`Day ${idx+1}${place?` · ${place}`:''}`,
+      lines:e.lines,total:e.total,dayId:d.id,dayPick,
+    });
+  }).join('');
+}
+/* Trip costs: the lines that belong to the whole trip rather than a day,
+   with fuel at the top and the car-hire link at the bottom. */
+function costTripGroupHTML(b,readOnly){
+  const cur=b.cur,gs=b.groupSize;
   const fuelRow=`<div class="cost-fuel-row">${readOnly?'<span>⛽ Fuel (est.)</span>':
     `<label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> ⛽ Fuel (est.)</label>`
     }<span class="cost-group-amt">${/* its own label already reads "Fuel (est.)" — a ~ here just stutters */''}${costDual(`${curSym(cur)}${b.fuelCost.toFixed(0)}`,costPPMoney(b.fuelCost,cur,gs),gs)}</span></div>`;
-  /* GOLF-247: a cost added against a day says which day, so the Other
-     group still reads as one list of everything while telling you where
-     each line came from. A whole-trip line is untagged, as before. */
-  const dayTag=x=>x.dayNo?`Day ${x.dayNo}`:null;
-  const rows=readOnly
-    ? (lines.length?`<table class="cost-line-table cost-group-lines">${lines.map(x=>{
-        const tags=[dayTag(x),x.per==='person'&&gs>1?`× ${gs}`:null].filter(Boolean);
-        return`<tr><td>${esc(x.label.trim()||'Other cost')}${tags.length?` <span class="wt">${esc(tags.join(' · '))}</span>`:''}</td><td>${costCustomAmtHTML(x,gs)}</td></tr>`;
-      }).join('')}</table>`:'')
-    : lines.map(x=>{
-        const id=esc(x.id);
-        const dt=dayTag(x);
-        return`<div class="cc-row" data-cc="${id}">
-          <input class="tb-field cc-label" id="tb-cc-label-${id}" type="text" maxlength="80"
-            aria-label="What is this cost?" placeholder="Car hire" value="${esc(x.label)}"
-            oninput="tripCustomUpdate('${id}',{label:this.value})">
-          ${dt?`<span class="cc-day wt" title="Added on this day of the trip">${esc(dt)}</span>`:''}
-          <div class="cc-row-2">
-            ${mixed?`<select class="tb-field cc-cur" aria-label="Currency"
-              onchange="tripCustomUpdate('${id}',{cur:this.value});tbCostLiveRefresh();">${
-                ['GBP','EUR','ZAR'].map(c=>`<option value="${c}"${x.cur===c?' selected':''}>${curSym(c)}</option>`).join('')
-              }</select>`:''}
-            <input class="tb-field cc-amount" type="number" min="0" step="5" inputmode="decimal"
-              aria-label="Amount in ${esc(curSym(x.cur))}" placeholder="${esc(curSym(x.cur))} amount"
-              value="${x.typed?esc(String(x.typed)):''}"
-              oninput="tripCustomUpdate('${id}',{amount:this.value});tbCostLiveRefresh();">
-            <div class="tb-seg cc-per" role="group" aria-label="Who pays this cost">${
-              [['group','Whole group'],['person','Per person']].map(([k,l])=>
-                `<button type="button" data-per="${k}" aria-pressed="${x.per===k}" onclick="tripCustomSetPer('${id}','${k}',this)">${l}</button>`).join('')
-            }</div>
-            <span class="cost-group-amt cc-amt" data-cc-amt="${id}">${costCustomAmtHTML(x,gs)}</span>
-            <button type="button" class="tb-btn is-icon is-sm is-quiet cc-del" title="Remove this cost"
-              aria-label="Remove this cost" onclick="tripCustomRemove('${id}')">✕</button>
-          </div>
-        </div>`;
-      }).join('');
-  const addBtn=readOnly?'':`<button type="button" class="tb-btn is-sm is-quiet cc-add"
-    ${lines.length>=TRIP_CUSTOM_MAX?'disabled title="That is as many as one trip can hold."':''}
-    onclick="tripCustomAdd()">+ Add a cost</button>`;
   /* GOLF-233: the trip's one car-hire link. It lives here rather than on
-     the Itinerary because hire is a cost, not a stop — the custom-cost
-     field right above it already suggests "Car hire" as its example. The
-     readOnly branch is the shared view and the print sheet, neither of
-     which gets a link. */
+     the Itinerary because hire is a cost, not a stop — and this is the
+     group whose first example is "Car hire". The readOnly branch is the
+     shared view and the print sheet, neither of which gets a link. */
   const car=readOnly?null:(typeof affCarHireLink==='function'?affCarHireLink():null);
   const carRow=car?`<div class="tb-cost-aff">
     <a class="tb-btn is-sm is-quiet tb-aff" href="${esc(car)}"
@@ -1054,13 +1168,11 @@ function costOtherGroupHTML(b,readOnly){
       title="Compare hire cars on EconomyBookings">🚗 Hire a car ↗</a>
     <p class="tb-aff-note">${esc(AFF_DISCLOSURE)}</p>
   </div>`:'';
-  return`<details class="cost-group cost-other-group"${tbCostOtherOpen?' open':''}
-      ontoggle="tbCostOtherOpen=this.open"><summary class="cost-group-summary">
-      <span class="cost-group-label"><span class="cost-group-toggle" aria-hidden="true"></span>💷 Other</span>
-      <span class="cost-group-amt" data-other-amt>${costDual(moneyBucketFmt(b.otherTotal,cur),costPPBucketFmt(b.otherTotal,gs,cur),gs)}</span>
-    </summary>
-    <div class="cost-other-body">${fuelRow}${rows}${addBtn}${carRow}</div>
-  </details>`;
+  return costCustomGroupHTML(b,readOnly,{
+    key:'trip',icon:'💷',label:'Trip costs',
+    lines:b.tripLines||[],total:b.tripCostsTotal,dayId:null,
+    head:fuelRow,foot:carRow,dayPick:costDayPickFn(),
+  });
 }
 /* GOLF-203: repaint every figure a custom-cost keystroke can move, and
    nothing else. A full renderTripBuilder() on each input would replace the
@@ -1072,8 +1184,15 @@ function tbCostLiveRefresh(){
   if(body){
     const ban=body.querySelector('.cost-banner-amount');
     if(ban)ban.innerHTML=tbCostBannerAmountHTML(b);
-    const oth=body.querySelector('.cost-other-group [data-other-amt]');
-    if(oth)oth.innerHTML=costDual(moneyBucketFmt(b.otherTotal,cur),costPPBucketFmt(b.otherTotal,gs,cur),gs);
+    /* GOLF-247: every custom-cost group's summary total — the trip one
+       and one per day — since a keystroke in a day's line moves that
+       day's group as well as the banner. */
+    const amt=(key,bucket)=>{
+      const el=body.querySelector(`[data-group-amt="${key}"]`);
+      if(el)el.innerHTML=costDual(moneyBucketFmt(bucket,cur),costPPBucketFmt(bucket,gs,cur),gs);
+    };
+    amt('trip',b.tripCostsTotal);
+    if(b.dayCustom)b.dayCustom.forEach((e,dayId)=>amt('day:'+dayId,e.total));
     (b.customItems||[]).forEach(x=>{
       const cell=body.querySelector(`[data-cc-amt="${x.id}"]`);
       if(cell)cell.innerHTML=costCustomAmtHTML(x,gs);
@@ -1098,7 +1217,9 @@ function tbCostLiveRefresh(){
       const row=document.querySelector(`.tb-day-course .tb-item-price[aria-expanded="true"]`);
       if(row)row.innerHTML=(det.total==null&&found.item.type==='golf')
         ?'<span class="tb-price-ask">Add fee</span>'
-        :estMark(!!det.est)+tbDualPriceHTML(det.total,det.cur||'GBP');
+        :ownMark(!!det.own,found.item.type==='golf'
+            ?feeNumberForDate(found.item.i,found.day&&found.day.date):null,det.cur)
+         +estMark(!!det.est)+tbDualPriceHTML(det.total,det.cur||'GBP');
     }
   }
   /* Every day summary, not just the edited day's: a stay spans nights on
@@ -1137,7 +1258,11 @@ function tbCostsBodyHTML(b,fuelRowLabel,readOnly){
       ${costGroupHTML('📍','Stops',b.poiTotal,stop,cur)}
       ${/* GOLF-153: only when the trip has flights — see tripCostBreakdown(). */''}
       ${travel.length?costGroupHTML('✈','Travel',b.travelTotal,travel,cur):''}
-      ${costOtherGroupHTML(b,readOnly)}
+      ${/* GOLF-247 (owner review): the days that have costs of their own,
+           then the whole-trip group. Last, because "Trip costs" is where
+           fuel and car hire live and neither belongs to a day. */''}
+      ${costDayGroupsHTML(b,readOnly)}
+      ${costTripGroupHTML(b,readOnly)}
     </div>
     <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?' This trip spans more than one currency, so each is totalled separately — nothing is converted.':''}</p></div>`;
 }

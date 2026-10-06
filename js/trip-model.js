@@ -866,7 +866,13 @@ function tripCustomUpdate(id,patch){
      and a day that no longer exists means the trip too, so deleting a day
      cannot strand a line where nothing renders it. */
   if('day' in patch){
-    if(patch.day!=null&&tripDays.some(d=>d.id===patch.day))c.day=patch.day;
+    /* The day chooser is a <select>, so its value arrives as a string
+       ("" for the whole trip). Coerced here rather than at the call site:
+       every other way in passes a real id, and a string that slipped
+       through a strict comparison would silently mean "whole trip". */
+    const raw=patch.day;
+    const n=(raw===''||raw==null)?null:(typeof raw==='number'?raw:parseInt(raw,10));
+    if(n!=null&&Number.isInteger(n)&&tripDays.some(d=>d.id===n))c.day=n;
     else delete c.day;
   }
   saveState();

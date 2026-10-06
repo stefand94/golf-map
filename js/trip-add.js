@@ -625,7 +625,11 @@ function tripDayItemRowHTML(d,it){
       title="${esc(det.sharing?priceLabel.replace(/^ · /,''):(it.type==='golf'?'Set your own green fee':'Set this price'))}"
       onclick="event.stopPropagation();tbToggleCostEdit('${it.id}')">${
         price==null&&it.type==='golf'?'<span class="tb-price-ask">Add fee</span>'
-          :estMark(!!det.est)+tbDualPriceHTML(price,det.cur||'GBP')
+          :/* GOLF-247 (owner review): "✎" when the figure is the visitor's
+               own price rather than the course's listed fee. */
+           ownMark(!!det.own,it.type==='golf'&&typeof feeNumberForDate==='function'
+             ?feeNumberForDate(it.i,d&&d.date):null,det.cur)
+           +estMark(!!det.est)+tbDualPriceHTML(price,det.cur||'GBP')
       }</button>`}
     <div class="tb-item-actions">${menu}</div>
   </div>

@@ -736,6 +736,44 @@ eq('usage: a failing beacon logs nothing', [offline.errors, offline.warns], [[],
   eq('GOLF-247: a shared fee on a non-golf item is ignored', bh.fee, undefined);
 }
 
+// ── GOLF-247 (owner review): day costs and trip costs are one list ────
+// The Costs tab now shows a day's own costs under that day and the rest
+// under "Trip costs". That is a split of ONE list, so the thing to hold
+// is the partition: every line is in exactly one of the two buckets, and
+// moving a line between them neither duplicates nor loses it. (The
+// grouping itself is rendered in js/trip-ui.js, which needs a DOM; what
+// it reads is tested here.)
+{
+  const t = boot({}, BUILD_A);
+  writeRichTrip(t.sandbox);
+  const s = t.sandbox;
+  const d0 = s.tripDays[0].id;
+  s.tripCustom = [];
+  s.tripCustomAdd(d0);          // on a day
+  s.tripCustomAdd();            // on the whole trip
+  s.tripCustomAdd(999999);      // a day that does not exist
+  const partition = () => [s.tripCustomForDay(d0).length, s.tripCustomTripLevel().length];
+  eq('GOLF-247: an unknown day id falls to the trip', partition(), [1, 2]);
+  eq('GOLF-247: the two buckets partition the list',
+     s.tripCustomForDay(d0).length + s.tripCustomTripLevel().length, s.tripCustom.length,
+     'a line in both buckets would be counted twice in the grand total');
+
+  // The Costs tab's day chooser is a <select>, so the id arrives as text.
+  const trip = s.tripCustomTripLevel()[0];
+  s.tripCustomUpdate(trip.id, { day: String(d0) });
+  eq('GOLF-247: a day id from the chooser is coerced, not dropped', trip.day, d0);
+  eq('GOLF-247: moving a line does not duplicate it', partition(), [2, 1]);
+  s.tripCustomUpdate(trip.id, { day: '' });
+  eq('GOLF-247: "Whole trip" takes the day off again', 'day' in trip, false);
+  eq('GOLF-247: moving it back does not lose it', partition(), [1, 2]);
+
+  // A day cost whose day is deleted is still in the list, under the trip.
+  const onDay = s.tripCustomForDay(d0)[0] || {};
+  s.tripDays = s.tripDays.filter(d => d.id !== d0);
+  eq('GOLF-247: deleting a day cannot strand its costs',
+     !!onDay.id && s.tripCustomTripLevel().some(c => c.id === onDay.id), true);
+}
+
 if (failures.length) {
   console.error(`test_state_persist: ${failures.length} failure(s)\n`);
   failures.forEach(f => console.error('  - ' + f));

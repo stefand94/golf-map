@@ -1201,8 +1201,25 @@
   .tb-daycost-per button{font-size:var(--fs-caption);padding:0 var(--sp-2)}
   .tb-daycost-amt-out{margin-left:auto}
   .tb-daycost-add{margin-top:var(--sp-2)}
-  /* Which day a Costs-tab line came from. */
-  .cc-day{margin-left:var(--sp-2);font-size:var(--fs-micro);white-space:nowrap}
+  /* GOLF-247 (owner review): a price the visitor set themselves. The mark
+     is the "~" estimate flag's twin, so it reads as the same kind of
+     annotation on the money; the words go on the editor's own label. */
+  .cost-own{color:var(--accent);font-weight:600;margin-right:2px}
+  .cost-own-flag{margin-left:var(--sp-2);padding:0 6px;border-radius:999px;
+    background:var(--accent-soft);color:var(--accent);
+    font:600 var(--fs-micro) var(--font-sans);text-transform:none;letter-spacing:0;
+    white-space:nowrap;vertical-align:1px}
+  /* The listed fee, kept in sight behind the figure that replaced it. */
+  .cost-edit-listed{flex:0 0 auto;font-size:var(--fs-caption);color:var(--ink-soft);
+    white-space:nowrap;font-variant-numeric:tabular-nums}
+  .tl-cost-listed{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);
+    margin-top:var(--sp-1)}
+  /* Moving a whole-trip cost onto a day, from the Costs tab's own row. */
+  .cc-dayto{flex:0 0 auto;width:auto;padding-right:var(--sp-2);font-size:var(--fs-caption)}
+  /* The read-only twin of a day's cost rows (shared link, print sheet). */
+  .tb-daycost.is-read{border-bottom:0;padding:2px 0}
+  .tb-daycost-read{flex:1 1 auto;min-width:0;font-size:var(--fs-small)}
+  .tb-day-costs.is-read{margin-bottom:var(--sp-3)}
   /* No 16px floor for these fields here: GOLF-200's one app-wide rule at
      the foot of this stylesheet already covers them (it names them). */
   /* item-6: the Share button's inline SVG icon (SHARE_ICON_SVG) — nudged

@@ -604,11 +604,23 @@ function tlPanelCostFieldHTML(d,it){
     ?(dataFee!=null?`Your own fee for this round, in ${cur}. Clear it to go back to the club's ${curSym(cur)}${dataFee.toFixed(0)}.`
       :`Nobody has published a fee for this course, so this is the only one the trip has.`)
     :it.type==='hotel'?`Per person, per night, in ${cur}.`:`In ${cur}.`;
-  return`<label class="tl-f"><span>${esc(label)}</span>
+  /* GOLF-247 (owner review): once the visitor has typed over the listed
+     fee, the panel says so in words and keeps the listed figure in sight,
+     greyed, with the one button that puts it back. The list view's editor
+     (tbCostEditHTML) does the same, in the same words. */
+  const own=isGolf&&det.own;
+  return`<label class="tl-f"><span>${esc(label)}${
+      own?'<span class="cost-own-flag">your price</span>':''}</span>
     <input type="number" class="tl-field" min="0" step="5" inputmode="decimal"
       value="${typed!=null?esc(String(typed)):''}" placeholder="${esc(ph)}"
       title="${esc(title)}"
-      oninput="tripItemSetCost('${esc(it.id)}',{${isGolf?'fee':'price'}:this.value});tlPanelCostRefresh('${esc(it.id)}');"></label>`;
+      oninput="tripItemSetCost('${esc(it.id)}',{${isGolf?'fee':'price'}:this.value});tlPanelCostRefresh('${esc(it.id)}');">
+    ${own?`<span class="tl-cost-listed">${dataFee!=null
+      ?`<span class="cost-edit-listed">Listed ${esc(tbMoney(dataFee,cur))}</span>`:''
+      }<button type="button" class="tb-btn is-sm is-quiet"
+        title="${dataFee!=null?'Drop your price and go back to the fee in the course data'
+          :'Drop your price. This course has no listed fee.'}"
+        onclick="tripItemSetCost('${esc(it.id)}',{fee:''});renderTripBuilder();">Use listed fee</button></span>`:''}</label>`;
 }
 /* The currency and the per-person/whole-group basis, on their own wide
    row: three controls in the four-up grid above would wrap badly at 375,
