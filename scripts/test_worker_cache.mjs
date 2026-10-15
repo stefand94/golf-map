@@ -55,7 +55,7 @@ globalThis.fetch = async (url, opts) => {
     return esriStub(String(url));
   }
   if (orsRouteStub) return new Response(JSON.stringify(orsRouteStub), {
-    status: 200, headers: { 'Content-Type': 'application/json' },
+    status: 200, headers: { 'Content-Type': 'application/json', 'X-RateLimit-Limit': '2000' },
   });
   overpassCalls++;
   calledUrls.push(String(url));
@@ -94,7 +94,7 @@ globalThis.caches = {
   },
 };
 
-const worker = (await import(pathToFileURL(tmp).href)).default;
+const { default: worker, LookupQuota } = await import(pathToFileURL(tmp).href);
 const ctx = { waitUntil: (p) => p };
 
 const call = (body, origin = 'https://golf-map.pages.dev') =>
@@ -261,6 +261,88 @@ check('route geometry is simplified and [lat,lng]',
 check('route response still carries CORS',
   r.headers.get('Access-Control-Allow-Origin') === 'https://golf-map.pages.dev',
   `acao=${r.headers.get('Access-Control-Allow-Origin')}`);
+check('route relays ORS\'s own X-RateLimit-Limit (GOLF-251)',
+  r.headers.get('X-ORS-RateLimit-Limit') === '2000', `hdr=${r.headers.get('X-ORS-RateLimit-Limit')}`);
+
+/* GOLF-251: the site-wide per-minute guard. The pacing lives in
+   LookupQuota.take(); its SQL is stubbed to "nothing counted yet" so only
+   the per-minute rule can bite, and the clock is driven by hand. */
+const realNow = Date.now;
+let clock = Date.UTC(2026, 9, 15, 12, 0, 0);
+Date.now = () => clock;
+const noSql = { exec: () => ({ toArray: () => [] }) };
+let q = new LookupQuota({ storage: { sql: noSql } }, {});
+const lim = { visitor: 1e9, site: 1e9, minute: 36 };
+const takeN = async (n, who = '1.2.3.4') => {
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(await q.take('directions', who, lim));
+  return out;
+};
+let v = await takeN(28);
+check('per-minute: a lone cold 10-day load (28 legs) is never held or refused',
+  v.every((x) => x.ok && x.waitMs === 0), JSON.stringify(v.filter((x) => !x.ok || x.waitMs)));
+v = await takeN(8, '5.6.7.8');
+check('per-minute: the 36th call in a minute still goes at once', v.every((x) => x.ok && x.waitMs === 0));
+clock += 1000;
+v = await takeN(1, '5.6.7.8');
+check('per-minute: the 37th, 59 s from a free slot, is refused with a retry time',
+  !v[0].ok && v[0].scope === 'minute' && v[0].retryMs === 59000, JSON.stringify(v[0]));
+clock += 49000; // 50 s after the burst: the next slot is 10 s off
+v = await takeN(2, '5.6.7.8');
+check('per-minute: a slot within 15 s is queued, not refused',
+  v.every((x) => x.ok) && v[0].waitMs === 10000 && v[1].waitMs === 10000, JSON.stringify(v));
+clock += 60000;
+v = await takeN(1);
+check('per-minute: the window slides on', v[0].ok && v[0].waitMs === 0, JSON.stringify(v[0]));
+
+// Two visitors loading cold trips at the same moment: 56 legs.
+q = new LookupQuota({ storage: { sql: noSql } }, {});
+v = await takeN(56);
+const sent = v.filter((x) => x.ok).length;
+check('per-minute: two simultaneous 28-leg loads send 36 now, refuse 20',
+  sent === 36 && v.filter((x) => x.scope === 'minute').length === 20, `sent=${sent}`);
+
+// Invariant under a random drip: no 60 s window ever holds more than 36 sends.
+q = new LookupQuota({ storage: { sql: noSql } }, {});
+const sends = [];
+let seed = 7;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+for (let i = 0; i < 3000; i++) {
+  clock += Math.floor(rnd() * 3000);
+  const burst = rnd() < 0.05 ? 30 : 1;
+  for (let b = 0; b < burst; b++) {
+    const x = await q.take('directions', 'v' + i, lim);
+    if (x.ok) sends.push(clock + x.waitMs);
+  }
+}
+sends.sort((a, b) => a - b);
+let worst = 0;
+for (let i = 0, k = 0; i < sends.length; i++) {
+  while (sends[k] <= sends[i] - 60000) k++;
+  worst = Math.max(worst, i - k + 1);
+}
+check('per-minute: no 60 s window ever exceeds 36 upstream sends', worst <= 36 && sends.length > 1000,
+  `worst=${worst} sent=${sends.length}`);
+check('per-minute: geocode is paced separately from directions', (await q.take('geocode', 'x', lim)).ok);
+Date.now = realNow;
+
+const routeWith = (quota) => worker.fetch(new Request('https://w.test', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json', Origin: 'https://golftripper.uk' },
+  body: JSON.stringify({ origin: [-3.1883, 55.9533], destination: [-4.2518, 55.8642] }),
+}), { ORS_API_KEY: 'test-key', LOOKUP_QUOTA: { idFromName: () => 'g', get: () => quota } }, ctx);
+r = await routeWith({ take: async () => ({ ok: false, scope: 'minute', retryMs: 4200 }) });
+j = await r.clone().json();
+check('per-minute refusal: 429, Retry-After rounded up, limit:"minute", CORS kept',
+  r.status === 429 && r.headers.get('Retry-After') === '5' && j.limit === 'minute'
+  && r.headers.get('Access-Control-Allow-Origin') === 'https://golftripper.uk',
+  `status=${r.status} ra=${r.headers.get('Retry-After')} limit=${j.limit}`);
+r = await routeWith({ take: async () => { throw new Error('object down'); } });
+check('per-minute: a counter error fails open (route still answered)', r.status === 200, `status=${r.status}`);
+const tq = realNow();
+r = await routeWith({ take: async () => ({ ok: true, waitMs: 120 }) });
+check('per-minute: a queued call waits its slot, then is answered',
+  r.status === 200 && realNow() - tq >= 115, `status=${r.status} ms=${realNow() - tq}`);
 orsRouteStub = null;
 
 /* GOLF-35B / GOLF-102 P2: the live domain is allowed, a stranger isn't, and a

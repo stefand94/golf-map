@@ -24,6 +24,16 @@ makes no ORS call. Visitors are stored only as a hash with a random
 per-day salt, and each day's rows are deleted the next day. Overpass
 hotel modes are not counted.
 
+**Per minute (GOLF-251).** HeiGIT also limits each key per minute
+(directions 40, geocoding 100), so the same object paces sends site-wide
+to 36 and 90 per rolling minute. A free slot goes at once; one up to 15 s
+away is held until then; anything further gets **429**
+`{limit:'minute'}` with a `Retry-After` in seconds. A lone cold 10-day
+load (~28 legs) never waits. The send times are in memory only, so a
+restart forgets the last minute. Successful route and geocode answers
+carry ORS's own `X-ORS-RateLimit-Limit`, to check the real quota with
+curl.
+
 ## Health check and outage alert (GOLF-229)
 
 `GET https://api.golftripper.uk/health` makes one small real call to each
