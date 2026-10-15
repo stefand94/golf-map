@@ -27,6 +27,7 @@
 
 ## Open
 - **GOLF-243:** DONE 2026-10-15 (the end-station buffer is shown as text and is not editable; accepted).
+- **Nothing in flight.** All three devs are free. The next BA job is GOLF-234 (2).
 - **GOLF-234:**
   - (2) The BA checks OpenRouteService's commercial terms. Not started.
   - (3) The owner moves UptimeRobot to Better Stack, using the same `/health` URL.
@@ -48,6 +49,6 @@
   - Esri key: `curl -s -H 'Origin: https://golftripper.uk' https://api.golftripper.uk/esri-key | grep -c '"key":"'` (1 means OK; never print the key).
 - **BA push:**
   - `git pull --rebase --autostash`, then `git log origin/main..HEAD` must show only BA commits, then push.
-  - Never commit `.claude/launch.json`. An autostash once conflicted on it; restore the stash's copy and don't drop it before checking.
+  - `.claude/launch.json` has been untracked and gitignored since f92b92d. Each machine keeps its own copy, so never re-add it.
 - **Secrets:** never ask for or see a key. Stefan sets Worker secrets himself.
 - **Never build test trips on golftripper.uk.**
