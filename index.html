@@ -32,6 +32,23 @@
      tidy the address bar in place. Hash and query are kept, so #trip and
      #share= links behave as before. -->
 <script>(function(){var p=location.pathname;if(/\/london-golf-map-v5_1(\.html)?$/.test(p))history.replaceState(history.state,'',p.replace(/london-golf-map-v5_1(\.html)?$/,'')+location.search+location.hash);})();</script>
+<!-- Stay22 "Let Me Allez" (LMA): Stay22's own snippet, verbatim apart from
+     the host check, so it runs on production only (previews and localhost
+     don't send it traffic). Async and third-party: if an ad-blocker or an
+     outage stops lma.stay22.com, nothing else on the page waits on it.
+     sw.js only handles same-origin requests, so it is never precached. The
+     lmaID is a public partner id, like the aid in js/affiliate.js. -->
+<script>
+  if (location.hostname === 'golftripper.uk') (function (s, t, a, y, twenty, two) {
+    s.Stay22 = s.Stay22 || {};
+    s.Stay22.params = { lmaID: '6ac37bb09e55f33a75a26243' };
+    twenty = t.createElement(a);
+    two = t.getElementsByTagName(a)[0];
+    twenty.async = 1;
+    twenty.src = y;
+    two.parentNode.insertBefore(twenty, two);
+  })(window, document, 'script', 'https://lma.stay22.com/letmeallez.js');
+</script>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
