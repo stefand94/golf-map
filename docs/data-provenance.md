@@ -395,7 +395,7 @@ No other host is contacted for data. The Worker's upstream URLs are in
 
 | Service | Called from | Purpose | Terms | Credit shown |
 |---|---|---|---|---|
-| OpenRouteService directions, `api.heigit.org` | Worker | Drive legs | ORS/HeiGIT terms. Free tier is non-commercial. **Commercial use unconfirmed** (GOLF-234) | "routes © openrouteservice.org by HeiGIT" in the map credits and on the shared view's map (GOLF-240), and in the privacy dialog |
+| OpenRouteService directions, `api.heigit.org` | Worker | Drive legs | ORS/HeiGIT terms. Free Standard plan is open to everyone and the ToS has no commercial ban (BA-checked 2026-10-15, GOLF-234). Results are CC-BY-SA 4.0. Limits: 2,000/day and 40/min directions, 3,000/day and 100/min geocoding | "routes © openrouteservice.org by HeiGIT" in the map credits and on the shared view's map (GOLF-240), and in the privacy dialog |
 | OpenRouteService geocoding, `api.openrouteservice.org` | Worker | Place search | As above. Geocoding intermittently 403s (CLAUDE.md) | As above |
 | Overpass API (OSM) | Worker | Hotels only: the "Add a stay" picker (GOLF-96) and the viewport hotel layer (GOLF-142). The live heritage mode was removed in GOLF-156 | ODbL data. Overpass has a fair-use policy, with rate limits handled by the Worker cache | Covered only by the general OSM credit. R12 |
 | Esri ArcGIS Online tiles | Browser | Street and satellite base maps | Keyless use, with attribution, accepted while the site is **non-commercial** (DEC-036, gate item 6). **Affiliate income makes the site commercial (DEC-038); a commercial key is GOLF-234** | Esri's attribution string, via `esriBaseLayers()` in `js/map.js` |
