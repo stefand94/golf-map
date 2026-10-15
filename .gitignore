@@ -1,3 +1,4 @@
 scripts/output/
 .DS_Store
 .wrangler/
+.claude/launch.json
