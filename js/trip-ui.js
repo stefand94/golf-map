@@ -1893,7 +1893,8 @@ function privacyOpen(){
         <li>The map comes from Esri and the fonts from Google Fonts. Like any website, they see your IP address when your browser loads them.</li>
         <li>Feedback you send is emailed to the site owner. It's not stored anywhere else.</li>
         <li>We count, anonymously, how many trips are planned and shared. Nothing about you or your trip is stored.</li>
-        <li>Hotel "Check prices" links go through Stay22, and the car-hire link through Travelpayouts, to the booking site, which may pay us a commission. We send the hotel's map position or the destination, your dates and group size, nothing else, and nothing is sent until you click.</li>
+        <li>Hotel "Check prices" links go through Stay22, and the car-hire link through Travelpayouts, to the booking site, which may pay us a commission. When you click, we send the hotel's map position or the destination, your dates and group size, nothing else.</li>
+        <li>Stay22 also runs a script on this page that tracks bookings back to us. When the page loads, it sends Stay22 the page address and a fingerprint of your browser, and keeps a visitor id in this browser for 6 hours. It can also turn links to booking sites like Booking.com into Stay22 links.</li>
       </ul>
       <h3>Credits</h3>
       <ul>
