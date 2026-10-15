@@ -8,7 +8,7 @@
 ## Devs (message them with `send_message`; messages queue while a dev is busy)
 | Dev | Session | Now |
 | --- | --- | --- |
-| Gavin | local_3fca3136-2b4f-471f-b478-dcfd6237af76 | GOLF-243; status asked 2026-10-15 |
+| Gavin | local_3fca3136-2b4f-471f-b478-dcfd6237af76 | free |
 | Geoff | local_dba50868-33bc-4648-8f08-41ee64dae220 | free (owns the Worker and map) |
 | Barry | local_3c95b823-1f47-4259-9cc3-6d118e96600e | free (data, UI polish) |
 
@@ -26,7 +26,7 @@
 - **GOLF-246, 248, 249:** spacing and polish. **GOLF-241:** usage stats count production only.
 
 ## Open
-- **GOLF-243, start and end points (Gavin):** parts 1–4 are live (a3c79b1ba1). Waiting on his report against the brief's AC.
+- **GOLF-243:** DONE 2026-10-15 (the end-station buffer is shown as text and is not editable; accepted).
 - **GOLF-234:**
   - (2) The BA checks OpenRouteService's commercial terms. Not started.
   - (3) The owner moves UptimeRobot to Better Stack, using the same `/health` URL.
