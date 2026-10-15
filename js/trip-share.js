@@ -215,7 +215,8 @@ function shareEndpoint(ep){
   if(!ep)return undefined;
   return{l:ep.label,k:ep.kind,
     ...(typeof ep.lat==='number'?{y:ep.lat,x:ep.lng}:{}),
-    ...(ep.code?{c:ep.code}:{})};
+    ...(ep.code?{c:ep.code}:{}),
+    ...(typeof ep.bufferMins==='number'?{b:ep.bufferMins}:{})};
 }
 /* Read back through the model's own validator — one definition of a valid
    endpoint, whether it arrived from a click, from localStorage or from
@@ -226,8 +227,11 @@ function shareReadEndpoint(e){
      and clamping a latitude of 1e9 to 90 would turn a mangled link into a
      confident drive to the North Pole. tripEndpointNorm() range-checks
      and drops instead, which is the right answer for a point on a map. */
+  /* The allowance is clamped rather than dropped, unlike the coordinates:
+     a nonsense buffer makes the day sit oddly on the grid, where a nonsense
+     latitude would route a drive to the North Pole. */
   return tripEndpointNorm({label:shareStr(e.l,80),kind:e.k,
-    lat:e.y,lng:e.x,code:shareStr(e.c,8)});
+    lat:e.y,lng:e.x,code:shareStr(e.c,8),bufferMins:shareNum(e.b,0,1440)});
 }
 function tripDecodeSharePayload(hash){
   try{

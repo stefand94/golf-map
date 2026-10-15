@@ -692,8 +692,32 @@ function tbEndpointRowHTML(which,readOnly){
       <button type="button" class="tb-btn is-sm is-quiet" onclick="tbEndpointClearRow('${which}')" title="Remove ${word.toLowerCase()} point">Clear</button>
     </span>`}
     ${tbEndpointPicker&&tbEndpointPicker.which===which&&!readOnly?tbEndpointPickerHTML(which):''}
+    ${tbEndpointAllowHTML(which,ep,readOnly)}
     ${drive?tbDriveCapHTML(drive):''}
   </div>`;
+}
+/* GOLF-243: how long before the flight or the train home you want to be
+   there. A located airport or station end only — a plain place has nothing
+   to be early for, and neither does a start you have already arrived at.
+   Empty means "the usual", which is why the default is a placeholder and
+   not a value: the field has to be clearable back to it. */
+function tbEndpointAllowHTML(which,ep,readOnly){
+  if(!tripEndpointAllows(which,ep)||!tripEndpointLocated(ep))return'';
+  const def=tripEndpointAllowDefault(ep);
+  const mins=tripEndpointAllow(ep);
+  const what=ep.kind==='airport'?'flight':'train';
+  if(readOnly)return`<span class="wt tb-ep-allow-ro">Allow ${esc(fmtDriveMinutes(mins))} before the ${what}</span>`;
+  return`<label class="tb-ep-allow"><span>Allow</span>
+    <input type="number" class="tb-ep-allow-f" min="0" max="1440" step="5"
+      value="${esc(ep.bufferMins!=null?String(ep.bufferMins):'')}" placeholder="${def}"
+      title="Minutes at the ${ep.kind==='airport'?'airport':'station'} before the ${what} home. The drive has to land by then. Clear it for the usual ${esc(fmtDriveMinutes(def))}."
+      onchange="tbEndpointSetAllowRow('${which}',this.value)">
+    <span class="tb-ep-allow-u">min</span></label>`;
+}
+function tbEndpointSetAllowRow(which,v){
+  if(typeof appMode!=='undefined'&&appMode==='shared')return;
+  if(!tripEndpointSetAllow(which,v))return;
+  renderTripBuilder();
 }
 function tbItinAllHTML(){
   if(!tripDays.length)return`<p class="hint">Add a day to start building your itinerary.</p>`;

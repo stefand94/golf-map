@@ -81,7 +81,44 @@ function tripEndpointNorm(x){
   if(lat!=null&&lng!=null){out.lat=lat;out.lng=lng;}
   const code=typeof x.code==='string'?x.code.trim().toUpperCase().slice(0,8):'';
   if(code)out.code=code;
+  /* The allowance before the journey home, in minutes. Kept only when the
+     visitor has actually set one, exactly like an item's bufferMins: a
+     missing key means "the usual for this kind", so clearing the field has
+     to give the 120 or the 20 back rather than take the allowance away.
+     Zero is a real answer and survives. */
+  const buf=num(x.bufferMins,0,1440);
+  if(buf!=null)out.bufferMins=Math.round(buf);
   return out;
+}
+/* The default allowance by kind. The airport one is deliberately the same
+   number as a flight item's own buffer — there is one answer to "how early
+   do you want to be at an airport", and it should not depend on whether the
+   flight home is a block you typed or the End row. */
+const TRIP_EP_STATION_ALLOW=20; // minutes at the station before a train home
+function tripEndpointAllowDefault(ep){
+  const k=ep&&ep.kind;
+  if(k==='airport')return(typeof TL_DEFAULT_BUFFER!=='undefined'&&TL_DEFAULT_BUFFER.flight)||120;
+  if(k==='station')return TRIP_EP_STATION_ALLOW;
+  return 0;
+}
+/* Whether an allowance is a meaningful thing to ask for: there is a train
+   or a plane to be early for, and it is the journey home. Nobody needs to
+   be early for the airport they have just landed at. */
+function tripEndpointAllows(which,ep){
+  return which==='end'&&!!ep&&(ep.kind==='airport'||ep.kind==='station');
+}
+function tripEndpointAllow(ep){
+  if(!ep)return 0;
+  return typeof ep.bufferMins==='number'?ep.bufferMins:tripEndpointAllowDefault(ep);
+}
+function tripEndpointSetAllow(which,v){
+  const ep=tripEndpointGet(which);
+  if(!ep)return false;
+  const n=parseInt(v,10);
+  if(!Number.isFinite(n)||n<0)delete ep.bufferMins;
+  else ep.bufferMins=Math.min(1440,n);
+  saveState();
+  return true;
 }
 function tripEndpointGet(which){return which==='end'?tripEnd:tripStart;}
 function tripEndpointPoint(ep){

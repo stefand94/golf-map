@@ -850,6 +850,46 @@ eq('usage: a failing beacon logs nothing', [offline.errors, offline.warns], [[],
   const fdec = t.sandbox.tripDecodeSharePayload('#share=' + encodeURIComponent(JSON.stringify(forged)));
   eq('GOLF-243: a forged endpoint keeps its label and loses its coordinates',
      [fdec.st.label, 'lat' in fdec.st], ['Nowhere', false]);
+
+  // The allowance before the journey home. It is optional in the same way
+  // the endpoint itself is: an untouched one must not appear in the saved
+  // bytes or the link, because a missing key means "the usual for this
+  // kind" and a written 20 would freeze today's default into old trips.
+  const a = boot({}, BUILD_A);
+  writeRichTrip(a.sandbox);
+  a.sandbox.tripEndpointSet('end', { label: 'Edinburgh Waverley', kind: 'station', lat: 55.9521, lng: -3.1892 });
+  eq('GOLF-243: an untouched allowance is not stored',
+     /"bufferMins"/.test(a.store['golfmap:v1']), false,
+     'storing the default would freeze it into every trip saved today');
+  eq('GOLF-243: ...and a station still gets one by kind',
+     a.sandbox.tripEndpointAllow(a.sandbox.tripEnd), 20);
+  eq('GOLF-243: an airport gets the flight buffer, not the station one',
+     a.sandbox.tripEndpointAllowDefault({ kind: 'airport' }), 120);
+  eq('GOLF-243: only the journey home is worth being early for',
+     [a.sandbox.tripEndpointAllows('end', { kind: 'station' }),
+      a.sandbox.tripEndpointAllows('end', { kind: 'place' }),
+      a.sandbox.tripEndpointAllows('start', { kind: 'airport' })], [true, false, false]);
+
+  a.sandbox.tripEndpointSetAllow('end', '35');
+  eq('GOLF-243: a set allowance survives a release',
+     boot({ 'golfmap:v1': a.store['golfmap:v1'] }, BUILD_A + '-next').sandbox.tripEnd.bufferMins, 35);
+  a.sandbox.tripEndpointSetAllow('end', '0');
+  eq('GOLF-243: zero is an answer, not an absence',
+     [a.sandbox.tripEnd.bufferMins, a.sandbox.tripEndpointAllow(a.sandbox.tripEnd)], [0, 0]);
+  a.sandbox.tripEndpointSetAllow('end', '');
+  eq('GOLF-243: clearing it gives the usual back rather than taking it away',
+     ['bufferMins' in a.sandbox.tripEnd, a.sandbox.tripEndpointAllow(a.sandbox.tripEnd)], [false, 20]);
+
+  a.sandbox.tripEndpointSetAllow('end', '9999');
+  eq('GOLF-243: an absurd allowance is capped', a.sandbox.tripEnd.bufferMins, 1440);
+  const ahash = '#share=' + encodeURIComponent(JSON.stringify(a.sandbox.tripBuildSharePayload()));
+  eq('GOLF-243: the allowance rides the share link',
+     a.sandbox.tripDecodeSharePayload(ahash).en.bufferMins, 1440);
+  const aforged = JSON.parse(JSON.stringify(a.sandbox.tripBuildSharePayload()));
+  aforged.en.b = -5;
+  eq('GOLF-243: a negative allowance off a link clamps to none-at-all',
+     a.sandbox.tripDecodeSharePayload('#share=' + encodeURIComponent(JSON.stringify(aforged))).en.bufferMins, 0,
+     'clamping is the right answer for a buffer; dropping it would silently restore the default');
 }
 
 if (failures.length) {

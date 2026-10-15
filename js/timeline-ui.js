@@ -266,7 +266,6 @@ function tlInboundOriginName(dayIdx){
    marker — "a plain place has no transport block, just the drive". An
    endpoint with no coordinates draws nothing at all, because there is
    no leg to or from a name. */
-const TL_EP_TRAIN_BUFFER=20; // minutes at the station before a train home
 function tlEndpointItem(which){
   if(typeof tripEndpointGet!=='function')return null;
   const ep=tripEndpointGet(which);
@@ -278,9 +277,9 @@ function tlEndpointItem(which){
     name:tripEndpointName(ep),lat:ep.lat,lng:ep.lng,
     /* The advice the block carries instead of a buffer band: with no
        departure time typed there is nothing for a buffer to be early
-       for, and drawing one anyway would invent a deadline. */
-    epAllow:which==='end'?(ep.kind==='airport'?TL_DEFAULT_BUFFER.flight
-      :ep.kind==='station'?TL_EP_TRAIN_BUFFER:0):0};
+       for, and drawing one anyway would invent a deadline. The number is
+       the visitor's own if they have set one, edited on the End row. */
+    epAllow:tripEndpointAllows(which,ep)?tripEndpointAllow(ep):0};
 }
 function tlIsEndpointItem(it){return!!(it&&it.epSynth);}
 function tlRowsForDay(dayIdx){
