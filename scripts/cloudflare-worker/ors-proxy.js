@@ -413,11 +413,52 @@ async function overpassFetch(query, urls = OVERPASS_URLS) {
    refused: a counter outage shouldn't take routing down with it, and the
    per-10-second rule still caps the damage. */
 const QUOTA_LIMITS = {
-  // ORS standard plan: directions 2,000/day, geocode autocomplete
-  // 1,000/day, each its own quota. Check the ORS dashboard if they change.
-  directions: { visitor: 300, site: 1900 },
-  geocode: { visitor: 200, site: 950 },
+  // HeiGIT Standard plan (account.heigit.org/info/plans, read 2026-10-15),
+  // each its own quota, per day AND per minute:
+  //   directions 2,000/day, 40/min;  geocoding 3,000/day, 100/min.
+  // The geocode day cap stays at 950 (the old 1,000/day autocomplete
+  // figure) until the dashboard or ORS's own X-RateLimit-Limit header
+  // says otherwise. `minute` is site-wide, a little under ORS's figure
+  // (GOLF-251, see paceSlot). Check the HeiGIT dashboard if they change.
+  directions: { visitor: 300, site: 1900, minute: 36 },
+  geocode: { visitor: 200, site: 950, minute: 90 },
 };
+
+/* ── GOLF-251: site-wide per-minute guard.
+
+   ORS also limits each key per minute (above), and repeatedly going over
+   can get the account blocked. A cold 10-day trip load is ~28 route calls
+   at once, so two visitors loading together could exceed 40/min.
+
+   paceSlot() keeps the upstream send times of the last minute, in memory
+   in the LookupQuota object, and gives each call the earliest slot that
+   keeps every 60-second window at or under `perMinute`. A slot that is
+   free now goes at once (a lone trip load never waits). One a little way
+   off is held: the Worker sleeps until it, so a burst is smoothed rather
+   than refused. One further off than PACE_MAX_WAIT_MS is refused with
+   429 + Retry-After, which the app treats like the daily cap (straight
+   line / "temporarily unavailable").
+
+   Memory only on purpose: a minute of history isn't worth a storage
+   write per lookup. If the object restarts (deploy, eviction after being
+   idle) the history is lost, and at worst one minute lets through up to
+   twice the limit once; ORS's own limit is what that headroom is for. */
+const PACE_MAX_WAIT_MS = 15000;
+const PACE_WINDOW_MS = 60000;
+
+/* `times` is the sorted list of send times (ms) already handed out; it is
+   updated in place. Returns { waitMs } for a slot, or { retryMs } when the
+   nearest slot is more than maxWaitMs away (nothing is reserved). */
+function paceSlot(times, now, perMinute, maxWaitMs) {
+  while (times.length && times[0] <= now - PACE_WINDOW_MS) times.shift();
+  // No earlier than the last slot (keeps the list sorted), and late enough
+  // that the window ending at it holds at most perMinute sends.
+  let at = Math.max(now, times.length ? times[times.length - 1] : now);
+  if (times.length >= perMinute) at = Math.max(at, times[times.length - perMinute] + PACE_WINDOW_MS);
+  if (at - now > maxWaitMs) return { retryMs: at - now };
+  times.push(at);
+  return { waitMs: at - now };
+}
 
 /* A visitor is an IP. An IPv6 user can rotate through a whole /64 without
    trying, so v6 addresses count by their /64 prefix. */
@@ -445,6 +486,7 @@ export class LookupQuota extends DurableObject {
     this.usageDay = null; // GOLF-235: the per-visitor cap, memory only (see handleCount)
     this.usageSalt = null;
     this.usageSeen = new Map();
+    this.sent = {}; // GOLF-251: kind -> recent upstream send times (paceSlot)
   }
 
   /* GOLF-235: adds one `event` to today's total unless today's site
@@ -496,8 +538,10 @@ export class LookupQuota extends DurableObject {
   }
 
   /* Counts one `kind` lookup for `visitor` today, unless that would break
-     a limit. Returns { ok:true } or { ok:false, scope:'visitor'|'site' }.
-     `limits` is passed in, so a test run can shrink them. */
+     a limit. Returns { ok:true, waitMs } (sleep waitMs, then call ORS) or
+     { ok:false, scope:'visitor'|'site'|'minute', retryMs? }. `limits` is
+     passed in, so a test run can shrink them. A call refused by any limit
+     is not counted against the others. */
   async take(kind, visitor, limits) {
     const day = new Date().toISOString().slice(0, 10);
     if (this.prunedFor !== day) {
@@ -520,22 +564,30 @@ export class LookupQuota extends DurableObject {
       this.sql.exec('SELECT n FROM counts WHERE day = ? AND who = ? AND kind = ?', day, w, kind).toArray()[0]?.n || 0;
     if (count('*') >= limits.site) return { ok: false, scope: 'site' };
     if (count(who) >= limits.visitor) return { ok: false, scope: 'visitor' };
+    let waitMs = 0;
+    if (limits.minute) {
+      const slot = paceSlot(this.sent[kind] || (this.sent[kind] = []), Date.now(), limits.minute, limits.maxWaitMs ?? PACE_MAX_WAIT_MS);
+      if (slot.retryMs != null) return { ok: false, scope: 'minute', retryMs: slot.retryMs };
+      waitMs = slot.waitMs;
+    }
     const bump = 'INSERT INTO counts (day, who, kind, n) VALUES (?, ?, ?, 1) ON CONFLICT (day, who, kind) DO UPDATE SET n = n + 1';
     this.sql.exec(bump, day, '*', kind);
     this.sql.exec(bump, day, who, kind);
-    return { ok: true };
+    return { ok: true, waitMs };
   }
 }
 
-/* Returns a 429 Response if this lookup is over a daily limit, else null
-   (go ahead). Call it after the request is validated and immediately
-   before the upstream fetch, so only calls that would reach ORS count. */
+/* Returns a 429 Response if this lookup is over a daily or per-minute
+   limit, else null (go ahead), having first waited out any GOLF-251 pacing
+   delay. Call it after the request is validated and immediately before
+   the upstream fetch, so only calls that would reach ORS count. */
 async function quotaGate(kind, env, request) {
   if (!env.LOOKUP_QUOTA) return null; // binding missing (e.g. a manual paste deploy): no cap
   const limits = { ...QUOTA_LIMITS[kind] };
   // Test-only overrides (`wrangler dev --var`); production uses the table above.
   if (env.QUOTA_TEST_VISITOR) limits.visitor = Number(env.QUOTA_TEST_VISITOR);
   if (env.QUOTA_TEST_SITE) limits.site = Number(env.QUOTA_TEST_SITE);
+  if (env.QUOTA_TEST_MINUTE) limits.minute = Number(env.QUOTA_TEST_MINUTE);
   let verdict;
   try {
     const stub = env.LOOKUP_QUOTA.get(env.LOOKUP_QUOTA.idFromName('global'));
@@ -544,7 +596,19 @@ async function quotaGate(kind, env, request) {
     console.log(`GOLF-223 quota check failed, letting ${kind} through: ${e}`);
     return null;
   }
-  if (verdict.ok) return null;
+  if (verdict.ok) {
+    if (verdict.waitMs > 0) await new Promise((r) => setTimeout(r, verdict.waitMs));
+    return null;
+  }
+  if (verdict.scope === 'minute') {
+    const res = json({
+      error: 'too many lookups across the site this minute; try again shortly',
+      limit: 'minute',
+      kind,
+    }, 429, request);
+    res.headers.set('Retry-After', String(Math.max(1, Math.ceil(verdict.retryMs / 1000))));
+    return res;
+  }
   const now = new Date();
   const resets = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
   const res = json({
@@ -1030,6 +1094,16 @@ export default {
   },
 };
 
+/* GOLF-251: relays ORS's own X-RateLimit-Limit (the key's quota for that
+   endpoint, as ORS sees it) so the real figure can be read with curl
+   rather than taken from the plan page. The limit only, never what is
+   left. Not in Access-Control-Expose-Headers: the app has no use for it. */
+function withOrsLimit(orsRes, res) {
+  const limit = orsRes.headers.get('x-ratelimit-limit');
+  if (limit) res.headers.set('X-ORS-RateLimit-Limit', limit);
+  return res;
+}
+
 async function handleRoute(body, env, request, { uncounted = false } = {}) {
   const { origin, destination } = body || {};
   if (!isCoord(origin) || !isCoord(destination)) {
@@ -1106,7 +1180,7 @@ async function handleRoute(body, env, request, { uncounted = false } = {}) {
   const minutes = summary.duration / 60;
   const ferry = extractFerry(feature, latlng, minutes);
 
-  return json({
+  return withOrsLimit(orsRes, json({
     minutes,
     miles: summary.distance / 1609.344,
     // [lat, lng] pairs (flipped from GeoJSON's [lng, lat]) so the client
@@ -1132,7 +1206,7 @@ async function handleRoute(body, env, request, { uncounted = false } = {}) {
     // still worked, which is why routing failed silently and completely
     // while every other mode looked healthy. This branch predates that fix
     // and had re-introduced the bug in the rebase; kept explicitly.
-  }, 200, request);
+  }, 200, request));
 }
 
 // GOLF-118 — way-type code 9 is "Ferry" in the ORS way-type enum.
@@ -1470,7 +1544,7 @@ async function handleGeocode(body, env, request, { uncounted = false } = {}) {
     .filter((r) => !island || !/United Kingdom$/.test(r.label) || /Northern Ireland/.test(r.label))
     .slice(0, 6);
 
-  return json({ results }, 200, request);
+  return withOrsLimit(orsRes, json({ results }, 200, request));
 }
 
 function isCoord(v) {
