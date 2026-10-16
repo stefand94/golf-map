@@ -489,12 +489,25 @@
   /* Segmented control (Discover's Near a place / Nearby / By region, and
      the itinerary type filter) — same visual language as the tab row, one
      step smaller. */
-  .tb-seg{display:inline-flex;gap:var(--sp-1);padding:3px;background:var(--paper);border-radius:var(--radius-pill);flex-wrap:wrap}
-  .tb-seg button{min-height:var(--tap-sm);padding:0 var(--sp-3);border:none;border-radius:var(--radius-pill);
+  .tb-seg,.ui-seg{display:inline-flex;gap:var(--sp-1);padding:3px;background:var(--paper);border-radius:var(--radius-pill);flex-wrap:wrap}
+  .tb-seg button,.ui-seg button{min-height:var(--tap-sm);padding:0 var(--sp-3);border:none;border-radius:var(--radius-pill);
     background:transparent;color:var(--stone);cursor:pointer;font:600 var(--fs-small)/1 var(--font-sans);
     transition:background var(--dur) var(--ease),color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
-  .tb-seg button:hover{color:var(--ink)}
-  .tb-seg button[aria-pressed="true"]{background:#fff;color:var(--accent-deep);box-shadow:var(--shadow-sm)}
+  .tb-seg button:hover,.ui-seg button:hover{color:var(--ink)}
+  .tb-seg button[aria-pressed="true"],.ui-seg button[aria-pressed="true"]{background:#fff;color:var(--accent-deep);box-shadow:var(--shadow-sm)}
+  /* GOLF-266 (B14) — the five shared UI roles. Use these, don't invent variants.
+     .ui-seg          exclusive views: grey track, selected = white (buttons with aria-pressed)
+     .ui-chip         a pill (filters, toggles, tags); .ui-chip[aria-pressed=true] or .is-on = filled navy
+     .ui-btn-primary  primary action: 10px-radius rectangle
+     .ui-icon-btn     icon-only button: circle, 44px hit area */
+  .ui-chip{display:inline-flex;align-items:center;gap:6px;min-height:var(--tap-sm);padding:0 var(--sp-3);border:1px solid var(--line);
+    border-radius:var(--radius-pill);background:#fff;color:var(--ink);font:600 var(--fs-small)/1 var(--font-sans);cursor:pointer}
+  .ui-chip[aria-pressed="true"],.ui-chip.is-on{background:var(--accent-dark);border-color:var(--accent-dark);color:#fff}
+  .ui-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2);min-height:var(--tap);padding:0 var(--sp-4);
+    border:1px solid var(--accent);border-radius:10px;background:var(--accent);color:#fff;font:600 var(--fs-body)/1 var(--font-sans);cursor:pointer}
+  .ui-btn-primary:hover{background:var(--accent-dark);border-color:var(--accent-dark)}
+  .ui-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:var(--tap);height:var(--tap);padding:0;border:1px solid var(--line);
+    border-radius:50%;background:#fff;color:var(--ink);cursor:pointer}
 
   /* ── Day cards (the heart of the sketch) ────────────────────────── */
   /* A card is a distinctly lighter surface than the panel, plus a real
