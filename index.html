@@ -850,6 +850,13 @@
   /* The estimate mark rides just ahead of its figure and must never be
      mistaken for part of the number, nor wrap away from it. */
   .cost-est{color:var(--stone);font-weight:400;margin-right:1px;cursor:help}
+  /* GOLF-262: shortlist stats, and a ✕ that stays quiet until you reach for it. */
+  .tb-sl-stats{margin:var(--sp-2) 0 0;padding:var(--sp-3) 0 0;border-top:1px solid var(--line);display:grid;gap:var(--sp-2)}
+  .tb-sl-stat dt{font:700 12px var(--font-sans);letter-spacing:.06em;text-transform:uppercase;color:var(--stone)}
+  .tb-sl-stat dd{margin:0;font:500 var(--fs-body) var(--font-sans);color:var(--ink)}
+  .tb-sl-sub{color:var(--stone);font-size:12px}
+  .tb-sl-x{color:var(--stone);opacity:.7}
+  .tb-sl-x:hover,.tb-sl-x:focus-visible{color:var(--ink);opacity:1}
   .cost-est-note{color:var(--stone);white-space:nowrap;cursor:help}
   /* GOLF-261: the banner is dark, so the estimate marks read as light-on-navy (they were grey on navy, 1.2–1.8:1). */
   .cost-banner .cost-est,.cost-banner .cost-est-note{color:rgba(255,255,255,.72)}

@@ -51,8 +51,13 @@ function tripWishlistSummaryHTML(unscheduled){
     miles+=m;mins+=(m/DRIVE_AVG_MPH*60);
   }
   const orderLabel=order.map(i=>V(i,'n')).join(' → ');
-  return`<p class="hint" style="margin:4px 10px 8px">Suggested order (nearest-neighbour): <b>${esc(orderLabel)}</b><br>
-    ${covered?`${moneyBucketFmt(feeBuckets)} in green fees (${covered} of ${order.length} priced)${gs>1?` for ${gs} travellers`:''}`:'no parseable green fees yet'}${order.length>1?` · ~${miles.toFixed(0)} mi / ${fmtDriveMinutes(Math.round(mins/5)*5)} driving between them straight-line`:''}</p>`;
+  /* GOLF-262: three labelled stats instead of one run-on line. */
+  const stat=(k,v)=>`<div class="tb-sl-stat"><dt>${k}</dt><dd>${v}</dd></div>`;
+  return`<dl class="tb-sl-stats">
+    ${stat('Suggested order: shortest driving',`<b>${esc(orderLabel)}</b>`)}
+    ${stat('Green fees',covered?`Up to ${moneyBucketFmt(feeBuckets)}${gs>1?` for ${gs} travellers`:''} <span class="tb-sl-sub">(${covered} of ${order.length} priced)</span>`:'No published fees yet')}
+    ${order.length>1?stat('Driving between them',`~${miles.toFixed(0)} mi · ${fmtDriveMinutes(Math.round(mins/5)*5)} <span class="tb-sl-sub">(straight-line estimate)</span>`):''}
+  </dl>`;
 }
 /* GOLF-33: small fixed palette so each day's stops read as visually
    distinct on the map — cycles if there are more days than colors rather
@@ -492,7 +497,7 @@ function tbResultsHTML(items){
   return items.map(({i,border})=>{
     const est=anchorPt?tbNearbyDriveEstimate(anchorPt,i):null;
     const far=est&&est.minutes>=TB_LONG_DRIVE_MIN;
-    const dist=est?`${est.miles.toFixed(1)} mi · ~${fmtDriveMinutes(est.minutes)} drive · `:'';
+    const dist=est?(est.miles<0.1?'Same club · ':est.miles<0.5?'Next door · ':`${est.miles.toFixed(1)} mi · ~${fmtDriveMinutes(est.minutes)} drive · `):'';
     return`<div class="tb-row">
       <div><span class="ico-gap" aria-hidden="true">⛳</span><a href="#" class="linkbtn" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         ${border?' <span class="wt" title="Just over the border — nearest to a course in your chosen region, not itself in it">border</span>':''}

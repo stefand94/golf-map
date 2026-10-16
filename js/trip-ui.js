@@ -1776,12 +1776,11 @@ function tbWishlistHTML(){
       <div class="tb-item-main"><a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         <div class="cart-region">${esc(C[i].r)}</div></div>
       <span class="tb-item-price">${fee==null?'':'<span class="tb-upto">Up to </span>'}${tbDualPriceHTML(fee==null?null:fee*groupSizeFor(),courseCurrency(i))}</span>
-      <div class="tb-item-actions"><button class="tb-btn is-icon is-sm is-quiet" title="Remove from shortlist"
+      <div class="tb-item-actions"><button class="tb-btn is-icon is-sm is-quiet tb-sl-x" title="Remove from shortlist" aria-label="Remove from shortlist"
         onclick="tripRemoveCourse(${i});">✕</button></div>
     </div>`;}).join('');
   return`<div class="tb-day">
-      <div class="tb-day-head"><span class="tb-day-title"><span class="tb-day-title-text">Shortlist</span>
-        <span class="tb-day-place">${unscheduled.length} course${unscheduled.length===1?'':'s'}</span></span>
+      <div class="tb-day-head"><span class="tb-day-title"><span class="tb-day-title-text">${unscheduled.length} course${unscheduled.length===1?'':'s'}</span></span>
         <button class="tb-btn is-primary is-sm" onclick="enterBuildMode()" title="Start scheduling these courses into days">Build itinerary →</button></div>
       <div class="tb-day-rule"></div>
       ${hiddenNote}
