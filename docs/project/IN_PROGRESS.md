@@ -7,7 +7,7 @@ verified._
 ## In flight
 
 UX review (DEC-040; spec and lanes in `GOLF-252-266-ux-review.md`), started 2026-10-16:
-- **Barry:** next 256 (search & add), then the 266 sweep. Done: 252, 255, 260, 264, 267.
+- **Barry:** 266 sweep (last). Done: 252, 255, 256, 260, 264, 267.
 - **Gavin:** 270 list side (after Geoff's helper). Done: 253, 258, 261, 262, 263 labels. In REVIEW: 259 (iPhone).
 - **Geoff:** 270 map side (helper + pin-hover event). Done: 254, 257, 263, 265, 268.
 
