@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Marker Proposals Sheet</title>
+<style>
+  :root{--ink:#1B2733;--ink-soft:#3E4C5A;--paper:#EDF1F4;--paper-2:#F5F7F9;--line:#DCE2E7;--stone:#5C6672;--accent:#2E5C8A}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper-2);color:var(--ink);font:14px/1.45 Manrope,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  main{max-width:1180px;margin:0 auto;padding:24px 16px 64px}
+  h1{font:700 26px "Space Grotesk",Manrope,system-ui,sans-serif;margin:0 0 4px}
+  h2{font:700 18px "Space Grotesk",Manrope,system-ui,sans-serif;margin:36px 0 10px}
+  p.lede{color:var(--stone);margin:0 0 8px;max-width:72ch}
+  code{font:12px ui-monospace,Menlo,monospace;background:#fff;border:1px solid var(--line);border-radius:4px;padding:0 4px}
+  .bgs{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+  .bg{border:1px solid var(--line);border-radius:10px;padding:12px}
+  .bg h3{margin:0 0 8px;font:600 11px Manrope,system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;opacity:.7}
+  .bg.dark h3{color:#fff}
+  .row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 14px}
+  .cell{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:inherit;opacity:.85}
+  .bg.dark .cell{color:#E8EEE6}
+  .cell img,.cell svg{display:block}
+  .x3 img{transform-origin:bottom center}
+  .grid-hd{font-size:12px;color:var(--stone);margin:2px 0 8px}
+  /* frosted country panel mock */
+  .mockwrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+  @media (max-width:860px){.mockwrap{grid-template-columns:1fr}}
+  .fakemap{position:relative;border-radius:14px;overflow:hidden;min-height:420px;
+    background:
+      radial-gradient(ellipse 30% 40% at 30% 40%,#cfe0b8 0 60%,transparent 61%),
+      radial-gradient(ellipse 22% 30% at 62% 55%,#d7e4c0 0 60%,transparent 61%),
+      radial-gradient(ellipse 18% 24% at 78% 25%,#c9dcb0 0 60%,transparent 61%),
+      linear-gradient(115deg,transparent 48%,#f4d48a 48.3% 48.8%,transparent 49%),
+      linear-gradient(35deg,transparent 60%,#ffffff 60.2% 60.6%,transparent 61%),
+      #aecbe0;}
+  .fakemap .dots{position:absolute;inset:0;background-image:radial-gradient(#1F7A4D 2.5px,transparent 3px);background-size:38px 31px;opacity:.55}
+  .frost{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:16px;
+    -webkit-backdrop-filter:blur(10px) saturate(1.1);backdrop-filter:blur(10px) saturate(1.1);background:rgba(237,241,244,.38)}
+  .panel{width:100%;max-width:620px;background:rgba(245,247,249,.72);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+    border:1px solid rgba(255,255,255,.7);border-radius:16px;box-shadow:0 18px 50px -18px rgba(27,39,51,.45);padding:20px}
+  .panel h4{margin:0 0 2px;font:700 20px "Space Grotesk",Manrope,system-ui,sans-serif}
+  .panel p{margin:0 0 14px;color:var(--ink-soft);font-size:13px}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .card{background:rgba(255,255,255,.78);border:1px solid var(--line);border-radius:12px;padding:12px 10px;text-align:center;cursor:pointer;
+    transition:border-color .12s,box-shadow .12s,transform .12s;min-height:44px}
+  .card:hover{border-color:var(--accent);box-shadow:0 6px 16px -8px rgba(46,92,138,.5);transform:translateY(-1px)}
+  .card .shape{height:92px;display:flex;align-items:center;justify-content:center;color:var(--accent)}
+  .card .shape svg{height:100%;width:auto;max-width:100%}
+  .card .shape path{fill:rgba(46,92,138,.12);stroke:currentColor;stroke-width:1.5}
+  .card b{display:block;font:700 15px "Space Grotesk",Manrope,system-ui,sans-serif;margin-top:6px}
+  .card small{color:var(--stone);font-size:12px}
+  .phone .fakemap{min-height:600px;border-radius:28px;border:8px solid #1B2733}
+  .phone .panel{padding:16px}
+  .phone .cards{grid-template-columns:1fr}
+  .phone .card{display:grid;grid-template-columns:64px 1fr;align-items:center;text-align:left;gap:12px;padding:8px 12px}
+  .phone .card .shape{height:56px}
+  .phone .card b{margin:0}
+  .silh{display:flex;gap:28px;align-items:flex-end;flex-wrap:wrap}
+  .silh svg{height:120px;width:auto}
+  .silh .fill path{fill:#1F7A4D;stroke:none}
+  .silh .line path{fill:none;stroke:#1B2733;stroke-width:1.5}
+  .ctl{display:flex;gap:10px}
+  .ctl .btn{width:44px;height:44px;border-radius:6px;background:#fff;border:2px solid rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;color:var(--ink)}
+  table{border-collapse:collapse;font-size:12.5px;margin-top:8px}
+  td,th{border-bottom:1px solid var(--line);padding:5px 10px;text-align:left}
+  .sw{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:6px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Golf Tripper — marker &amp; icon proposals</h1>
+  <p class="lede">Design assets only, not wired into the app. Self-contained: every asset file is inlined below. Every static file under <code>markers/</code> and <code>clusters/</code> was emitted by <code>templates.js</code>, which this page also uses for the parametric rows. Each background shows real size, then 3×.</p>
+
+  <h2>Markers and clusters on four backgrounds</h2>
+  <div id="sheets" class="bgs"></div>
+
+  <h2>Day pins 1–8 (and 9–12, cycling)</h2>
+  <div id="days" class="bgs"></div>
+
+  <h2>Map controls</h2>
+  <div class="ctl">
+    <div class="btn" title="Show whole trip"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#1B2733" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.9 7.4V4.4A1.5 1.5 0 0 1 4.4 2.9H7.4M12.6 2.9H15.6A1.5 1.5 0 0 1 17.1 4.4V7.4M17.1 12.6V15.6A1.5 1.5 0 0 1 15.6 17.1H12.6M7.4 17.1H4.4A1.5 1.5 0 0 1 2.9 15.6V12.6"/><path d="M7.6 12.4L12.4 7.6"/><circle cx="7" cy="13" r="1.3" fill="#1B2733" stroke="none"/><circle cx="13" cy="7" r="1.3" fill="#1B2733" stroke="none"/></svg></div>
+    <div class="btn" title="Locate me"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#1B2733" stroke-width="1.75" stroke-linecap="round"><circle cx="10" cy="10" r="5.4"/><circle cx="10" cy="10" r="1.6" fill="#1B2733" stroke="none"/><path d="M10 1.9V4.6M10 15.4V18.1M1.9 10H4.6M15.4 10H18.1"/></svg></div>
+    <div class="btn"><svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 20 20" fill="none" stroke="#1B2733" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2.9 7.4V4.4A1.5 1.5 0 0 1 4.4 2.9H7.4M12.6 2.9H15.6A1.5 1.5 0 0 1 17.1 4.4V7.4M17.1 12.6V15.6A1.5 1.5 0 0 1 15.6 17.1H12.6M7.4 17.1H4.4A1.5 1.5 0 0 1 2.9 15.6V12.6"/><path d="M7.6 12.4L12.4 7.6"/><circle cx="7" cy="13" r="1.3" fill="#1B2733" stroke="none"/><circle cx="13" cy="7" r="1.3" fill="#1B2733" stroke="none"/></svg></div>
+    <div class="btn" style="width:72px;height:72px"><svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 20 20" fill="none" stroke="#1B2733" stroke-width="1.75" stroke-linecap="round"><circle cx="10" cy="10" r="5.4"/><circle cx="10" cy="10" r="1.6" fill="#1B2733" stroke="none"/><path d="M10 1.9V4.6M10 15.4V18.1M1.9 10H4.6M15.4 10H18.1"/></svg></div>
+  </div>
+
+  <h2>Country outlines — line and silhouette</h2>
+  <div class="silh">
+    <div class="line"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 62.1 100" aria-hidden="true"><path d="M18.8 9.3 20.3 9.8 22.3 10.2 24.8 9.7 27.4 9.5 28.3 8.8 30.3 9.1 30.0 11.1 26.7 14.3 25.9 16.9 23.5 20.5 28.8 18.3 36.3 18.6 37.5 20.5 35.8 24.0 33.5 28.5 32.9 32.7 29.3 34.5 27.0 35.2 29.3 35.7 32.1 34.9 33.4 35.5 35.5 36.5 36.3 37.8 37.9 39.5 39.6 45.3 40.9 48.6 44.3 50.7 47.4 54.4 46.7 56.6 48.5 59.8 46.1 58.6 48.5 60.6 49.9 64.1 49.1 67.1 50.8 66.1 55.4 66.3 57.9 69.6 58.1 70.8 57.1 74.8 55.3 76.2 54.6 77.7 52.0 80.3 50.2 80.9 53.1 81.4 56.3 81.8 55.9 84.2 53.6 86.5 49.3 88.3 47.1 87.4 43.3 88.4 41.5 87.6 39.8 87.1 37.0 88.5 36.0 89.8 33.6 90.5 30.5 88.6 28.1 89.4 26.7 93.4 23.8 92.0 17.7 96.0 14.7 94.9 16.0 93.5 18.6 90.1 21.6 85.4 23.5 84.9 25.9 83.1 27.7 83.6 30.6 82.1 32.2 80.6 33.4 78.6 30.7 80.1 29.5 81.1 26.4 80.8 24.9 79.6 22.8 80.0 22.3 78.4 20.6 78.9 19.2 79.6 18.0 78.6 17.0 76.6 18.4 75.3 20.6 74.6 24.2 71.5 24.3 70.1 24.3 68.4 23.9 66.5 22.3 66.8 20.1 67.6 21.1 66.1 22.9 64.4 23.9 63.3 25.7 62.3 27.5 62.3 28.6 62.1 30.2 63.1 29.6 61.6 29.9 60.1 30.3 59.1 30.2 57.4 30.3 56.3 31.3 54.6 29.0 54.8 26.7 50.5 27.1 49.0 29.3 46.0 27.0 46.7 24.3 47.5 22.3 48.7 19.6 49.2 18.1 47.1 18.0 45.5 18.8 44.5 19.6 43.0 21.0 40.9 20.7 40.1 19.9 39.1 19.6 37.5 20.3 36.0 19.3 36.0 18.8 34.0 16.5 36.9 16.1 39.5 15.3 41.3 14.2 42.5 14.6 39.5 15.3 37.0 15.0 35.5 16.1 31.4 14.5 29.5 11.7 28.2 14.0 25.5 14.7 22.7 13.9 21.0 14.5 18.2 14.1 16.9 16.8 15.0 16.8 12.9 18.5 11.0ZM11.0 18.6 9.5 20.5 8.7 20.3 8.4 21.3 10.4 22.5 11.8 24.0 13.1 25.2 14.5 23.5 14.6 22.8 13.0 22.0 12.0 21.3 12.1 19.5ZM11.5 10.4 12.1 12.9 10.8 13.5 9.8 15.5 8.7 17.0 5.7 21.5 5.7 24.5 4.6 25.5 4.0 26.0 4.6 22.5 4.0 19.5 6.6 17.0 6.9 14.0 6.9 13.0 9.5 11.5ZM11.3 29.3 14.5 30.0 15.0 31.0 13.0 32.5 10.7 32.7 12.1 31.0ZM12.1 36.3 13.0 38.3 11.3 39.7 10.1 38.5 10.4 37.0ZM22.6 61.4 20.7 62.4 21.4 63.6 22.3 64.1 23.8 63.1 24.3 62.6 23.5 61.8ZM38.6 89.0 40.3 89.8 41.6 89.0 40.4 87.9 39.2 88.5ZM28.4 4.0 31.0 4.3 31.9 6.0 30.2 6.9 28.4 6.2Z" stroke-linejoin="round" vector-effect="non-scaling-stroke" fill-rule="evenodd"/></svg></div><div class="line"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68.4 88" aria-hidden="true"><path d="M41.7 4.0 46.2 7.7 45.0 10.7 46.8 8.3 50.5 7.5 56.6 7.1 57.8 9.3 60.8 14.8 59.6 18.9 64.4 19.5 63.8 25.0 62.6 27.6 59.8 28.0 57.2 31.5 53.8 32.1 55.7 36.2 57.2 40.2 57.8 44.7 55.9 45.7 58.4 53.1 56.8 56.5 55.9 61.4 53.5 66.1 54.0 69.3 47.1 70.4 39.0 71.2 35.9 73.8 31.1 76.9 27.7 80.9 22.0 82.4 12.0 84.0 14.7 79.9 8.0 80.9 11.0 77.9 6.2 76.9 5.6 74.2 11.0 71.2 4.0 70.8 7.4 67.7 11.6 66.7 10.4 64.3 17.1 61.2 10.8 61.4 14.1 59.0 16.5 55.5 16.7 53.1 18.7 49.4 21.4 47.0 14.7 47.4 9.8 44.3 7.0 44.3 9.2 42.3 11.6 39.8 7.4 33.1 9.8 26.0 17.7 25.6 19.5 27.6 26.8 26.0 28.6 22.9 31.7 19.9 24.4 19.5 24.6 18.5 28.6 14.8 30.7 8.7 34.3 7.3 38.6 6.2 39.6 10.7 41.4 6.0Z" stroke-linejoin="round" vector-effect="non-scaling-stroke" fill-rule="evenodd"/></svg></div><div class="line"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 88.8" aria-hidden="true"><path d="M4.0 45.1 7.6 41.4 9.3 45.6 10.4 45.9 13.8 46.9 18.3 44.0 21.6 44.3 23.9 43.7 23.9 20.3 27.2 24.5 27.2 31.3 28.3 33.8 33.4 33.8 38.4 29.0 40.7 23.8 46.3 25.8 54.6 26.1 56.6 20.3 62.5 13.3 68.6 6.6 74.2 4.0 76.5 4.0 87.1 5.3 88.8 12.3 90.5 18.7 90.7 24.8 91.0 28.0 87.7 26.7 84.3 30.2 84.3 33.8 86.5 36.6 90.5 36.6 91.7 33.8 96.0 33.9 93.3 43.7 91.3 46.2 85.6 53.1 82.3 58.6 77.3 64.3 68.1 73.2 62.5 76.9 55.3 79.2 55.8 79.7 51.0 80.8 42.7 79.8 40.9 80.0 35.9 80.7 23.9 84.8 19.6 82.2 17.2 80.1 15.3 81.8 15.2 79.0 12.4 73.1 13.2 71.5 11.8 72.0 14.4 67.2 8.6 55.8 6.4 49.1ZM69.5 45.6 74.1 47.2 76.6 49.3 75.2 53.4 70.9 54.9 67.2 57.7 65.0 55.8 63.0 51.3 65.8 48.8Z" stroke-linejoin="round" vector-effect="non-scaling-stroke" fill-rule="evenodd"/></svg></div>
+    <div class="fill"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 62.1 100" aria-hidden="true"><path d="M18.8 9.3 20.3 9.8 22.3 10.2 24.8 9.7 27.4 9.5 28.3 8.8 30.3 9.1 30.0 11.1 26.7 14.3 25.9 16.9 23.5 20.5 28.8 18.3 36.3 18.6 37.5 20.5 35.8 24.0 33.5 28.5 32.9 32.7 29.3 34.5 27.0 35.2 29.3 35.7 32.1 34.9 33.4 35.5 35.5 36.5 36.3 37.8 37.9 39.5 39.6 45.3 40.9 48.6 44.3 50.7 47.4 54.4 46.7 56.6 48.5 59.8 46.1 58.6 48.5 60.6 49.9 64.1 49.1 67.1 50.8 66.1 55.4 66.3 57.9 69.6 58.1 70.8 57.1 74.8 55.3 76.2 54.6 77.7 52.0 80.3 50.2 80.9 53.1 81.4 56.3 81.8 55.9 84.2 53.6 86.5 49.3 88.3 47.1 87.4 43.3 88.4 41.5 87.6 39.8 87.1 37.0 88.5 36.0 89.8 33.6 90.5 30.5 88.6 28.1 89.4 26.7 93.4 23.8 92.0 17.7 96.0 14.7 94.9 16.0 93.5 18.6 90.1 21.6 85.4 23.5 84.9 25.9 83.1 27.7 83.6 30.6 82.1 32.2 80.6 33.4 78.6 30.7 80.1 29.5 81.1 26.4 80.8 24.9 79.6 22.8 80.0 22.3 78.4 20.6 78.9 19.2 79.6 18.0 78.6 17.0 76.6 18.4 75.3 20.6 74.6 24.2 71.5 24.3 70.1 24.3 68.4 23.9 66.5 22.3 66.8 20.1 67.6 21.1 66.1 22.9 64.4 23.9 63.3 25.7 62.3 27.5 62.3 28.6 62.1 30.2 63.1 29.6 61.6 29.9 60.1 30.3 59.1 30.2 57.4 30.3 56.3 31.3 54.6 29.0 54.8 26.7 50.5 27.1 49.0 29.3 46.0 27.0 46.7 24.3 47.5 22.3 48.7 19.6 49.2 18.1 47.1 18.0 45.5 18.8 44.5 19.6 43.0 21.0 40.9 20.7 40.1 19.9 39.1 19.6 37.5 20.3 36.0 19.3 36.0 18.8 34.0 16.5 36.9 16.1 39.5 15.3 41.3 14.2 42.5 14.6 39.5 15.3 37.0 15.0 35.5 16.1 31.4 14.5 29.5 11.7 28.2 14.0 25.5 14.7 22.7 13.9 21.0 14.5 18.2 14.1 16.9 16.8 15.0 16.8 12.9 18.5 11.0ZM11.0 18.6 9.5 20.5 8.7 20.3 8.4 21.3 10.4 22.5 11.8 24.0 13.1 25.2 14.5 23.5 14.6 22.8 13.0 22.0 12.0 21.3 12.1 19.5ZM11.5 10.4 12.1 12.9 10.8 13.5 9.8 15.5 8.7 17.0 5.7 21.5 5.7 24.5 4.6 25.5 4.0 26.0 4.6 22.5 4.0 19.5 6.6 17.0 6.9 14.0 6.9 13.0 9.5 11.5ZM11.3 29.3 14.5 30.0 15.0 31.0 13.0 32.5 10.7 32.7 12.1 31.0ZM12.1 36.3 13.0 38.3 11.3 39.7 10.1 38.5 10.4 37.0ZM22.6 61.4 20.7 62.4 21.4 63.6 22.3 64.1 23.8 63.1 24.3 62.6 23.5 61.8ZM38.6 89.0 40.3 89.8 41.6 89.0 40.4 87.9 39.2 88.5ZM28.4 4.0 31.0 4.3 31.9 6.0 30.2 6.9 28.4 6.2Z" stroke-linejoin="round" vector-effect="non-scaling-stroke" fill-rule="evenodd"/></svg></div><div class="fill"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68.4 88" aria-hidden="true"><path d="M41.7 4.0 46.2 7.7 45.0 10.7 46.8 8.3 50.5 7.5 56.6 7.1 57.8 9.3 60.8 14.8 59.6 18.9 64.4 19.5 63.8 25.0 62.6 27.6 59.8 28.0 57.2 31.5 53.8 32.1 55.7 36.2 57.2 40.2 57.8 44.7 55.9 45.7 58.4 53.1 56.8 56.5 55.9 61.4 53.5 66.1 54.0 69.3 47.1 70.4 39.0 71.2 35.9 73.8 31.1 76.9 27.7 80.9 22.0 82.4 12.0 84.0 14.7 79.9 8.0 80.9 11.0 77.9 6.2 76.9 5.6 74.2 11.0 71.2 4.0 70.8 7.4 67.7 11.6 66.7 10.4 64.3 17.1 61.2 10.8 61.4 14.1 59.0 16.5 55.5 16.7 53.1 18.7 49.4 21.4 47.0 14.7 47.4 9.8 44.3 7.0 44.3 9.2 42.3 11.6 39.8 7.4 33.1 9.8 26.0 17.7 25.6 19.5 27.6 26.8 26.0 28.6 22.9 31.7 19.9 24.4 19.5 24.6 18.5 28.6 14.8 30.7 8.7 34.3 7.3 38.6 6.2 39.6 10.7 41.4 6.0Z" stroke-linejoin="round" vector-effect="non-scaling-stroke" fill-rule="evenodd"/></svg></div><div class="fill"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 88.8" aria-hidden="true"><path d="M4.0 45.1 7.6 41.4 9.3 45.6 10.4 45.9 13.8 46.9 18.3 44.0 21.6 44.3 23.9 43.7 23.9 20.3 27.2 24.5 27.2 31.3 28.3 33.8 33.4 33.8 38.4 29.0 40.7 23.8 46.3 25.8 54.6 26.1 56.6 20.3 62.5 13.3 68.6 6.6 74.2 4.0 76.5 4.0 87.1 5.3 88.8 12.3 90.5 18.7 90.7 24.8 91.0 28.0 87.7 26.7 84.3 30.2 84.3 33.8 86.5 36.6 90.5 36.6 91.7 33.8 96.0 33.9 93.3 43.7 91.3 46.2 85.6 53.1 82.3 58.6 77.3 64.3 68.1 73.2 62.5 76.9 55.3 79.2 55.8 79.7 51.0 80.8 42.7 79.8 40.9 80.0 35.9 80.7 23.9 84.8 19.6 82.2 17.2 80.1 15.3 81.8 15.2 79.0 12.4 73.1 13.2 71.5 11.8 72.0 14.4 67.2 8.6 55.8 6.4 49.1ZM69.5 45.6 74.1 47.2 76.6 49.3 75.2 53.4 70.9 54.9 67.2 57.7 65.0 55.8 63.0 51.3 65.8 48.8Z" stroke-linejoin="round" vector-effect="non-scaling-stroke" fill-rule="evenodd"/></svg></div>
+  </div>
+
+  <h2>“Pick a country” panel — desktop and phone</h2>
+  <div class="mockwrap">
+    <div class="fakemap"><div class="dots"></div>
+      <div class="frost"><div class="panel">
+        <h4>Where are you playing?</h4>
+        <p>Pick a country to start. You can switch any time.</p>
+        <div class="cards">
+          <div class="card"><div class="shape"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 62.1 100" aria-hidden="true"><path d="M18.8 9.3 20.3 9.8 22.3 10.2 24.8 9.7 27.4 9.5 28.3 8.8 30.3 9.1 30.0 11.1 26.7 14.3 25.9 16.9 23.5 20.5 28.8 18.3 36.3 18.6 37.5 20.5 35.8 24.0 33.5 28.5 32.9 32.7 29.3 34.5 27.0 35.2 29.3 35.7 32.1 34.9 33.4 35.5 35.5 36.5 36.3 37.8 37.9 39.5 39.6 45.3 40.9 48.6 44.3 50.7 47.4 54.4 46.7 56.6 48.5 59.8 46.1 58.6 48.5 60.6 49.9 64.1 49.1 67.1 50.8 66.1 55.4 66.3 57.9 69.6 58.1 70.8 57.1 74.8 55.3 76.2 54.6 77.7 52.0 80.3 50.2 80.9 53.1 81.4 56.3 81.8 55.9 84.2 53.6 86.5 49.3 88.3 47.1 87.4 43.3 88.4 41.5 87.6 39.8 87.1 37.0 88.5 36.0 89.8 33.6 90.5 30.5 88.6 28.1 89.4 26.7 93.4 23.8 92.0 17.7 96.0 14.7 94.9 16.0 93.5 18.6 90.1 21.6 85.4 23.5 84.9 25.9 83.1 27.7 83.6 30.6 82.1 32.2 80.6 33.4 78.6 30.7 80.1 29.5 81.1 26.4 80.8 24.9 79.6 22.8 80.0 22.3 78.4 20.6 78.9 19.2 79.6 18.0 78.6 17.0 76.6 18.4 75.3 20.6 74.6 24.2 71.5 24.3 70.1 24.3 68.4 23.9 66.5 22.3 66.8 20.1 67.6 21.1 66.1 22.9 64.4 23.9 63.3 25.7 62.3 27.5 62.3 28.6 62.1 30.2 63.1 29.6 61.6 29.9 60.1 30.3 59.1 30.2 57.4 30.3 56.3 31.3 54.6 29.0 54.8 26.7 50.5 27.1 49.0 29.3 46.0 27.0 46.7 24.3 47.5 22.3 48.7 19.6 49.2 18.1 47.1 18.0 45.5 18.8 44.5 19.6 43.0 21.0 40.9 20.7 40.1 19.9 39.1 19.6 37.5 20.3 36.0 19.3 36.0 18.8 34.0 16.5 36.9 16.1 39.5 15.3 41.3 14.2 42.5 14.6 39.5 15.3 37.0 15.0 35.5 16.1 31.4 14.5 29.5 11.7 28.2 14.0 25.5 14.7 22.7 13.9 21.0 14.5 18.2 14.1 16.9 16.8 15.0 16.8 12.9 18.5 11.0ZM11.0 18.6 9.5 20.5 8.7 20.3 8.4 21.3 10.4 22.5 11.8 24.0 13.1 25.2 14.5 23.5 14.6 22.8 13.0 22.0 12.0 21.3 12.1 19.5ZM11.5 10.4 12.1 12.9 10.8 13.5 9.8 15.5 8.7 17.0 5.7 21.5 5.7 24.5 4.6 25.5 4.0 26.0 4.6 22.5 4.0 19.5 6.6 17.0 6.9 14.0 6.9 13.0 9.5 11.5ZM11.3 29.3 14.5 30.0 15.0 31.0 13.0 32.5 10.7 32.7 12.1 31.0ZM12.1 36.3 13.0 38.3 11.3 39.7 10.1 38.5 10.4 37.0ZM22.6 61.4 20.7 62.4 21.4 63.6 22.3 64.1 23.8 63.1 24.3 62.6 23.5 61.8ZM38.6 89.0 40.3 89.8 41.6 89.0 40.4 87.9 39.2 88.5ZM28.4 4.0 31.0 4.3 31.9 6.0 30.2 6.9 28.4 6.2Z" stroke-linejoin="round" vector-effect="non-scaling-stroke" fill-rule="evenodd"/></svg></div><b>Great Britain</b><small>370 courses</small></div>
+          <div class="card"><div class="shape"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68.4 88" aria-hidden="true"><path d="M41.7 4.0 46.2 7.7 45.0 10.7 46.8 8.3 50.5 7.5 56.6 7.1 57.8 9.3 60.8 14.8 59.6 18.9 64.4 19.5 63.8 25.0 62.6 27.6 59.8 28.0 57.2 31.5 53.8 32.1 55.7 36.2 57.2 40.2 57.8 44.7 55.9 45.7 58.4 53.1 56.8 56.5 55.9 61.4 53.5 66.1 54.0 69.3 47.1 70.4 39.0 71.2 35.9 73.8 31.1 76.9 27.7 80.9 22.0 82.4 12.0 84.0 14.7 79.9 8.0 80.9 11.0 77.9 6.2 76.9 5.6 74.2 11.0 71.2 4.0 70.8 7.4 67.7 11.6 66.7 10.4 64.3 17.1 61.2 10.8 61.4 14.1 59.0 16.5 55.5 16.7 53.1 18.7 49.4 21.4 47.0 14.7 47.4 9.8 44.3 7.0 44.3 9.2 42.3 11.6 39.8 7.4 33.1 9.8 26.0 17.7 25.6 19.5 27.6 26.8 26.0 28.6 22.9 31.7 19.9 24.4 19.5 24.6 18.5 28.6 14.8 30.7 8.7 34.3 7.3 38.6 6.2 39.6 10.7 41.4 6.0Z" stroke-linejoin="round" vector-effect="non-scaling-stroke" fill-rule="evenodd"/></svg></div><b>Ireland</b><small>83 courses</small></div>
+          <div class="card"><div class="shape"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 88.8" aria-hidden="true"><path d="M4.0 45.1 7.6 41.4 9.3 45.6 10.4 45.9 13.8 46.9 18.3 44.0 21.6 44.3 23.9 43.7 23.9 20.3 27.2 24.5 27.2 31.3 28.3 33.8 33.4 33.8 38.4 29.0 40.7 23.8 46.3 25.8 54.6 26.1 56.6 20.3 62.5 13.3 68.6 6.6 74.2 4.0 76.5 4.0 87.1 5.3 88.8 12.3 90.5 18.7 90.7 24.8 91.0 28.0 87.7 26.7 84.3 30.2 84.3 33.8 86.5 36.6 90.5 36.6 91.7 33.8 96.0 33.9 93.3 43.7 91.3 46.2 85.6 53.1 82.3 58.6 77.3 64.3 68.1 73.2 62.5 76.9 55.3 79.2 55.8 79.7 51.0 80.8 42.7 79.8 40.9 80.0 35.9 80.7 23.9 84.8 19.6 82.2 17.2 80.1 15.3 81.8 15.2 79.0 12.4 73.1 13.2 71.5 11.8 72.0 14.4 67.2 8.6 55.8 6.4 49.1ZM69.5 45.6 74.1 47.2 76.6 49.3 75.2 53.4 70.9 54.9 67.2 57.7 65.0 55.8 63.0 51.3 65.8 48.8Z" stroke-linejoin="round" vector-effect="non-scaling-stroke" fill-rule="evenodd"/></svg></div><b>South Africa</b><small>107 courses</small></div>
+        </div>
+      </div></div>
+    </div>
+    <div class="phone"><div class="fakemap"><div class="dots"></div>
+      <div class="frost"><div class="panel">
+        <h4>Where are you playing?</h4>
+        <p>Pick a country to start.</p>
+        <div class="cards">
+          <div class="card"><div class="shape"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 62.1 100" aria-hidden="true"><path d="M18.8 9.3 20.3 9.8 22.3 10.2 24.8 9.7 27.4 9.5 28.3 8.8 30.3 9.1 30.0 11.1 26.7 14.3 25.9 16.9 23.5 20.5 28.8 18.3 36.3 18.6 37.5 20.5 35.8 24.0 33.5 28.5 32.9 32.7 29.3 34.5 27.0 35.2 29.3 35.7 32.1 34.9 33.4 35.5 35.5 36.5 36.3 37.8 37.9 39.5 39.6 45.3 40.9 48.6 44.3 50.7 47.4 54.4 46.7 56.6 48.5 59.8 46.1 58.6 48.5 60.6 49.9 64.1 49.1 67.1 50.8 66.1 55.4 66.3 57.9 69.6 58.1 70.8 57.1 74.8 55.3 76.2 54.6 77.7 52.0 80.3 50.2 80.9 53.1 81.4 56.3 81.8 55.9 84.2 53.6 86.5 49.3 88.3 47.1 87.4 43.3 88.4 41.5 87.6 39.8 87.1 37.0 88.5 36.0 89.8 33.6 90.5 30.5 88.6 28.1 89.4 26.7 93.4 23.8 92.0 17.7 96.0 14.7 94.9 16.0 93.5 18.6 90.1 21.6 85.4 23.5 84.9 25.9 83.1 27.7 83.6 30.6 82.1 32.2 80.6 33.4 78.6 30.7 80.1 29.5 81.1 26.4 80.8 24.9 79.6 22.8 80.0 22.3 78.4 20.6 78.9 19.2 79.6 18.0 78.6 17.0 76.6 18.4 75.3 20.6 74.6 24.2 71.5 24.3 70.1 24.3 68.4 23.9 66.5 22.3 66.8 20.1 67.6 21.1 66.1 22.9 64.4 23.9 63.3 25.7 62.3 27.5 62.3 28.6 62.1 30.2 63.1 29.6 61.6 29.9 60.1 30.3 59.1 30.2 57.4 30.3 56.3 31.3 54.6 29.0 54.8 26.7 50.5 27.1 49.0 29.3 46.0 27.0 46.7 24.3 47.5 22.3 48.7 19.6 49.2 18.1 47.1 18.0 45.5 18.8 44.5 19.6 43.0 21.0 40.9 20.7 40.1 19.9 39.1 19.6 37.5 20.3 36.0 19.3 36.0 18.8 34.0 16.5 36.9 16.1 39.5 15.3 41.3 14.2 42.5 14.6 39.5 15.3 37.0 15.0 35.5 16.1 31.4 14.5 29.5 11.7 28.2 14.0 25.5 14.7 22.7 13.9 21.0 14.5 18.2 14.1 16.9 16.8 15.0 16.8 12.9 18.5 11.0ZM11.0 18.6 9.5 20.5 8.7 20.3 8.4 21.3 10.4 22.5 11.8 24.0 13.1 25.2 14.5 23.5 14.6 22.8 13.0 22.0 12.0 21.3 12.1 19.5ZM11.5 10.4 12.1 12.9 10.8 13.5 9.8 15.5 8.7 17.0 5.7 21.5 5.7 24.5 4.6 25.5 4.0 26.0 4.6 22.5 4.0 19.5 6.6 17.0 6.9 14.0 6.9 13.0 9.5 11.5ZM11.3 29.3 14.5 30.0 15.0 31.0 13.0 32.5 10.7 32.7 12.1 31.0ZM12.1 36.3 13.0 38.3 11.3 39.7 10.1 38.5 10.4 37.0ZM22.6 61.4 20.7 62.4 21.4 63.6 22.3 64.1 23.8 63.1 24.3 62.6 23.5 61.8ZM38.6 89.0 40.3 89.8 41.6 89.0 40.4 87.9 39.2 88.5ZM28.4 4.0 31.0 4.3 31.9 6.0 30.2 6.9 28.4 6.2Z" stroke-linejoin="round" vector-effect="non-scaling-stroke" fill-rule="evenodd"/></svg></div><div><b>Great Britain</b><small>370 courses</small></div></div>
+          <div class="card"><div class="shape"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68.4 88" aria-hidden="true"><path d="M41.7 4.0 46.2 7.7 45.0 10.7 46.8 8.3 50.5 7.5 56.6 7.1 57.8 9.3 60.8 14.8 59.6 18.9 64.4 19.5 63.8 25.0 62.6 27.6 59.8 28.0 57.2 31.5 53.8 32.1 55.7 36.2 57.2 40.2 57.8 44.7 55.9 45.7 58.4 53.1 56.8 56.5 55.9 61.4 53.5 66.1 54.0 69.3 47.1 70.4 39.0 71.2 35.9 73.8 31.1 76.9 27.7 80.9 22.0 82.4 12.0 84.0 14.7 79.9 8.0 80.9 11.0 77.9 6.2 76.9 5.6 74.2 11.0 71.2 4.0 70.8 7.4 67.7 11.6 66.7 10.4 64.3 17.1 61.2 10.8 61.4 14.1 59.0 16.5 55.5 16.7 53.1 18.7 49.4 21.4 47.0 14.7 47.4 9.8 44.3 7.0 44.3 9.2 42.3 11.6 39.8 7.4 33.1 9.8 26.0 17.7 25.6 19.5 27.6 26.8 26.0 28.6 22.9 31.7 19.9 24.4 19.5 24.6 18.5 28.6 14.8 30.7 8.7 34.3 7.3 38.6 6.2 39.6 10.7 41.4 6.0Z" stroke-linejoin="round" vector-effect="non-scaling-stroke" fill-rule="evenodd"/></svg></div><div><b>Ireland</b><small>83 courses</small></div></div>
+          <div class="card"><div class="shape"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 88.8" aria-hidden="true"><path d="M4.0 45.1 7.6 41.4 9.3 45.6 10.4 45.9 13.8 46.9 18.3 44.0 21.6 44.3 23.9 43.7 23.9 20.3 27.2 24.5 27.2 31.3 28.3 33.8 33.4 33.8 38.4 29.0 40.7 23.8 46.3 25.8 54.6 26.1 56.6 20.3 62.5 13.3 68.6 6.6 74.2 4.0 76.5 4.0 87.1 5.3 88.8 12.3 90.5 18.7 90.7 24.8 91.0 28.0 87.7 26.7 84.3 30.2 84.3 33.8 86.5 36.6 90.5 36.6 91.7 33.8 96.0 33.9 93.3 43.7 91.3 46.2 85.6 53.1 82.3 58.6 77.3 64.3 68.1 73.2 62.5 76.9 55.3 79.2 55.8 79.7 51.0 80.8 42.7 79.8 40.9 80.0 35.9 80.7 23.9 84.8 19.6 82.2 17.2 80.1 15.3 81.8 15.2 79.0 12.4 73.1 13.2 71.5 11.8 72.0 14.4 67.2 8.6 55.8 6.4 49.1ZM69.5 45.6 74.1 47.2 76.6 49.3 75.2 53.4 70.9 54.9 67.2 57.7 65.0 55.8 63.0 51.3 65.8 48.8Z" stroke-linejoin="round" vector-effect="non-scaling-stroke" fill-rule="evenodd"/></svg></div><div><b>South Africa</b><small>107 courses</small></div></div>
+        </div>
+      </div></div>
+    </div></div>
+  </div>
+  <p class="lede" style="margin-top:8px">Counts are the courses <code>courseShownOnMap()</code> shows per <code>courseNation()</code> on 2026-10-16 (370 + 83 + 107 = 560). Northern Ireland clubs carry <code>topIreland</code>, so they count under Ireland.</p>
+
+  <h2>Day palette contrast (white numeral on fill)</h2>
+  <table id="pal"><tr><th>Day</th><th>Hex</th><th>White on fill</th></tr></table>
+</main>
+<script>/* Golf Tripper — marker SVG proposals: reference implementation.
+   NOT wired into the app. Plain non-module script: every function is a
+   global, matching how js/*.js are loaded. Each returns an SVG string that
+   is byte-for-byte the same as the matching static file in markers/ and
+   clusters/ (those files were emitted from these functions).
+
+   Teardrop family: every pin shares one 40x60 viewBox (2:3, the same
+   proportions as pinShapeSVG() in js/util.js) and one path. Render it at
+   22x33 (regular) or 30x45 (ranked / shortlist / in-trip). The tip sits at
+   y≈59 of 60, so iconAnchor = [w/2, h-1]. */
+
+var GT_PIN_PATH = 'M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z';
+var GT_HEAD = { x: 20, y: 19.8 };            // centre of the pin's round head
+var GT_FONT = 'Space Grotesk, Manrope, system-ui, sans-serif';
+var GT_INK = '#1B2733';
+var GT_GOLD = '#E6B400';
+var GT_COURSE = { body: '#1F7A4D', outline: '#155C39' };
+var GT_DAY_COLORS = ['#C2410C', '#7C3AED', '#0E7490', '#BE185D', '#A16207', '#4338CA', '#4D7C0F', '#9F1239'];
+var GT_POI = { heritage: '#8A5A2B', nature: '#2F7D4F', coast: '#2B7BB9', culture: '#7A4FA0', drink: '#B7791F' };
+
+/* Darken a #RRGGBB by mixing toward black — gives each body colour its
+   own outline, the way #155C39 outlines #1F7A4D. */
+function gtShade(hex, amt) {
+  var n = parseInt(hex.slice(1), 16), k = 1 - (amt == null ? 0.28 : amt);
+  var c = [n >> 16, (n >> 8) & 255, n & 255].map(function (v) {
+    return ('0' + Math.round(v * k).toString(16)).slice(-2);
+  });
+  return ('#' + c.join('')).toUpperCase();
+}
+
+/* Pin chassis: white under-rim (reads on satellite), then the body with a
+   darker outline. `inner` is the glyph markup, `extra` badges on top. */
+function gtPinShell(w, body, outline, inner, extra) {
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + (w * 1.5) + '" viewBox="0 0 40 60">' +
+    '<path d="' + GT_PIN_PATH + '" fill="#FFF" stroke="#FFF" stroke-width="4.4" stroke-linejoin="round"/>' +
+    '<path d="' + GT_PIN_PATH + '" fill="' + body + '" stroke="' + outline + '" stroke-width="2" stroke-linejoin="round"/>' +
+    (inner || '') + (extra || '') + '</svg>';
+}
+
+/* White golf flag, centred on the head. */
+function gtFlag() {
+  return '<ellipse cx="16.4" cy="28.4" rx="4" ry="1.3" fill="#FFF" opacity=".55"/>' +
+    '<path d="M16.4 28V11" stroke="#FFF" stroke-width="2" stroke-linecap="round"/>' +
+    '<path d="M16.4 11L27 15.6 16.4 20.2Z" fill="#FFF"/>';
+}
+
+/* Badges: an ink disc with a white rim, so they read on ANY pin fill.
+   Right shoulder = ranked star. Left shoulder = played tick OR want heart
+   (played wins if both are somehow set — they are mutually exclusive in
+   meaning). */
+function gtBadge(side, glyph) {
+  var cx = side === 'left' ? 8.4 : 31.6, cy = 8.4;
+  return '<g transform="translate(' + cx + ' ' + cy + ')">' +
+    '<circle r="6.9" fill="' + GT_INK + '" stroke="#FFF" stroke-width="1.4"/>' + glyph + '</g>';
+}
+function gtStarGlyph() {
+  return '<path d="M0-4.6L1.2-1.6 4.4-1.4 1.9.6 2.7 3.7 0 2 -2.7 3.7 -1.9.6 -4.4-1.4 -1.2-1.6Z" fill="' + GT_GOLD + '"/>';
+}
+function gtTickGlyph() {
+  return '<path d="M-3.2.2L-1 2.4 3.3-2.1" fill="none" stroke="#FFF" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>';
+}
+function gtHeartGlyph() {
+  return '<path d="M0 3.6C-1.2 2.6-4 .7-4-1.4-4-2.9-2.9-3.8-1.8-3.8-.9-3.8-.3-3.3 0-2.6.3-3.3.9-3.8 1.8-3.8 2.9-3.8 4-2.9 4-1.4 4 .7 1.2 2.6 0 3.6Z" fill="#FB7185"/>';
+}
+function gtBadges(o) {
+  var s = '';
+  if (o.ranked) s += gtBadge('right', gtStarGlyph());
+  if (o.played) s += gtBadge('left', gtTickGlyph());
+  else if (o.want) s += gtBadge('left', gtHeartGlyph());
+  return s;
+}
+
+/* Course pin. Size defaults: 30 if ranked/shortlisted, else 22. */
+function gtCoursePinSVG(o) {
+  o = o || {};
+  var w = o.size || (o.ranked || o.shortlist ? 30 : 22);
+  var ring = o.shortlist ? '<circle cx="20" cy="19.8" r="12.2" fill="none" stroke="#FFF" stroke-width="2.6"/>' : '';
+  return gtPinShell(w, GT_COURSE.body, GT_COURSE.outline, ring + gtFlag(), gtBadges(o));
+}
+
+/* Scheduled trip course: day colour body, white day number in place of the
+   flag. `color` defaults to the day palette (cycles after 8). opts may
+   carry ranked/played/want for badges, and size (default 30). */
+function gtDayPinSVG(n, color, opts) {
+  opts = opts || {};
+  color = color || GT_DAY_COLORS[(n - 1) % GT_DAY_COLORS.length];
+  var label = String(n), fs = label.length > 1 ? 15.5 : 19;
+  var text = '<text x="20" y="' + (19.8 + fs * 0.36).toFixed(1) + '" fill="#FFF" font-family="' + GT_FONT +
+    '" font-weight="700" font-size="' + fs + '" text-anchor="middle">' + label + '</text>';
+  return gtPinShell(opts.size || 30, color, gtShade(color), text, gtBadges(opts));
+}
+
+/* Trip stops that aren't golf: 'stay' (bed), 'see' (camera), 'place'
+   (searched place, dot). Unscheduled colour defaults: stay/see slate
+   #3E4C5A, place navy accent #2E5C8A; pass a day colour once scheduled. */
+function gtStopPinSVG(kind, color, size) {
+  var glyph;
+  if (kind === 'stay') {
+    color = color || '#3E4C5A';
+    glyph = '<path d="M11.5 14.5V26.5M11.5 23.2H28.5M28.5 19.6V26.5" fill="none" stroke="#FFF" stroke-width="2.2" stroke-linecap="round"/>' +
+      '<rect x="13.4" y="17" width="5" height="3.6" rx="1.2" fill="#FFF"/>' +
+      '<path d="M20 17.2H26.3A2.2 2.2 0 0 1 28.5 19.4V21.4H20Z" fill="#FFF"/>';
+  } else if (kind === 'see') {
+    color = color || '#3E4C5A';
+    glyph = '<path d="M16.3 15.2L17.8 12.6H22.2L23.7 15.2Z" fill="#FFF"/>' +
+      '<rect x="10.8" y="15" width="18.4" height="12" rx="2.6" fill="#FFF"/>' +
+      '<circle cx="20" cy="21" r="3.9" fill="' + color + '"/>' +
+      '<circle cx="20" cy="21" r="1.7" fill="#FFF"/>';
+  } else {
+    color = color || '#2E5C8A';
+    glyph = '<circle cx="20" cy="19.8" r="6" fill="#FFF"/>';
+  }
+  return gtPinShell(size || 22, color, gtShade(color), glyph, '');
+}
+
+/* Trip start / end: a round disc, NOT a teardrop (keeps GOLF-243's intent
+   that "where the trip begins" is a different kind of thing), but in the
+   family's rim + outline language. 24x24, anchor centre [12,12]. */
+function gtEndpointSVG(isEnd) {
+  var glyph = isEnd
+    ? '<path d="M8.4 6.2V17.8" stroke="#FFF" stroke-width="1.6" stroke-linecap="round"/>' +
+      '<rect x="9.2" y="6.6" width="7.2" height="4.8" fill="#FFF"/>' +
+      '<path d="M9.2 6.6H11.6V9H9.2ZM14 6.6H16.4V9H14ZM11.6 9H14V11.4H11.6Z" fill="' + GT_INK + '"/>'
+    : '<path d="M9.8 7.6V16.4L16.8 12Z" fill="#FFF" stroke="#FFF" stroke-width="1.2" stroke-linejoin="round"/>';
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">' +
+    '<circle cx="12" cy="12" r="10.4" fill="' + GT_INK + '" stroke="#FFF" stroke-width="2"/>' + glyph + '</svg>';
+}
+
+/* POI category markers: filled 20x20 disc, white rim, white glyph. */
+var GT_POI_GLYPHS = {
+  heritage: '<path d="M6 15.2V7.4H7.8V9H9.3V7.4H10.7V9H12.2V7.4H14V15.2H11.4V12.6A1.4 1.4 0 0 0 8.6 12.6V15.2Z" fill="#FFF"/>',
+  nature: '<path d="M10 4.6L13.6 9.2H12L14.6 12.8H11V15.4H9V12.8H5.4L8 9.2H6.4Z" fill="#FFF"/>',
+  coast: '<path d="M5 8.6C6.1 7.4 7.2 7.4 8.3 8.6S10.5 9.8 11.6 8.6 13.8 7.4 14.9 8.6M5 12.4C6.1 11.2 7.2 11.2 8.3 12.4S10.5 13.6 11.6 12.4 13.8 11.2 14.9 12.4" fill="none" stroke="#FFF" stroke-width="1.6" stroke-linecap="round"/>',
+  culture: '<path d="M10 4.8L15 7.6H5Z" fill="#FFF"/><path d="M6.2 8.4H7.8V13.4H6.2ZM9.2 8.4H10.8V13.4H9.2ZM12.2 8.4H13.8V13.4H12.2ZM5 14H15V15.4H5Z" fill="#FFF"/>',
+  drink: '<path d="M6.3 5.8H13.7L12.8 14.8H7.2Z" fill="none" stroke="#FFF" stroke-width="1.4" stroke-linejoin="round"/><path d="M6.9 10.4H13.1L12.7 14.8H7.3Z" fill="#FFF"/>'
+};
+function gtPoiSVG(cat) {
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">' +
+    '<circle cx="10" cy="10" r="8.8" fill="' + GT_POI[cat] + '" stroke="#FFF" stroke-width="1.5"/>' +
+    GT_POI_GLYPHS[cat] + '</svg>';
+}
+
+/* Cluster disc. size 30 / 36 / 44 (pick by count: <10, <50, else).
+   Soft green halo + solid disc with white rim; gold dot (upper right)
+   when the cluster contains a trip course. Anchor centre. */
+function gtClusterSize(count) { return count < 10 ? 30 : count < 50 ? 36 : 44; }
+function gtClusterSVG(count, size, hasTrip) {
+  size = size || gtClusterSize(count);
+  var h = size / 2, r = h - 3.5, fs = size === 30 ? 12 : size === 36 ? 13 : 14;
+  var dot = '';
+  if (hasTrip) {
+    var d = (h + r * 0.707).toFixed(1), u = (h - r * 0.707).toFixed(1);
+    dot = '<circle cx="' + d + '" cy="' + u + '" r="' + (size / 7).toFixed(1) + '" fill="' + GT_GOLD + '" stroke="#FFF" stroke-width="1.5"/>';
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' +
+    '<circle cx="' + h + '" cy="' + h + '" r="' + h + '" fill="' + GT_COURSE.body + '" opacity=".28"/>' +
+    '<circle cx="' + h + '" cy="' + h + '" r="' + r + '" fill="' + GT_COURSE.body + '" stroke="#FFF" stroke-width="2"/>' +
+    '<text x="' + h + '" y="' + (h + fs * 0.36).toFixed(1) + '" fill="#FFF" font-family="' + GT_FONT +
+    '" font-weight="700" font-size="' + fs + '" text-anchor="middle">' + count + '</text>' + dot + '</svg>';
+}
+var GT_FILES={"markers/course-played.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"22\" height=\"33\" viewBox=\"0 0 40 60\"><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#FFF\" stroke=\"#FFF\" stroke-width=\"4.4\" stroke-linejoin=\"round\"/><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#1F7A4D\" stroke=\"#155C39\" stroke-width=\"2\" stroke-linejoin=\"round\"/><ellipse cx=\"16.4\" cy=\"28.4\" rx=\"4\" ry=\"1.3\" fill=\"#FFF\" opacity=\".55\"/><path d=\"M16.4 28V11\" stroke=\"#FFF\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M16.4 11L27 15.6 16.4 20.2Z\" fill=\"#FFF\"/><g transform=\"translate(8.4 8.4)\"><circle r=\"6.9\" fill=\"#1B2733\" stroke=\"#FFF\" stroke-width=\"1.4\"/><path d=\"M-3.2.2L-1 2.4 3.3-2.1\" fill=\"none\" stroke=\"#FFF\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></g></svg>","markers/course-ranked-played.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"45\" viewBox=\"0 0 40 60\"><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#FFF\" stroke=\"#FFF\" stroke-width=\"4.4\" stroke-linejoin=\"round\"/><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#1F7A4D\" stroke=\"#155C39\" stroke-width=\"2\" stroke-linejoin=\"round\"/><ellipse cx=\"16.4\" cy=\"28.4\" rx=\"4\" ry=\"1.3\" fill=\"#FFF\" opacity=\".55\"/><path d=\"M16.4 28V11\" stroke=\"#FFF\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M16.4 11L27 15.6 16.4 20.2Z\" fill=\"#FFF\"/><g transform=\"translate(31.6 8.4)\"><circle r=\"6.9\" fill=\"#1B2733\" stroke=\"#FFF\" stroke-width=\"1.4\"/><path d=\"M0-4.6L1.2-1.6 4.4-1.4 1.9.6 2.7 3.7 0 2 -2.7 3.7 -1.9.6 -4.4-1.4 -1.2-1.6Z\" fill=\"#E6B400\"/></g><g transform=\"translate(8.4 8.4)\"><circle r=\"6.9\" fill=\"#1B2733\" stroke=\"#FFF\" stroke-width=\"1.4\"/><path d=\"M-3.2.2L-1 2.4 3.3-2.1\" fill=\"none\" stroke=\"#FFF\" stroke-width=\"1.9\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></g></svg>","markers/course-ranked.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"45\" viewBox=\"0 0 40 60\"><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#FFF\" stroke=\"#FFF\" stroke-width=\"4.4\" stroke-linejoin=\"round\"/><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#1F7A4D\" stroke=\"#155C39\" stroke-width=\"2\" stroke-linejoin=\"round\"/><ellipse cx=\"16.4\" cy=\"28.4\" rx=\"4\" ry=\"1.3\" fill=\"#FFF\" opacity=\".55\"/><path d=\"M16.4 28V11\" stroke=\"#FFF\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M16.4 11L27 15.6 16.4 20.2Z\" fill=\"#FFF\"/><g transform=\"translate(31.6 8.4)\"><circle r=\"6.9\" fill=\"#1B2733\" stroke=\"#FFF\" stroke-width=\"1.4\"/><path d=\"M0-4.6L1.2-1.6 4.4-1.4 1.9.6 2.7 3.7 0 2 -2.7 3.7 -1.9.6 -4.4-1.4 -1.2-1.6Z\" fill=\"#E6B400\"/></g></svg>","markers/course-shortlist.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"45\" viewBox=\"0 0 40 60\"><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#FFF\" stroke=\"#FFF\" stroke-width=\"4.4\" stroke-linejoin=\"round\"/><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#1F7A4D\" stroke=\"#155C39\" stroke-width=\"2\" stroke-linejoin=\"round\"/><circle cx=\"20\" cy=\"19.8\" r=\"12.2\" fill=\"none\" stroke=\"#FFF\" stroke-width=\"2.6\"/><ellipse cx=\"16.4\" cy=\"28.4\" rx=\"4\" ry=\"1.3\" fill=\"#FFF\" opacity=\".55\"/><path d=\"M16.4 28V11\" stroke=\"#FFF\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M16.4 11L27 15.6 16.4 20.2Z\" fill=\"#FFF\"/></svg>","markers/course-want.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"22\" height=\"33\" viewBox=\"0 0 40 60\"><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#FFF\" stroke=\"#FFF\" stroke-width=\"4.4\" stroke-linejoin=\"round\"/><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#1F7A4D\" stroke=\"#155C39\" stroke-width=\"2\" stroke-linejoin=\"round\"/><ellipse cx=\"16.4\" cy=\"28.4\" rx=\"4\" ry=\"1.3\" fill=\"#FFF\" opacity=\".55\"/><path d=\"M16.4 28V11\" stroke=\"#FFF\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M16.4 11L27 15.6 16.4 20.2Z\" fill=\"#FFF\"/><g transform=\"translate(8.4 8.4)\"><circle r=\"6.9\" fill=\"#1B2733\" stroke=\"#FFF\" stroke-width=\"1.4\"/><path d=\"M0 3.6C-1.2 2.6-4 .7-4-1.4-4-2.9-2.9-3.8-1.8-3.8-.9-3.8-.3-3.3 0-2.6.3-3.3.9-3.8 1.8-3.8 2.9-3.8 4-2.9 4-1.4 4 .7 1.2 2.6 0 3.6Z\" fill=\"#FB7185\"/></g></svg>","markers/course.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"22\" height=\"33\" viewBox=\"0 0 40 60\"><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#FFF\" stroke=\"#FFF\" stroke-width=\"4.4\" stroke-linejoin=\"round\"/><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#1F7A4D\" stroke=\"#155C39\" stroke-width=\"2\" stroke-linejoin=\"round\"/><ellipse cx=\"16.4\" cy=\"28.4\" rx=\"4\" ry=\"1.3\" fill=\"#FFF\" opacity=\".55\"/><path d=\"M16.4 28V11\" stroke=\"#FFF\" stroke-width=\"2\" stroke-linecap=\"round\"/><path d=\"M16.4 11L27 15.6 16.4 20.2Z\" fill=\"#FFF\"/></svg>","markers/day-pin-template.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"45\" viewBox=\"0 0 40 60\"><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#FFF\" stroke=\"#FFF\" stroke-width=\"4.4\" stroke-linejoin=\"round\"/><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#C2410C\" stroke=\"#8C2F09\" stroke-width=\"2\" stroke-linejoin=\"round\"/><text x=\"20\" y=\"26.6\" fill=\"#FFF\" font-family=\"Space Grotesk, Manrope, system-ui, sans-serif\" font-weight=\"700\" font-size=\"19\" text-anchor=\"middle\">1</text></svg>","markers/poi-coast.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\"><circle cx=\"10\" cy=\"10\" r=\"8.8\" fill=\"#2B7BB9\" stroke=\"#FFF\" stroke-width=\"1.5\"/><path d=\"M5 8.6C6.1 7.4 7.2 7.4 8.3 8.6S10.5 9.8 11.6 8.6 13.8 7.4 14.9 8.6M5 12.4C6.1 11.2 7.2 11.2 8.3 12.4S10.5 13.6 11.6 12.4 13.8 11.2 14.9 12.4\" fill=\"none\" stroke=\"#FFF\" stroke-width=\"1.6\" stroke-linecap=\"round\"/></svg>","markers/poi-culture.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\"><circle cx=\"10\" cy=\"10\" r=\"8.8\" fill=\"#7A4FA0\" stroke=\"#FFF\" stroke-width=\"1.5\"/><path d=\"M10 4.8L15 7.6H5Z\" fill=\"#FFF\"/><path d=\"M6.2 8.4H7.8V13.4H6.2ZM9.2 8.4H10.8V13.4H9.2ZM12.2 8.4H13.8V13.4H12.2ZM5 14H15V15.4H5Z\" fill=\"#FFF\"/></svg>","markers/poi-drink.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\"><circle cx=\"10\" cy=\"10\" r=\"8.8\" fill=\"#B7791F\" stroke=\"#FFF\" stroke-width=\"1.5\"/><path d=\"M6.3 5.8H13.7L12.8 14.8H7.2Z\" fill=\"none\" stroke=\"#FFF\" stroke-width=\"1.4\" stroke-linejoin=\"round\"/><path d=\"M6.9 10.4H13.1L12.7 14.8H7.3Z\" fill=\"#FFF\"/></svg>","markers/poi-heritage.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\"><circle cx=\"10\" cy=\"10\" r=\"8.8\" fill=\"#8A5A2B\" stroke=\"#FFF\" stroke-width=\"1.5\"/><path d=\"M6 15.2V7.4H7.8V9H9.3V7.4H10.7V9H12.2V7.4H14V15.2H11.4V12.6A1.4 1.4 0 0 0 8.6 12.6V15.2Z\" fill=\"#FFF\"/></svg>","markers/poi-nature.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\"><circle cx=\"10\" cy=\"10\" r=\"8.8\" fill=\"#2F7D4F\" stroke=\"#FFF\" stroke-width=\"1.5\"/><path d=\"M10 4.6L13.6 9.2H12L14.6 12.8H11V15.4H9V12.8H5.4L8 9.2H6.4Z\" fill=\"#FFF\"/></svg>","markers/searched-place.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"22\" height=\"33\" viewBox=\"0 0 40 60\"><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#FFF\" stroke=\"#FFF\" stroke-width=\"4.4\" stroke-linejoin=\"round\"/><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#2E5C8A\" stroke=\"#214263\" stroke-width=\"2\" stroke-linejoin=\"round\"/><circle cx=\"20\" cy=\"19.8\" r=\"6\" fill=\"#FFF\"/></svg>","markers/see.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"22\" height=\"33\" viewBox=\"0 0 40 60\"><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#FFF\" stroke=\"#FFF\" stroke-width=\"4.4\" stroke-linejoin=\"round\"/><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#3E4C5A\" stroke=\"#2D3741\" stroke-width=\"2\" stroke-linejoin=\"round\"/><path d=\"M16.3 15.2L17.8 12.6H22.2L23.7 15.2Z\" fill=\"#FFF\"/><rect x=\"10.8\" y=\"15\" width=\"18.4\" height=\"12\" rx=\"2.6\" fill=\"#FFF\"/><circle cx=\"20\" cy=\"21\" r=\"3.9\" fill=\"#3E4C5A\"/><circle cx=\"20\" cy=\"21\" r=\"1.7\" fill=\"#FFF\"/></svg>","markers/stay.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"22\" height=\"33\" viewBox=\"0 0 40 60\"><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#FFF\" stroke=\"#FFF\" stroke-width=\"4.4\" stroke-linejoin=\"round\"/><path d=\"M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z\" fill=\"#3E4C5A\" stroke=\"#2D3741\" stroke-width=\"2\" stroke-linejoin=\"round\"/><path d=\"M11.5 14.5V26.5M11.5 23.2H28.5M28.5 19.6V26.5\" fill=\"none\" stroke=\"#FFF\" stroke-width=\"2.2\" stroke-linecap=\"round\"/><rect x=\"13.4\" y=\"17\" width=\"5\" height=\"3.6\" rx=\"1.2\" fill=\"#FFF\"/><path d=\"M20 17.2H26.3A2.2 2.2 0 0 1 28.5 19.4V21.4H20Z\" fill=\"#FFF\"/></svg>","markers/trip-end.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"10.4\" fill=\"#1B2733\" stroke=\"#FFF\" stroke-width=\"2\"/><path d=\"M8.4 6.2V17.8\" stroke=\"#FFF\" stroke-width=\"1.6\" stroke-linecap=\"round\"/><rect x=\"9.2\" y=\"6.6\" width=\"7.2\" height=\"4.8\" fill=\"#FFF\"/><path d=\"M9.2 6.6H11.6V9H9.2ZM14 6.6H16.4V9H14ZM11.6 9H14V11.4H11.6Z\" fill=\"#1B2733\"/></svg>","markers/trip-start.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"10.4\" fill=\"#1B2733\" stroke=\"#FFF\" stroke-width=\"2\"/><path d=\"M9.8 7.6V16.4L16.8 12Z\" fill=\"#FFF\" stroke=\"#FFF\" stroke-width=\"1.2\" stroke-linejoin=\"round\"/></svg>","clusters/cluster-30-trip.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"30\" viewBox=\"0 0 30 30\"><circle cx=\"15\" cy=\"15\" r=\"15\" fill=\"#1F7A4D\" opacity=\".28\"/><circle cx=\"15\" cy=\"15\" r=\"11.5\" fill=\"#1F7A4D\" stroke=\"#FFF\" stroke-width=\"2\"/><text x=\"15\" y=\"19.3\" fill=\"#FFF\" font-family=\"Space Grotesk, Manrope, system-ui, sans-serif\" font-weight=\"700\" font-size=\"12\" text-anchor=\"middle\">7</text><circle cx=\"23.1\" cy=\"6.9\" r=\"4.3\" fill=\"#E6B400\" stroke=\"#FFF\" stroke-width=\"1.5\"/></svg>","clusters/cluster-30.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"30\" viewBox=\"0 0 30 30\"><circle cx=\"15\" cy=\"15\" r=\"15\" fill=\"#1F7A4D\" opacity=\".28\"/><circle cx=\"15\" cy=\"15\" r=\"11.5\" fill=\"#1F7A4D\" stroke=\"#FFF\" stroke-width=\"2\"/><text x=\"15\" y=\"19.3\" fill=\"#FFF\" font-family=\"Space Grotesk, Manrope, system-ui, sans-serif\" font-weight=\"700\" font-size=\"12\" text-anchor=\"middle\">7</text></svg>","clusters/cluster-36-trip.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"36\" height=\"36\" viewBox=\"0 0 36 36\"><circle cx=\"18\" cy=\"18\" r=\"18\" fill=\"#1F7A4D\" opacity=\".28\"/><circle cx=\"18\" cy=\"18\" r=\"14.5\" fill=\"#1F7A4D\" stroke=\"#FFF\" stroke-width=\"2\"/><text x=\"18\" y=\"22.7\" fill=\"#FFF\" font-family=\"Space Grotesk, Manrope, system-ui, sans-serif\" font-weight=\"700\" font-size=\"13\" text-anchor=\"middle\">24</text><circle cx=\"28.3\" cy=\"7.7\" r=\"5.1\" fill=\"#E6B400\" stroke=\"#FFF\" stroke-width=\"1.5\"/></svg>","clusters/cluster-36.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"36\" height=\"36\" viewBox=\"0 0 36 36\"><circle cx=\"18\" cy=\"18\" r=\"18\" fill=\"#1F7A4D\" opacity=\".28\"/><circle cx=\"18\" cy=\"18\" r=\"14.5\" fill=\"#1F7A4D\" stroke=\"#FFF\" stroke-width=\"2\"/><text x=\"18\" y=\"22.7\" fill=\"#FFF\" font-family=\"Space Grotesk, Manrope, system-ui, sans-serif\" font-weight=\"700\" font-size=\"13\" text-anchor=\"middle\">24</text></svg>","clusters/cluster-44-trip.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"44\" height=\"44\" viewBox=\"0 0 44 44\"><circle cx=\"22\" cy=\"22\" r=\"22\" fill=\"#1F7A4D\" opacity=\".28\"/><circle cx=\"22\" cy=\"22\" r=\"18.5\" fill=\"#1F7A4D\" stroke=\"#FFF\" stroke-width=\"2\"/><text x=\"22\" y=\"27.0\" fill=\"#FFF\" font-family=\"Space Grotesk, Manrope, system-ui, sans-serif\" font-weight=\"700\" font-size=\"14\" text-anchor=\"middle\">128</text><circle cx=\"35.1\" cy=\"8.9\" r=\"6.3\" fill=\"#E6B400\" stroke=\"#FFF\" stroke-width=\"1.5\"/></svg>","clusters/cluster-44.svg":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"44\" height=\"44\" viewBox=\"0 0 44 44\"><circle cx=\"22\" cy=\"22\" r=\"22\" fill=\"#1F7A4D\" opacity=\".28\"/><circle cx=\"22\" cy=\"22\" r=\"18.5\" fill=\"#1F7A4D\" stroke=\"#FFF\" stroke-width=\"2\"/><text x=\"22\" y=\"27.0\" fill=\"#FFF\" font-family=\"Space Grotesk, Manrope, system-ui, sans-serif\" font-weight=\"700\" font-size=\"14\" text-anchor=\"middle\">128</text></svg>"};</script>
+<script>
+(function(){
+  var BGS=[['White','#FFFFFF',0],['Paper #EDF1F4','#EDF1F4',0],['Topo #EEE8D5','#EEE8D5',0],['Satellite #2E3B2C','#2E3B2C',1]];
+  var FILES=[
+    ['markers/course.svg',22,33,'course'],['markers/course-ranked.svg',30,45,'ranked'],['markers/course-shortlist.svg',30,45,'shortlist'],
+    ['markers/course-played.svg',22,33,'played'],['markers/course-want.svg',22,33,'want'],['markers/course-ranked-played.svg',30,45,'ranked+played'],
+    ['markers/day-pin-template.svg',30,45,'day pin'],['markers/stay.svg',22,33,'stay'],['markers/see.svg',22,33,'see'],
+    ['markers/searched-place.svg',22,33,'place'],['markers/trip-start.svg',24,24,'start'],['markers/trip-end.svg',24,24,'end'],
+    ['markers/poi-heritage.svg',20,20,'heritage'],['markers/poi-nature.svg',20,20,'nature'],['markers/poi-coast.svg',20,20,'coast'],
+    ['markers/poi-culture.svg',20,20,'culture'],['markers/poi-drink.svg',20,20,'drink'],
+    ['clusters/cluster-30.svg',30,30,'c30'],['clusters/cluster-36.svg',36,36,'c36'],['clusters/cluster-44.svg',44,44,'c44'],
+    ['clusters/cluster-30-trip.svg',30,30,'c30 trip'],['clusters/cluster-36-trip.svg',36,36,'c36 trip'],['clusters/cluster-44-trip.svg',44,44,'c44 trip']];
+  function sized(s,w,h){return s.replace(/ width="[\d.]+" height="[\d.]+"/,' width="'+w+'" height="'+h+'"');}
+  function row(scale){return '<div class="row">'+FILES.map(function(f){
+    return '<div class="cell" title="'+f[0]+'">'+sized(GT_FILES[f[0]],f[1]*scale,f[2]*scale)+(scale===1?'':f[3])+'</div>';}).join('')+'</div>';}
+  document.getElementById('sheets').innerHTML=BGS.map(function(b){
+    return '<div class="bg'+(b[2]?' dark':'')+'" style="background:'+b[1]+'"><h3>'+b[0]+'</h3><div class="grid-hd">1×</div>'+row(1)+'<div class="grid-hd" style="margin-top:12px">3×</div>'+row(3)+'</div>';}).join('');
+  document.getElementById('days').innerHTML=BGS.map(function(b){
+    var s='';for(var n=1;n<=12;n++)s+='<div class="cell">'+gtDayPinSVG(n,null,n===3?{ranked:true}:n===5?{played:true}:{})+'</div>';
+    var big='';for(var m=1;m<=8;m++)big+='<div class="cell">'+gtDayPinSVG(m,null,{size:66})+'</div>';
+    var stops='';for(var k=1;k<=8;k++){var c=GT_DAY_COLORS[k-1];stops+='<div class="cell">'+gtStopPinSVG('stay',c)+'</div><div class="cell">'+gtStopPinSVG('see',c)+'</div>';}
+    return '<div class="bg'+(b[2]?' dark':'')+'" style="background:'+b[1]+'"><h3>'+b[0]+'</h3><div class="row">'+s+'</div><div class="row" style="margin-top:10px">'+big+'</div><div class="grid-hd" style="margin-top:10px">stay / see stops in each day colour</div><div class="row">'+stops+'</div></div>';}).join('');
+  function L(h){var r=[1,3,5].map(function(i){var c=parseInt(h.substr(i,2),16)/255;return c<=.03928?c/12.92:Math.pow((c+.055)/1.055,2.4);});return .2126*r[0]+.7152*r[1]+.0722*r[2];}
+  document.getElementById('pal').innerHTML+=GT_DAY_COLORS.map(function(h,i){return '<tr><td>'+(i+1)+'</td><td><span class="sw" style="background:'+h+'"></span>'+h+'</td><td>'+(1.05/(L(h)+.05)).toFixed(2)+':1</td></tr>';}).join('');
+})();
+</script>
+</body>
+</html>
