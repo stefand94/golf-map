@@ -33,7 +33,7 @@ let tlSharedViewApplied=false;
 
 /* 56px to the hour is the smallest that still leaves a 90-minute POI
    legible at 375px, which is the width this was built at. */
-const TL_PX_PER_HOUR=56;
+const TL_PX_PER_HOUR=44; // GOLF-260: a day fits a laptop
 const TL_PX_PER_MIN=TL_PX_PER_HOUR/60;
 /* Below this a block has no room for its own label, so short stops are
    drawn at the floor and overlap the following hour line slightly
@@ -335,6 +335,10 @@ function tlFirstNightItemIds(){
    whole day reachable on a phone as well as a desktop. */
 function tlBlockLabelHTML(r){
   const it=r.item;
+  /* GOLF-260: a round says what it costs and who can play it, so the block
+     answers the two questions the visitor asks before keeping a tee time. */
+  const golfSub=(it.type==='golf'&&C[it.i])?`<span class="tl-block-sub">${esc(fmtGreenFee(it.i))}${
+    ACCESS[V(it.i,'a')]?` · <span class="tl-access">${esc(ACCESS[V(it.i,'a')].label)}</span>`:''}</span>`:'';
   /* Every note is the visitor's own text, so it is escaped here like
      every other string that reaches the DOM, and held to one line on the
      grid with the whole of it in the title. */
@@ -363,7 +367,7 @@ function tlBlockLabelHTML(r){
   if(it.type==='drivefrom')
     return`<span class="tl-block-name">${esc(tripItemName(it)||'Start point')}</span>
       <span class="tl-block-sub">${it.epSynth==='end'?'where the trip ends':'you set off from here'}</span>${note}`;
-  return`<span class="tl-block-name">${esc(tripItemName(it))}</span>${note}`;
+  return`<span class="tl-block-name">${esc(tripItemName(it))}</span>${golfSub}${note}`;
 }
 function tlDayGridHTML(d,dayIdx,firstNights){
   const rows=tlRowsForDay(dayIdx);
@@ -453,7 +457,7 @@ function tlDayGridHTML(d,dayIdx,firstNights){
     parts.push(`<div class="${cls.join(' ')}" style="top:${y.toFixed(1)}px${h?`;height:${h.toFixed(1)}px`:''}"
       data-tlblock="1" data-tlday="${d.id}" data-tlitem="${esc(r.item.id)}"${dragAttrs}
       title="${(ro||ep)?(ep?esc(`Set on the ${r.item.epSynth==='end'?'End':'Start'} row above the days — not a block you drag.`):''):esc(tlBlockHint(r,kind))}">
-      <span class="tl-block-time">${tlFormatTime(r.startMins)}${r.fixed?'<span class="tl-pin" title="A time you set. Everything after it follows from here.">•</span>':''}</span>
+      <span class="tl-block-time">${tlFormatTime(r.startMins)}${(!r.marker&&r.durationMins>0&&!TL_TIMED_LEG[r.item.type])?'–'+tlFormatTime(r.endMins):''}${r.fixed?'<span class="tl-pin" title="A time you set. Everything after it follows from here.">•</span>':''}</span>
       <span class="tl-block-body">${kind.icon} ${tlBlockLabelHTML(r)}${warn}</span>
       ${kind.resize&&!ro&&!ep?'<span class="tl-handle tl-handle-t" aria-hidden="true"></span><span class="tl-handle tl-handle-b" aria-hidden="true"></span>':''}
     </div>`);
@@ -473,7 +477,8 @@ function tlDayGridHTML(d,dayIdx,firstNights){
      scrolled this day themselves. */
   const range=tlDayRange(rows);
   const focus=Math.max(0,((range?range.startHour:9)*TL_PX_PER_HOUR)-8);
-  return`<div class="tl-scroll" data-tlscroll="${d.id}" data-tlfocus="${focus.toFixed(0)}"
+  return`${ro?'':`<button type="button" class="tl-add" data-tladd="${d.id}" aria-label="Add something to day ${dayIdx+1}">＋ Add to this day</button>`}
+  <div class="tl-scroll" data-tlscroll="${d.id}" data-tlfocus="${focus.toFixed(0)}"
       tabindex="0" aria-label="Day ${dayIdx+1} timeline">
     <div class="tl-grid" style="height:${height}px"
       data-tlgap="1" data-tlday="${d.id}"
@@ -552,8 +557,19 @@ const TL_LEGEND=[
   ['activity','Activity'],['flight','Flight'],['train','Train'],['stay','Stay'],
 ];
 function tlLegendHTML(){
+  /* GOLF-260: only the kinds this trip actually has on its grid. */
+  const present=new Set();
+  tripDays.forEach((d,idx)=>tlRowsForDay(idx).forEach(r=>{
+    const t=r.item&&r.item.type;
+    if(!t)return;
+    present.add(t==='hotel'?'stay':t==='drivefrom'?'drive':t);
+    if(r.driveMins>0)present.add('drive');
+    if(r.bufferMins>0)present.add('buffer');
+  }));
+  const kinds=TL_LEGEND.filter(([k])=>present.has(k)||(k==='stop'&&present.has('poi')));
+  if(!kinds.length)return'';
   return`<ul class="tl-legend" aria-label="What the colours mean">${
-    TL_LEGEND.map(([k,label])=>`<li><i class="is-${k}" aria-hidden="true"></i>${esc(label)}</li>`).join('')
+    kinds.map(([k,label])=>`<li><i class="is-${k}" aria-hidden="true"></i>${esc(label)}</li>`).join('')
   }</ul>`;
 }
 
@@ -1020,8 +1036,71 @@ function tlAfterRender(){
     el.scrollTop=want;
     el.addEventListener('scroll',()=>{tlScrollTop.set(key,el.scrollTop);},{passive:true});
   });
+  tlPhoneDaySync();
   tlAttachBlockSearch();
 }
+
+/* GOLF-260: on a phone the calendar shows one day at a time. The days are
+   still all in the DOM (the pane is rendered by trip-ui.js); this hides
+   all but the chosen one and puts a switcher above them. The grid then has
+   no scroller of its own — the sheet scrolls — so there is nothing nested. */
+let tlPhoneDayId=null;
+let tlPhoneWasOn=false;
+/* The grid has no scroller of its own on a phone, so "open just above the
+   first block" means scrolling the sheet instead. */
+function tlPhoneFocus(){
+  const sc=document.querySelector('.tb-day:not([data-tl-hidden]) .tl-scroll');
+  if(!sc)return;
+  let par=sc.parentElement;
+  while(par&&par!==document.body&&!(par.scrollHeight>par.clientHeight&&/auto|scroll/.test(getComputedStyle(par).overflowY)))par=par.parentElement;
+  if(!par||par===document.body)return;
+  const want=Number(sc.getAttribute('data-tlfocus'))||0;
+  par.scrollTop+=sc.getBoundingClientRect().top+want-par.getBoundingClientRect().top-120;
+}
+function tlPhoneDaySync(){
+  const on=typeof mobIsPhone==='function'&&mobIsPhone()&&tbDetailed&&appMode!=='shared'&&tripDays.length>0;
+  document.body.classList.toggle('tl-one-day',on);
+  if(!on)tlPhoneWasOn=false;
+  document.querySelectorAll('.tl-daysw').forEach(e=>e.remove());
+  document.querySelectorAll('.tb-day[data-tl-hidden]').forEach(e=>e.removeAttribute('data-tl-hidden'));
+  if(!on)return;
+  if(!tripDays.some(d=>d.id===tlPhoneDayId))tlPhoneDayId=(tripDays.find(d=>d.id===tbDayShown)||tripDays[0]).id;
+  const idx=tripDays.findIndex(d=>d.id===tlPhoneDayId);
+  document.querySelectorAll('.tb-day').forEach(card=>{
+    const sc=card.querySelector('.tl-scroll');
+    if(sc&&Number(sc.getAttribute('data-tlscroll'))!==tlPhoneDayId)card.setAttribute('data-tl-hidden','1');
+  });
+  const first=document.querySelector('.tb-day:not([data-tl-hidden]) .tl-scroll');
+  const card=first&&first.closest('.tb-day');
+  if(!card)return;
+  const d=tripDays[idx];
+  const sw=document.createElement('div');
+  sw.className='tl-daysw';
+  sw.innerHTML=`<button type="button" data-tlday-step="-1" aria-label="Previous day"${idx===0?' disabled':''}>‹</button>
+    <span>Day ${idx+1}${d.place?' · '+esc(tripShortPlace(d.place)):''}</span>
+    <button type="button" data-tlday-step="1" aria-label="Next day"${idx===tripDays.length-1?' disabled':''}>›</button>`;
+  card.parentNode.insertBefore(sw,card);
+  if(!tlPhoneWasOn){tlPhoneWasOn=true;tlPhoneFocus();}
+}
+document.addEventListener('click',e=>{
+  const st=e.target.closest&&e.target.closest('[data-tlday-step]');
+  if(st){
+    const i=tripDays.findIndex(d=>d.id===tlPhoneDayId)+Number(st.getAttribute('data-tlday-step'));
+    if(tripDays[i]){tlPhoneDayId=tripDays[i].id;tbDayShown=tlPhoneDayId;tlPhoneDaySync();tlPhoneFocus();}
+    return;
+  }
+  const add=e.target.closest&&e.target.closest('[data-tladd]');
+  if(add){
+    const dayId=Number(add.getAttribute('data-tladd'));
+    const r=add.getBoundingClientRect();
+    /* Offered at the end of the day so far: the next thing is usually after
+       the last one. */
+    const idx=tripDays.findIndex(d=>d.id===dayId);
+    const rows=idx>=0?tlRowsForDay(idx).filter(x=>x.item&&tlInChain(x.item)):[];
+    const at=rows.length?rows[rows.length-1].endMins:TL_DAY_START;
+    tlMenuOpen(dayId,at,r.left,r.bottom+4);
+  }
+});
 
 /* ── Adding a train, a drive-from or an activity ──────────────────────
    DEC-039: all three are hand-typed. One form serves them, because the

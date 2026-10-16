@@ -889,7 +889,7 @@
   .tl-legend li{display:flex;align-items:center;gap:var(--sp-1);
     font:var(--fs-micro)/1.4 var(--font-sans);color:var(--ink-soft)}
   .tl-legend i{width:12px;height:12px;flex:none;border-radius:3px;
-    border:1px solid var(--line);background:var(--paper-2)}
+    border:2px solid var(--stone);background:var(--paper-2)} /* GOLF-260: 2px so the swatch reads on a phone */
   .tl-legend .is-golf{background:var(--tl-golf-fill);border-color:var(--tl-golf-line)}
   .tl-legend .is-drive{border-color:var(--tl-drive-line);
     background:repeating-linear-gradient(135deg,var(--tl-drive-fill) 0 3px,var(--tl-drive-stripe) 3px 6px)}
@@ -932,6 +932,11 @@
   .tl-block-body{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;gap:0 var(--sp-1);align-items:baseline}
   .tl-block-name{font-weight:600;color:var(--ink);overflow-wrap:anywhere}
   .tl-block-sub{color:var(--stone);font-size:var(--fs-micro)}
+  .tl-access{padding:0 5px;border-radius:var(--radius-pill);background:rgba(0,0,0,.06);color:var(--ink-soft)}
+  .tl-add{display:flex;align-items:center;margin:0 var(--sp-3) var(--sp-2) auto;min-height:var(--tap-sm);padding:0 var(--sp-3);
+    border:1px solid var(--line);border-radius:var(--radius-pill);background:#fff;color:var(--accent-deep);font:600 var(--fs-caption) var(--font-sans);cursor:pointer}
+  .tl-add:hover{border-color:var(--accent)}
+  .tl-daysw{display:none}
   /* One hue per kind (owner review) — see the --tl-* tokens at the top.
      The time is in the kind's own ink, which is what makes a column of
      blocks scannable before any of them is read. */
@@ -971,7 +976,7 @@
     width:26px;height:3px;margin-left:-13px;border-radius:2px;background:var(--stone);opacity:.5}
   .tl-handle-t::after{top:2px}
   .tl-handle-b::after{bottom:2px}
-  .tl-howto{margin:0 var(--sp-3) var(--sp-3) calc(var(--sp-3) + 40px)}
+  .hint.tl-howto{margin:0 var(--sp-3) var(--sp-3) calc(var(--sp-3) + 40px)} /* GOLF-260: .hint (later in the sheet) was zeroing this margin */
   /* A mouse has the right-click and the drag; a touch screen has the
      hold. Each is told about its own. */
   .tl-howto-touch{display:none}
@@ -1673,6 +1678,16 @@
     #map .leaflet-control-layers,#map .leaflet-bar.map-fit-trip{border:0;border-radius:50%;box-shadow:var(--shadow-md);background:#fff}
     #map .leaflet-control-layers-toggle,.leaflet-touch #map .leaflet-control-layers-toggle{width:var(--tap);height:var(--tap);border-radius:50%}
     #map .leaflet-bar.map-fit-trip a{border-radius:50%;border-bottom:0}
+    /* GOLF-260: calendar on a phone — one day at a time, no inner scroller
+       (the sheet is the one scroll surface), and a visible ＋ to add. */
+    body.tl-one-day .tb-day[data-tl-hidden]{display:none}
+    .tl-daysw{display:flex;align-items:center;gap:var(--sp-2);margin:0 var(--sp-3) var(--sp-2)}
+    .tl-daysw button{flex:none;width:var(--tap);height:var(--tap);border:1px solid var(--line);border-radius:50%;background:#fff;
+      color:var(--ink);font:600 18px var(--font-sans);cursor:pointer}
+    .tl-daysw button:disabled{opacity:.35}
+    .tl-daysw span{flex:1;text-align:center;font:600 var(--fs-body) var(--font-sans);color:var(--ink)}
+    body.tl-one-day .tl-scroll{max-height:none;overflow:visible}
+    .tl-add{min-height:var(--tap)}
     /* Tap targets: 44px for every pane button on a phone. */
     .tb-btn,.tb-btn.is-sm,.tb-seg button,.tb-group{min-height:var(--tap)}
     .tb-group{height:var(--tap)}
