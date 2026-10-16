@@ -75,7 +75,7 @@
    manifest and icons are unchanged — still cache-first, since they get
    a fresh CACHE_NAME whenever their content changes and that's what
    keeps repeat/offline loads instant. */
-const CACHE_NAME = 'golfmap-shell-v5-1e5969457d';
+const CACHE_NAME = 'golfmap-shell-v5-a6e5a94fac';
 
 /* GOLF-147: hotel-layer.js (GOLF-142) and trip-share.js were both added to the
    page's <script> list without ever being added here, so the SW precached
