@@ -1625,7 +1625,7 @@ function tbDayCardHTML(d,idx){
         ${menu}
       </div>
       <div class="tb-day-rule"></div>
-      ${items.length?rowsHTML:`<p class="hint" style="margin:0 var(--sp-3) var(--sp-3) 44px">Drag a course here, or add a stop below.</p>`}
+      ${items.length?rowsHTML:`<p class="hint" style="margin:0 var(--sp-4) var(--sp-3) var(--tb-text,46px)">Drag a course here, or add a stop below.</p>`}
       <div class="tb-dropzone"
         ondragover="event.preventDefault();event.stopPropagation();event.dataTransfer.dropEffect='move';tbDropOver(this);"
         ondragleave="tbDropOut(this,event);"

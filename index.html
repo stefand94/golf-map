@@ -447,7 +447,7 @@
   body.tb-collapse .tb-day.tb-drop-over{border-color:var(--day-c,var(--accent));box-shadow:var(--shadow-dragging)}
   body.tb-collapse .tb-day.tb-drop-over::before{background:var(--day-c,var(--accent));box-shadow:none;top:-4px}
   body.tb-collapse .tb-day.tb-drop-over::after{content:'Drop into ' attr(data-drop-label);display:block;
-    padding:0 var(--sp-3) var(--sp-2) 44px;font:700 12px var(--font-sans);color:var(--ink)}
+    padding:0 var(--sp-4) var(--sp-2) var(--tb-text,46px);font:700 12px var(--font-sans);color:var(--ink)}
   body.tb-collapse-day .tb-day.tb-drop-over::after{content:'Move before ' attr(data-drop-label)}
   /* Grips: a 44px hit column without widening the layout (the padding eats
      into the row's own padding and gap); on a mouse they appear on hover. */
@@ -578,7 +578,7 @@
      leads into, exactly as sketched. Not a chip, not its own row of
      furniture; it is a label on the stop below it. */
   .tb-drive-cap{display:flex;align-items:center;gap:var(--sp-1);
-    padding:var(--sp-1) var(--sp-3) 0 44px;font:600 12px var(--font-sans);
+    padding:var(--sp-1) var(--sp-4) 0 var(--tb-edge,16px);font:600 12px var(--font-sans);
     letter-spacing:.02em;color:var(--stone);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .tb-drive-cap .tb-drive-real{color:#1a7a3e}
   /* GOLF-118: a ferry leg's caption carries an extra tag and a longer
@@ -636,7 +636,7 @@
     border-style:dashed;background:var(--paper,#fff)}
 
   /* Day footer: the two add actions, sized as real targets. */
-  .tb-day-add{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3) var(--sp-3);flex-wrap:wrap}
+  .tb-day-add{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-4) var(--sp-3);flex-wrap:wrap}
   .tb-day-add .tb-btn{flex:1 1 auto}
   /* GOLF-202: .tb-drop's flex:1 1 0 let "+ Add a day" squeeze this to
      less than its label, which then spilled out of the pill. Natural width
@@ -646,7 +646,7 @@
 
   /* Collapsed day settings (kind / city / date) — hidden in a dropdown so
      the card shows the itinerary, not a form. */
-  .tb-day-settings{margin:0 var(--sp-3) var(--sp-2)}
+  .tb-day-settings{margin:0 var(--sp-4) var(--sp-2)}
   .tb-day-settings>summary{list-style:none;display:inline-flex;align-items:center;gap:var(--sp-1);
     min-height:var(--tap-sm);padding:0 var(--sp-2);border-radius:var(--radius-pill);cursor:pointer;
     font:600 var(--fs-caption) var(--font-sans);color:var(--stone)}
@@ -668,9 +668,9 @@
   .tb-auto-chip{display:inline-block;font:700 var(--fs-micro) var(--font-sans);letter-spacing:.04em;text-transform:uppercase;
     color:var(--accent-deep);background:var(--accent-soft);border-radius:var(--radius-xs);padding:2px 6px}
   .tb-auto-chip-real{color:#1a7a3e;background:#DCEFDC}
-  .tb-day-town{padding:0 var(--sp-3) var(--sp-2) 44px;font-size:var(--fs-caption);color:var(--stone)}
+  .tb-day-town{padding:0 var(--sp-4) var(--sp-2) var(--tb-text,46px);font-size:var(--fs-caption);color:var(--stone)}
   .tb-day-town b{color:var(--ink-soft)}
-  .tb-poi-list{padding:0 var(--sp-3) var(--sp-2) 44px;display:flex;flex-direction:column;gap:3px}
+  .tb-poi-list{padding:0 var(--sp-4) var(--sp-2) var(--tb-text,46px);display:flex;flex-direction:column;gap:3px}
   /* GOLF-83 fix: this used to be 3 bare flex children under
      justify-content:space-between — the same misalignment class GOLF-69e
      fixed for itinerary rows. With a variable-width name on one side and a
@@ -685,6 +685,23 @@
   .tb-poi-row>span:first-child{grid-column:1;justify-self:start;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tb-poi-row>.wt{grid-column:2;justify-self:center}
   .tb-poi-row>button{grid-column:3;justify-self:end}
+
+  /* GOLF-276: a day card has two left edges. The CONTENT EDGE (--tb-edge,
+     16px in from the card) is where the header dot, the rule, the drive
+     captions, the stay box, the add forms and "+ Add" start; the TEXT
+     COLUMN (--tb-text) is where every name and sub-line starts. Icons sit
+     in a 22px gutter from the edge to the column. A stop row bleeds to the
+     card's edges so its accent bar sits on the card edge; the grip floats
+     in the 16px margin instead of taking a column. */
+  .tb-day{--tb-edge:var(--sp-4);--tb-text:calc(var(--sp-4) + 22px + var(--sp-2))}
+  .tb-day-head{position:relative;padding-left:var(--tb-edge)}
+  .tb-day-dot{margin-right:calc(22px - 10px)}
+  .tb-day-head>.tb-btn.is-icon{order:9}
+  .tb-day-course{margin:2px 0;padding:var(--sp-2) var(--sp-4) var(--sp-2) var(--tb-edge);border-radius:0 var(--radius-md) var(--radius-md) 0}
+  .tb-day-course .tb-drag-handle,.tb-day-head .tb-drag-handle{position:absolute;left:3px;top:0;bottom:0;flex:none;
+    box-sizing:border-box;width:13px;min-height:0;padding:0;margin:0;font-size:13px;border-radius:2px}
+  .tb-day-course.tb-hl::after{left:0;border-left:0}
+  .tb-stay-slot.is-empty{margin-left:var(--tb-edge)}
 
   /* The grand-total card at the very bottom of the sketch. */
   .tb-total-card{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
@@ -782,7 +799,7 @@
      with a cached copy of js/trip-model.js from before is-picker existed. */
   .tb-addstop.is-picker,.tb-addstop:has(+ .tb-hotel-picker),.tb-hotel-picker{margin-left:var(--sp-4);margin-right:var(--sp-4)}
   /* GOLF-148: "Things to see" — the pre-baked sights along a day's route. */
-  .tb-sights{margin:0 var(--sp-3) var(--sp-3) 44px;padding:var(--sp-2) var(--sp-3) var(--sp-3);background:var(--paper-2);
+  .tb-sights{margin:0 var(--sp-4) var(--sp-3) var(--tb-text,46px);padding:var(--sp-2) var(--sp-3) var(--sp-3);background:var(--paper-2);
     border-radius:var(--radius-md);display:flex;flex-direction:column;gap:2px}
   .tb-sight-chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 var(--sp-2);scrollbar-width:none}
   .tb-sight-chips::-webkit-scrollbar{display:none}
@@ -1342,7 +1359,7 @@
      one instead of showing a dash. Deliberately not the price's bold
      tabular style — it is a prompt, not a figure. */
   .tb-price-ask{font:600 var(--fs-caption) var(--font-sans);color:var(--accent-deep);white-space:nowrap}
-  .cost-edit{margin:0 var(--sp-3) var(--sp-2) 44px;padding:var(--sp-3);
+  .cost-edit{margin:0 var(--sp-4) var(--sp-2) var(--tb-text,46px);padding:var(--sp-3);
     background:var(--paper-2);border:1px solid var(--line);border-radius:var(--radius-sm)}
   .cost-edit-label{display:block;font:600 var(--fs-caption) var(--font-sans);color:var(--ink-soft);
     margin-bottom:var(--sp-2)}
@@ -1361,7 +1378,7 @@
   @media(min-width:520px){.cost-edit-sum{flex:1 1 auto}}
   /* A day's own costs: the same left gutter as the rows above them, so the
      label column lines up with the stop names rather than the icons. */
-  .tb-day-costs{margin:0 var(--sp-3) var(--sp-2) 44px}
+  .tb-day-costs{margin:0 var(--sp-4) var(--sp-2) var(--tb-text,46px)}
   .tb-daycost{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);padding:var(--sp-2) 0;
     border-bottom:1px solid var(--line)}
   .tb-daycost-ico{flex:0 0 auto;font-size:var(--fs-small);line-height:1}
