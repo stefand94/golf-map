@@ -340,6 +340,13 @@ function feeNumberFor(i,field){
    rate for the day (rule B). A legacy wd/we-only course keeps exactly the
    old midpoint behaviour. */
 function feeNumberForDate(i,dateStr){
+  /* GOLF-253 (reopened): the app shows one green-fee figure everywhere —
+     the "Up to" upper bound (feeUpper, js/util.js) — so a scheduled round
+     prices at the same £486 the popup and shortlist show, not a date-aware
+     midpoint. The date-aware path below is the fallback for a course with
+     no upper bound. */
+  const up=typeof feeUpper==='function'?feeUpper(i):null;
+  if(up!=null)return up;
   const field=feeFieldForDate(dateStr);
   const r=feeRangeForCtx(i,field,{date:dateStr});
   if(!r||r.min==null||r.max==null)return null;

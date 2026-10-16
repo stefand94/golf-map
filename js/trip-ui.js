@@ -2149,10 +2149,10 @@ function renderTripBuilder(){
   const searchHTML=`${tbSearchFieldHTML({id:'tb-unified-search',variant:'bar',value:tbSearchQ,
       placeholder:isItin?'Add a course or town…':tbPhoneLayout()?'Search clubs or towns':'Search courses, towns and cities…',ariaLabel:'Search courses, towns and cities'})}
     <div class="tb-section" id="tb-search-results" style="border-bottom:none;padding-top:0${tbSearchQ.trim()?'':';display:none'}">${tbSearchQ.trim()?tbUnifiedSearchResultsHTML():''}</div>`;
-  const hotelsBtn=`<button type="button" class="tb-btn is-sm${tbHotelLayerOn?' is-active':''}" id="tb-hotel-layer-toggle" aria-pressed="${tbHotelLayerOn}" title="Show nearby hotels on the map as you pan and zoom. Zoom in to see pins — no price data, just location."><span>${tbHotelLayerOn?'✓ ':''}<span class="tb-lbl-long">Show hotels</span><span class="tb-lbl-short">Hotels</span></span></button>`;
+  const hotelsBtn=`<button type="button" class="tb-btn is-sm${tbHotelLayerOn?' is-active':''}" id="tb-hotel-layer-toggle" aria-pressed="${tbHotelLayerOn}" title="Show nearby hotels on the map as you pan and zoom. Zoom in to see pins — no price data, just location."><span>Hotels</span></button>`;
   /* GOLF-208: Show POIs drives GOLF-207's POI layer (Gavin's tbPoiLayerOn /
      tbPoiLayerSet); left out until that layer exists. */
-  const poisBtn=typeof tbPoiLayerSet==='function'?`<button type="button" class="tb-btn is-sm${tbPoiLayerOn?' is-active':''}" id="tb-poi-layer-toggle" aria-pressed="${!!tbPoiLayerOn}" title="Show places to see near the map view. Zoom in to see pins."><span>${tbPoiLayerOn?'✓ ':''}<span class="tb-lbl-long">Show POIs</span><span class="tb-lbl-short">POIs</span></span></button>`:'';
+  const poisBtn=typeof tbPoiLayerSet==='function'?`<button type="button" class="tb-btn is-sm${tbPoiLayerOn?' is-active':''}" id="tb-poi-layer-toggle" aria-pressed="${!!tbPoiLayerOn}" title="Show places to see near the map view. Zoom in to see pins."><span>Things to see</span></button>`:'';
   let tabChrome='';
   if(!isBuild){
     // GOLF-185d: the course filters sit beside the search, on every viewport.
@@ -2167,7 +2167,7 @@ function renderTripBuilder(){
     <div class="tb-toolbar">
       ${cfButtonHTML()}
       ${hotelsBtn}
-      <button type="button" class="tb-btn is-sm${tbShowNearby?' is-active':''}" id="tb-nearby-toggle" aria-pressed="${tbShowNearby}" title="Show other bookable courses near your trip on the map. Doesn't change your itinerary."><span>${tbShowNearby?'✓ ':''}<span class="tb-lbl-long">Nearby courses</span><span class="tb-lbl-short">Courses</span></span></button>
+      <button type="button" class="tb-btn is-sm${tbShowNearby?' is-active':''}" id="tb-nearby-toggle" aria-pressed="${tbShowNearby}" title="Show other bookable courses near your trip on the map. Doesn't change your itinerary."><span>Nearby courses</span></button>
       ${poisBtn}
     </div>`;
   }
