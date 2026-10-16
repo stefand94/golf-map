@@ -1316,7 +1316,7 @@ function tbTripMenuHTML(isBuild){
       <button type="button" class="tb-menu-item" onclick="tripRename(activeTripId)"><span class="tb-menu-ico" aria-hidden="true">✎</span>Rename</button>
       <button type="button" class="tb-menu-item" onclick="tripCreateNew()"><span class="tb-menu-ico" aria-hidden="true">＋</span>New trip</button>
       <button type="button" class="tb-menu-item" onclick="tripDuplicate(activeTripId)"><span class="tb-menu-ico" aria-hidden="true">⧉</span>Duplicate</button>
-      <button type="button" class="tb-menu-item is-danger" onclick="tbDeleteTrip()"${TRIP.size||tripDays.length||list.length>1?'':' disabled'}><span class="tb-menu-ico" aria-hidden="true">🗑</span>Delete trip…</button>
+      <button type="button" class="tb-menu-item is-danger" onclick="tbDeleteTrip()"${TRIP.size||tripDays.length||list.length>1?'':' disabled'}><span class="tb-menu-ico" aria-hidden="true">${ICO('trash')}</span>Delete trip…</button>
       <div class="tb-menu-sep"></div>
       <button type="button" class="tb-menu-item is-danger" onclick="tripStartFresh()" title="Deletes every trip, not just this one, and leaves you with one empty trip"><span class="tb-menu-ico" aria-hidden="true">⟲</span>Start fresh — delete all trips</button>
     </div>

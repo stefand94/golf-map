@@ -522,7 +522,7 @@
   .tb-day-dot{width:10px;height:10px;border-radius:50%;flex:0 0 10px;background:var(--day-c,var(--accent))}
 
   /* Header: ⠿ handle + bold title (+ place) on the left, £ total right. */
-  .tb-day-head{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-2);
+  .tb-day-head{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);
     font:700 var(--fs-title) var(--font-sans);color:var(--ink);
     border-radius:var(--radius-lg) var(--radius-lg) 0 0;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
   .tb-day-title{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:var(--sp-2);overflow:hidden}
@@ -537,7 +537,7 @@
   .tb-compact-chev{color:var(--stone);font-size:12px}
   .tb-day-sum{font:800 var(--fs-title) var(--font-sans);color:var(--accent-deep);font-variant-numeric:tabular-nums;white-space:nowrap}
   /* The thin divider under the header, straight from the sketch. */
-  .tb-day-rule{height:1px;background:var(--line);margin:0 var(--sp-3)}
+  .tb-day-rule{height:1px;background:var(--line);margin:0 var(--sp-4)}
 
   /* Drag handle — was a bare 14px glyph with no padding (~10×14px of
      grabbable area). Now a full-height 32×44 target. */
@@ -550,7 +550,7 @@
 
   /* A stop row. Golf reads heaviest; hotel/POI are the connective tissue. */
   .tb-day-course{position:relative;display:flex;align-items:center;gap:var(--sp-2);
-    padding:var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-2);cursor:grab;
+    padding:var(--sp-2);cursor:grab;
     user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;border-radius:var(--radius-md);margin:2px var(--sp-2);
     background:#fff;transition:background var(--dur) var(--ease),box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease)}
   .tb-day-course:hover{background:var(--paper-2)}
@@ -685,7 +685,7 @@
   /* The grand-total card at the very bottom of the sketch. */
   .tb-total-card{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);
     background:linear-gradient(135deg,var(--accent),var(--accent-dark));border-radius:var(--radius-lg);
-    padding:var(--sp-4) var(--sp-5);box-shadow:var(--shadow-raised);margin:var(--sp-4) 0 var(--sp-3)}
+    padding:var(--sp-4);box-shadow:var(--shadow-raised);margin:var(--sp-4) 0 var(--sp-3)}
   .tb-total-label{font:700 var(--fs-caption) var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:#fff;opacity:.8}
   .tb-total-amount{font:800 var(--fs-xl) var(--font-sans);color:#fff;font-variant-numeric:tabular-nums}
 
@@ -1252,7 +1252,7 @@
   .cost-mode-row{display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-3)}
   .cost-mode-seg{flex:0 0 auto;flex-wrap:nowrap}
   .cost-mode-note{flex:1 1 0;min-width:0;font-size:var(--fs-small);color:var(--stone)}
-  .cost-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:var(--sp-2) var(--sp-4);margin-bottom:var(--sp-3)}
+  .cost-card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:var(--sp-4);margin-bottom:var(--sp-3)}
   .cost-summary-table,.cost-line-table{width:100%;border-collapse:collapse}
   .cost-summary-table td,.cost-line-table td{padding:var(--sp-3) 0;border-bottom:1px solid var(--line);font-size:var(--fs-small)}
   .cost-summary-table tr:last-child td,.cost-line-table tr:last-child td{border-bottom:none}

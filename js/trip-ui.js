@@ -1593,7 +1593,7 @@ function tbDayCardHTML(d,idx){
     :`<button type="button" class="tb-menu-item" onclick="tripDayMoveToPos(${d.id},${i})">${
         i===0?`↑ ${esc(tbDayMenuLabel(tripDays[i],i))} (first)`:i===tripDays.length-1?`↓ ${esc(tbDayMenuLabel(tripDays[i],i))} (last)`:esc(tbDayMenuLabel(tripDays[i],i))}</button>`).join(''):'';
   const menu=tbRowMenuHTML((moveItems?'<div class="tb-menu-label">Move to</div>':'')+moveItems+
-    `<button type="button" class="tb-menu-item is-danger" onclick="tripRemoveDay(${d.id});">🗑 Remove day ${idx+1}</button>`);
+    `<button type="button" class="tb-menu-item is-danger" onclick="tripRemoveDay(${d.id});">${ICO('trash')} Remove day ${idx+1}</button>`);
   if(tbCompact&&!tbDetailed&&!tbCompactOpen.has(d.id)){
     const mins=tbDayDriveMins(idx);
     return`<div class="tb-day tb-day-${kind} is-compact" style="--day-c:${tbDayColor(idx)}">

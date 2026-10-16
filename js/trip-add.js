@@ -553,7 +553,7 @@ function tripDayCourseRowHTML(i,dayId){
   const menu=tbRowMenuHTML(
     `<div class="tb-menu-label">Move to</div>${tbDayMenuItemsHTML(i,dayId)}
      <div class="tb-menu-sep"></div>
-     <button type="button" class="tb-menu-item is-danger" onclick="tripRemoveCourse(${i});">🗑 Remove from trip</button>`);
+     <button type="button" class="tb-menu-item is-danger" onclick="tripRemoveCourse(${i});">${ICO('trash')} Remove from trip</button>`);
   return`<div class="tb-day-course tb-item-golf" data-ci="${i}" ${tbRowDragAttrs(`tbDragSetCourse(${i},event,this);`,`tbDropOn(${dayId==null?'null':dayId},${i});`)}>
     <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
     <span class="tb-item-icon">${ICO('golf')}</span>
@@ -642,7 +642,7 @@ function tripDayItemRowHTML(d,it){
       // tripDayUpdateStop() behind tbEditStop only accepts hotel/poi,
       // so routing a flight there would have been a dead button.
       :`<button type="button" class="tb-menu-item" onclick="${it.type==='flight'?`tlEditFlight(${d.id},'${it.id}')`:`tbEditStop(${d.id},'${it.id}')`}">✎ Edit</button>${costItem}<div class="tb-menu-sep"></div>`)+
-    `<button type="button" class="tb-menu-item is-danger" onclick="tripRemoveItem(${d.id},'${it.id}');">🗑 Remove</button>`);
+    `<button type="button" class="tb-menu-item is-danger" onclick="tripRemoveItem(${d.id},'${it.id}');">${ICO('trash')} Remove</button>`);
   return`<div class="tb-day-course tb-item-${it.type}"${it.type==='golf'?` data-ci="${it.i}"`:''} ${tbRowDragAttrs(`tbDragSetItem(${d.id},'${it.id}',event,this);`,`tbDropInDay(${d.id},'${it.id}');`)}>
     <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
     <span class="tb-item-icon">${icon}</span>

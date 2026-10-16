@@ -650,7 +650,7 @@ function tlPanelHTML(d){
     <div class="tl-panel-actions">
       ${tlPanelEditBtnHTML(d,it)}
       <button type="button" class="tb-btn is-sm is-quiet is-danger"
-        onclick="tlRemoveFromPanel(${d.id},${q(it.id)})">🗑 Remove</button>
+        onclick="tlRemoveFromPanel(${d.id},${q(it.id)})">${ICO('trash')} Remove</button>
     </div>
   </div>`;
 }
