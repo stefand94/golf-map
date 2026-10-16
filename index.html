@@ -985,6 +985,12 @@
     border:1px solid var(--line);border-radius:var(--radius-pill);background:#fff;color:var(--accent-deep);font:600 var(--fs-caption) var(--font-sans);cursor:pointer}
   .tl-add:hover{border-color:var(--accent)}
   .tl-daysw{display:none}
+  .tl-daynav{position:sticky;top:0;z-index:15;display:flex;align-items:center;gap:var(--sp-2);margin:0 0 var(--sp-2);padding:var(--sp-2) 0;background:var(--paper-2);border-bottom:1px solid var(--line)}
+  .tl-daynav .ui-icon-btn{flex:none;width:36px;height:36px;font-size:18px;line-height:1}
+  .tl-daynav-days{flex:1;display:flex;gap:6px;overflow-x:auto;scrollbar-width:thin;padding:2px}
+  .tl-daynav-days .ui-chip{flex:none}
+  .tb-day{scroll-margin-top:56px}
+  body.tl-one-day .tl-daynav{display:none}
   /* One hue per kind (owner review) — see the --tl-* tokens at the top.
      The time is in the kind's own ink, which is what makes a column of
      blocks scannable before any of them is read. */

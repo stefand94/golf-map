@@ -463,6 +463,21 @@ function tlDayGridHTML(d,dayIdx,firstNights){
     </div>`);
     return parts.join('');
   }).join('');
+  /* GOLF-274: the night's drive to the hotel, hung under the day's last
+     activity. The number is the one the itinerary shows (tripDayLegs keys
+     it by the hotel's id); no hotel, or no measured leg, draws nothing. */
+  let hotelDrive='';
+  if(chain.length&&stays.length){
+    const stay=stays[0].item;
+    const mins=tlDriveMinsByItem(dayIdx).get(stay.id)||0;
+    if(mins>0){
+      const dh=Math.max(TL_DRIVE_MIN_PX,mins*TL_PX_PER_MIN);
+      const last=chain[chain.length-1].item;
+      hotelDrive=`<div class="tl-drive" style="top:${cursor.toFixed(1)}px;height:${dh.toFixed(1)}px"
+        title="Drive from ${esc(tripItemName(last))} to ${esc(tripItemName(stay))}. Computed, so it can't be dragged.">${ICO('car')} ${esc(fmtDriveMinutes(mins))} <span class="tl-drive-from">to ${esc(tripItemName(stay))}</span></div>`;
+      cursor+=dh;
+    }
+  }
   /* The check-in line is a marker: it sits on the grid and pushes
      nothing (DEC-039). Drawn only on a stay's first night. */
   const checkins=stays.filter(r=>firstNights.has(r.item.id))
@@ -482,7 +497,7 @@ function tlDayGridHTML(d,dayIdx,firstNights){
       tabindex="0" aria-label="Day ${dayIdx+1} timeline">
     <div class="tl-grid" style="height:${height}px"
       data-tlgap="1" data-tlday="${d.id}"
-      oncontextmenu="return tlGapContext(event,${d.id})">${hours.join('')}${blocks}${checkins}</div>
+      oncontextmenu="return tlGapContext(event,${d.id})">${hours.join('')}${blocks}${hotelDrive}${checkins}</div>
   </div>
   ${ro?'':`<p class="hint tl-howto">Right-click an empty slot to add a flight, train, drive or activity${
       ''} · drag a block to move it, its edges to resize it · click it for its details.<span class="tl-howto-touch"> On a phone: hold an empty slot to add, hold a block then drag to move.</span></p>`}
@@ -1038,7 +1053,47 @@ function tlAfterRender(){
   });
   tlPhoneDaySync();
   tlAttachBlockSearch();
+  tlFormIntoView();
+  tlDeskDayNav();
 }
+/* GOLF-274: an add form opens below the grid; bring it into view once per
+   draft instead of leaving the visitor to scroll down to find it. */
+let tlFormSeen=null;
+function tlFormIntoView(){
+  const draft=tlDraft||tlFlightDraft||(typeof tbAddStop!=='undefined'?tbAddStop:null)||null;
+  if(!draft){tlFormSeen=null;return;}
+  if(draft===tlFormSeen)return;
+  const f=document.querySelector('#tb-pane .tb-addstop');
+  if(!f)return;
+  tlFormSeen=draft;
+  f.scrollIntoView({block:'nearest',behavior:'auto'});
+}
+/* GOLF-274: desktop/tablet calendar — a sticky strip of day buttons plus
+   prev/next, so jumping between days is one click rather than a long scroll.
+   On a phone GOLF-260's one-day switcher does this job instead. */
+function tlDeskDayNav(){
+  document.querySelectorAll('.tl-daynav').forEach(e=>e.remove());
+  if(document.body.classList.contains('tl-one-day')||!tbDetailed||appMode==='shared'||tripDays.length<2)return;
+  const cards=[...document.querySelectorAll('.tb-day')].filter(c=>c.querySelector('.tl-scroll'));
+  if(cards.length<2)return;
+  const nav=document.createElement('div');
+  nav.className='tl-daynav';
+  nav.setAttribute('role','navigation');
+  nav.setAttribute('aria-label','Jump to a day');
+  nav.innerHTML=`<button type="button" class="ui-icon-btn" data-tlnav="-1" aria-label="Previous day">‹</button>
+    <div class="tl-daynav-days">${cards.map((c,i)=>`<button type="button" class="ui-chip" data-tlnav-to="${i}" aria-pressed="${i===tlDeskNavAt}">Day ${i+1}</button>`).join('')}</div>
+    <button type="button" class="ui-icon-btn" data-tlnav="1" aria-label="Next day">›</button>`;
+  cards[0].parentNode.insertBefore(nav,cards[0]);
+}
+function tlDeskNavGo(i){
+  const cards=[...document.querySelectorAll('.tb-day')].filter(c=>c.querySelector('.tl-scroll'));
+  const c=cards[Math.max(0,Math.min(cards.length-1,i))];
+  if(!c)return;
+  c.scrollIntoView({block:'start',behavior:'auto'});
+  document.querySelectorAll('.tl-daynav [data-tlnav-to]').forEach((b,k)=>b.setAttribute('aria-pressed',String(c===cards[k])));
+  tlDeskNavAt=cards.indexOf(c);
+}
+let tlDeskNavAt=0;
 
 /* GOLF-260: on a phone the calendar shows one day at a time. The days are
    still all in the DOM (the pane is rendered by trip-ui.js); this hides
@@ -1083,6 +1138,12 @@ function tlPhoneDaySync(){
   if(!tlPhoneWasOn){tlPhoneWasOn=true;tlPhoneFocus();}
 }
 document.addEventListener('click',e=>{
+  const nv=e.target.closest&&e.target.closest('[data-tlnav],[data-tlnav-to]');
+  if(nv){
+    if(nv.hasAttribute('data-tlnav-to'))tlDeskNavGo(Number(nv.getAttribute('data-tlnav-to')));
+    else tlDeskNavGo(tlDeskNavAt+Number(nv.getAttribute('data-tlnav')));
+    return;
+  }
   const st=e.target.closest&&e.target.closest('[data-tlday-step]');
   if(st){
     const i=tripDays.findIndex(d=>d.id===tlPhoneDayId)+Number(st.getAttribute('data-tlday-step'));
