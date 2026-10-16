@@ -467,7 +467,7 @@ function renderSharedMap(){
       }
     }
     const day=stop.day;
-    const fill=day!=null?TRIP_DAY_COLORS[(day-1)%TRIP_DAY_COLORS.length]:'#E6B400';
+    const fill=day!=null?TRIP_DAY_COLORS[(day-1)%TRIP_DAY_COLORS.length]:TRIP_UNSCHEDULED;
     const n=++nDrawn;
     const mk=L.circleMarker([stop.lat,stop.lng],{radius:8,color:'#1B2733',weight:2,fillColor:fill,fillOpacity:1})
       .bindTooltip(`${n}. ${esc(stop.name||'')}`,{direction:'top'}).addTo(m);

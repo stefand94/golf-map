@@ -1,6 +1,6 @@
 /* ============================================================
    js/state.js — localStorage persistence (load/save/clear), the
-   Explore filter state object, HOME, the map binding, and the initial
+   Explore filter state object, the map binding, and the initial
    loadStoredState() call.
 
    Loaded as a plain <script> (not a module) in the fixed order
@@ -437,7 +437,6 @@ function saveState(){
 }
 function clearStoredState(){try{localStorage.removeItem(LS_KEY)}catch(e){}}
 
-const HOME=[51.5467873,-0.1798875];
 /* GOLF-22: default sort was "by area" — REGIONS appends the 5 Top-100-only
    regions after the 8 original London ones, so a course like Royal Birkdale
    ended up literally last of 221 in the default view. "by name" interleaves

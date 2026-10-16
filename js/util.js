@@ -27,66 +27,160 @@ function flagSVG(colour,pole,size,ring){
   </svg>`;
 }
 
-/* GOLF-130 (owner item, 2026-09-13): the on-map course marker is a
-   teardrop pin with a flag icon — a flat inline SVG (no raster asset, no
-   gradients), replacing GOLF-111's golf-ball-on-a-tee. The teardrop body
-   is always the same green; a large white/yellow circle fills most of its
-   interior (thin border), with a flag scaled to the circle's size.
+/* GOLF-254 (B2): the marker family. Teardrop pins share one 40x60 viewBox
+   (gtPinShell); courses are green, scheduled trip courses take their day's
+   colour with the day number, and state rides on badges (ranked star, played
+   tick, want heart) instead of fill changes. Stay/see/place pins, trip
+   start/end discs, POI discs and cluster discs come from the same file.
+   Source of truth for the shapes: design/svg-proposals/templates.js. */
+var GT_PIN_PATH = 'M20 57.6C-1 33.8 2.5 23.3 2.5 19.8A17.5 17.5 0 1 1 37.5 19.8C37.5 23.3 41 33.8 20 57.6Z';
+var GT_HEAD = { x: 20, y: 19.8 };            // centre of the pin's round head
+var GT_FONT = 'Space Grotesk, Manrope, system-ui, sans-serif';
+var GT_INK = '#1B2733';
+var GT_GOLD = '#E6B400';
+var GT_COURSE = { body: '#1F7A4D', outline: '#155C39' };
+var GT_DAY_COLORS = ['#C2410C', '#7C3AED', '#0E7490', '#BE185D', '#A16207', '#4338CA', '#4D7C0F', '#9F1239'];
+var GT_POI = { heritage: '#8A5A2B', nature: '#2F7D4F', coast: '#2B7BB9', culture: '#7A4FA0', drink: '#B7791F' };
 
-   State encoding the map carries:
-   - ranked vs unranked — size step (30 vs 22, see pinFor()) plus a gold
-     halo ring on ranked courses, unchanged from GOLF-111;
-   - trip association — collapsed to a single boolean (`filled` below,
-     picked by pinStateTint() in js/map.js): white circle = no association,
-     yellow = wishlisted, added as a trip stop, or played (no further
-     distinction — see GOLF-130).
-
-   Anchor is the teardrop's point (bottom-centre) — set in pinFor(). */
-/* Shared teardrop-pin-with-circle geometry behind golfPinSVG() and
-   hotelPinSVG() (GOLF-142 follow-up) — same shape, different body colour
-   and inner glyph. `inner(cx,cy,innerR)` returns the markup drawn centred
-   inside the white/yellow circle. */
-function pinShapeSVG(size,{bodyColor,outlineColor,ranked,filled,inner}){
-  const w=size,h=size*1.5,ow=Math.max(1.1,size*0.05);
-  const cx=w*0.5,R=w*0.5-ow*1.3,cy=R+ow*1.3,tipY=h-ow*0.6;
-  const pin=`M${cx},${tipY} C${(cx-R*1.2).toFixed(1)},${(cy+R*0.8).toFixed(1)} ${(cx-R).toFixed(1)},${(cy+R*0.2).toFixed(1)} ${(cx-R).toFixed(1)},${cy.toFixed(1)} A${R.toFixed(1)},${R.toFixed(1)} 0 1,1 ${(cx+R).toFixed(1)},${cy.toFixed(1)} C${(cx+R).toFixed(1)},${(cy+R*0.2).toFixed(1)} ${(cx+R*1.2).toFixed(1)},${(cy+R*0.8).toFixed(1)} ${cx},${tipY} Z`;
-  const innerR=R*0.78,circleFill=filled?'#F2C200':'#FFFFFF';
-  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.38))">
-    ${ranked?`<circle cx="${cx}" cy="${cy.toFixed(1)}" r="${(R+ow*1.7).toFixed(1)}" fill="none" stroke="#E6B400" stroke-width="${(ow*1.5).toFixed(1)}"/>`:''}
-    <path d="${pin}" fill="${bodyColor}" stroke="${outlineColor}" stroke-width="${ow}" stroke-linejoin="round"/>
-    <circle cx="${cx}" cy="${cy.toFixed(1)}" r="${innerR.toFixed(1)}" fill="${circleFill}" stroke="${outlineColor}" stroke-width="${(ow*0.6).toFixed(1)}"/>
-    ${inner(cx,cy,innerR)}
-  </svg>`;
+/* Darken a #RRGGBB by mixing toward black — gives each body colour its
+   own outline, the way #155C39 outlines #1F7A4D. */
+function gtShade(hex, amt) {
+  var n = parseInt(hex.slice(1), 16), k = 1 - (amt == null ? 0.28 : amt);
+  var c = [n >> 16, (n >> 8) & 255, n & 255].map(function (v) {
+    return ('0' + Math.round(v * k).toString(16)).slice(-2);
+  });
+  return ('#' + c.join('')).toUpperCase();
 }
 
-function golfPinSVG(size,opts){
-  if(opts===true||opts===false)opts={ranked:opts}; // back-compat: golfPinSVG(size, ranked)
-  opts=opts||{};
-  const outline='#155C39';
-  return pinShapeSVG(size,{
-    bodyColor:'#1F7A4D',outlineColor:outline,ranked:!!opts.ranked,filled:!!opts.tint,
-    inner:(cx,cy,innerR)=>{
-      const s=innerR/11;
-      return `<g transform="translate(${cx.toFixed(1)},${cy.toFixed(1)}) scale(${s.toFixed(3)})">
-    <line x1="-3" y1="8" x2="-3" y2="-8" stroke="${outline}" stroke-width="2" stroke-linecap="round"/>
-    <path d="M-3,-8 L7,-4 L-3,0 Z" fill="${outline}"/>
-  </g>`;
-    },
-  });
+/* Pin chassis: white under-rim (reads on satellite), then the body with a
+   darker outline. `inner` is the glyph markup, `extra` badges on top. */
+function gtPinShell(w, body, outline, inner, extra) {
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + (w * 1.5) + '" viewBox="0 0 40 60">' +
+    '<path d="' + GT_PIN_PATH + '" fill="#FFF" stroke="#FFF" stroke-width="4.4" stroke-linejoin="round"/>' +
+    '<path d="' + GT_PIN_PATH + '" fill="' + body + '" stroke="' + outline + '" stroke-width="2" stroke-linejoin="round"/>' +
+    (inner || '') + (extra || '') + '</svg>';
 }
 
-/* GOLF-142 follow-up: the ambient "Show hotels" layer's pin — same
-   teardrop-with-circle shape as golfPinSVG(), coloured blue (as opposed
-   to golf's green) with a 🏨 glyph in place of the flag. The white/yellow
-   circle carries the same meaning as golf's: yellow once that hotel is
-   part of the current trip (tbHotelInTrip(), js/hotel-layer.js), white
-   otherwise. Never ranked — hotels have no ranked-course equivalent. */
-function hotelPinSVG(size,opts){
-  opts=opts||{};
-  return pinShapeSVG(size,{
-    bodyColor:'#1565C0',outlineColor:'#0D47A1',ranked:false,filled:!!opts.tint,
-    inner:(cx,cy,innerR)=>`<text x="${cx.toFixed(1)}" y="${(cy+innerR*0.35).toFixed(1)}" font-size="${(innerR*1.35).toFixed(1)}" text-anchor="middle">🏨</text>`,
-  });
+/* White golf flag, centred on the head. */
+function gtFlag() {
+  return '<ellipse cx="16.4" cy="28.4" rx="4" ry="1.3" fill="#FFF" opacity=".55"/>' +
+    '<path d="M16.4 28V11" stroke="#FFF" stroke-width="2" stroke-linecap="round"/>' +
+    '<path d="M16.4 11L27 15.6 16.4 20.2Z" fill="#FFF"/>';
+}
+
+/* Badges: an ink disc with a white rim, so they read on ANY pin fill.
+   Right shoulder = ranked star. Left shoulder = played tick OR want heart
+   (played wins if both are somehow set — they are mutually exclusive in
+   meaning). */
+function gtBadge(side, glyph) {
+  var cx = side === 'left' ? 8.4 : 31.6, cy = 8.4;
+  return '<g transform="translate(' + cx + ' ' + cy + ')">' +
+    '<circle r="6.9" fill="' + GT_INK + '" stroke="#FFF" stroke-width="1.4"/>' + glyph + '</g>';
+}
+function gtStarGlyph() {
+  return '<path d="M0-4.6L1.2-1.6 4.4-1.4 1.9.6 2.7 3.7 0 2 -2.7 3.7 -1.9.6 -4.4-1.4 -1.2-1.6Z" fill="' + GT_GOLD + '"/>';
+}
+function gtTickGlyph() {
+  return '<path d="M-3.2.2L-1 2.4 3.3-2.1" fill="none" stroke="#FFF" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>';
+}
+function gtHeartGlyph() {
+  return '<path d="M0 3.6C-1.2 2.6-4 .7-4-1.4-4-2.9-2.9-3.8-1.8-3.8-.9-3.8-.3-3.3 0-2.6.3-3.3.9-3.8 1.8-3.8 2.9-3.8 4-2.9 4-1.4 4 .7 1.2 2.6 0 3.6Z" fill="#FB7185"/>';
+}
+function gtBadges(o) {
+  var s = '';
+  if (o.ranked) s += gtBadge('right', gtStarGlyph());
+  if (o.played) s += gtBadge('left', gtTickGlyph());
+  else if (o.want) s += gtBadge('left', gtHeartGlyph());
+  return s;
+}
+
+/* Course pin. Size defaults: 30 if ranked/shortlisted, else 22. */
+function gtCoursePinSVG(o) {
+  o = o || {};
+  var w = o.size || (o.ranked || o.shortlist ? 30 : 22);
+  var ring = o.shortlist ? '<circle cx="20" cy="19.8" r="12.2" fill="none" stroke="#FFF" stroke-width="2.6"/>' : '';
+  return gtPinShell(w, GT_COURSE.body, GT_COURSE.outline, ring + gtFlag(), gtBadges(o));
+}
+
+/* Scheduled trip course: day colour body, white day number in place of the
+   flag. `color` defaults to the day palette (cycles after 8). opts may
+   carry ranked/played/want for badges, and size (default 30). */
+function gtDayPinSVG(n, color, opts) {
+  opts = opts || {};
+  color = color || GT_DAY_COLORS[(n - 1) % GT_DAY_COLORS.length];
+  var label = String(n), fs = label.length > 1 ? 15.5 : 19;
+  var text = '<text x="20" y="' + (19.8 + fs * 0.36).toFixed(1) + '" fill="#FFF" font-family="' + GT_FONT +
+    '" font-weight="700" font-size="' + fs + '" text-anchor="middle">' + label + '</text>';
+  return gtPinShell(opts.size || 30, color, gtShade(color), text, gtBadges(opts));
+}
+
+/* Trip stops that aren't golf: 'stay' (bed), 'see' (camera), 'place'
+   (searched place, dot). Unscheduled colour defaults: stay/see slate
+   #3E4C5A, place navy accent #2E5C8A; pass a day colour once scheduled. */
+function gtStopPinSVG(kind, color, size) {
+  var glyph;
+  if (kind === 'stay') {
+    color = color || '#3E4C5A';
+    glyph = '<path d="M11.5 14.5V26.5M11.5 23.2H28.5M28.5 19.6V26.5" fill="none" stroke="#FFF" stroke-width="2.2" stroke-linecap="round"/>' +
+      '<rect x="13.4" y="17" width="5" height="3.6" rx="1.2" fill="#FFF"/>' +
+      '<path d="M20 17.2H26.3A2.2 2.2 0 0 1 28.5 19.4V21.4H20Z" fill="#FFF"/>';
+  } else if (kind === 'see') {
+    color = color || '#3E4C5A';
+    glyph = '<path d="M16.3 15.2L17.8 12.6H22.2L23.7 15.2Z" fill="#FFF"/>' +
+      '<rect x="10.8" y="15" width="18.4" height="12" rx="2.6" fill="#FFF"/>' +
+      '<circle cx="20" cy="21" r="3.9" fill="' + color + '"/>' +
+      '<circle cx="20" cy="21" r="1.7" fill="#FFF"/>';
+  } else {
+    color = color || '#2E5C8A';
+    glyph = '<circle cx="20" cy="19.8" r="6" fill="#FFF"/>';
+  }
+  return gtPinShell(size || 22, color, gtShade(color), glyph, '');
+}
+
+/* Trip start / end: a round disc, NOT a teardrop (keeps GOLF-243's intent
+   that "where the trip begins" is a different kind of thing), but in the
+   family's rim + outline language. 24x24, anchor centre [12,12]. */
+function gtEndpointSVG(isEnd) {
+  var glyph = isEnd
+    ? '<path d="M8.4 6.2V17.8" stroke="#FFF" stroke-width="1.6" stroke-linecap="round"/>' +
+      '<rect x="9.2" y="6.6" width="7.2" height="4.8" fill="#FFF"/>' +
+      '<path d="M9.2 6.6H11.6V9H9.2ZM14 6.6H16.4V9H14ZM11.6 9H14V11.4H11.6Z" fill="' + GT_INK + '"/>'
+    : '<path d="M9.8 7.6V16.4L16.8 12Z" fill="#FFF" stroke="#FFF" stroke-width="1.2" stroke-linejoin="round"/>';
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">' +
+    '<circle cx="12" cy="12" r="10.4" fill="' + GT_INK + '" stroke="#FFF" stroke-width="2"/>' + glyph + '</svg>';
+}
+
+/* POI category markers: filled 20x20 disc, white rim, white glyph. */
+var GT_POI_GLYPHS = {
+  heritage: '<path d="M6 15.2V7.4H7.8V9H9.3V7.4H10.7V9H12.2V7.4H14V15.2H11.4V12.6A1.4 1.4 0 0 0 8.6 12.6V15.2Z" fill="#FFF"/>',
+  nature: '<path d="M10 4.6L13.6 9.2H12L14.6 12.8H11V15.4H9V12.8H5.4L8 9.2H6.4Z" fill="#FFF"/>',
+  coast: '<path d="M5 8.6C6.1 7.4 7.2 7.4 8.3 8.6S10.5 9.8 11.6 8.6 13.8 7.4 14.9 8.6M5 12.4C6.1 11.2 7.2 11.2 8.3 12.4S10.5 13.6 11.6 12.4 13.8 11.2 14.9 12.4" fill="none" stroke="#FFF" stroke-width="1.6" stroke-linecap="round"/>',
+  culture: '<path d="M10 4.8L15 7.6H5Z" fill="#FFF"/><path d="M6.2 8.4H7.8V13.4H6.2ZM9.2 8.4H10.8V13.4H9.2ZM12.2 8.4H13.8V13.4H12.2ZM5 14H15V15.4H5Z" fill="#FFF"/>',
+  drink: '<path d="M6.3 5.8H13.7L12.8 14.8H7.2Z" fill="none" stroke="#FFF" stroke-width="1.4" stroke-linejoin="round"/><path d="M6.9 10.4H13.1L12.7 14.8H7.3Z" fill="#FFF"/>'
+};
+function gtPoiSVG(cat) {
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">' +
+    '<circle cx="10" cy="10" r="8.8" fill="' + GT_POI[cat] + '" stroke="#FFF" stroke-width="1.5"/>' +
+    GT_POI_GLYPHS[cat] + '</svg>';
+}
+
+/* Cluster disc. size 30 / 36 / 44 (pick by count: <10, <50, else).
+   Soft green halo + solid disc with white rim; gold dot (upper right)
+   when the cluster contains a trip course. Anchor centre. */
+function gtClusterSize(count) { return count < 10 ? 30 : count < 50 ? 36 : 44; }
+function gtClusterSVG(count, size, hasTrip) {
+  size = size || gtClusterSize(count);
+  var h = size / 2, r = h - 3.5, fs = size === 30 ? 12 : size === 36 ? 13 : 14;
+  var dot = '';
+  if (hasTrip) {
+    var d = (h + r * 0.707).toFixed(1), u = (h - r * 0.707).toFixed(1);
+    dot = '<circle cx="' + d + '" cy="' + u + '" r="' + (size / 7).toFixed(1) + '" fill="' + GT_GOLD + '" stroke="#FFF" stroke-width="1.5"/>';
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' +
+    '<circle cx="' + h + '" cy="' + h + '" r="' + h + '" fill="' + GT_COURSE.body + '" opacity=".28"/>' +
+    '<circle cx="' + h + '" cy="' + h + '" r="' + r + '" fill="' + GT_COURSE.body + '" stroke="#FFF" stroke-width="2"/>' +
+    '<text x="' + h + '" y="' + (h + fs * 0.36).toFixed(1) + '" fill="#FFF" font-family="' + GT_FONT +
+    '" font-weight="700" font-size="' + fs + '" text-anchor="middle">' + count + '</text>' + dot + '</svg>';
 }
 
 /* HTML escaping. Lived in js/editor.js (the last module in load order)
@@ -263,7 +357,7 @@ function toggleWant(i){if(WANT.has(i))WANT.delete(i);else{WANT.add(i);PLAYED.del
 /* GOLF-70: these course metrics lived beside the Explore filters until the
    split, but they are read from several modules — FEE_SLIDER_MAX
    (js/explore.js) calls feeNum() from a top-level IIFE, and the "distance"
-   sort calls distOut(). They are pure functions of C/EDITS/HOME, so they
+   sort calls distOut(). They are pure functions of C/EDITS, so they
    belong here, ahead of every reader. Unchanged otherwise. */
 /* GOLF-120: prefer the structured feeV2 weekday figure (its low end — the
    "from" number a visitor sorts/filters on) when the course carries one;
@@ -278,11 +372,19 @@ function feeNum(i){
   const m=String(V(i,'wd')).match(/\d+(\.\d+)?/);return m?parseFloat(m[0]):9999;
 }
 /* distOut() is in degrees — only used internally to rank courses by
-   straight-line distance from HOME for the "distance" sort. GOLF-123
+   straight-line distance from distOrigin() for the "distance" sort. GOLF-123
    removed the user-facing "X mi from home, as the crow flies" row from the
    card and popup (a raw great-circle figure from a hard-coded home point
    was meaningless), so there is no longer a distMiles() miles conversion. */
-function distOut(i){const dy=C[i].lat-HOME[0],dx=(C[i].lng-HOME[1])*Math.cos(HOME[0]*Math.PI/180);return Math.hypot(dy,dx)}
+/* GOLF-254: measured from the trip's start point when it has one, else the
+   map centre (there is no fixed "home" any more). */
+function distOrigin(){
+  const p=typeof tripEndpointPoint==='function'&&typeof tripStart!=='undefined'?tripEndpointPoint(tripStart):null;
+  if(p)return[p.lat,p.lng];
+  const c=typeof map!=='undefined'&&map.getCenter?map.getCenter():null;
+  return c?[c.lat,c.lng]:[54.5,-3];
+}
+function distOut(i,o){o=o||distOrigin();const dy=C[i].lat-o[0],dx=(C[i].lng-o[1])*Math.cos(o[0]*Math.PI/180);return Math.hypot(dy,dx)}
 // GOLF-160 (DEC-038): "Sort: top courses first". Was rankNum(), ordering by
 // the t100 positions (GOLF-81); those are top100golfcourses.com's and are
 // gone from the data, so notable courses come first and the caller

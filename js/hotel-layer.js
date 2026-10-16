@@ -207,9 +207,8 @@ function tbHotelInTrip(p){
 
 const HOTEL_LAYER_ICON_SIZE=22;
 function hotelLayerIcon(tint){
-  const size=HOTEL_LAYER_ICON_SIZE,h=size*1.5;
-  return L.divIcon({className:'',html:hotelPinSVG(size,{tint}),
-    iconSize:[size,h],iconAnchor:[size*0.5,h],popupAnchor:[0,-h+2],tooltipAnchor:[0,-h+2]});
+  const size=HOTEL_LAYER_ICON_SIZE;
+  return gtPinIcon(gtStopPinSVG('stay',null,size),size,size*1.5);
 }
 
 /* ── GOLF-145: popup that turns a browsed pin into an itinerary stay.

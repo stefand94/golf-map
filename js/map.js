@@ -116,7 +116,7 @@ function mapReplayPendingFit(){
    swallowed outright. Adding a stop within a second of tapping "Show
    whole trip" reproduced it every time — the stop landed, the camera
    never moved. A jump always arrives. */
-const MAP_TRIP_FIT_OPTS={padding:[32,32],maxZoom:14,animate:false};
+const MAP_TRIP_FIT_OPTS={padding:[48,48],maxZoom:14,animate:false};
 function tripFitPoints(dayId){
   if(typeof tripDayOrder!=='function')return[];
   /* tripDayStops() numbers days from 1; tripDayOrder() carries that
@@ -405,7 +405,7 @@ mapFeedbackControl.addTo(map);
 const mapTripFitControl=L.control({position:'topleft'});
 mapTripFitControl.onAdd=function(){
   const el=L.DomUtil.create('div','leaflet-bar map-fit-trip');
-  el.innerHTML=`<a href="#" role="button" title="Show whole trip — frames every stop in your trip" aria-label="Show whole trip">⤢</a>`;
+  el.innerHTML=`<a href="#" role="button" title="Show whole trip — frames every stop in your trip" aria-label="Show whole trip"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V4.5A1.5 1.5 0 0 1 4.5 3H7M13 3h2.5A1.5 1.5 0 0 1 17 4.5V7M17 13v2.5a1.5 1.5 0 0 1-1.5 1.5H13M7 17H4.5A1.5 1.5 0 0 1 3 15.5V13"/><circle cx="10" cy="10" r="2.2"/></svg></a>`;
   L.DomEvent.disableClickPropagation(el);
   L.DomEvent.on(el,'click',e=>{L.DomEvent.preventDefault(e);mapFitTrip(null);});
   return el;
@@ -561,9 +561,6 @@ function restyleRail(){
 }
 if(RAIL_FEATURE){map.on('zoomend',restyleRail);restyleRail();}
 
-L.marker(HOME,{icon:L.divIcon({className:'',html:'<div class="home"></div>',iconSize:[21,21],iconAnchor:[10.5,10.5]})})
- .addTo(map).bindPopup('<div class="pop"><h3>Finchley Road</h3><p class="sub">Your starting point</p><p class="note" style="border:0;padding:0">Jubilee and Metropolitan. West Hampstead Thameslink is a 6-minute walk — that unlocks Mill Hill Broadway, Elstree, Radlett, St Albans City, Harpenden and West Dulwich directly.</p></div>');
-
 /* GOLF: 284 flag markers all rendering individually made the map
    unreadable at any zoom wide enough to see more than one town at once —
    swapped the plain layerGroup for markercluster so nearby courses collapse
@@ -577,8 +574,9 @@ const layer=L.markerClusterGroup({
   spiderfyOnMaxZoom:true,
   showCoverageOnHover:false,
   iconCreateFunction(cluster){
-    const n=cluster.getChildCount(),tier=n<10?'sm':n<50?'md':'lg',size=n<10?30:n<50?36:42;
-    return L.divIcon({className:'',html:`<div class="mcluster mcluster-${tier}">${n}</div>`,iconSize:[size,size],iconAnchor:[size/2,size/2]});
+    const n=cluster.getChildCount(),size=gtClusterSize(n);
+    const hasTrip=cluster.getAllChildMarkers().some(m=>TRIP.has(m.options.courseIdx));
+    return L.divIcon({className:'',html:gtClusterSVG(n,size,hasTrip),iconSize:[size,size],iconAnchor:[size/2,size/2]});
   },
   clusterPane:'bgCoursePins',
 }).addTo(map),markers=new Map();
@@ -601,9 +599,34 @@ function ranked(i){const c=C[i];return!!c.notable&&!c.topIreland&&!c.topSouthAfr
 function pinStateTint(i){
   return TRIP.has(i)||PLAYED.has(i)||WANT.has(i);
 }
-function pinFor(i){const rk=ranked(i),size=rk?30:22,h=size*1.5;
-  return L.divIcon({className:'',html:golfPinSVG(size,{ranked:rk,tint:pinStateTint(i)}),
-    iconSize:[size,h],iconAnchor:[size*0.5,h],popupAnchor:[0,-h+2],tooltipAnchor:[0,-h+2]})}
+/* GOLF-254: the day a trip course is scheduled on (1-based), or 0. */
+function courseDayNo(i){
+  if(typeof tripDays==='undefined')return 0;
+  const k=tripDays.findIndex(d=>(d.items||[]).some(it=>it.type==='golf'&&it.i===i));
+  return k+1;
+}
+/* Pin hit area is padded to 44px (transparent box, SVG centred at the
+   bottom) while the visual stays small. */
+function gtPinIcon(svg,w,h){
+  const bw=Math.max(w,44),bh=Math.max(h,44);
+  return L.divIcon({className:'',html:`<div class="gt-pin" style="width:${bw}px;height:${bh}px">${svg}</div>`,
+    iconSize:[bw,bh],iconAnchor:[bw/2,bh-1],popupAnchor:[0,-h+2],tooltipAnchor:[0,-h+2]});
+}
+function pinFor(i){
+  const rk=ranked(i),day=courseDayNo(i),shortlist=TRIP.has(i)&&!day;
+  const played=PLAYED.has(i),want=!played&&WANT.has(i);
+  const size=(rk||day||shortlist)?30:22;
+  const svg=day?gtDayPinSVG(day,null,{ranked:rk,played,want,size}):gtCoursePinSVG({ranked:rk,played,want,shortlist,size});
+  return gtPinIcon(svg,size,size*1.5);
+}
+/* Hover tooltips are for a mouse: never bound on touch, and closed once the
+   popup opens so the two don't stack (the stuck "Walton Heath · Up to £275"). */
+function bindCourseTooltip(m,fn){
+  if(window.matchMedia&&window.matchMedia('(hover:none)').matches)return m;
+  m.bindTooltip(fn,{direction:'top',className:'course-tt'});
+  m.on('popupopen',()=>m.closeTooltip());
+  return m;
+}
 const CONF={club:"Rate from the club's own page",press:"Rate published in trade press or a golf guide",est:"Indicative — verify with the club before travelling"};
 /* GOLF-160: list membership labels only (e.g. "Greater London list").
    No rank positions: they are top100golfcourses.com's (DEC-038). */
@@ -708,7 +731,7 @@ function jitteredLatLng(c){
 C.forEach((c,i)=>{
   const[lat,lng]=jitteredLatLng(c);
   courseJitterLL.set(i,[lat,lng]);
-  const m=L.marker([lat,lng],{icon:pinFor(i),title:c.n,pane:'bgCoursePins'});
+  const m=L.marker([lat,lng],{icon:pinFor(i),title:c.n,pane:'bgCoursePins',courseIdx:i});
   /* Leaflet's function form: the content is built the first time the
      popup/tooltip is actually opened, not here. Building all 557 popups
      (each one a large HTML string including calcHTML()) plus all 557
@@ -721,7 +744,7 @@ C.forEach((c,i)=>{
      click handler no longer has to set the content itself. */
   m.on('click',()=>{highlight(i);drawLink(i)});
   m.bindPopup(()=>popupHTML(i),{maxWidth:340});
-  m.bindTooltip(()=>courseTooltipHTML(i),{direction:'top',className:'course-tt'}); // sits above the ball via the icon's tooltipAnchor (GOLF-111)
+  bindCourseTooltip(m,()=>courseTooltipHTML(i)); // sits above the pin via the icon's tooltipAnchor (GOLF-111)
   markers.set(i,m);
 });
 /* Redraws whichever course popup is currently open, if any, from current
@@ -839,7 +862,7 @@ function tbFocusPlaceOnMap(lat,lng,label){
   tbClearTempPlaceMarker();
   tbTempPlaceSetAt=Date.now();
   tbTempPlaceMarker=L.marker([lat,lng],{
-    icon:L.divIcon({className:'tb-temp-place-pin',html:'📍',iconSize:[24,24],iconAnchor:[12,22]}),
+    icon:gtPinIcon(gtStopPinSVG('place'),22,33),
     keyboard:false,zIndexOffset:1000
   }).addTo(map);
   /* GOLF-187: the marker carries the place's card, not just its name.
@@ -848,7 +871,7 @@ function tbFocusPlaceOnMap(lat,lng,label){
      below ten course rows — the actions moved here, where there is room
      for them and where the place is already in front of you. */
   if(label)tbTempPlaceMarker.bindPopup(()=>tbPlaceCardHTML(lat,lng,label),{minWidth:200,closeButton:true});
-  if(label)tbTempPlaceMarker.bindTooltip(String(label),{direction:'top',offset:[0,-20]});
+  if(label)tbTempPlaceMarker.bindTooltip(String(label),{direction:'top'});
   /* flyTo's easing math needs a sized container; fall back to a plain jump
      if the map hasn't been laid out yet (mirrors tbDrawMap()'s own guard). */
   try{map.flyTo([lat,lng],12,{duration:.6});}catch(e){map.setView([lat,lng],12);}

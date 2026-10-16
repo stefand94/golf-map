@@ -118,9 +118,9 @@ function tripShow(items,anchor,clear=true,fit=true,anchorRingOnly=false){
     tripCourseMarkers.set(i,
       L.marker(ll,{icon:pinFor(i),opacity:border?0.5:1,title:C[i].n})
         .bindPopup(popupHTML(i),{maxWidth:340})
-        .bindTooltip(courseTooltipHTML(i),{direction:'top',className:'course-tt'})
         .on('click',()=>{highlight(i);drawLink(i)})
         .addTo(tripLayer));
+    bindCourseTooltip(tripCourseMarkers.get(i),()=>courseTooltipHTML(i));
     pts.push(ll);
   });
   if(anchor!=null){
@@ -138,9 +138,9 @@ function tripShow(items,anchor,clear=true,fit=true,anchorRingOnly=false){
       tripCourseMarkers.set(anchor,
         L.marker(all,{icon:pinFor(anchor),title:C[anchor].n})
           .bindPopup(popupHTML(anchor),{maxWidth:340})
-          .bindTooltip(courseTooltipHTML(anchor),{direction:'top',className:'course-tt'})
           .on('click',()=>{highlight(anchor);drawLink(anchor)})
           .addTo(tripLayer));
+      bindCourseTooltip(tripCourseMarkers.get(anchor),()=>courseTooltipHTML(anchor));
     }
     pts.push(all);
   }

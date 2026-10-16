@@ -44,6 +44,8 @@ const POI_GROUPS=[
   ['culture', 'Culture', '🏛','#7A4FA0'],
   ['drink',   'Drink',   '🥃','#B7791F'],
 ];
+/* GOLF-254: POI markers are filled category discs (js/util.js gtPoiSVG). */
+function poiIcon(key){return L.divIcon({className:'',html:gtPoiSVG(key),iconSize:[20,20],iconAnchor:[10,10],tooltipAnchor:[0,-10],popupAnchor:[0,-10]});}
 const POI_GROUP_BY_KEY=Object.fromEntries(POI_GROUPS.map(g=>[g[0],g]));
 /* Corridor: within POI_ROUTE_KM of the day's driving, or POI_STOP_KM of
    one of its stops (a bit wider where you're actually spending time). */
@@ -347,7 +349,7 @@ function tbDrawPois(){
       poiById.set(p.id,p);
       const g=POI_GROUP_BY_KEY[p.group];
       const added=poiInTrip(p);
-      const m=L.circleMarker([p.lat,p.lng],{radius:7,color:g[3],weight:2,fillColor:added?g[3]:'#fff',fillOpacity:.95})
+      const m=L.marker([p.lat,p.lng],{icon:poiIcon(g[0]),opacity:added?1:.92})
         .bindTooltip(`${g[2]} ${esc(p.name)} — ${esc(p.label)}`,{direction:'top'})
         .bindPopup(()=>poiPopupHTML(p.id,d.id),{minWidth:210,closeButton:true})
         .addTo(tripLayer);
@@ -445,7 +447,7 @@ function tbPoiLayerRender(){
     if(poiMarkers.has(p.id)||poiInTrip(p))continue;
     poiById.set(p.id,p);
     const g=POI_GROUP_BY_KEY[p.group];
-    L.circleMarker([p.lat,p.lng],{radius:6,color:g[3],weight:2,fillColor:'#fff',fillOpacity:.95})
+    L.marker([p.lat,p.lng],{icon:poiIcon(g[0])})
       .bindTooltip(`${g[2]} ${esc(p.name)} — ${esc(p.label)}`,{direction:'top'})
       /* Built on open, like the hotel layer's: the day list and trip
          membership both go stale the moment the trip changes. */

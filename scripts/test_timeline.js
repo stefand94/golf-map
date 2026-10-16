@@ -465,6 +465,7 @@ ok('a missing driveFn is survivable',
     DRIVE_INEFFICIENCY: 1.2, DRIVE_AVG_MPH: 45,
     // ORS is "configured", so a leg that is allowed to consult it will.
     ORS_PROXY_URL: 'https://example.invalid',
+    GT_DAY_COLORS: ['#C2410C'], // js/util.js, not loaded here
     orsLegKey: (a, b) => `${a.lat},${a.lng}>${b.lat},${b.lng}`,
     orsCacheLoad: () => ({}),
   };

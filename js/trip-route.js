@@ -58,7 +58,8 @@ function tripWishlistSummaryHTML(unscheduled){
    distinct on the map — cycles if there are more days than colors rather
    than erroring. Unscheduled stops (stop.day null) keep the original
    gold fill, matching pre-GOLF-33 behavior exactly. */
-const TRIP_DAY_COLORS=['#E6B400','#4C8C6B','#B25A9E','#3E7CB1','#C1553D','#7A6BC9'];
+const TRIP_DAY_COLORS=GT_DAY_COLORS; // GOLF-254: 8 colours, no repeat until day 9
+const TRIP_UNSCHEDULED='#3E4C5A';
 /* GOLF-56: `order` is now an array of stop objects — {type:'course',i,
    lat,lng,name,day} or {type:'place',lat,lng,name,day} — rather than a
    flat list of course indices, so a searched start/free/end-day place
@@ -71,7 +72,7 @@ function tripShowOrdered(order,clear=true,fit=true){
   const pts=[];
   order.forEach((stop,idx)=>{
     const day=stop.day;
-    const fill=day!=null?TRIP_DAY_COLORS[(day-1)%TRIP_DAY_COLORS.length]:'#E6B400';
+    const fill=day!=null?TRIP_DAY_COLORS[(day-1)%TRIP_DAY_COLORS.length]:TRIP_UNSCHEDULED;
     if(stop.type!=='course'){
       /* Bug fix (2026-09-02): this used to route EVERY non-course stop
          (place/hotel/poi) into the popupHTML(stop.i) branch below, which
@@ -105,8 +106,8 @@ function tripShowOrdered(order,clear=true,fit=true){
       else if(stop.type==='tripstart'||stop.type==='tripend'){
         const isEnd=stop.type==='tripend';
         L.marker([stop.lat,stop.lng],{icon:L.divIcon({className:'',
-          html:`<span class="tb-ep-pin${isEnd?' is-end':''}">${isEnd?'◼':'▶'}</span>`,
-          iconSize:[18,18],iconAnchor:[9,9],tooltipAnchor:[0,-10]})})
+          html:gtEndpointSVG(isEnd),
+          iconSize:[24,24],iconAnchor:[12,12],tooltipAnchor:[0,-12]})})
           .bindTooltip(`${isEnd?'Trip ends':'Trip starts'}: ${esc(stop.name||'')}`,{direction:'top'})
           .addTo(tripLayer);
       }
@@ -120,9 +121,9 @@ function tripShowOrdered(order,clear=true,fit=true){
       tripCourseMarkers.set(stop.i,
         L.marker([stop.lat,stop.lng],{icon:pinFor(stop.i)})
           .bindPopup(popupHTML(stop.i),{maxWidth:340})
-          .bindTooltip(courseTooltipHTML(stop.i),{direction:'top',className:'course-tt'})
           .on('click',()=>{highlight(stop.i);drawLink(stop.i)})
           .addTo(tripLayer));
+      bindCourseTooltip(tripCourseMarkers.get(stop.i),()=>courseTooltipHTML(stop.i));
     }
     pts.push([stop.lat,stop.lng]);
     /* GOLF-35: nearest-station markers make sense in the normal popup view,
@@ -158,6 +159,7 @@ function tripShowOrdered(order,clear=true,fit=true){
     if(b.flown)continue;
     const segDay=b.day??a.day;
     const segColor=segDay!=null?TRIP_DAY_COLORS[(segDay-1)%TRIP_DAY_COLORS.length]:'#1B2733';
+    const suggested=segDay==null; // GOLF-254: unscheduled "suggested order" is dashed, thin, faint
     /* GOLF-118: a leg that crosses water is drawn as road → straight
        port-to-port line → road, using the Worker's routeParts split —
        ORS's own geometry for a ferry hugs the coast and reads as a huge
@@ -179,7 +181,8 @@ function tripShowOrdered(order,clear=true,fit=true){
     }
     const route=orsLegRoute(a,b);
     const latlngs=(route&&route.length)?route:[[a.lat,a.lng],[b.lat,b.lng]];
-    L.polyline(latlngs,route&&route.length
+    L.polyline(latlngs,suggested?{color:segColor,weight:2.5,opacity:.5,dashArray:'6 6',lineCap:'round'}
+      :route&&route.length
       ?{color:segColor,weight:4,opacity:.8,lineCap:'round'}
       :{color:segColor,weight:2,opacity:.85,dashArray:'2 5',lineCap:'round'}).addTo(tripLayer);
   }
@@ -817,9 +820,8 @@ function tbDayFallbackPoint(idx){
   }
   return null;
 }
-function tbEmojiIcon(emoji){
-  return L.divIcon({className:'tb-emoji-marker',html:`<span>${emoji}</span>`,iconSize:[24,24],iconAnchor:[12,20],popupAnchor:[0,-18]});
-}
+/* GOLF-254: stay / things-to-see stops are SVG teardrops in the day's colour. */
+function tbStopIcon(kind,color){return gtPinIcon(gtStopPinSVG(kind,color,22),22,33);}
 /* GOLF-182: a hotel booked for N nights is stored as N separate night-items
    (one per day, js/trip-model.js), so drawing one marker per item put two
    🏨 icons side by side for a 2-night stay — the owner's Old Course Hotel
@@ -879,7 +881,7 @@ function tbDrawTripItems(){
         pt={lat:basePt.lat+Math.cos(a)*0.004,lng:basePt.lng+Math.sin(a)*0.006};
         approx=true;
       }
-      const m=L.marker([pt.lat,pt.lng],{icon:tbEmojiIcon(it.type==='hotel'?'🏨':'📍')})
+      const m=L.marker([pt.lat,pt.lng],{icon:tbStopIcon(it.type==='hotel'?'stay':'see',TRIP_DAY_COLORS[idx%TRIP_DAY_COLORS.length])})
         .bindTooltip(`${esc(tripItemName(it))} — Day ${idx+1}${approx?' (approximate — no address set)':''}`,{direction:'top'})
         .addTo(tripLayer);
       const entry={m,type:it.type,real:L.latLng(pt.lat,pt.lng)};
