@@ -14,4 +14,4 @@ Nothing.
 
 ## Waiting on the owner
 
-See `HANDOVER-2026-09-22-ba-session-4.md` §"Waiting on the owner".
+See `HANDOVER-2026-10-15-ba-session-10.md` §"Owner to-dos" (latest; includes the GOLF-251 HeiGIT dashboard check).

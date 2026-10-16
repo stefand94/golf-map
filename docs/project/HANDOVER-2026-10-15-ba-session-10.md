@@ -40,6 +40,10 @@
   - edit a fee and add a day cost;
   - Stay22 link;
   - spacing.
+- **GOLF-251 follow-up (added 2026-10-16):** on the HeiGIT dashboard, check the real daily Geocoding (autocomplete) limit. The plan page says 3,000/day. Our cap assumes 1,000 (site cap 950). ORS's header shows 100, which looks like the per-minute figure.
+  - If it says 3,000: the dev raises `QUOTA_LIMITS.geocode.site` in `scripts/cloudflare-worker/ors-proxy.js` (e.g. to 2,900).
+  - If it says 1,000: no change.
+  - While there, look for any over-limit or 429 counts since the per-minute guard went live (2026-10-15).
 - **Esri key expires about 2027-10-05** (R-8): renew it in September 2027. Worker secret `ESRI_MAP`.
 
 ## How-tos and traps
