@@ -634,10 +634,45 @@ function courseSelect(i){
     });
   });
 }
+/* GOLF-270: map <-> list hover linking (desktop only).
+   mapHighlightCourse(i,on) rings and raises course i's pin, or its cluster
+   when it is clustered; it never pans or zooms. A pin hover announces itself
+   as document event 'golf:coursehover' ({detail:{i,on}}) so a list can
+   highlight its row. The highlight is dropped when a popup opens and
+   whenever render() runs (mapClearHighlight). */
+const hoverMarks=new Map();
+function mapHighlightCourse(i,on){
+  if(window.matchMedia&&window.matchMedia('(hover:none)').matches)return;
+  if(!on){
+    const h=hoverMarks.get(i);
+    if(h){h.el.classList.remove('is-hover');if(h.m.setZIndexOffset)h.m.setZIndexOffset(h.z);hoverMarks.delete(i);}
+    return;
+  }
+  mapHighlightCourse(i,false);
+  let m=(typeof tripCourseMarkers!=='undefined'&&tripCourseMarkers.get(i))||markers.get(i);
+  if(!m)return;
+  if(!map.hasLayer(m)&&layer.hasLayer(m)){const v=layer.getVisibleParent(m);if(v)m=v;}
+  const el=m.getElement&&m.getElement();
+  if(!el)return;
+  const t=el.querySelector('.gt-pin')||el;
+  t.classList.add('is-hover');
+  const z=m.options.zIndexOffset||0;
+  if(m.setZIndexOffset)m.setZIndexOffset(z+1000);
+  hoverMarks.set(i,{el:t,m,z});
+}
+function mapClearHighlight(){[...hoverMarks.keys()].forEach(k=>mapHighlightCourse(k,false));}
+function mapPinHover(i,on){
+  document.dispatchEvent(new CustomEvent('golf:coursehover',{detail:{i,on}}));
+}
+map.on('popupopen',mapClearHighlight);
 /* Hover tooltips are for a mouse: never bound on touch, and closed once the
    popup opens so the two don't stack (the stuck "Walton Heath · Up to £275"). */
-function bindCourseTooltip(m,fn){
+function bindCourseTooltip(m,fn,i){
   if(window.matchMedia&&window.matchMedia('(hover:none)').matches)return m;
+  if(i!=null){
+    m.on('mouseover',()=>mapPinHover(i,true));
+    m.on('mouseout',()=>mapPinHover(i,false));
+  }
   m.bindTooltip(fn,{direction:'top',className:'course-tt'});
   m.on('popupopen',()=>m.closeTooltip());
   return m;
@@ -826,7 +861,7 @@ C.forEach((c,i)=>{
      click handler no longer has to set the content itself. */
   m.on('click',()=>{highlight(i);drawLink(i)});
   m.bindPopup(()=>popupHTML(i),{maxWidth:340});
-  bindCourseTooltip(m,()=>courseTooltipHTML(i)); // sits above the pin via the icon's tooltipAnchor (GOLF-111)
+  bindCourseTooltip(m,()=>courseTooltipHTML(i),i); // sits above the pin via the icon's tooltipAnchor (GOLF-111)
   markers.set(i,m);
 });
 /* Redraws whichever course popup is currently open, if any, from current

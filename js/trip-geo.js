@@ -120,7 +120,7 @@ function tripShow(items,anchor,clear=true,fit=true,anchorRingOnly=false){
         .bindPopup(popupHTML(i),{maxWidth:340})
         .on('click',()=>{highlight(i);drawLink(i)})
         .addTo(tripLayer));
-    bindCourseTooltip(tripCourseMarkers.get(i),()=>courseTooltipHTML(i));
+    bindCourseTooltip(tripCourseMarkers.get(i),()=>courseTooltipHTML(i),i);
     pts.push(ll);
   });
   if(anchor!=null){
@@ -140,7 +140,7 @@ function tripShow(items,anchor,clear=true,fit=true,anchorRingOnly=false){
           .bindPopup(popupHTML(anchor),{maxWidth:340})
           .on('click',()=>{highlight(anchor);drawLink(anchor)})
           .addTo(tripLayer));
-      bindCourseTooltip(tripCourseMarkers.get(anchor),()=>courseTooltipHTML(anchor));
+      bindCourseTooltip(tripCourseMarkers.get(anchor),()=>courseTooltipHTML(anchor),anchor);
     }
     pts.push(all);
   }

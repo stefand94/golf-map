@@ -233,6 +233,7 @@ function render(){
   const S_={region:(a,b)=>REGIONS.indexOf(C[a].r)-REGIONS.indexOf(C[b].r)||feeNum(a)-feeNum(b),
     fee:(a,b)=>feeNum(a)-feeNum(b),rank:(a,b)=>notableFirst(a,b)||V(a,'n').localeCompare(V(b,'n')),
     dist:(a,b)=>distOut(a,SORT_ORIGIN)-distOut(b,SORT_ORIGIN),name:(a,b)=>V(a,'n').localeCompare(V(b,'n'))};
+  mapClearHighlight(); // GOLF-270
   shown.sort(S_[state.sort]);
   // The popup/tooltip content is bound lazily (function form, js/map.js),
   // so it is regenerated from current state on every open — there is

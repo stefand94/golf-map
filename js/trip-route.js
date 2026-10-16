@@ -128,7 +128,7 @@ function tripShowOrdered(order,clear=true,fit=true){
           .bindPopup(popupHTML(stop.i),{maxWidth:340})
           .on('click',()=>{highlight(stop.i);drawLink(stop.i)})
           .addTo(tripLayer));
-      bindCourseTooltip(tripCourseMarkers.get(stop.i),()=>courseTooltipHTML(stop.i));
+      bindCourseTooltip(tripCourseMarkers.get(stop.i),()=>courseTooltipHTML(stop.i),stop.i);
     }
     pts.push([stop.lat,stop.lng]);
     /* GOLF-35: nearest-station markers make sense in the normal popup view,
