@@ -9,13 +9,6 @@
    the HTML resolve against.
    ============================================================ */
 
-function buildChips(id,items,key,withIcon){
-  document.getElementById(id).innerHTML=items.map(([v,l,colOrArch,pole])=>
-    `<button class="chip" aria-pressed="false" data-k="${key}" data-v="${v}">${withIcon?flagSVG(colOrArch,pole,13,false):''}${l}</button>`).join('')}
-buildChips('f-access',Object.entries(ACCESS).map(([k,v])=>[k,v.label,v.colour,v.pole]),'access',true);
-buildChips('f-arch',ARCHS,'arch',false);
-buildChips('f-region',REGIONS.map(r=>[r,r]),'region',false);
-buildChips('f-flag',[['ranked','Top 100 ranked'],['top100','England Top 100 only'],['topScot','Scotland only'],['topWales','Wales only'],['topIreland','Ireland only'],['topSouthAfrica','South Africa only'],['weekend','Open at weekends'],['walk','Walk from station'],['winter','Good in winter'],['sweep','Sweep finds'],['edited','My corrections'],['played','Played'],['want','Want to play']],'flag',false);
 /* GOLF-81: which of the three nations a course belongs to, derived from
    the existing topIreland/topSouthAfrica flags rather than a new field —
    every course without either flag is Great Britain (England/Scotland/
@@ -32,60 +25,6 @@ function courseNation(i){const c=C[i];return c.topIreland?'ie':c.topSouthAfrica?
    (js/course-id.js). Everything that lists courses funnels through here. */
 function courseShownOnMap(i){return!C[i].dupOf&&!(courseNation(i)==='za'&&!C[i].zaRanked);}
 const NATIONS=[['gb','Great Britain'],['ie','Ireland'],['za','South Africa']];
-function renderNationPills(){
-  document.getElementById('nation-pills').innerHTML=NATIONS.map(([k,l])=>
-    `<button class="nation-pill" aria-pressed="${state.nation===k}" data-nation="${k}">${l}</button>`).join('');
-}
-renderNationPills();
-document.getElementById('nation-pills').addEventListener('click',e=>{
-  const b=e.target.closest('[data-nation]');if(!b)return;
-  const k=b.dataset.nation;
-  state.nation=state.nation===k?null:k;
-  /* "populate and order by ranking" — set once on pick so the list opens
-     top courses first (GOLF-160: notable, then A-Z); the Sort dropdown
-     still works normally after that, this just picks a sensible first
-     view instead of forcing rank permanently. */
-  if(state.nation)state.sort='rank';
-  renderNationPills();
-  document.getElementById('sort').value=state.sort;
-  saveState();render();
-  if(state.nation){
-    /* GOLF-122: on mobile the map is display:none until showMobileMap()
-       (list<->map toggle). Picking a country used to fitBounds() + add
-       markers to that hidden zero-size map, so the pins only appeared
-       once a later place/course search happened to reveal it. Reveal the
-       map here so the pins land where the camera just flew; desktop
-       (>900px) ignores showMobileMap() entirely. fitBounds is deferred so
-       it runs after showMobileMap()'s invalidateSize(). */
-    if(typeof showMobileMap==='function')showMobileMap();
-    /* GOLF-184: fit to the courses the map actually DRAWS. Without
-       courseShownOnMap() the South Africa pill fitted all 421 clubs in the
-       data file rather than the 107 zaRanked ones on the map, so the
-       camera sat well away from anything visible. mapFitBounds() parks the
-       fit if #map is still hidden (mobile first load) instead of computing
-       it against a zero-height container — showMobileMap() replays it. */
-    const pts=C.map((c,i)=>i)
-      .filter(i=>courseNation(i)===state.nation&&courseShownOnMap(i))
-      .map(i=>[C[i].lat,C[i].lng]);
-    /* animate:false — picking a country is a jump to somewhere else, not a
-       pan across the current view, and Leaflet only commits an animated
-       zoom on transitionend, which a just-revealed #map doesn't reliably
-       fire (the same reason trip-ui.js prefers fitBounds over flyTo). */
-    if(pts.length)setTimeout(()=>mapFitBounds(L.latLngBounds(pts),{padding:[28,28],animate:false}),0);
-  }
-});
-function updateFilterBadges(){
-  [['arch','b-arch'],['region','b-region'],['flag','b-flag']].forEach(([k,id])=>{
-    const b=document.getElementById(id),n=state[k].size;
-    b.hidden=!n;if(n)b.textContent=n;});
-  /* GOLF-69: with everything behind one collapsed dropdown, the summary
-     needs its own count or an active filter becomes invisible. Counts each
-     group that's narrowing anything, plus the fee range as one. */
-  const total=state.access.size+state.arch.size+state.region.size+state.flag.size
-    +((state.feeMin!=null||state.feeMax!=null)?1:0);
-  const b=document.getElementById('b-filters');
-  b.hidden=!total;if(total)b.textContent=total;
-}
 /* GOLF-69 (item 2): the green-fee range control. Bounds come from the data
    itself (rounded out to a tidy £25) rather than a hardcoded ceiling, so
    the slider still spans the real spread if the dataset grows a pricier
@@ -105,10 +44,6 @@ const FEE_SLIDER_MAX=(()=>{
   if(!fees.length)return 300;
   return Math.max(50,Math.ceil(fees[Math.floor(fees.length*0.95)]/25)*25);
 })();
-function feeRangeEls(){return{
-  minR:document.getElementById('fee-min-r'),maxR:document.getElementById('fee-max-r'),
-  minN:document.getElementById('fee-min'),maxN:document.getElementById('fee-max'),
-  out:document.getElementById('fee-readout')};}
 /* GOLF-75: the four fixed price bands are back — as quick-select shortcuts
    ON TOP of the range slider, not as a second filter system. Ranges are the
    original BANDS definitions from data/config.js (≤£30 / £31–70 / £71–150 /
@@ -135,31 +70,12 @@ function feeBandActive(lo,hi){
   const[nl,nh]=feeBandNorm(lo,hi);
   return state.feeMin===nl&&state.feeMax===nh;
 }
-function renderFeeBands(){
-  const box=document.getElementById('f-fee-bands');
-  if(!box)return;
-  box.innerHTML=FEE_BANDS.map(([k,label,lo,hi])=>
-    /* Deliberately NOT class="chip": the generic chip handler at the bottom
-       of this file keys off data-k/data-v into a state Set, which these
-       range shortcuts have nothing to do with. */
-    `<button type="button" class="fee-band-chip" data-band="${k}" aria-pressed="${feeBandActive(lo,hi)}">${label}</button>`).join('');
-}
 function feeBandApply(key){
   const b=FEE_BANDS.find(x=>x[0]===key);if(!b)return;
   const[,,lo,hi]=b;
   // Clicking the already-active band clears back to "any price".
   if(feeBandActive(lo,hi)){feeRangeSet(0,FEE_SLIDER_MAX);return;}
   feeRangeSet(lo==null?0:lo,hi==null?FEE_SLIDER_MAX:hi);
-}
-function feeRangeSync(){
-  renderFeeBands();
-  const e=feeRangeEls();
-  const lo=state.feeMin!=null?state.feeMin:0,hi=state.feeMax!=null?state.feeMax:FEE_SLIDER_MAX;
-  e.minR.value=lo;e.maxR.value=hi;
-  e.minN.value=state.feeMin!=null?state.feeMin:'';
-  e.maxN.value=state.feeMax!=null?state.feeMax:'';
-  e.out.textContent=(state.feeMin==null&&state.feeMax==null)?'any price'
-    :`£${lo} – ${hi>=FEE_SLIDER_MAX?`${FEE_SLIDER_MAX}+`:`£${hi}`}`;
 }
 /* Takes the two raw numbers, keeps them in order, and normalises an
    at-the-extreme value back to null ("unbounded"). */
@@ -169,106 +85,8 @@ function feeRangeSet(lo,hi){
   if(lo>hi){const t=lo;lo=hi;hi=t;}
   state.feeMin=lo<=0?null:lo;
   state.feeMax=hi>=FEE_SLIDER_MAX?null:hi;
-  feeRangeSync();updateFilterBadges();saveState();render();
+  saveState();render();
 }
-(function wireFeeRange(){
-  const e=feeRangeEls();
-  /* GOLF-75: step 1 (was 5). The band shortcuts set odd boundaries (£31,
-     £71, £151) and a step-5 track snapped the thumb to the nearest multiple,
-     so the slider silently disagreed with the readout and the number boxes,
-     which read the exact stored value. Dragging at £1 granularity is strictly
-     more precise; the typed min/max boxes keep their £5 step. */
-  [e.minR,e.maxR].forEach(r=>{r.min=0;r.max=FEE_SLIDER_MAX;r.step=1;});
-  [e.minN,e.maxN].forEach(n=>{n.max=FEE_SLIDER_MAX;n.placeholder=n===e.minN?'0':String(FEE_SLIDER_MAX);});
-  const fromSliders=()=>feeRangeSet(parseFloat(e.minR.value),parseFloat(e.maxR.value));
-  e.minR.addEventListener('input',fromSliders);
-  e.maxR.addEventListener('input',fromSliders);
-  const fromNumbers=()=>feeRangeSet(
-    e.minN.value.trim()===''?0:parseFloat(e.minN.value),
-    e.maxN.value.trim()===''?FEE_SLIDER_MAX:parseFloat(e.maxN.value));
-  e.minN.addEventListener('change',fromNumbers);
-  e.maxN.addEventListener('change',fromNumbers);
-  // GOLF-75: delegated, because renderFeeBands() rewrites the chips on every
-  // range change to refresh their pressed state.
-  const bands=document.getElementById('f-fee-bands');
-  if(bands)bands.addEventListener('click',ev=>{
-    const b=ev.target.closest('[data-band]');
-    if(b)feeBandApply(b.dataset.band);
-  });
-  feeRangeSync();
-})();
-document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{
-  const k=ch.dataset.k,v=ch.dataset.v,on=ch.getAttribute('aria-pressed')==='true';
-  ch.setAttribute('aria-pressed',String(!on));on?state[k].delete(v):state[k].add(v);updateFilterBadges();saveState();render();
-  /* GOLF-22: turning on "England Top 100 only" is exactly the case that got
-     lost off-screen — jump the map to wherever those results actually are. */
-  if(k==='flag'&&(v==='top100'||v==='topScot'||v==='topWales'||v==='topIreland'||v==='topSouthAfrica')&&!on)fitToResults();}));
-/* reflect any filters restored from localStorage onto the actual chip elements */
-document.querySelectorAll('.chip').forEach(ch=>{
-  if(state[ch.dataset.k].has(ch.dataset.v))ch.setAttribute('aria-pressed','true');
-});
-['g-arch','g-region','g-flag'].forEach((id,idx)=>{
-  const k=['arch','region','flag'][idx];
-  if(state[k].size)document.getElementById(id).open=true;
-});
-// GOLF-69: a filter restored from localStorage would otherwise be invisible
-// inside the new collapsed Filters dropdown.
-if(state.access.size||state.arch.size||state.region.size||state.flag.size||state.feeMin!=null||state.feeMax!=null)
-  document.getElementById('g-filters').open=true;
-updateFilterBadges();
-document.getElementById('q').value=state.q;
-document.getElementById('sort').value=state.sort;
-/* GOLF-69 (item 1): "on the explore page, I am unable to search for a town
-   or city. This should work the same as the unified search bar." The Explore
-   search stays a course filter — that's what the list below it is — and
-   additionally runs the same debounced orsGeocode() the Trip Builder's
-   unified bar uses, rendering any place hits in their own strip above the
-   list with the same two actions (start a trip here / add it to the trip).
-   Deliberately the same 300ms debounce and same stale-response guard, so
-   the two search boxes behave identically. null = nothing fetched yet. */
-/* GOLF-72: Explore-mode place search is now PURE NAVIGATION. It previously
-   reused the Trip Builder bar's result actions ("Start a trip here" / "+ Add
-   to trip"), which put trip-building affordances on a page whose whole job is
-   browsing — the stakeholder's ask was "search Islay, the map goes to Islay,
-   full stop". Picking a result flies the map there and nothing else; no trip
-   data is read or written from this strip. The Plan-mode unified search bar
-   keeps both actions unchanged — that IS the trip-building surface.
-   Merge note (GOLF-71 + GOLF-72): GOLF-71 replaced this strip's hand-rolled
-   debounce with the shared tbGeocodeDebounced() below, so the local
-   explorePlaceDebounce handle is gone; the navigate-only *rendering* and
-   click handling below are GOLF-72's and are deliberately kept — GOLF-71
-   predates GOLF-72 and still drew the two trip-action buttons here. */
-let explorePlaceResults=null,explorePlaceQ='';
-const EXPLORE_PLACE_ZOOM=11;
-function renderExplorePlaces(){
-  const box=document.getElementById('place-results');
-  const list=explorePlaceResults;
-  // Phase 22 fix: undefined means the geocode request itself failed (was
-  // previously indistinguishable from "no matches", which is why an ORS
-  // outage looked exactly like "place search doesn't exist").
-  if(list===undefined){box.hidden=false;box.innerHTML=`<p class="hint" style="margin:0">Place search is temporarily unavailable.</p>`;return;}
-  if(!list||!list.length){box.hidden=true;box.innerHTML='';return;}
-  box.hidden=false;
-  box.innerHTML=`<span class="flabel" style="margin:0">Towns &amp; cities</span>`+
-    list.map(p=>`<button class="explore-place ep-go" type="button" data-lat="${p.lat}" data-lng="${p.lng}" title="Show this on the map">
-      <span class="ep-name">📍 ${esc(p.label)}</span><span class="ep-hint">Show on map →</span>
-    </button>`).join('');
-}
-document.getElementById('place-results').addEventListener('click',e=>{
-  const b=e.target.closest('.ep-go');
-  if(!b)return;
-  const lat=parseFloat(b.dataset.lat),lng=parseFloat(b.dataset.lng);
-  if(!isFinite(lat)||!isFinite(lng))return;
-  // Same fly-to pattern the course cards use below.
-  showMobileMap();map.flyTo([lat,lng],EXPLORE_PLACE_ZOOM,{duration:.6});
-});
-/* GOLF-71 (workstream B): the fifth hand-rolled copy of the debounce +
-   stale-response guard is gone — this now shares tbGeocodeDebounced()
-   with every other place lookup in the app, so all of them behave
-   identically by construction rather than by four parallel edits. The
-   results still render into Explore's own strip above the course list
-   (not a dropdown), which is why this call site uses the debounce helper
-   directly rather than the full tbAttachSearch() binding. */
 /* GOLF-84: map the selected Explore country pill onto the Worker's
    ISO3 geocode-boundary vocabulary, so a place search made while
    browsing e.g. South Africa doesn't surface a same-named GB/Ireland
@@ -277,18 +95,6 @@ document.getElementById('place-results').addEventListener('click',e=>{
 function exploreCountryCode(){
   return state.nation==='gb'?'GBR':state.nation==='ie'?'IRL':state.nation==='za'?'ZAF':null;
 }
-function exploreSearchPlaces(q){
-  explorePlaceQ=q;
-  tbGeocodeDebounced('explore-q',q,list=>{
-    explorePlaceResults=list;
-    renderExplorePlaces();
-  },undefined,exploreCountryCode());
-}
-document.getElementById('q').addEventListener('input',e=>{
-  state.q=e.target.value.toLowerCase();saveState();render();
-  exploreSearchPlaces(e.target.value.trim());
-});
-document.getElementById('sort').addEventListener('change',e=>{state.sort=e.target.value;saveState();render()});
 /* GOLF-84: a pan or zoom fires moveend/zoomend in bursts, and saveState()
    serialises the whole state blob to localStorage each time. The view is
    only a convenience to restore, so coalesce the writes. */
@@ -304,27 +110,6 @@ map.on('moveend zoomend',()=>{
   clearTimeout(_viewSaveTimer);
   _viewSaveTimer=setTimeout(saveState,400);
 });
-document.getElementById('reset').addEventListener('click',()=>{
-  ['access','price','region','flag','arch'].forEach(k=>state[k].clear());state.q="";
-  state.feeMin=null;state.feeMax=null;feeRangeSync(); // GOLF-69
-  document.getElementById('q').value="";document.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed','false'));
-  explorePlaceResults=null;renderExplorePlaces(); // GOLF-69: clearing the search clears its place hits too
-  updateFilterBadges();linkLayer.clearLayers();saveState();render();map.setView([51.45,-0.15],9)});
-function toggle(id,lyr){const b=document.getElementById(id);
-  b.addEventListener('click',()=>{const on=b.getAttribute('aria-pressed')==='true';
-    b.setAttribute('aria-pressed',String(!on));on?map.removeLayer(lyr):map.addLayer(lyr)})}
-/* t-rail/t-lbl/t-stn don't add/remove their layer directly — restyleRail()
-   also gates them on zoom (RAIL_MIN_ZOOM/STN_MIN_ZOOM), so flip the button
-   state and let it decide what's actually shown. */
-if(RAIL_FEATURE)['t-rail','t-lbl','t-stn'].forEach(id=>{ // GOLF-110: wiring dormant with the rail feature hidden
-  const b=document.getElementById(id);
-  if(!b)return;
-  b.addEventListener('click',()=>{
-    b.setAttribute('aria-pressed',String(b.getAttribute('aria-pressed')!=='true'));
-    restyleRail();
-  });
-});
-
 /* GOLF-70: feeNum/distOut/notableFirst moved to js/util.js — they are shared
    course metrics, not Explore-only ones, and js/util.js is evaluated ahead
    of every reader. See the note at the top of js/util.js. */
@@ -370,7 +155,6 @@ function passes(i){
   if(!state.nation||courseNation(i)!==state.nation)return false;
   if(!courseShownOnMap(i))return false; // GOLF-121d: SA ringfenced to the top-100
   if(!courseFilterPasses(i))return false;
-  if(state.q&&!searchMatches(i,state.q))return false;
   return true}
 
 /* GOLF-20: exact substring match stays the primary, fast path (unchanged
@@ -401,75 +185,10 @@ function searchMatches(i,q){
   const threshold=q.length<=5?1:2;
   return text.split(/\W+/).some(word=>word.length>=q.length-threshold&&levenshtein(q,word)<=threshold);
 }
-function highlight(i){document.querySelectorAll('.card').forEach(el=>el.classList.toggle('active',+el.dataset.i===i));
-  const el=document.querySelector(`.card[data-i="${i}"]`);if(el)el.scrollIntoView({block:'nearest'})}
+/* Pin-click callers (map.js, trip-geo.js, trip-route.js) still call this; the
+   Explore card list it used to highlight is gone (GOLF-252). */
+function highlight(i){}
 
-/* GOLF-22: default map view (London, zoom 9) hides every Top 100 course
-   hundreds of miles away with no on-screen hint to zoom out. This gives
-   an explicit, discoverable way to see wherever the current filters
-   actually are. */
-function fitToResults(){
-  const shown=C.map((c,i)=>i).filter(passes);
-  if(!shown.length)return;
-  mapFitBounds(L.latLngBounds(shown.map(i=>[C[i].lat,C[i].lng])),{padding:[28,28]});
-}
-document.getElementById('fit-map').addEventListener('click',fitToResults);
-
-/* GOLF-69 (item 3): the Explore list's two modes. 'near' is the default the
-   moment a trip has something to be near; the visitor can flip back to
-   'all' and that choice sticks for the session (not persisted — a new
-   session with a saved trip should still open on the more useful view). */
-let exploreListMode='near';
-/* The point everything is measured from: the last course added to the trip,
-   falling back to the trip's own anchor. Returns a course index, or null
-   when there's nothing in the trip yet. */
-function exploreNearAnchor(){
-  if(tripLastAdded!=null&&C[tripLastAdded])return tripLastAdded;
-  if(tbAnchor!=null&&C[tbAnchor])return tbAnchor;
-  if(tripSeq.length&&C[tripSeq[tripSeq.length-1]])return tripSeq[tripSeq.length-1];
-  return null;
-}
-function renderListMode(anchorIdx){
-  const bar=document.getElementById('list-mode');
-  if(anchorIdx==null){bar.hidden=true;bar.innerHTML='';return;}
-  bar.hidden=false;
-  bar.innerHTML=`<span>Nearest to <b>${esc(V(anchorIdx,'n'))}</b></span>
-    <span class="list-mode-pills">
-      <button data-lm="near" aria-pressed="${exploreListMode==='near'}">Near my trip</button>
-      <button data-lm="all" aria-pressed="${exploreListMode==='all'}">All results</button>
-    </span>`;
-  bar.querySelectorAll('[data-lm]').forEach(b=>b.addEventListener('click',()=>{
-    exploreListMode=b.dataset.lm;render();
-  }));
-}
-/* Bookable courses not already in the trip, closest first. Deliberately
-   ignores the filter chips: this list answers "what else could I play while
-   I'm there?", and silently hiding a neighbouring course because an
-   unrelated filter is still set would make it untrustworthy. */
-const NEAR_LIST_MAX=25;
-function renderNearestList(anchorIdx){
-  const a=C[anchorIdx];
-  const rows=C.map((c,i)=>i)
-    .filter(i=>i!==anchorIdx&&!TRIP.has(i)&&bookable(i))
-    .map(i=>({i,mi:haversineMiles(a.lat,a.lng,C[i].lat,C[i].lng)}))
-    .sort((x,y)=>x.mi-y.mi).slice(0,NEAR_LIST_MAX);
-  const list=document.getElementById('list');
-  document.getElementById('count').textContent=`${rows.length} near${rows.length===NEAR_LIST_MAX?'est':''}`;
-  if(!rows.length){list.innerHTML=`<p class="empty">Nothing else bookable nearby — try "All results".</p>`;return;}
-  list.innerHTML=rows.map(({i,mi})=>{const ac=ACCESS[V(i,'a')];
-    return`<div class="card" data-i="${i}"><div class="card-top">
-      <p class="cname">${flagSVG(ac.colour,ac.pole,15,false)}${esc(V(i,'n'))}</p>
-      <span class="cfee">${esc(fmtGreenFee(i))}<small>${mi.toFixed(0)} mi away</small></span></div>
-      <p class="cmeta"><span>${esc(ac.label)}</span><span>${esc(C[i].r)}</span></p>
-      <p class="cmeta"><button class="btn2" data-add="${i}" style="padding:5px 10px;font-size:11px">＋ Add to trip</button></p></div>`}).join('');
-  list.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',e=>{
-    e.stopPropagation();
-    tbAddToWishlist(+b.dataset.add);
-  }));
-  // GOLF-201: through goToCourse() (GOLF-187), which opens a clustered or
-  // trip-layer pin too; the old flyTo + openPopup did neither.
-  list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>goToCourse(+el.dataset.i)));
-}
 function render(){
   const openCourse=mapOpenCourse(); // GOLF-201: both layer rebuilds below close it
   /* GOLF-31: single hook point — every existing render() call site
@@ -536,33 +255,4 @@ function render(){
      achieved for all 557 markers, now done for the one that needs it. */
   mapReopenCourse(openCourse);
   refreshOpenCoursePopup();
-  document.getElementById('count').textContent=`${shown.length} of ${C.length}`;
-  document.getElementById('editcount').textContent=editCount();
-  /* GOLF-69 (item 3): "once I have selected and added the first course to a
-     trip on the explore page, the bottom area underneath should show the
-     list of courses nearest to it" — clarified to mean this list is
-     REPLACED, not supplemented, which is how the old Trip Builder Discover
-     tab worked. Placed after the marker/count work above so the map still
-     shows the full filtered result set underneath either list. Escapable
-     via the "All results" pill: a one-way switch would strand anyone who
-     wanted to carry on browsing. */
-  const nearAnchor=exploreNearAnchor();
-  renderListMode(nearAnchor);
-  if(nearAnchor!=null&&exploreListMode==='near'){renderNearestList(nearAnchor);return;}
-  const list=document.getElementById('list');
-  if(!shown.length){
-    list.innerHTML=state.nation
-      ?`<p class="empty">Nothing matches. The cheapest heathland tends to be weekdays-only — try dropping that filter.</p>`
-      :`<p class="empty">Pick a country above to see its courses.</p>`;
-    return}
-  list.innerHTML=shown.map(i=>{const a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')],near=C[i].nearStation;
-    return `<button class="card" data-i="${i}"><div class="card-top">
-      <p class="cname">${flagSVG(a.colour,a.pole,15,false)}${esc(V(i,'n'))}${isEdited(i)?' <span class="edited">EDITED</span>':''}${PLAYED.has(i)?' <span class="wt played">played</span>':WANT.has(i)?' <span class="wt want">want</span>':''}</p>
-      <span class="cfee">${esc(V(i,'wd'))}<small>wknd ${esc(V(i,'we'))}</small></span></div>
-      <p class="cmeta"><span>${esc(a.label)}</span>
-      ${stn?`<span>${esc(stn.n)} · ${esc(LINES[stn.l].n)}</span>`:near?`<span>${esc(near.n)} · ${esc(near.mi)} mi straight-line</span>`:C[i].topSouthAfrica?'':`<span style="color:var(--stone)">no close station</span>`}
-      ${C[i].sweep?'<span class="wt">sweep</span>':''}${C[i].winter?'<span class="wt">winter</span>':''}</p></button>`}).join('');
-  // GOLF-201: through goToCourse() (GOLF-187), which opens a clustered or
-  // trip-layer pin too; the old flyTo + openPopup did neither.
-  list.querySelectorAll('.card').forEach(el=>el.addEventListener('click',()=>goToCourse(+el.dataset.i)));
 }

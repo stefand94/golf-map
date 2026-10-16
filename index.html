@@ -162,8 +162,7 @@
      column (no .app layout change), following the same body-class toggle
      idiom already used for the mobile mob-list/mob-map split above. */
   .tb-pane{display:none;flex-direction:column;overflow-y:auto;flex:1}
-  body.trip-mode .filters,body.trip-mode .list,body.trip-mode .list-mode{display:none} /* GOLF-150: .list-mode is retired-Explore chrome that was leaking above the pane */
-  body.trip-mode .tb-pane{display:flex}
+    body.trip-mode .tb-pane{display:flex}
   /* GOLF-41: #trip is a real, bookmarkable/shareable route — give the pane
      more room than the constrained list-panel width once it's the whole
      point of the page (map stays visible throughout, just narrower). */
@@ -1293,29 +1292,7 @@
   /* GOLF-31 refactor: cart list was hand-styled with inline `style=` per
      element — pulled into named classes so the checkout look is defined
      once, not repeated per row string. */
-  .cart{border:1px solid var(--line);border-radius:8px;overflow:hidden}
-  .cart-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid var(--line)}
-  .cart-row:last-child{border-bottom:none}
-  .cart-row:nth-child(even){background:var(--paper)}
-  .cart-move{display:flex;flex-direction:column;flex-shrink:0}
-  .cart-move .btn2{padding:1px 5px;font-size:9px;line-height:1}
-  .cart-move .btn2+.btn2{margin-top:2px}
-  .cart-course{min-width:0}
-  .cart-idx{font-family:var(--font-mono);font-size:11px;color:var(--stone)}
   .cart-region{color:var(--stone);font-size:11.5px}
-  .cart-price{display:flex;align-items:center;gap:10px;flex-shrink:0}
-  .cart-fee{font-variant-numeric:tabular-nums;font-size:14px;font-weight:700;color:var(--ink)}
-  .cart-remove{padding:4px 8px;line-height:1}
-  .cart-total{margin-top:10px;padding:12px 14px;background:linear-gradient(135deg,var(--ink),var(--accent-dark));border-radius:10px;display:flex;justify-content:space-between;align-items:baseline;box-shadow:var(--shadow-md)}
-  .cart-total-label{color:var(--paper-2);font:600 10px var(--font-mono);letter-spacing:.06em;text-transform:uppercase;opacity:.75}
-  .cart-total-coverage{color:var(--paper-2);font-size:10.5px;opacity:.6}
-  .cart-total-amount{color:#fff;font-variant-numeric:tabular-nums;font-size:22px;font-weight:700}
-  .cart-total-pp{color:var(--paper-2);font-variant-numeric:tabular-nums;font-size:11.5px;font-weight:600;opacity:.85;text-align:right}
-  .cart-cost-lines{margin-top:10px;display:flex;flex-direction:column;gap:4px}
-  .cart-cost-line{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;padding:2px 0;cursor:pointer}
-  .cart-cost-line span:first-child{display:flex;align-items:center;gap:6px;color:var(--ink)}
-  .cart-cost-line span:last-child{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ink)}
-  .cart-cost-cov{font-size:10.5px;color:var(--stone);margin:-2px 0 2px 22px}
 
   /* GOLF-31: the old eyebrow/h1/standfirst mast ate ~140px of the panel's
      vertical space on every screen, including Trip Builder — traded for a
@@ -1324,50 +1301,6 @@
   .mast{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:var(--shadow-sm);position:relative;z-index:1}
   .wordmark{font-family:var(--font-display);font-weight:700;font-size:16.5px;letter-spacing:-.01em;color:var(--ink)}
 
-  .filters{padding:11px 20px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
-  .flabel{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--stone);display:block;margin-bottom:5px}
-  .fgroup{border:none;padding:0;margin:0}
-  .fgroup summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:5px}
-  .fgroup summary::-webkit-details-marker{display:none}
-  .fgroup summary::before{content:'▸';font-size:9px;color:var(--stone);transition:transform .12s}
-  .fgroup[open] summary::before{transform:rotate(90deg)}
-  .fgroup summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  .fbadge{font-family:var(--font-mono);font-size:9.5px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:8px;font-weight:600}
-  /* GOLF-69 (item 2): all filters behind one dropdown, so the search box is
-     the first thing in the panel instead of the sixth. */
-  .fdrop>summary{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper-2);margin-bottom:0}
-  .fdrop[open]>summary{margin-bottom:9px}
-  .fdrop-body{display:flex;flex-direction:column;gap:10px;padding:0 2px 2px}
-  /* Green-fee range: two overlaid range inputs (a native two-thumb slider
-     doesn't exist) plus typed min/max boxes, which is what the stakeholder
-     asked for. pointer-events are off on the tracks and back on for the
-     thumbs so both thumbs stay grabbable where they overlap. */
-  .fee-range{display:flex;flex-direction:column;gap:7px;margin-top:4px}
-  .fee-slider-wrap{position:relative;height:20px}
-  .fee-slider-wrap input[type=range]{position:absolute;left:0;top:0;width:100%;margin:0;height:20px;background:none;pointer-events:none;-webkit-appearance:none;appearance:none}
-  .fee-slider-wrap input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--line);border-radius:2px}
-  .fee-slider-wrap input[type=range]::-moz-range-track{height:3px;background:var(--line);border-radius:2px}
-  .fee-slider-wrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;pointer-events:auto;width:15px;height:15px;margin-top:-6px;border-radius:50%;background:var(--accent);border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:pointer}
-  .fee-slider-wrap input[type=range]::-moz-range-thumb{pointer-events:auto;width:15px;height:15px;border-radius:50%;background:var(--accent);border:2px solid #fff;cursor:pointer}
-  .fee-inputs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--stone)}
-  .fee-inputs label{display:inline-flex;align-items:center;gap:4px}
-  .fee-inputs input{width:66px;padding:5px 6px;border:1px solid var(--line);border-radius:5px;font:400 12px var(--font-sans)}
-  .fee-readout{font:600 11px var(--font-mono);color:var(--accent-deep)}
-  /* GOLF-69 (item 1): place hits from the geocoder, above the course list. */
-  .explore-places{border:1px solid var(--line);border-radius:8px;padding:6px;background:var(--paper-2);display:flex;flex-direction:column;gap:4px}
-  .explore-places[hidden],.list-mode[hidden]{display:none} /* [hidden] must beat the display:flex above */
-  /* GOLF-72: the whole row is now one navigate-to-this-place button — Explore
-     search does nothing but move the map, so there are no per-row actions. */
-  .explore-place{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;
-    width:100%;text-align:left;padding:5px 6px;border:1px solid transparent;border-radius:6px;background:none;color:inherit;cursor:pointer;font-family:var(--font-sans)}
-  .explore-place:hover{border-color:var(--accent);background:#fff}
-  .explore-place .ep-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .explore-place .ep-hint{flex-shrink:0;font-size:11px;color:var(--stone)}
-  /* GOLF-69 (item 3): the list's own mode strip. */
-  .list-mode{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 20px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--stone);flex-wrap:wrap}
-  .list-mode-pills{display:flex;gap:4px}
-  .list-mode-pills button{font:600 11px var(--font-sans);padding:4px 9px;border-radius:999px;border:1px solid var(--line);background:#fff;color:var(--stone);cursor:pointer}
-  .list-mode-pills button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
   /* GOLF-81: the three country pills gating Explore's course list. Same
      pill shape/weight as .chip but a distinct class — .chip's handler is
      the generic data-k/data-v Set-toggle wiring and would misfire on
@@ -1386,26 +1319,6 @@
     transition:background .12s,border-color .12s,color .12s,box-shadow .12s}
   .nation-pill:hover{border-color:var(--accent);color:var(--ink)}
   .nation-pill[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:var(--shadow-sm)}
-  .fgroup .chips{margin-top:2px}
-  .chips{display:flex;flex-wrap:wrap;gap:5px}
-  .chip{display:inline-flex;align-items:center;gap:5px;font:500 11.5px/1 var(--font-sans);padding:6px 10px;border:1px solid var(--line);border-radius:20px;background:#fff;color:var(--ink-soft);cursor:pointer;transition:background .12s,border-color .12s,color .12s,box-shadow .12s,transform .12s}
-  .chip:hover{border-color:var(--accent);color:var(--ink);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
-  .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:var(--shadow-sm)}
-  .chip[aria-pressed="true"]:hover{transform:none;box-shadow:var(--shadow-sm)}
-  .chip svg{display:block;flex:0 0 auto}
-  /* GOLF-75: price-band shortcuts — visually the same pill as .chip, but a
-     separate class so the generic data-k/data-v chip handler ignores them. */
-  .fee-band-chip{display:inline-flex;align-items:center;font:500 11.5px/1 var(--font-sans);padding:6px 10px;border:1px solid var(--line);border-radius:20px;background:#fff;color:var(--ink-soft);cursor:pointer;transition:background .12s,border-color .12s,color .12s}
-  .fee-band-chip:hover{border-color:var(--accent);color:var(--ink)}
-  .fee-band-chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
-  .fee-bands{margin:4px 0 2px}
-  .chip:focus-visible,.card:focus-visible,#q:focus-visible,.togg:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  #q{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;font:400 13px var(--font-sans);color:var(--ink);transition:border-color .12s,box-shadow .12s}
-  #q:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
-  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-family:var(--font-mono);font-size:11px;color:var(--stone)}
-  .toggles{display:flex;gap:5px;flex-wrap:wrap}
-  .togg{font:500 11px var(--font-sans);padding:5px 10px;border:1px solid var(--line);border-radius:14px;background:#fff;cursor:pointer;color:var(--ink-soft);transition:background .12s,border-color .12s,color .12s}
-  .togg[aria-pressed="true"]{background:var(--ink);color:var(--paper-2);border-color:var(--ink)}
   /* Inline text links, not buttons — but padded to a comfortable touch area
      (the negative margin keeps them sitting on the text baseline). */
   .linkbtn{background:none;border:none;padding:var(--sp-2) 2px;margin:calc(var(--sp-2) * -1) 0;
@@ -1414,17 +1327,7 @@
      tappable label, not an inline hyperlink — no underline until hover. */
   .linkbtn.tb-unified-place-focus{text-decoration:none;font-weight:500}
   .linkbtn.tb-unified-place-focus:hover{text-decoration:underline}
-  #sort{font:500 11px var(--font-sans);padding:5px 7px;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink-soft)}
 
-  .list{overflow-y:auto;flex:1;padding:10px 12px 24px;display:flex;flex-direction:column;gap:7px}
-  .card{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 12px;cursor:pointer;box-shadow:var(--shadow-sm);transition:box-shadow .14s,transform .14s,border-color .14s}
-  .card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);border-color:var(--line)}
-  .card.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft),var(--shadow-md)}
-  .card-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
-  .cname{font:600 13.5px/1.25 var(--font-sans);margin:0;display:flex;align-items:center;gap:6px}
-  .cfee{font-variant-numeric:tabular-nums;font-size:12px;font-weight:600;white-space:nowrap;text-align:right;line-height:1.35}
-  .cfee small{display:block;font-weight:400;font-size:10px;color:var(--stone)}
-  .cmeta{margin:5px 0 0;font-size:11px;color:var(--ink-soft);display:flex;flex-wrap:wrap;gap:3px 8px;align-items:center}
   .rk{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;background:var(--ink);color:#fff;padding:2px 5px;border-radius:3px;font-weight:500}
   .wt{font-family:var(--font-mono);font-size:9.5px;background:var(--accent-soft);color:var(--accent-dark);padding:2px 5px;border-radius:3px}
   /* GOLF-52: course hover tooltip — name/fee/ranking, a quick scan
@@ -1437,7 +1340,6 @@
   .wt.played{background:#DCEFDC;color:#1D6B1D}
   .wt.want{background:#F3E6D8;color:#8A5A1E}
   .edited{font-family:var(--font-mono);font-size:9px;background:#E69F00;color:#241a00;padding:2px 5px;border-radius:3px;font-weight:600}
-  .empty{padding:28px 10px;color:var(--stone);font-size:13px;line-height:1.6}
 
   #map{height:100%;width:100%;background:var(--paper)}
   /* GOLF-144: status pill for the ambient hotel layer (js/hotel-layer.js).
@@ -1549,12 +1451,11 @@
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
   /* GOLF-19: kept at the end of the stylesheet so these win the cascade
-     over the earlier component rules (#q etc. set font-size via the
+     over the earlier component rules (legacy #q etc. set font-size via the
      `font` shorthand later in source order than the layout block above —
      equal specificity, later wins, so this has to come later still). */
   @media (max-width:900px){
-    .chip,.togg{min-height:44px;padding-top:11px;padding-bottom:11px}
-    #q,.fld input,.fld select,.fld textarea,#sort{font-size:16px}
+    .fld input,.fld select,.fld textarea{font-size:16px}
     .leaflet-popup-content{width:min(300px,calc(100vw - 60px)) !important}
   }
 
@@ -1786,76 +1687,6 @@
            gets a pill on the map, js/map.js). Beta mounts after it. -->
       <button type="button" class="fb-pill mast-fb" onclick="feedbackOpen()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Feedback</button>
     </header>
-    <!-- GOLF-69 (items 1+2): search first, filters folded into one dropdown
-         under it. The search box now matches the Trip Builder's unified bar
-         — it finds towns and cities via the same geocoder, not just
-         courses, and place hits render above the course list in #place-results. -->
-    <div class="filters">
-      <!-- GOLF-81: which nation to browse. The course list stays empty
-           until one is picked (see render() in js/explore.js) — with GB/
-           Ireland/South Africa all sharing one map, showing everything by
-           default made an unfiltered "382 of 382" list nobody could use. -->
-      <div class="nation-pills" id="nation-pills" role="group" aria-label="Choose a country"></div>
-      <input id="q" type="search" placeholder="Search a club, town or city…" autocomplete="off" aria-label="Search courses and places">
-      <div id="place-results" class="explore-places" hidden></div>
-      <details class="fgroup fdrop" id="g-filters">
-        <summary><span class="flabel" style="margin:0">Filters</span><span class="fbadge" id="b-filters" hidden></span></summary>
-        <div class="fdrop-body">
-          <div><span class="flabel">Who can play</span><div class="chips" id="f-access"></div></div>
-          <div><span class="flabel">Green fee</span>
-            <!-- GOLF-75: quick price-band shortcuts, populated by
-                 renderFeeBands() — they set the same feeMin/feeMax the
-                 slider below writes, so there is one filter, two controls. -->
-            <div class="chips fee-bands" id="f-fee-bands"></div>
-            <div class="fee-range">
-              <div class="fee-slider-wrap">
-                <input id="fee-min-r" type="range" aria-label="Minimum green fee">
-                <input id="fee-max-r" type="range" aria-label="Maximum green fee">
-              </div>
-              <div class="fee-inputs">
-                <label for="fee-min">Min £<input id="fee-min" type="number" min="0" step="5" aria-label="Minimum green fee in pounds"></label>
-                <label for="fee-max">Max £<input id="fee-max" type="number" min="0" step="5" aria-label="Maximum green fee in pounds"></label>
-                <span class="fee-readout" id="fee-readout"></span>
-              </div>
-            </div>
-          </div>
-          <details class="fgroup" id="g-arch"><summary><span class="flabel" style="margin:0">Architect</span><span class="fbadge" id="b-arch" hidden></span></summary><div class="chips" id="f-arch"></div></details>
-          <details class="fgroup" id="g-region"><summary><span class="flabel" style="margin:0">Area</span><span class="fbadge" id="b-region" hidden></span></summary><div class="chips" id="f-region"></div></details>
-          <details class="fgroup" id="g-flag"><summary><span class="flabel" style="margin:0">Show only</span><span class="fbadge" id="b-flag" hidden></span></summary><div class="chips" id="f-flag"></div></details>
-        </div>
-      </details>
-      <div class="row">
-        <div class="toggles">
-          <button class="togg" id="t-rail" aria-pressed="true">Rail</button>
-          <button class="togg" id="t-stn" aria-pressed="true">Stations</button>
-          <button class="togg" id="t-lbl" aria-pressed="true">Labels</button>
-        </div>
-        <button class="linkbtn" id="reset">Clear</button>
-      </div>
-      <div class="row">
-        <label for="sort" style="display:flex;gap:6px;align-items:center">Sort
-          <select id="sort">
-            <option value="region">by area</option>
-            <option value="fee">by weekday fee</option>
-            <option value="rank">top courses first</option>
-            <option value="dist">by distance out</option>
-            <option value="name">by name</option>
-          </select>
-        </label>
-        <span id="count" role="status" aria-live="polite"></span>
-      </div>
-      <div class="row">
-        <button class="linkbtn" id="fit-map">Show all results on map</button>
-        <span></span>
-      </div>
-      <div class="row"><span></span>
-        <button class="linkbtn" id="open-export">Review &amp; export corrections (<span id="editcount">0</span>)</button>
-      </div>
-    </div>
-    <!-- GOLF-69 (item 3): once the trip has a course, this strip appears and
-         the list below switches to "nearest to your trip". -->
-    <div class="list-mode" id="list-mode" hidden></div>
-    <div class="list" id="list"></div>
     <div class="tb-pane" id="tb-pane"></div>
   </aside>
   <div id="map" tabindex="-1"></div>

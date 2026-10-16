@@ -536,9 +536,9 @@ const RAIL_MIN_ZOOM=9;
    rail — off entirely below STN_MIN_ZOOM regardless of the toggle state,
    back once you're zoomed in far enough for them to be useful. */
 const STN_MIN_ZOOM=11;
-function railToggledOn(){return document.getElementById('t-rail').getAttribute('aria-pressed')==='true'}
-function lblToggledOn(){return document.getElementById('t-lbl').getAttribute('aria-pressed')==='true'}
-function stnToggledOn(){return document.getElementById('t-stn').getAttribute('aria-pressed')==='true'}
+function railToggledOn(){return true} // GOLF-252: the sidebar toggle is gone; rail layers (dormant, RAIL_FEATURE) default on
+function lblToggledOn(){return true} // GOLF-252: the sidebar toggle is gone; rail layers (dormant, RAIL_FEATURE) default on
+function stnToggledOn(){return true} // GOLF-252: the sidebar toggle is gone; rail layers (dormant, RAIL_FEATURE) default on
 function restyleRail(){
   if(!RAIL_FEATURE)return; // GOLF-110: dormant behind the flag
   const w=railWeight();

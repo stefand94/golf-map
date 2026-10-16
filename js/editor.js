@@ -106,7 +106,10 @@ function revertEdit(i){delete EDITS[i];tripStopChainInvalidate();saveState();clo
 function corrections(){return Object.keys(EDITS).filter(isEdited).map(i=>{
   const changed={};Object.entries(EDITS[i]).forEach(([k,v])=>{if(k!=='_why')changed[k]={from:C[i][k],to:v}});
   return{course:C[i].n,why:EDITS[i]._why||null,changed}})}
-document.getElementById('open-export').addEventListener('click',()=>{
+/* GOLF-252: the sidebar button that opened this went with the retired Explore
+   markup; the handler stays (guarded) until corrections export gets a new home. */
+const openExportBtn=document.getElementById('open-export');
+if(openExportBtn)openExportBtn.addEventListener('click',()=>{
   const list=corrections();
   const tripOrdered=tripSeq;
   const trip=tripOrdered.map(i=>({course:C[i].n,region:C[i].r,weekdayFee:V(i,'wd')}));
