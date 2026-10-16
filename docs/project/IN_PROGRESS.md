@@ -8,7 +8,7 @@ verified._
 
 UX review (DEC-040; spec and lanes in `GOLF-252-266-ux-review.md`), started 2026-10-16:
 - **Barry:** queue done. Done: 252, 255, 256, 260, 264, 267, his part of 266.
-- **Gavin:** 266 part 2 (role classes, padding, trash icon). Done: 253, 258, 261, 262, 263 labels, 270 list side.
+- **Gavin:** queue done. Done: 253, 258, 261, 262, 263 labels, 266, 270 list side.
 - **Geoff:** 270 AC (6), town fit + pulse. Done: 254, 257, 263, 265, 268, 270 map side.
 
 Queued behind them: 255 to 266, then 268 (see BACKLOG).
