@@ -420,11 +420,12 @@ function poiLayerStatusEl(){
 /* kind: 'loading' | 'info' | null (null hides it). No 'error' case —
    a missing region file is recorded once by poiEnsureRegion() and simply
    contributes nothing, exactly as it does in the day pane. */
-function tbPoiLayerStatus(kind,text){
+function tbPoiLayerStatus(kind,text,action){
   const el=poiLayerStatusEl();
   if(!kind){el.hidden=true;el.textContent='';return;}
   el.hidden=false;
   el.innerHTML=(kind==='loading'?'<span class="spin"></span>':'')+`<span>${esc(text)}</span>`;
+  layerStatusAction(el,action);
 }
 
 function tbPoiLayerClear(){
@@ -482,7 +483,7 @@ function tbPoiLayerRefresh(){
   if(!tbPoiLayerOn)return;
   if(map.getZoom()<POI_LAYER_MIN_ZOOM){
     tbPoiLayerClear();
-    tbPoiLayerStatus('info','Zoom in to see places of interest');
+    tbPoiLayerStatus('info','Zoom in to see places of interest',{label:'Zoom in ›',fn:()=>map.setZoom(POI_LAYER_MIN_ZOOM)});
     return;
   }
   const b=map.getBounds();

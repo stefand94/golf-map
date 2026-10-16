@@ -26,6 +26,7 @@
    area rows are the exception: they depend on the chosen nation, so
    they are rebuilt each time the panel opens. */
 let cfBuilt=false;
+let cfCustomOpen=false;
 
 /* GOLF-185d: how many filters are narrowing anything right now. Same
    shape as js/explore.js's updateFilterBadges() total — each group
@@ -42,7 +43,7 @@ function cfActiveCount(){
    The per-nation top lists are mutually exclusive with the nation
    pills, so only the relevant ones are drawn. */
 function cfFlagChips(){
-  const out=[['ranked','Top 100 ranked'],['weekend','Open at weekends']];
+  const out=[['ranked','Top 100 ranked'],['weekend','Open at weekends'],['want','Want to play']];
   const byNation={gb:[['top100','England Top 100'],['topScot','Scotland Top 100'],['topWales','Wales Top 100']],
     ie:[['topIreland','Ireland Top 100']],za:[['topSouthAfrica','South Africa Top 100']]};
   const extra=state.nation?byNation[state.nation]:null;
@@ -66,6 +67,7 @@ function cfBuildPanel(){
         <section class="cf-group">
           <span class="cf-label">Green fee</span>
           <div class="cf-chips" id="cf-bands"></div>
+          <div class="cf-custom" id="cf-custom" hidden>
           <div class="cf-slider">
             <input id="cf-fee-min-r" type="range" aria-label="Minimum green fee">
             <input id="cf-fee-max-r" type="range" aria-label="Maximum green fee">
@@ -74,6 +76,7 @@ function cfBuildPanel(){
             <label>Min £<input id="cf-fee-min" type="number" min="0" step="5" aria-label="Minimum green fee in pounds"></label>
             <label>Max £<input id="cf-fee-max" type="number" min="0" step="5" aria-label="Maximum green fee in pounds"></label>
             <span class="cf-readout" id="cf-readout"></span>
+          </div>
           </div>
           <p class="cf-note">Courses with no published fee ("POA", members only) drop out as soon as you set a price.</p>
         </section>
@@ -109,6 +112,7 @@ function cfBuildPanel(){
      area rows are rebuilt on each open, so per-element listeners would
      have to be re-attached each time. */
   panel.addEventListener('click',e=>{
+    if(e.target.closest('[data-cf-custom]')){cfCustomOpen=!cfCustomOpen;cfSync();return;}
     const band=e.target.closest('[data-cf-band]');
     if(band){feeBandApply(band.dataset.cfBand);cfSync();return;}
     const chip=e.target.closest('[data-cf-k]');
@@ -172,8 +176,16 @@ function cfSync(){
   panel.querySelectorAll('[data-cf-k]').forEach(ch=>{
     ch.setAttribute('aria-pressed',String(state[ch.dataset.cfK].has(ch.dataset.cfV)));
   });
+  /* GOLF-263: bands are the quick path; Min/Max and the slider sit behind
+     "Custom", open by default only when the range matches no band. */
+  const custom=document.getElementById('cf-custom');
+  const anyBand=FEE_BANDS.some(([k,l,lo,hi])=>feeBandActive(lo,hi));
+  const hasRange=state.feeMin!=null||state.feeMax!=null;
+  if(hasRange&&!anyBand)cfCustomOpen=true;
+  custom.hidden=!cfCustomOpen;
   document.getElementById('cf-bands').innerHTML=FEE_BANDS.map(([k,label,lo,hi])=>
-    `<button type="button" class="cf-chip" data-cf-band="${k}" aria-pressed="${feeBandActive(lo,hi)}">${label}</button>`).join('');
+    `<button type="button" class="cf-chip" data-cf-band="${k}" aria-pressed="${feeBandActive(lo,hi)}">${label}</button>`).join('')
+    +`<button type="button" class="cf-chip" data-cf-custom aria-pressed="${cfCustomOpen}" aria-expanded="${cfCustomOpen}">Custom</button>`;
   const lo=state.feeMin!=null?state.feeMin:0,hi=state.feeMax!=null?state.feeMax:FEE_SLIDER_MAX;
   document.getElementById('cf-fee-min-r').value=lo;
   document.getElementById('cf-fee-max-r').value=hi;

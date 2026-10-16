@@ -182,7 +182,17 @@ function tbMapTopInset(){
 }
 
 /* kind: 'loading' | 'info' | 'error' | null (null hides the pill). */
-function tbHotelLayerStatus(kind,text){
+/* GOLF-263: an optional {label,fn} turns the pill into something you can act
+   on ("Zoom in ›", "Retry"). Shared with the POI pill (js/poi.js). */
+function layerStatusAction(el,action){
+  el.classList.toggle('has-act',!!action);
+  if(!action)return;
+  const b=document.createElement('button');
+  b.type='button';b.className='hotel-status-act';b.textContent=action.label;
+  b.addEventListener('click',action.fn);
+  el.appendChild(b);
+}
+function tbHotelLayerStatus(kind,text,action){
   const el=tbHotelStatusEl();
   if(!kind){el.hidden=true;el.textContent='';return;}
   el.hidden=false;
@@ -191,6 +201,7 @@ function tbHotelLayerStatus(kind,text){
   // esc() the message even though every caller passes a literal — keeps the
   // one innerHTML in this file safe if a future caller ever interpolates.
   el.innerHTML=(kind==='loading'?'<span class="spin"></span>':'')+`<span>${esc(text)}</span>`;
+  layerStatusAction(el,action);
 }
 
 /* Matches a viewport POI against the current trip's already-added stays.
@@ -324,7 +335,7 @@ function tbHotelLayerFetch(){
      widening it would only make an already-slow Overpass query slower. */
   if(map.getZoom()<tbHotelMinZoom()){
     tbHotelLayerClear();
-    tbHotelLayerStatus('info','Zoom in to see hotels');
+    tbHotelLayerStatus('info','Zoom in to see hotels',{label:'Zoom in ›',fn:()=>map.setZoom(tbHotelMinZoom())});
     return;
   }
   const reqBounds=map.getBounds();
@@ -387,7 +398,7 @@ function tbHotelLayerFetch(){
       if(_hotelLayerInflight>1)return; // another attempt may still succeed
       tbHotelLayerStatus('error',err&&err.name==='AbortError'
         ?'Hotels are taking too long — try again'
-        :'Couldn’t load hotels right now');
+        :'Couldn’t load hotels right now',{label:'Retry',fn:()=>tbHotelLayerFetch()});
     })
     .finally(()=>{
       clearTimeout(timer);
