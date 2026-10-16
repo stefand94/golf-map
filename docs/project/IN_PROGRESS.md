@@ -7,9 +7,9 @@ verified._
 ## In flight
 
 UX review (DEC-040; spec and lanes in `GOLF-252-266-ux-review.md`), started 2026-10-16:
-- **GOLF-252** legacy CSS cleanup (Barry)
-- **GOLF-258** itinerary layout + Compact toggle (Gavin). (253 done 2026-10-16.)
-- **GOLF-254** map markers + day colours (Geoff)
+- **GOLF-264** phone chrome + tap targets (Barry). (252 done.)
+- **GOLF-258** itinerary layout + Compact toggle (Gavin). (253 done.)
+- **GOLF-263** filters, hotels, POIs (Geoff). (257 done; 254 in REVIEW with two gaps.)
 
 Queued behind them: 255 to 266, then 268 (see BACKLOG).
 
