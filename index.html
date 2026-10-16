@@ -808,6 +808,10 @@
     background:var(--ink);color:var(--paper-2);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);
     font:500 var(--fs-body) var(--font-sans);transition:opacity .18s,transform .18s}
   .tb-toast.is-on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+  @media (min-width:901px){
+    .tb-toast{position:fixed;left:var(--tb-toast-left,552px);bottom:16px;transform:translate(0,16px)}
+    .tb-toast.is-on{transform:none}
+  }
   .tb-toast-msg{flex:1 1 auto;min-width:0}
   .tb-toast-btn{flex:0 0 auto;min-height:36px;padding:0 12px;border:0;border-radius:var(--radius-sm);background:transparent;
     color:#9CC3EA;font:700 var(--fs-body) var(--font-sans);cursor:pointer}
@@ -1130,7 +1134,18 @@
   .tb-sr-count{color:var(--stone)}
   .tb-sr-kids{margin-left:var(--sp-4);border-left:2px solid var(--line);padding-left:var(--sp-2)}
   .tb-sr-more{margin:0 0 var(--sp-2);padding-left:var(--sp-1)}
-  .tb-sr-row{cursor:pointer}
+  .tb-sr-row{cursor:pointer;gap:var(--sp-3)}
+  .tb-sr-main{flex:1 1 auto;min-width:0}
+  .tb-sr-name{font:600 15px/1.25 var(--font-sans);color:var(--ink);text-decoration:none}
+  .tb-sr-name:hover{color:var(--accent)}
+  .tb-sr-fee{flex:0 0 auto;margin-left:auto;text-align:right;font:600 13px var(--font-sans);font-variant-numeric:tabular-nums;color:var(--ink-soft)}
+  .tb-sr-act{flex:0 0 auto;display:flex;align-items:center;gap:var(--sp-2);justify-content:flex-end;min-width:44px}
+  .tb-add-circle{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--accent);background:#fff;color:var(--accent);
+    font:400 24px/1 var(--font-sans);cursor:pointer;flex:0 0 auto}
+  .tb-add-circle:hover{background:var(--accent-soft)}
+  .tb-add-circle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .tb-sr-added{font:700 13px var(--font-sans);color:var(--green);white-space:nowrap}
+  .tb-sr-skel{opacity:.55;pointer-events:none}
   .tb-why{font-style:italic}
   .place-pop-name{font-weight:700;margin-bottom:2px}
   .place-pop-sub{color:var(--stone);font-size:var(--fs-small);margin-bottom:var(--sp-2)}

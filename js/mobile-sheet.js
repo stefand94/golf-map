@@ -64,6 +64,10 @@ const mobTop=document.getElementById('mob-top');
 ['focusin','click','input'].forEach(ev=>mobTop.addEventListener(ev,e=>{
   if(e.target.id==='tb-unified-search')document.body.classList.remove('mob-results-off');
 }));
+/* GOLF-256: searching closes an open course card instead of typing under it. */
+document.addEventListener('focusin',e=>{
+  if(e.target.id==='tb-unified-search'&&typeof mobCardI!=='undefined'&&mobCardI!=null)mobCardClose();
+});
 const mobTabbar=document.getElementById('bs-tabbar');
 const filterBtn=document.createElement('button');
 filterBtn.type='button';filterBtn.id='filterBtn';

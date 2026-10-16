@@ -198,7 +198,7 @@ let tbPlaceDayPick=null;
    button's label (the search row's opener already says "Add as a day"). */
 function tbPlaceDayControlsHTML(lat,lng,label,sel,go='＋ Add as a day'){
   const a=tbPlaceArgs(lat,lng,label);
-  if(!tripDays.length)return`<button type="button" class="tb-btn is-sm is-primary place-pop-btn" onclick="event.stopPropagation();tbAddPlaceToTrip(${a})">Start a trip here</button>`;
+  if(!tripDays.length)return`<button type="button" class="tb-btn is-sm is-primary place-pop-btn" onclick="event.stopPropagation();tbAddPlaceToTrip(${a})">＋ Add as a day</button>`;
   return`<label class="tb-daypos"><span>Goes</span><select id="${sel}" class="hotel-pop-select" onclick="event.stopPropagation()">${tripDayPosOptionsHTML()}</select></label>
     <button type="button" class="tb-btn is-sm is-primary place-pop-btn" onclick="event.stopPropagation();tbAddPlaceToTrip(${a},document.getElementById('${sel}').value)">${go}</button>`;
 }
@@ -208,7 +208,7 @@ function tbPlaceDayBtnHTML(p){
   const a=tbPlaceArgs(p.lat,p.lng,p.label);
   return tripDays.length
     ?`<button type="button" class="tb-btn is-sm" aria-expanded="${tbPlaceDayPick===p.lat+','+p.lng}" onclick="event.stopPropagation();tbPlaceDayPickToggle(${a})">＋ Add as a day</button>`
-    :`<button type="button" class="tb-btn is-sm is-primary" onclick="event.stopPropagation();tbAddPlaceToTrip(${a})">Start a trip here</button>`;
+    :`<button type="button" class="tb-btn is-sm is-primary" onclick="event.stopPropagation();tbAddPlaceToTrip(${a})">＋ Add as a day</button>`;
 }
 function tbPlaceDayPickToggle(lat,lng,label){
   const k=lat==null?null:lat+','+lng;
@@ -260,6 +260,9 @@ function tbToast(html,actions=[],ms=6000){
   if(!el){el=document.createElement('div');el.id='tb-toast';el.className='tb-toast';el.setAttribute('role','status');(document.querySelector('.panel')||document.body).appendChild(el);}
   el.innerHTML=`<span class="tb-toast-msg">${html}</span>`+actions.map((a,k)=>`<button type="button" class="tb-toast-btn" data-k="${k}">${esc(a.label)}</button>`).join('');
   el.querySelectorAll('.tb-toast-btn').forEach(b=>b.onclick=()=>{tbToastHide();actions[+b.dataset.k].fn();});
+  /* Desktop: bottom-left of the map, clear of the pane's Add buttons. */
+  const panel=document.querySelector('.panel');
+  if(panel)el.style.setProperty('--tb-toast-left',(panel.getBoundingClientRect().right+16)+'px');
   el.classList.add('is-on');
   clearTimeout(tbToastTimer);tbToastTimer=setTimeout(tbToastHide,ms);
 }
@@ -298,8 +301,33 @@ function tbMatchScore(text,q){
 /* GOLF-185d: search now answers with the same set the map is drawing —
    courseShownOnMap() (a SA club outside the ringfenced top-100 was
    findable in search but had no pin) and the active filters. */
+/* GOLF-256: a course added from the results stays in them — the button turns
+   into "✓ Added" + Undo — so the rows under the cursor never jump and a
+   second tap can't land on the next course. Remembered per query: a new
+   query starts clean. */
+let tbSrAdded={q:null,set:new Set()};
+function tbSrAddedSet(){
+  const q=tbSearchQ.trim();
+  if(tbSrAdded.q!==q)tbSrAdded={q,set:new Set()};
+  return tbSrAdded.set;
+}
+function tbSrRefresh(){
+  const el=document.getElementById('tb-search-results');
+  if(el&&el.style.display!=='none'&&tbSearchQ.trim())el.innerHTML=tbUnifiedSearchResultsHTML();
+}
+function tbSearchAdd(i){
+  tbSrAddedSet().add(i);
+  tbAddToWishlist(i);
+  tbSrRefresh();
+}
+function tbSearchUndo(i){
+  if(!TRIP.has(i))return;
+  toggleTrip(i);
+  tripAfterRemoveRedraw();
+  tbSrRefresh();
+}
 function tbCourseOfferable(i){
-  return !TRIP.has(i)&&bookable(i)&&courseShownOnMap(i)&&courseFilterPasses(i)
+  return (!TRIP.has(i)||tbSrAddedSet().has(i))&&bookable(i)&&courseShownOnMap(i)&&courseFilterPasses(i)
     &&(appMode==='build'||!state.nation||courseNation(i)===state.nation);
 }
 function tbUnifiedSearchModel(){
@@ -326,7 +354,7 @@ function tbUnifiedSearchModel(){
   const seen=new Set(),places=[];
   (Array.isArray(tbUnifiedPlaceResults)?tbUnifiedPlaceResults:[]).forEach(p=>{
     if(!isFinite(p.lat)||!isFinite(p.lng))return;
-    const short=tripShortPlace(p.label);
+    const short=tripShortPlace(p.label).replace(/\bSt\.(?=\s)/g,'St');
     const key=tbSearchNorm(short)+'@'+p.lat.toFixed(2)+','+p.lng.toFixed(2);
     if(seen.has(key))return;
     seen.add(key);
@@ -340,6 +368,13 @@ function tbUnifiedSearchModel(){
   /* Strongest place first, and a course belongs to only one of them — so
      two overlapping towns don't each list the same course, and the one
      that matched the query best gets it. */
+  /* GOLF-256: once one place has real golf around it (3+ courses within the
+     town radius), the ones with almost none — Hornchurch for "St Andrews" —
+     are noise, not alternatives. With no strong match they all stay. */
+  const nearCount=pl=>{let n=0;C.forEach((c,i)=>{if(tbCourseOfferable(i)&&haversineMiles(pl.p.lat,pl.p.lng,c.lat,c.lng)<=TB_PLACE_RADIUS_MI)n++;});return n;};
+  places.forEach(pl=>{pl.near=nearCount(pl);});
+  if(places.some(pl=>pl.near>=3))
+    for(let k=places.length-1;k>=0;k--)if(places[k].near<3)places.splice(k,1);
   places.sort((a,b)=>b.score-a.score);
   const claimed=new Set();
   places.forEach(pl=>{
@@ -401,18 +436,21 @@ function tbSearchGoToCourse(i){
    headline (the weekday rate, else the weekend one), with GOLF-193's "~"
    when it is an estimate. '' when the course has no usable fee. */
 function tbSearchFeeHTML(i){
-  return` · <span class="tb-sr-fee">${estMark(feeConfWord(i)==='Estimate')}${esc(fmtGreenFee(i))}</span>`;
+  return`${estMark(feeConfWord(i)==='Estimate')}${esc(fmtGreenFee(i))}`;
 }
 function tbSearchCourseRowHTML(e,day){
   const i=e.i;
   const why=e.reason?` · <span class="tb-why">${esc(e.reason)}</span>`:'';
-  return`<div class="tb-row tb-sr-row" onclick="if(!event.target.closest('button'))tbSearchGoToCourse(${i})" title="Show ${esc(V(i,'n'))} on the map">
-    <div><span class="ico-gap" aria-hidden="true">⛳</span><a href="#" class="linkbtn" onclick="event.preventDefault();event.stopPropagation();tbSearchGoToCourse(${i})">${esc(V(i,'n'))}</a>
-      <div class="cart-region">${esc(C[i].r)}${tbSearchFeeHTML(i)} · ${ACCESS[V(i,'a')].label.toLowerCase()}${why}</div></div>
-    <div style="display:flex;gap:var(--sp-2);flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
-      <button class="tb-btn is-sm is-primary" onclick="event.stopPropagation();tbAddToWishlist(${i})">＋ Add to trip</button>
-      ${day?`<button class="tb-btn is-sm" onclick="event.stopPropagation();tbAddToDay(${i},${day.id})">＋ Day ${tripDays.indexOf(day)+1}</button>`:''}
-    </div>
+  const added=TRIP.has(i),nm=esc(V(i,'n'));
+  /* Name, then region · access; the price sits on the right with the action.
+     The action is an outlined circle (44px hit), or "✓ Added" + Undo. */
+  return`<div class="tb-row tb-sr-row${added?' is-added':''}" onclick="if(!event.target.closest('button'))tbSearchGoToCourse(${i})" title="Show ${nm} on the map">
+    <div class="tb-sr-main"><a href="#" class="tb-sr-name" onclick="event.preventDefault();event.stopPropagation();tbSearchGoToCourse(${i})">${nm}</a>
+      <div class="cart-region">${esc(C[i].r)} · ${ACCESS[V(i,'a')].label.toLowerCase()}${why}</div></div>
+    <span class="tb-sr-fee">${tbSearchFeeHTML(i)}</span>
+    <div class="tb-sr-act">${added
+      ?`<span class="tb-sr-added">✓ Added</span><button type="button" class="tb-btn is-sm is-quiet" onclick="event.stopPropagation();tbSearchUndo(${i})">Undo</button>`
+      :`${day?`<button type="button" class="tb-btn is-sm" onclick="event.stopPropagation();tbAddToDay(${i},${day.id})">＋ Day ${tripDays.indexOf(day)+1}</button>`:''}<button type="button" class="tb-add-circle" aria-label="Add ${nm} to trip" title="Add to trip" onclick="event.stopPropagation();tbSearchAdd(${i})">＋</button>`}</div>
   </div>`;
 }
 function tbUnifiedSearchResultsHTML(){
@@ -427,9 +465,13 @@ function tbUnifiedSearchResultsHTML(){
      match", or place search looks broken rather than temporarily down. */
   const outage=model.placesState===undefined
     ?`<p class="hint" style="margin:0 0 var(--sp-2)">Place search is temporarily unavailable — showing golf courses only.</p>`:'';
+  /* GOLF-256: until the geocoder answers, a town heading's worth of height is
+     held at the top so its arrival doesn't push the course rows down under
+     the cursor. */
+  const skel=tbUnifiedPlaceResults===null?`<div class="tb-row tb-sr-place tb-sr-skel" aria-hidden="true"><div><span class="tb-sr-place-name">Looking up towns…</span><div class="cart-region">&nbsp;</div></div></div>`:'';
   if(!model.rows.length)
-    return outage||`<p class="hint">No places or bookable courses match "${esc(raw)}".</p>`;
-  const html=model.rows.map(e=>{
+    return skel+(outage||(skel?'':`<p class="hint">No places or bookable courses match "${esc(raw)}".</p>`));
+  const html=skel+model.rows.map(e=>{
     if(e.type==='course')return tbSearchCourseRowHTML(e,day);
     const p=e.p;
     const count=e.total?` · <span class="tb-sr-count">${e.total} course${e.total===1?'':'s'}</span>`:'';
