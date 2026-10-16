@@ -411,9 +411,36 @@ function renderSharedTrip(){
   }
   renderSharedTripPayload(tripDecodeSharePayload(h));
 }
+/* GOLF-268: the shared view's footer. "Copy to my trips" files the decoded
+   (already validated) snapshot as a new trip in THIS browser and opens it in
+   Build; "Plan your own trip" leaves the shared view for the bare app. */
+let sharedPayloadShown=null;
+function sharedCopyToMyTrips(){
+  const p=sharedPayloadShown;
+  if(!p)return;
+  tripSnapshotActive();
+  const id='t'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const days=JSON.parse(JSON.stringify(p.days));
+  const taken=new Set(Object.values(trips).map(t=>t.name));
+  let name=(p.nm||'Shared trip'),n=2;const base=name;
+  while(taken.has(name))name=base+' '+n++;
+  const t={name,created:Date.now(),modified:Date.now(),trip:[...p.seq],tripSeq:[...p.seq],tripDays:days,
+    tripLastAdded:null,tbAnchor:null,tripDayNextId:Math.max(0,...days.map(d=>d.id))+1,groupSize:p.gs,
+    tripCustom:JSON.parse(JSON.stringify(p.oth||[]))};
+  if(p.st)t.tripStart=p.st;
+  if(p.en)t.tripEnd=p.en;
+  trips[id]=t;activeTripId=id;tripRestoreActive();
+  tbResetTransients();
+  saveState();
+  history.pushState({appMode:'build'},'',location.pathname+'#trip');
+  setAppMode('build',{pushHash:false});
+  render();
+}
+function sharedPlanOwn(){location.href=location.pathname;}
 function renderSharedTripPayload(payload){
   const pane=document.getElementById('shared-pane');
   if(!pane)return;
+  sharedPayloadShown=payload;
   if(!payload){
     pane.innerHTML=`<div class="shared-wrap"><div class="cost-card" style="margin:var(--sp-6) auto;max-width:640px">
       <p class="hint">This link looks broken or incomplete — a character may have been cut off when it was shared. Ask whoever sent it for a fresh one.</p>
@@ -450,6 +477,7 @@ function renderSharedTripPayload(payload){
       <div class="shared-map-wrap no-print"><div id="shared-map" style="height:320px;border-radius:var(--radius-lg);overflow:hidden"></div><button type="button" class="shared-attr-btn" aria-label="Map credits" onclick="this.parentNode.classList.toggle('attr-open')">ⓘ</button></div>
       <div class="tb-section" style="padding:0 var(--sp-4)"><h3 style="font-size:var(--fs-title);margin:0 0 var(--sp-2)">Itinerary</h3>${tbItinAllHTML()}</div>
       <div class="tb-section" style="padding:0 var(--sp-4) var(--sp-6)"><h3 style="font-size:var(--fs-title);margin:var(--sp-4) 0 var(--sp-2)">Costs</h3>${tbCostsTabReadOnlyHTML()}</div>
+      <div class="shared-cta no-print"><button type="button" class="tb-btn is-primary" onclick="sharedCopyToMyTrips()">Copy to my trips</button><button type="button" class="tb-btn is-quiet" onclick="sharedPlanOwn()">Plan your own trip</button></div>
     </div>`;
     renderSharedMap();
     /* DEC-039 (owner review): the calendar's hour scrollers open on the
