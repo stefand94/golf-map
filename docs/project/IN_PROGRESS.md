@@ -8,8 +8,8 @@ verified._
 
 UX review (DEC-040; spec and lanes in `GOLF-252-266-ux-review.md`), started 2026-10-16:
 - **Barry:** next, 255 + 267 (desktop pane), then 256, then 266. Done: 252, 260, 264.
-- **Gavin:** next, the 253 reopen (one price everywhere), then the 263 labels in trip-ui.js. Done: 258, 261, 262. In REVIEW: 259 (iPhone).
-- **Geoff:** queue done. Done: 254, 257, 263 (labels go to Gavin), 265, 268.
+- **Gavin:** queue done. Done: 253, 258, 261, 262, 263 labels. In REVIEW: 259 (iPhone).
+- **Geoff:** queue done. Done: 254, 257, 263, 265, 268.
 
 Queued behind them: 255 to 266, then 268 (see BACKLOG).
 
