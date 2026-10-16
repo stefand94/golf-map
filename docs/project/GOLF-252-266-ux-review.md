@@ -143,6 +143,7 @@ Assets: country outlines from `design/svg-proposals/countries/`.
 - P3 Layer status pill actionable: "Zoom in to see hotels ›" zooms to 12; "Couldn't load · Retry". (Check hotel failure on production first — it failed from localhost.)
 - P3 Labels "Hotels" / "Things to see" on both platforms (not "Show POIs"/"POIs"); same selected style as filters (B14).
 - Area chips: unchanged.
+- **Want to play filter (DEC-040):** a filter that shows only courses marked Want to play. Uses the same selected style as the other filters.
 - Files: `js/course-filters.js`, `js/poi.js`, hotel layer module, `index.html`.
 
 ### B12 — Phone chrome & tap targets · P2 · M · decided
