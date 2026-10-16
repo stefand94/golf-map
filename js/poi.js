@@ -332,7 +332,11 @@ function poiPopupHTML(id,defaultDayId){
   const opts=tripDays.length
     ?`<optgroup label="A stop on">${days}</optgroup><optgroup label="Its own day">${tripDayPosOptionsHTML().replace(/value="(\d+)"/g,'value="new:$1"').replace(/ selected/g,'')}</optgroup>`
     :`<option value="new:0">New day (Day 1)</option>`;
-  return`<div class="hotel-pop">${head}
+  /* GOLF-275: days only exist once Build has scheduled the shortlist, so on
+     Discover a shortlist with no days looks like "no days" — say why. */
+  const unsched=!tripDays.length&&tripSeq.length
+    ?`<p class="hotel-pop-note">Your shortlist isn't scheduled yet.</p><button type="button" class="tb-btn is-sm" onclick="map.closePopup();setAppMode('build')">Build itinerary</button>`:'';
+  return`<div class="hotel-pop">${head}${unsched}
     <label class="hotel-pop-row"><span>Add to</span><select id="poi-pop-day" class="hotel-pop-select">${opts}</select></label>
     <button type="button" class="tb-btn is-primary is-sm hotel-pop-add" onclick="poiAddFromPopup('${p.id}')">＋ Add to trip</button></div>`;
 }
