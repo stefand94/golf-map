@@ -234,9 +234,9 @@ function tbClearUnifiedSearch(){
 function tbPlaceCardHTML(lat,lng,label){
   const a=tbPlaceArgs(lat,lng,label);
   return`<div class="place-pop">
-    <div class="place-pop-name">📍 ${esc(tripShortPlace(label))}</div>
+    <div class="place-pop-name">${ICO('pin')} ${esc(tripShortPlace(label))}</div>
     ${label.includes(',')?`<div class="place-pop-sub">${esc(label.slice(label.indexOf(',')+1).trim())}</div>`:''}
-    <button type="button" class="tb-btn is-sm place-pop-btn" onclick="tbPlaceShowNearby(${a})">⛳ Courses near here</button>
+    <button type="button" class="tb-btn is-sm place-pop-btn" onclick="tbPlaceShowNearby(${a})">${ICO('golf')} Courses near here</button>
     ${tbPlaceDayControlsHTML(lat,lng,label,'place-pop-daypos')}
   </div>`;
 }
@@ -482,7 +482,7 @@ function tbUnifiedSearchResultsHTML(){
     const head=`<div class="tb-row tb-sr-place tb-unified-place-focus" role="button" tabindex="0"
       data-lat="${p.lat}" data-lng="${p.lng}" data-label="${esc(p.label)}"
       title="Show ${esc(e.short)} on the map">
-      <div><span class="tb-sr-place-name">📍 ${esc(e.short)}</span>${count}
+      <div><span class="tb-sr-place-name">${ICO('pin')} ${esc(e.short)}</span>${count}
         ${region?`<div class="cart-region">${esc(region)}</div>`:''}</div>
       ${tbPlaceDayBtnHTML(p)}
     </div>`;
@@ -556,7 +556,7 @@ function tripDayCourseRowHTML(i,dayId){
      <button type="button" class="tb-menu-item is-danger" onclick="tripRemoveCourse(${i});">🗑 Remove from trip</button>`);
   return`<div class="tb-day-course tb-item-golf" data-ci="${i}" ${tbRowDragAttrs(`tbDragSetCourse(${i},event,this);`,`tbDropOn(${dayId==null?'null':dayId},${i});`)}>
     <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
-    <span class="tb-item-icon">⛳</span>
+    <span class="tb-item-icon">${ICO('golf')}</span>
     <div class="tb-item-main">
       <a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
       <div class="cart-region">${esc(C[i].r)}</div>
@@ -589,7 +589,7 @@ function tripDayItemRowHTML(d,it){
   // GOLF-153: a flight is a fourth kind of stop, so it gets its own icon
   // rather than inheriting the POI pin. Its coordinates are the arrival
   // airport's, which is what earns it a drive leg like any other stop.
-  const icon=it.type==='golf'?'⛳':it.type==='hotel'?'🏨':it.type==='flight'?'✈':'📍';
+  const icon=ICO(it.type==='golf'?'golf':it.type==='hotel'?'hotel':it.type==='flight'?'plane':'pin');
   const noGeo=it.type!=='golf'&&tripItemPoint(it)==null;
   /* GOLF-71 copy audit: the price used to be repeated in the grey meta
      line AND (on golf) implied by the fee — it now appears once, in the
@@ -635,7 +635,7 @@ function tripDayItemRowHTML(d,it){
      gets its own entry here. */
   const costItem=it.type==='drivefrom'?''
     :`<button type="button" class="tb-menu-item" onclick="tbToggleCostEdit('${it.id}')">${
-        it.type==='golf'?'💷 Green fee':'💷 Price'}</button>`;
+        it.type==='golf'?ICO('pound')+' Green fee':ICO('pound')+' Price'}</button>`;
   const menu=tbRowMenuHTML(
     (it.type==='golf'?`<div class="tb-menu-label">Move to</div>${tbDayMenuItemsHTML(it.i,d.id)}<div class="tb-menu-sep"></div>${costItem}<div class="tb-menu-sep"></div>`
       // GOLF-153: a flight's Edit opens the flight form instead —

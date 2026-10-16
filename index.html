@@ -104,7 +104,7 @@
     /* Spacing — a 4px grid. */
     --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:20px;--sp-6:24px;--sp-8:32px;
     /* Type scale. */
-    --fs-micro:10px;--fs-caption:11.5px;--fs-small:12.5px;--fs-body:13.5px;
+    --fs-micro:11px;--fs-caption:12px;--fs-small:12.5px;--fs-body:13.5px;
     --fs-title:15px;--fs-lg:17px;--fs-xl:20px;--fs-hero:38px;--fs-trip-title:24px;
     /* Control sizing. --tap is the HIG minimum; --tap-sm is for controls
        that sit inside a ≥44px row and so are already comfortably hit. */
@@ -227,6 +227,9 @@
   .tb-navbar{padding:var(--sp-3) var(--sp-5) var(--sp-1);display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3)}
   .tb-wordmark{font-family:var(--font-display);font-weight:700;font-size:var(--fs-title);color:var(--ink)}
   .ico-gap{margin-right:.4em}
+  /* GOLF-266: inline icon set (js/icons.js) — sits in text like a glyph */
+  svg.ico{width:1.1em;height:1.1em;vertical-align:-.18em;flex:0 0 auto}
+  .tb-item-icon svg.ico{width:18px;height:18px;vertical-align:middle}
   .shared-cta{position:sticky;bottom:0;z-index:20;display:flex;gap:var(--sp-2);justify-content:center;flex-wrap:wrap;padding:var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom));background:var(--paper);border-top:1px solid var(--line)}
   .shared-cta .tb-btn{min-height:44px}
   .shared-title{display:flex;flex-direction:column;min-width:0}
@@ -1953,6 +1956,7 @@
   Promise.all(jobs).catch(function(){}).then(function(){location.reload();});
 })();</script>
 <script src="js/util.js?v=4b4a721089"></script>
+<script src="js/icons.js?v=4b4a721089"></script>
 <script src="js/course-id.js?v=4b4a721089"></script>
 <script src="js/affiliate.js?v=4b4a721089"></script>
 <script src="js/timeline.js?v=4b4a721089"></script>

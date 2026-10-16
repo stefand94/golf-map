@@ -36,6 +36,7 @@ const failures = [];
 const ORDER = [
   'app-version.js',
   'util.js',
+  'icons.js',
   // GOLF-163: must precede state.js, which calls loadStoredState() at its
   // own top level and decodes stored course ids through this module.
   'course-id.js',

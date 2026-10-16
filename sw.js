@@ -100,6 +100,7 @@ const PRECACHE_URLS = [
   './images/icon-maskable.svg',
   './js/app-version.js',
   './js/util.js',
+  './js/icons.js',
   './js/course-id.js',
   './js/affiliate.js',
   './js/timeline.js',

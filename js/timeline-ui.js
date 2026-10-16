@@ -102,13 +102,13 @@ function tlSetDetailed(on){
      legTimes the form asks for a departure and an arrival rather than a
               start and a length. */
 const TL_KINDS={
-  flight:{label:'Flight',icon:'✈',place:false,price:true,resize:false,legTimes:true},
-  train:{label:'Train',icon:'🚆',place:false,price:true,resize:false,legTimes:true},
-  drivefrom:{label:'Drive from another place',icon:'🚗',place:true,price:false,resize:false,legTimes:false},
-  activity:{label:'Activity',icon:'📌',place:true,price:true,resize:true,legTimes:false},
-  golf:{label:'Round',icon:'⛳',place:false,price:true,resize:true,legTimes:false},
-  poi:{label:'Stop',icon:'📍',place:true,price:true,resize:true,legTimes:false},
-  hotel:{label:'Stay',icon:'🏨',place:true,price:true,resize:false,legTimes:false}
+  flight:{label:'Flight',icon:ICO('plane'),place:false,price:true,resize:false,legTimes:true},
+  train:{label:'Train',icon:ICO('train'),place:false,price:true,resize:false,legTimes:true},
+  drivefrom:{label:'Drive from another place',icon:ICO('car'),place:true,price:false,resize:false,legTimes:false},
+  activity:{label:'Activity',icon:ICO('activity'),place:true,price:true,resize:true,legTimes:false},
+  golf:{label:'Round',icon:ICO('golf'),place:false,price:true,resize:true,legTimes:false},
+  poi:{label:'Stop',icon:ICO('pin'),place:true,price:true,resize:true,legTimes:false},
+  hotel:{label:'Stay',icon:ICO('hotel'),place:true,price:true,resize:false,legTimes:false}
 };
 function tlKind(t){return TL_KINDS[t]||TL_KINDS.poi;}
 function tlItemIcon(t){return tlKind(t).icon;}
@@ -414,7 +414,7 @@ function tlDayGridHTML(d,dayIdx,firstNights){
          the difference. */
       const from=(ri===0&&originName)?` from ${originName}`:'';
       parts.push(`<div class="tl-drive" style="top:${(y-bufH-driveH).toFixed(1)}px;height:${driveH.toFixed(1)}px"
-        title="Drive${esc(from)} to ${esc(tripItemName(r.item))}. Computed, so it can't be dragged.">🚗 ${esc(fmtDriveMinutes(r.driveMins))}${from?` <span class="tl-drive-from">${esc(from.trim())}</span>`:''}</div>`);
+        title="Drive${esc(from)} to ${esc(tripItemName(r.item))}. Computed, so it can't be dragged.">${ICO('car')} ${esc(fmtDriveMinutes(r.driveMins))}${from?` <span class="tl-drive-from">${esc(from.trim())}</span>`:''}</div>`);
     }
     if(bufH){
       /* Styled like a drive leg, because it is the same kind of thing:
@@ -467,7 +467,7 @@ function tlDayGridHTML(d,dayIdx,firstNights){
      nothing (DEC-039). Drawn only on a stay's first night. */
   const checkins=stays.filter(r=>firstNights.has(r.item.id))
     .map(r=>`<div class="tl-checkin" style="top:${top(r.startMins).toFixed(1)}px">
-      <span>🏨 check in ${tlFormatTime(r.startMins)}</span></div>`).join('');
+      <span>${ICO('hotel')} check in ${tlFormatTime(r.startMins)}</span></div>`).join('');
   /* The ruler's own height, unless the stretching above has pushed the
      last block past the bottom of it. */
   const height=Math.max(TL_DAY_HOURS*TL_PX_PER_HOUR,cursor);
@@ -517,7 +517,7 @@ function tlStayStripHTML(d,dayIdx,stays,firstNights){
     /* Check-in is editable on the night it happens, and 15:00 until
        someone says otherwise (DEC-039) — a default, not a lookup: no
        check-in data exists anywhere in data/. */
-    return`<div class="tl-stay">🏨 <b>${esc(tripItemName(it))}</b>${n}
+    return`<div class="tl-stay">${ICO('hotel')} <b>${esc(tripItemName(it))}</b>${n}
       <span class="tl-stay-sub">${first?`check-in ${tlFormatTime(r.startMins)}`:'continuing stay'}</span>
       ${first?tlTimeFieldHTML(d,it,'Check-in time'):''}
       ${/* The stay is where the next morning is driven from, which is
@@ -541,7 +541,7 @@ function tlTimeFieldHTML(d,it,label){
 function tlViewToggleHTML(){return tlViewSwitchHTML()+(tbDetailed?tlLegendHTML():'');}
 function tlViewSwitchHTML(){
   const btn=(k,label,on,title)=>`<button type="button" class="tb-btn is-sm${on?' is-active':''}"
-    aria-pressed="${on}" title="${title}" onclick="tlSetDetailed(${k})">${on?'✓ ':''}${label}</button>`;
+    aria-pressed="${on}" title="${title}" onclick="tlSetDetailed(${k})">${label}</button>`;
   return`<div class="tl-viewswitch" role="group" aria-label="Itinerary view">
     ${btn('false','List',!tbDetailed,'The day as a list of stops.')}
     ${btn('true','Calendar',!!tbDetailed,'The day on an hour grid you can drag things around on.')}
@@ -1247,7 +1247,7 @@ function tlBlockFormHTML(dayId){
         placeholder="Note — optional" value="${esc(s.note)}">
     </div>
     ${s.kind==='drivefrom'?`<p class="hint" style="margin:var(--sp-2) 0 0">Pick a place from the search for the drive to your first stop to be worked out. ${
-      s.lat!=null?'📍 Location set.':'No location yet.'}</p>`:''}
+      s.lat!=null?ICO('pin')+' Location set.':'No location yet.'}</p>`:''}
     <div class="tb-addstop-row" style="margin-top:var(--sp-2)">
       <button class="tb-btn is-primary" onclick="tlBlockCommit()">${s.itemId?'Save':'Add'}</button>
       <button class="tb-btn is-quiet" onclick="tlBlockCancel()">Cancel</button>

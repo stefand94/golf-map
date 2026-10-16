@@ -236,7 +236,7 @@ function hotelLayerIcon(tint){
 function tbHotelPopupHTML(idx){
   const p=_hotelLayerLastPois[idx];
   if(!p)return'';
-  const head=`<div class="hotel-pop-name">🏨 ${esc(p.name)}</div>`+
+  const head=`<div class="hotel-pop-name">${ICO('hotel')} ${esc(p.name)}</div>`+
     (p.category?`<div class="hotel-pop-cat">${esc(p.category)}</div>`:'');
   if(tbHotelInTrip(p))
     return `<div class="hotel-pop">${head}<p class="hotel-pop-note">✓ Already in your trip</p></div>`;
@@ -304,7 +304,7 @@ function tbHotelLayerRender(pois){
     // p.name/p.category come straight from Overpass — escape both, same
     // as tbDrawPois()/tbDrawHotelCandidates() already do.
     L.marker([p.lat,p.lng],{icon:hotelLayerIcon(tbHotelInTrip(p))})
-      .bindTooltip(p.category?`🏨 ${esc(p.name)} — ${esc(p.category)}`:`🏨 ${esc(p.name)}`,{direction:'top'})
+      .bindTooltip(p.category?`${esc(p.name)} — ${esc(p.category)}`:esc(p.name),{direction:'top'})
       /* Built on open, not up front: the day list and the already-in-trip
          state both go stale as soon as the trip changes, and rebuilding 37
          popups on every render would be wasted work when at most one is
@@ -534,5 +534,5 @@ function tbHotelSearchBtn(kind){
   el.hidden=false;
   el.style.top=(tbMapTopInset()+40)+'px';
   el.disabled=kind==='zoom';
-  el.textContent=kind==='zoom'?'Zoom in to search for hotels':'🏨 Search this area';
+  el.textContent=kind==='zoom'?'Zoom in to search for hotels':'Search this area';
 }
