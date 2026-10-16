@@ -182,7 +182,7 @@ Design calls made (devs follow these):
 1. "Want to play": **keep** as a life list (heart badge + own filter). (B3)
 2. Itinerary "Compact" one-line-per-day **toggle: add it**. (B6)
 3. Phone +/− zoom buttons: **drop them** (pinch only). (B12)
-4. Desktop course detail in the side pane: **parked**. Stefan is not convinced; needs a PoC before any build. B3 ships with the slimmed popup only. Follow-up is **GOLF-267**: Barry builds a PoC on a preview branch only if it is ≤ half a day.
+4. Desktop course detail in the side pane: **approved 2026-10-16 from the mock** (https://claude.ai/artifact/VuPQJf3QghRpjn1FMz1oKe) → **GOLF-267**, built by Barry in the same pass as B3. Pin → slim popup (name, "Up to £X", Add, Details); Details or a list row → full course in the pane; "‹ Discover"/Esc → back to the list at its old scroll position, row highlighted; prev/next arrows; selected pin highlighted. B3's "Desktop: popup slimmed…" bullet is delivered by this.
 
 ## Not tested (devs should verify)
 Real iPhone (safe areas, keyboard + sheet), native desktop DnD, hotel picker live (failed from localhost), widths ≥1440px.

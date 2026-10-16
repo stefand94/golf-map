@@ -982,7 +982,7 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   - Country gate: a **glass panel on desktop and phone**, no "Just looking" link. The map behind defaults to GB + Ireland.
   - Shared links: the **trip name only** may go in the server-visible query string, for link previews.
   - Shared-link "Copy this trip" CTA: low priority (GOLF-268).
-- **Answers to the review's open questions (2026-10-16):** keep Want to play (heart badge + filter); add the Compact itinerary toggle; drop the +/− zoom buttons on phone; desktop course detail in the pane is parked until a PoC is shown (GOLF-267).
+- **Answers to the review's open questions (2026-10-16):** keep Want to play (heart badge + filter); add the Compact itinerary toggle; drop the +/− zoom buttons on phone; desktop course detail in the pane was parked until a PoC was shown, then **approved from a static mock the same day** (GOLF-267, built with GOLF-255).
 - **BA calls:** "ready-made trips" is not re-logged (cancelled as GOLF-189, DEC-035). Growth ideas logged as IDEA GOLF-269 to 271.
 - **Context:** a full UI/UX deep dive found misleading prices, emoji markers, a fixed "HOME" pin, and friction in search/add and drag & drop. The requirements and lanes are in `GOLF-252-266-ux-review.md`.
 - **Affected:** GOLF-252 to 271.
