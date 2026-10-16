@@ -568,7 +568,14 @@ const layer=L.markerClusterGroup({
   showCoverageOnHover:false,
   iconCreateFunction(cluster){
     const n=cluster.getChildCount(),size=gtClusterSize(n);
-    const hasTrip=cluster.getAllChildMarkers().some(m=>TRIP.has(m.options.courseIdx));
+    /* Trip courses are drawn on tripLayer, not in this group, so no child is
+       ever one. A cluster "holds" a trip course when one sits within the
+       cluster radius of it at this zoom (where it would have clustered). */
+    let hasTrip=cluster.getAllChildMarkers().some(m=>TRIP.has(m.options.courseIdx));
+    if(!hasTrip&&TRIP.size){
+      const z=map.getZoom(),cp=map.project(cluster.getLatLng(),z);
+      for(const i of TRIP){const ll=courseJitterLL.get(i);if(ll&&map.project(ll,z).distanceTo(cp)<=50){hasTrip=true;break;}}
+    }
     return L.divIcon({className:'',html:gtClusterSVG(n,size,hasTrip),iconSize:[size,size],iconAnchor:[size/2,size/2]});
   },
   clusterPane:'bgCoursePins',
