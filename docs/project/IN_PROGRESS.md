@@ -9,7 +9,7 @@ verified._
 UX review (DEC-040; spec and lanes in `GOLF-252-266-ux-review.md`), started 2026-10-16:
 - **Barry:** 274 (calendar). Done: 252, 255, 256, 260, 264, 267, 266 (his part).
 - **Gavin:** 272 (pane spacing). Done: 253, 258, 261, 262, 263 labels, 266, 270 list side.
-- **Geoff:** 270 AC (6) town fit + pulse, then 273 (attribution). Done: 254, 257, 263, 265, 268, 270 map side.
+- **Geoff:** queue done. Done: 254, 257, 263, 265, 268, 270 map side + (6), 273.
 
 Queued behind them: 255 to 266, then 268 (see BACKLOG).
 
