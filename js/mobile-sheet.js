@@ -456,7 +456,7 @@ function mobDragEnd(){
 }
 mobHandle.addEventListener('pointerdown',e=>{
   if(e.button!==0)return;
-  if(e.target.closest('.peek-fb'))return; // GOLF-232: a tap on Feedback, not a drag
+  if(e.target.closest('.peek-more'))return; // GOLF-264: a tap on ⋯, not a drag
   mobHandle.setPointerCapture(e.pointerId);
   mobDragStart(e.clientY,'handle');
 });
@@ -511,10 +511,11 @@ function mobActiveTab(){return appMode==='build'?tbBuildTab:'discover';}
 function mobPeekHTML(){
   const nation=NATIONS.find(([k])=>k===state.nation);
   const bits=[];
+  /* GOLF-264: the header says what this tab is about — courses in view on
+     Discover, the trip's size on the Itinerary and Costs. */
   if(appMode==='build'){
-    bits.push(nation?esc(nation[1]):'Your trip');
-    bits.push(`${TRIP.size} course${TRIP.size===1?'':'s'}`);
     if(tripDays.length)bits.push(`${tripDays.length} day${tripDays.length===1?'':'s'}`);
+    bits.push(`${TRIP.size} course${TRIP.size===1?'':'s'}`);
   }else if(!nation){
     bits.push('Choose a country');
   }else{
@@ -523,15 +524,34 @@ function mobPeekHTML(){
       const b=map.getBounds();
       C.forEach((c,i)=>{if(passes(i)&&b.contains([c.lat,c.lng]))n++;});
     }catch(e){}
-    bits.push(esc(nation[1]));
     bits.push(`${n} course${n===1?'':'s'} in view`);
-    if(TRIP.size)bits.push(`${TRIP.size} in trip`);
   }
-  /* GOLF-232 follow-up: at full the map, and its Feedback pill, is covered,
-     so a compact one rides in this row instead (CSS shows it only at full;
-     beside Beta in the header it squeezed the trip name to "My tr…"). */
-  return`<span class="bs-peek-text">${bits.join(' · ')}</span><button type="button" class="fb-pill peek-fb" onclick="feedbackOpen()">Feedback</button><span class="tb-pill">${tbTripTotalHTML()}</span>`; // GOLF-199: 193's app-wide pp/total reading, like the other pills
+  /* Feedback moved off the map and out of this row into the ⋯ menu. The £
+     pill is hidden on the Costs tab, where the banner already says it. */
+  const costs=appMode==='build'&&tbBuildTab==='cost';
+  return`<span class="bs-peek-text">${bits.join(' · ')}</span>${costs?'':`<span class="tb-pill">${tbTripTotalHTML()}</span>`}<button type="button" class="peek-more" aria-label="More" aria-haspopup="menu" data-peek-more><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>`; // GOLF-199: 193's app-wide pp/total reading, like the other pills
 }
+/* The ⋯ menu: one fixed popover, opened from the peek row, closed by any
+   outside tap. */
+const mobPeekMenu=document.createElement('div');
+mobPeekMenu.className='peek-menu';mobPeekMenu.hidden=true;mobPeekMenu.setAttribute('role','menu');
+mobPeekMenu.innerHTML=`<button type="button" role="menuitem">${FEEDBACK_ICON}Send feedback</button>`;
+document.body.appendChild(mobPeekMenu);
+mobPeekMenu.addEventListener('click',()=>{mobPeekMenu.hidden=true;feedbackOpen();});
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('[data-peek-more]');
+  if(b){
+    if(mobPeekMenu.hidden){
+      const r=b.getBoundingClientRect();
+      mobPeekMenu.style.right=Math.max(8,innerWidth-r.right)+'px';
+      mobPeekMenu.style.left='auto';
+      mobPeekMenu.style.top=(r.bottom+4)+'px';
+      mobPeekMenu.hidden=false;
+    }else mobPeekMenu.hidden=true;
+    return;
+  }
+  if(!mobPeekMenu.hidden&&!mobPeekMenu.contains(e.target))mobPeekMenu.hidden=true;
+},true);
 function mobUpdatePeek(){
   if(!mobIsPhone())return;
   document.getElementById('bs-peek').innerHTML=mobPeekHTML();

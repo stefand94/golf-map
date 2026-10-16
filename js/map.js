@@ -390,19 +390,12 @@ esriAttachBases(map);
    it keeps its place when that button comes and goes. Desktop CSS hides
    it; there the pill sits in the masthead beside Beta. */
 const FEEDBACK_ICON='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>';
-const mapFeedbackControl=L.control({position:'topleft'});
-mapFeedbackControl.onAdd=function(){
-  const el=L.DomUtil.create('div','leaflet-control map-fb');
-  el.innerHTML='<button type="button" class="fb-pill" onclick="feedbackOpen()">'+FEEDBACK_ICON+'Feedback</button>';
-  L.DomEvent.disableClickPropagation(el);
-  return el;
-};
-mapFeedbackControl.addTo(map);
+/* GOLF-264: phone Feedback moved into the sheet's ⋯ menu (js/mobile-sheet.js); desktop keeps the masthead pill. */
 /* GOLF-191 (AC 1): "Show whole trip". Top-left is the only free corner —
    zoom is bottom-right, the basemap picker top-right, and the bottom-left
    is the tile attribution we're obliged to keep legible. Hidden whenever
    the trip has nothing located to frame, so it never offers a no-op. */
-const mapTripFitControl=L.control({position:'topleft'});
+const mapTripFitControl=L.control({position:'topright'}); // GOLF-264: one right-hand column with the basemap button
 mapTripFitControl.onAdd=function(){
   const el=L.DomUtil.create('div','leaflet-bar map-fit-trip');
   el.innerHTML=`<a href="#" role="button" title="Show whole trip — frames every stop in your trip" aria-label="Show whole trip"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V4.5A1.5 1.5 0 0 1 4.5 3H7M13 3h2.5A1.5 1.5 0 0 1 17 4.5V7M17 13v2.5a1.5 1.5 0 0 1-1.5 1.5H13M7 17H4.5A1.5 1.5 0 0 1 3 15.5V13"/><circle cx="10" cy="10" r="2.2"/></svg></a>`;
