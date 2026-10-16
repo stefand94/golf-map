@@ -1,10 +1,29 @@
-# UX review → ticket requirements (for BA)
+# GOLF-252 to 268: UX review requirements (DEC-040)
+
+_Moved here from `design/ux-review-requirements.md` by the BA, 2026-10-16. Assets stay in `design/svg-proposals/`.
+Each bundle's bullets are its acceptance criteria._
+
+| Bundle | Ticket | Dev | Bundle | Ticket | Dev |
+|---|---|---|---|---|---|
+| B0 | GOLF-252 | Barry | B8 | GOLF-260 | Barry |
+| B1 | GOLF-253 | Gavin | B9 | GOLF-261 | Gavin |
+| B2 | GOLF-254 | Geoff | B10 | GOLF-262 | Gavin |
+| B3 | GOLF-255 | Barry | B11 | GOLF-263 | Geoff |
+| B4 | GOLF-256 | Barry | B12 | GOLF-264 | Barry |
+| B5 | GOLF-257 | Geoff | B13 | GOLF-265 | Geoff |
+| B6 | GOLF-258 | Gavin | B14 | GOLF-266 | Barry (sweep; everyone rolling) |
+| B7 | GOLF-259 | Gavin | B3 desktop pane / B13 CTA | GOLF-267 / GOLF-268 | Barry / Geoff |
+
+**Lanes:** Gavin 253 → 258 → 259 → 261 → 262 (sole owner of `js/trip-ui.js` and `js/trip-model.js`).
+Geoff 254 → 257 → 263 → 265 → 268. Barry 252 → 264 → 260 → 255 → 256 → 267 (if quick) → 266.
+Barry starts 255 and 256 only once 253 and 254 are live.
+
 
 Source: UX review 2026-10-15 (https://claude.ai/artifact/SbE2cgzh38sBaoDFXnrsL6) + Stefan's decisions 2026-10-16.
 Rule from Stefan: everything in the review is in scope unless listed under "Stefan's exclusions/changes".
 Grouped into **single-pass bundles**: one dev, one pass, P1 + matching P2/P3 in the same files together.
 Ranked by bundle order. Sev: P1 broken/misleading · P2 friction · P3 polish. Effort S <1h · M ~1 day · L design job.
-"Decision?" = still needs Stefan. Everything else is decided.
+All decisions are now settled (see the end of this file).
 
 ## Stefan's exclusions / changes (already decided)
 - Shared-link "Copy this trip / Plan your own" CTA: do it, **low priority** (not top-12).
@@ -13,7 +32,7 @@ Ranked by bundle order. Sev: P1 broken/misleading · P2 friction · P3 polish. E
 - Filters "Area" chips (25, London-first): **leave as is**.
 - Country gate: **glass panel on desktop AND phone**, no "Just looking" link. Map behind defaults to a GB+Ireland view.
 - Shared-link previews: OK to put the **trip name only** in the server-visible part of the URL (query) for OG tags.
-- Growth ideas (yardage-book direction, map/list hover linking, desktop "trip strip", ready-made trips/GOLF-189): **BA to log for future**, not tickets now.
+- Growth ideas logged as IDEA GOLF-269 (yardage-book direction), 270 (map/list hover linking), 271 (desktop "trip strip"). Ready-made trips are not logged: cancelled as GOLF-189 (DEC-035).
 - High priority called out: emoji marker replacement, fit-to-trip glyph, search & add flow, desktop map attribution.
 
 ## Bundle order (recommended)
@@ -136,7 +155,7 @@ Assets: country outlines from `design/svg-proposals/countries/`.
 - P2 Link preview "Golf Tripper – {trip name}": trip name in query string (e.g. `?t=`), `functions/_middleware.js` injects OG/Twitter title/description (+ static OG image). Trip data stays in the hash. (Stefan OK'd.)
 - P3 Compress payload (deflate + base64url via CompressionStream), versioned so existing `#share=` links still decode; target ~400–600 chars (now 2,190). Must pass `test_state_persist.js`/share tests.
 - P3 Phone header stacks title above actions; numbered day dots (B2); attribution behind ⓘ; always open in List view; space after 📸; wordmark at top.
-- Low priority: sticky footer "Copy to my trips" / "Plan your own trip".
+- Low priority, split out as **GOLF-268**: sticky footer "Copy to my trips" / "Plan your own trip".
 - Files: `js/trip-share.js`, `functions/_middleware.js`.
 
 ### B14 — Visual system, site-wide (rolling; apply as each bundle touches a surface, plus one sweep) · P2 · L · no decision
@@ -162,7 +181,7 @@ Design calls made (devs follow these):
 1. "Want to play": **keep** as a life list (heart badge + own filter). (B3)
 2. Itinerary "Compact" one-line-per-day **toggle: add it**. (B6)
 3. Phone +/− zoom buttons: **drop them** (pinch only). (B12)
-4. Desktop course detail in the side pane: **parked**. Stefan is not convinced; needs a PoC before any build. B3 ships with the slimmed popup only. Suggested follow-up: a small PoC on a branch preview (dev, ~half a day) for Stefan to try, then decide.
+4. Desktop course detail in the side pane: **parked**. Stefan is not convinced; needs a PoC before any build. B3 ships with the slimmed popup only. Follow-up is **GOLF-267**: Barry builds a PoC on a preview branch only if it is ≤ half a day.
 
 ## Not tested (devs should verify)
 Real iPhone (safe areas, keyboard + sheet), native desktop DnD, hotel picker live (failed from localhost), widths ≥1440px.

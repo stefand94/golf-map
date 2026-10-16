@@ -972,3 +972,18 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
   - **The hotel starts the next morning:** last night's hotel is the first point of the day's chain, so the drive from the hotel to the first course or activity shows.
 - **Date of the review:** 2026-10-05.
 - **Date:** 2026-10-05 · **Affects:** GOLF-153, GOLF-99 (share), GOLF-224 (load whitelist), GOLF-235 (share counting unchanged).
+
+## DEC-040 — UX review: everything in scope, with these exclusions and calls
+
+- **Decision (owner, 2026-10-15/16):** the whole UX review (artifact SbE2cgzh38sBaoDFXnrsL6) is in scope as GOLF-252 to 268, except:
+  - Price display **stays "Up to £X"** (a fair upper estimate), made consistent everywhere. **No new price fetch.**
+  - Costs: **£0 rows stay**. **Fuel is removed** from the Costs tab and the total. Drive times stay on the itinerary.
+  - Filters' Area chips stay as they are.
+  - Country gate: a **glass panel on desktop and phone**, no "Just looking" link. The map behind defaults to GB + Ireland.
+  - Shared links: the **trip name only** may go in the server-visible query string, for link previews.
+  - Shared-link "Copy this trip" CTA: low priority (GOLF-268).
+- **Answers to the review's open questions (2026-10-16):** keep Want to play (heart badge + filter); add the Compact itinerary toggle; drop the +/− zoom buttons on phone; desktop course detail in the pane is parked until a PoC is shown (GOLF-267).
+- **BA calls:** "ready-made trips" is not re-logged (cancelled as GOLF-189, DEC-035). Growth ideas logged as IDEA GOLF-269 to 271.
+- **Context:** a full UI/UX deep dive found misleading prices, emoji markers, a fixed "HOME" pin, and friction in search/add and drag & drop. The requirements and lanes are in `GOLF-252-266-ux-review.md`.
+- **Affected:** GOLF-252 to 271.
+

@@ -6,7 +6,12 @@ verified._
 
 ## In flight
 
-Nothing. (GOLF-35B / GOLF-102 P2 shipped 2026-09-23 — see BACKLOG "Recently completed".)
+UX review (DEC-040; spec and lanes in `GOLF-252-266-ux-review.md`), started 2026-10-16:
+- **GOLF-252** legacy CSS cleanup (Barry)
+- **GOLF-253** price + money formatter (Gavin)
+- **GOLF-254** map markers + day colours (Geoff)
+
+Queued behind them: 255 to 266, then 268 (see BACKLOG).
 
 ## In review
 
