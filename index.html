@@ -203,11 +203,12 @@
   .tb-btn:hover{border-color:var(--accent);color:var(--accent);box-shadow:var(--shadow-md);transform:translateY(-1px)}
   .tb-btn:active{transform:translateY(0);box-shadow:var(--shadow-sm)}
   .tb-btn.is-primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:var(--shadow-md)}
+  .tb-btn.is-primary,.pop .btn.primary,.tb-btn.is-primary:hover{border-radius:10px}
   .tb-btn.is-primary:hover{background:var(--accent-dark);border-color:var(--accent-dark);color:#fff;box-shadow:var(--shadow-raised)}
   .tb-btn.is-danger{color:#9A3412;border-color:#E5C7B5;background:#fff;box-shadow:none}
   .tb-btn.is-danger:hover{background:#FBEEE7;color:#7C2D12;border-color:#D9A88E;box-shadow:none}
   .tb-btn.is-quiet{box-shadow:none;background:transparent}
-  .tb-btn.is-active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-deep)} /* GOLF-108: "Nearby courses" on */
+  .tb-btn.is-active{background:var(--accent-dark);border-color:var(--accent-dark);color:#fff} /* GOLF-108: "Nearby courses" on */
   /* Compact variant: still 36px tall, only used inside a row that is
      itself already a comfortable target (e.g. a card header's ⋯ menu). */
   .tb-btn.is-sm{min-height:var(--tap-sm);padding:0 var(--sp-3);font-size:var(--fs-caption)}
@@ -255,8 +256,8 @@
      row rather than stretching like .tb-drop normally does. */
   .tb-beta{flex:0 0 auto;position:relative}
   .tb-beta>summary{list-style:none;cursor:pointer;min-height:0;
-    font:700 var(--fs-caption) var(--font-sans);color:var(--accent-deep);background:var(--accent-soft);
-    padding:var(--sp-1) var(--sp-3);border-radius:var(--radius-pill);white-space:nowrap;
+    font:600 var(--fs-caption) var(--font-sans);color:var(--stone);background:none;
+    padding:var(--sp-1) var(--sp-2);border-radius:var(--radius-pill);white-space:nowrap;
     border:1px solid transparent;transition:border-color var(--dur) var(--ease)}
   .tb-beta>summary::-webkit-details-marker{display:none}
   .tb-beta>summary::after{content:none}
@@ -380,8 +381,8 @@
   details.tb-icon-drop{flex:0 0 auto}
   details.tb-icon-drop>summary{width:var(--tap-sm);min-height:var(--tap-sm);height:var(--tap-sm);padding:0;color:var(--ink-soft);position:relative}
   details.tb-icon-drop>summary::after{content:none}
-  details.tb-icon-drop.is-on>summary{color:var(--accent-deep);border-color:var(--accent);background:var(--accent-soft)}
-  details.tb-icon-drop.is-on>summary::before{content:'';position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px #fff}
+  details.tb-icon-drop.is-on>summary{color:#fff;border-color:var(--accent-dark);background:var(--accent-dark)}
+  details.tb-icon-drop.is-on>summary::before{content:none}
 
   /* Group size: one segmented control — [ − | 👤 2 golfers | + ] — instead
      of an emoji plus two floating circle buttons. */
@@ -1186,7 +1187,7 @@
     padding:var(--sp-1) var(--sp-3);border:1px solid var(--line);border-radius:var(--radius-pill);
     background:var(--paper);color:var(--ink);font:400 var(--fs-small) var(--font-sans);cursor:pointer}
   .cf-chip:hover{background:var(--accent-soft)}
-  .cf-chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .cf-chip[aria-pressed="true"]{background:var(--accent-dark);border-color:var(--accent-dark);color:#fff}
   .cf-slider{position:relative;height:28px}
   .cf-slider input[type=range]{position:absolute;left:0;right:0;width:100%;margin:0;background:none;pointer-events:none}
   .cf-slider input[type=range]::-webkit-slider-thumb{pointer-events:auto}
@@ -1389,7 +1390,8 @@
      single compact bar so filters/list/pane content start almost
      immediately. */
   .mast{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:var(--shadow-sm);position:relative;z-index:1}
-  .wordmark{font-family:var(--font-display);font-weight:700;font-size:16.5px;letter-spacing:-.01em;color:var(--ink)}
+  .wordmark{font-family:var(--font-display);font-weight:700;font-size:17px;letter-spacing:-.01em;color:var(--ink);display:inline-flex;align-items:center;gap:8px}
+  .wordmark svg{width:24px;height:24px;flex:0 0 auto}
 
   /* GOLF-81: the three country pills gating Explore's course list. Same
      pill shape/weight as .chip but a distinct class — .chip's handler is
@@ -1408,7 +1410,7 @@
     overflow-wrap:break-word;hyphens:auto;
     transition:background .12s,border-color .12s,color .12s,box-shadow .12s}
   .nation-pill:hover{border-color:var(--accent);color:var(--ink)}
-  .nation-pill[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:var(--shadow-sm)}
+  .nation-pill[aria-pressed="true"]{background:var(--accent-dark);border-color:var(--accent-dark);color:#fff;box-shadow:var(--shadow-sm)}
   /* Inline text links, not buttons — but padded to a comfortable touch area
      (the negative margin keeps them sitting on the text baseline). */
   .linkbtn{background:none;border:none;padding:var(--sp-2) 2px;margin:calc(var(--sp-2) * -1) 0;
@@ -1880,7 +1882,7 @@
 <div class="app">
   <aside class="panel">
     <header class="mast">
-      <span class="wordmark">Golf Tripper</span>
+      <span class="wordmark"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-dark)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M10 17V6l6 2.5-6 2.5"/></svg>Golf Tripper</span>
       <!-- GOLF-232 follow-up: always-visible Feedback (desktop; the phone
            gets a pill on the map, js/map.js). Beta mounts after it. -->
       <button type="button" class="fb-pill mast-fb" onclick="feedbackOpen()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Feedback</button>
