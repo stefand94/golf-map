@@ -1771,7 +1771,7 @@ function tbWishlistHTML(){
   if(!unscheduled.length)return hiddenNote||`<p class="hint">Nothing on your shortlist yet — add any course you fancy playing.</p>`;
   const rows=unscheduled.map(i=>{
     const fee=feeUpper(i);
-    return`<div class="tb-day-course tb-item-golf" style="cursor:default">
+    return`<div class="tb-day-course tb-item-golf" data-ci="${i}" style="cursor:default">
       <span class="tb-item-icon">⛳</span>
       <div class="tb-item-main"><a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         <div class="cart-region">${esc(C[i].r)}</div></div>
@@ -1931,8 +1931,34 @@ function tbMenuFlipBind(){
     if(det&&det.tagName==='DETAILS'&&det.classList.contains('tb-drop')||det.classList&&det.classList.contains('tb-rowmenu'))tbMenuPlace(det);
   },true);
 }
+/* GOLF-270: map ↔ list hover linking, desktop only. Rows carry data-ci (the
+   course index); hovering one rings its pin, hovering a pin marks its row
+   (map.js dispatches 'golf:coursehover'). Delegated once on document, so a
+   re-render loses nothing; tbHoverClear() drops both sides on a re-render. */
+let tbHoverBound=false;
+const tbCanHover=()=>!!(window.matchMedia&&window.matchMedia('(hover:hover)').matches);
+function tbHoverClear(){
+  document.querySelectorAll('.tb-hl').forEach(e=>e.classList.remove('tb-hl'));
+  if(typeof mapClearHighlight==='function')mapClearHighlight();
+}
+function tbHoverBind(){
+  if(tbHoverBound)return;tbHoverBound=true;
+  const rowOf=t=>t&&t.closest?t.closest('#tb-pane [data-ci]'):null;
+  const link=(e,on)=>{
+    if(!tbCanHover())return;
+    const r=rowOf(e.target);if(!r)return;
+    if(rowOf(e.relatedTarget)===r)return; // moving between a row's own children
+    if(typeof mapHighlightCourse==='function')mapHighlightCourse(+r.dataset.ci,on);
+  };
+  document.addEventListener('mouseover',e=>link(e,true));
+  document.addEventListener('mouseout',e=>link(e,false));
+  document.addEventListener('golf:coursehover',e=>{
+    const {i,on}=e.detail||{};
+    document.querySelectorAll(`#tb-pane [data-ci="${i}"]`).forEach(r=>r.classList.toggle('tb-hl',!!on));
+  });
+}
 function tbBindDropdownDismiss(){
-  tbMenuFlipBind();
+  tbMenuFlipBind();tbHoverBind();
   if(tbDismissBound)return;
   tbDismissBound=true;
   document.addEventListener('mousedown',e=>{
@@ -2117,6 +2143,7 @@ function tbGoTab(k){
   const pane=document.getElementById('tb-pane');if(pane)pane.scrollTop=0;
 }
 function renderTripBuilder(){
+  tbHoverClear(); // GOLF-270: a re-render must not leave a ringed pin or a marked row behind
   if(typeof mobBeforeRender==='function')mobBeforeRender(); // GOLF-185a
   const pane=document.getElementById('tb-pane');
   /* GOLF-193: every render re-asserts the app-wide mode on <body>, so a

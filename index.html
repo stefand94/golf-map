@@ -421,6 +421,8 @@
   .tb-menu-item:hover{background:var(--accent-soft);color:var(--accent-deep)}
   .tb-menu-item.is-danger{color:#9A3412}
   .tb-menu-item.is-danger:hover{background:#FBEEE7}
+  /* GOLF-270: a row whose pin the mouse is on (mouse only). */
+  @media (hover:hover){.tb-hl{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}}
   .tb-menu-sep{height:1px;background:var(--line);margin:var(--sp-1) 0}
 
   /* GOLF-259: menus — focus ring in the accent, a long list scrolls inside

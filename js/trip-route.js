@@ -498,7 +498,7 @@ function tbResultsHTML(items){
     const est=anchorPt?tbNearbyDriveEstimate(anchorPt,i):null;
     const far=est&&est.minutes>=TB_LONG_DRIVE_MIN;
     const dist=est?(est.miles<0.1?'Same club · ':est.miles<0.5?'Next door · ':`${est.miles.toFixed(1)} mi · ~${fmtDriveMinutes(est.minutes)} drive · `):'';
-    return`<div class="tb-row">
+    return`<div class="tb-row" data-ci="${i}">
       <div class="tb-sr-main"><a href="#" class="tb-sr-name" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         ${border?' <span class="wt" title="Just over the border — nearest to a course in your chosen region, not itself in it">border</span>':''}
         ${far?` <span class="wt far" title="Roughly ${esc(fmtDriveMinutes(est.minutes))} from ${esc(anchorPt.label||'your last stop')} — estimated from the straight-line distance, so allow more on small roads or with a ferry">long drive</span>`:''}

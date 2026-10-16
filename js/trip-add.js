@@ -444,7 +444,7 @@ function tbSearchCourseRowHTML(e,day){
   const added=TRIP.has(i),nm=esc(V(i,'n'));
   /* Name, then region · access; the price sits on the right with the action.
      The action is an outlined circle (44px hit), or "✓ Added" + Undo. */
-  return`<div class="tb-row tb-sr-row${added?' is-added':''}" onclick="if(!event.target.closest('button'))tbSearchGoToCourse(${i})" title="Show ${nm} on the map">
+  return`<div class="tb-row tb-sr-row${added?' is-added':''}" data-ci="${i}" onclick="if(!event.target.closest('button'))tbSearchGoToCourse(${i})" title="Show ${nm} on the map">
     <div class="tb-sr-main"><a href="#" class="tb-sr-name" onclick="event.preventDefault();event.stopPropagation();tbSearchGoToCourse(${i})">${nm}</a>
       <div class="cart-region">${esc(C[i].r)} · ${ACCESS[V(i,'a')].label.toLowerCase()}${why}</div></div>
     <span class="tb-sr-fee">${tbSearchFeeHTML(i)}</span>
@@ -554,7 +554,7 @@ function tripDayCourseRowHTML(i,dayId){
     `<div class="tb-menu-label">Move to</div>${tbDayMenuItemsHTML(i,dayId)}
      <div class="tb-menu-sep"></div>
      <button type="button" class="tb-menu-item is-danger" onclick="tripRemoveCourse(${i});">🗑 Remove from trip</button>`);
-  return`<div class="tb-day-course tb-item-golf" ${tbRowDragAttrs(`tbDragSetCourse(${i},event,this);`,`tbDropOn(${dayId==null?'null':dayId},${i});`)}>
+  return`<div class="tb-day-course tb-item-golf" data-ci="${i}" ${tbRowDragAttrs(`tbDragSetCourse(${i},event,this);`,`tbDropOn(${dayId==null?'null':dayId},${i});`)}>
     <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
     <span class="tb-item-icon">⛳</span>
     <div class="tb-item-main">
@@ -643,7 +643,7 @@ function tripDayItemRowHTML(d,it){
       // so routing a flight there would have been a dead button.
       :`<button type="button" class="tb-menu-item" onclick="${it.type==='flight'?`tlEditFlight(${d.id},'${it.id}')`:`tbEditStop(${d.id},'${it.id}')`}">✎ Edit</button>${costItem}<div class="tb-menu-sep"></div>`)+
     `<button type="button" class="tb-menu-item is-danger" onclick="tripRemoveItem(${d.id},'${it.id}');">🗑 Remove</button>`);
-  return`<div class="tb-day-course tb-item-${it.type}" ${tbRowDragAttrs(`tbDragSetItem(${d.id},'${it.id}',event,this);`,`tbDropInDay(${d.id},'${it.id}');`)}>
+  return`<div class="tb-day-course tb-item-${it.type}"${it.type==='golf'?` data-ci="${it.i}"`:''} ${tbRowDragAttrs(`tbDragSetItem(${d.id},'${it.id}',event,this);`,`tbDropInDay(${d.id},'${it.id}');`)}>
     <span class="tb-drag-handle" title="Drag to reorder">⠿</span>
     <span class="tb-item-icon">${icon}</span>
     <div class="tb-item-main">${main}</div>
