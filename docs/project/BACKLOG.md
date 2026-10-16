@@ -12,10 +12,10 @@ _Minor defects / visual regressions live in `BUGS.md` (GOLF-123+)._
 | GOLF-259 | UX: drag & drop (Move-to menu, collapse on drag, touch hold) | P1 | READY (Gavin, after 258) | GOLF-258 | B7. See `GOLF-252-266-ux-review.md` |
 | GOLF-261 | UX: Costs (banner contrast, remove fuel, honest footnote) | P1 | READY (Gavin) | GOLF-253 | B9. Fuel removed per DEC-040. £0 rows stay. See `GOLF-252-266-ux-review.md` |
 | GOLF-252 | UX: legacy Explore-era CSS/markup cleanup | P2 | **IN PROGRESS 2026-10-16** (Barry) | — | B0. Do first; de-risks the rest. See `GOLF-252-266-ux-review.md` |
-| GOLF-253 | UX: one price + money formatter everywhere ("Up to £X", £3,690) | P2 | **IN PROGRESS 2026-10-16** (Gavin) | — | B1. Prereq for 255, 256, 258, 261. No data changes. See `GOLF-252-266-ux-review.md` |
+| GOLF-253 | UX: one price + money formatter everywhere ("Up to £X", £3,690) | P2 | **DONE 2026-10-16, live** (Gavin, cc12cb7 + 88916fc; X-Build f48386f3ee; BA-checked live: 879 courses labelled, 0 "undefined"; Kingsbarns "Up to £486" in popup; fmtMoney(3690) = £3,690) | — | B1. Prereq for 255, 256, 258, 261. No data changes. See `GOLF-252-266-ux-review.md` |
 | GOLF-255 | UX: course popup + phone course card | P2 | READY (Barry, after 253 and 254 are live) | GOLF-253, 254 | B3. Want to play kept (heart). Desktop pane detail is not included (GOLF-267). See `GOLF-252-266-ux-review.md` |
 | GOLF-257 | UX: glass country panel, first-load fit, desktop attribution | P2 | READY (Geoff, after 254) | GOLF-254 | B5. Attribution is HIGH. Desktop and phone, no "Just looking". See `GOLF-252-266-ux-review.md` |
-| GOLF-258 | UX: itinerary layout, chronological order incl. hotel, Compact toggle | P2 | READY (Gavin, after 253) | GOLF-253 | B6. Compact toggle: yes (owner). See `GOLF-252-266-ux-review.md` |
+| GOLF-258 | UX: itinerary layout, chronological order incl. hotel, Compact toggle | P2 | **IN PROGRESS 2026-10-16** (Gavin) | GOLF-253 | B6. Compact toggle: yes (owner). See `GOLF-252-266-ux-review.md` |
 | GOLF-260 | UX: calendar fixes (hint margin, block content, phone day switcher) | P2 | READY (Barry) | — | B8. Investigate the arrive-by buffer first. See `GOLF-252-266-ux-review.md` |
 | GOLF-263 | UX: filters drawer, hotels/POI layer pills, labels | P2 | READY (Geoff, after 254) | GOLF-254 | B11. Area chips unchanged. See `GOLF-252-266-ux-review.md` |
 | GOLF-264 | UX: phone chrome + tap targets (zoom buttons dropped) | P2 | READY (Barry, after 252) | GOLF-252 | B12. Phone only: +/− dropped; desktop keeps them. See `GOLF-252-266-ux-review.md` |
