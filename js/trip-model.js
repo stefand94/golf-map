@@ -62,7 +62,7 @@ const TRIP_DAY_KINDS={golf:'Golf day',start:'Start point',free:'Free day',end:'E
    GOLF-51's 'start'/'end' DAY kinds are untouched and keep working. This
    is additive: a trip with neither field is every trip saved so far. */
 const TRIP_ENDPOINT_KINDS={airport:'Airport',station:'Station',place:'Place'};
-const TRIP_ENDPOINT_ICONS={airport:'✈',station:'🚆',place:'📍'};
+const TRIP_ENDPOINT_ICONS={airport:'plane',station:'train',place:'pin'}; // js/icons.js names
 let tripStart=null,tripEnd=null;
 /* The one validator. Used by the setter, by the per-trip snapshot restore,
    by js/state.js's load whitelist and by the share decoder, so an endpoint
@@ -129,7 +129,7 @@ function tripEndpointName(ep){
   if(!ep)return'';
   return ep.code?`${ep.label} (${ep.code})`:ep.label;
 }
-function tripEndpointIcon(ep){return(ep&&TRIP_ENDPOINT_ICONS[ep.kind])||TRIP_ENDPOINT_ICONS.place;}
+function tripEndpointIcon(ep){return ICO((ep&&TRIP_ENDPOINT_ICONS[ep.kind])||TRIP_ENDPOINT_ICONS.place);}
 function tripEndpointSet(which,ep){
   const v=tripEndpointNorm(ep);
   if(!v)return false;
@@ -505,7 +505,7 @@ function tbAddStopFormHTML(dayId,itemId){
       <button class="tb-btn is-primary" onclick="tbAddStopCommit()">${editing?'Save':'Add'}</button>
       <button class="tb-btn is-quiet" onclick="tbAddStopCancel()">Cancel</button>
     </div>
-    ${tbAddStop.lat!=null?`<p class="hint" style="margin:var(--sp-2) 0 0">📍 Location set</p>`:''}
+    ${tbAddStop.lat!=null?`<p class="hint" style="margin:var(--sp-2) 0 0">${ICO('pin')} Location set</p>`:''}
   </div>`;
 }
 function tripDayRemove(dayId){

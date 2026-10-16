@@ -111,7 +111,7 @@ function tbAttachSearch(id,opts){
       return;
     }
     results.innerHTML=list.length
-      ?list.map(r=>`<div class="tb-place-row" role="option" data-lat="${r.lat}" data-lng="${r.lng}" data-label="${esc(r.label)}">📍 ${esc(r.label)}</div>`).join('')
+      ?list.map(r=>`<div class="tb-place-row" role="option" data-lat="${r.lat}" data-lng="${r.lng}" data-label="${esc(r.label)}">${ICO('pin')} ${esc(r.label)}</div>`).join('')
       :`<div class="tb-place-empty">No matches</div>`;
     input.setAttribute('aria-expanded',String(!!list.length));
   };
@@ -294,7 +294,7 @@ function tbDriveCapHTML(l){
     timeHTML=l.mins!=null?esc(fmtDriveMinutes(l.mins)):'—';
   }
   const tag=l.hasFerry?` <span class="wt tb-ferry-tag" title="This route has a ferry">⛴ This route has a ferry</span>`:'';
-  return`<div class="tb-drive-cap${l.hasFerry?' has-ferry':''}" title="${esc(l.label)}"><span class="tb-drive-ico" aria-hidden="true">🚗</span>Drive ${timeHTML}${tag}</div>`;
+  return`<div class="tb-drive-cap${l.hasFerry?' has-ferry':''}" title="${esc(l.label)}"><span class="tb-drive-ico" aria-hidden="true">${ICO('car')}</span>Drive ${timeHTML}${tag}</div>`;
 }
 /* Currency correctness (GOLF-169): every `cur` passed around the pane is
    now a currency CODE ('GBP'/'EUR'/'ZAR'/'AUD'/'NZD'...), sourced from
@@ -516,7 +516,7 @@ function itinLegRowHTML(l){
      flight as a 📍. Notes never reach this row (DEC-039: detailed mode
      only); tripDayLegs() drops them. */
   const icon=(typeof tlItemIcon==='function')?tlItemIcon(l.type)
-    :(l.type==='golf'?'⛳':l.type==='hotel'?'🏨':l.type==='flight'?'✈':'📍');
+    :ICO(l.type==='golf'?'golf':l.type==='hotel'?'hotel':l.type==='flight'?'plane':'pin');
   /* Merge (GOLF-71 + GOLF-74): GOLF-71's price column is a single nowrap
      figure and stays exactly that — the sharing arithmetic would have burst
      it. Instead a per-person stay explains itself on GOLF-71's own existing
@@ -597,12 +597,12 @@ function tbEndpointResultsHTML(q,places){
   const rows=stat.map(r=>`<div class="tb-place-row" role="option"
     data-label="${esc(r.label)}" data-lat="${r.lat}" data-lng="${r.lng}"
     data-kind="${r.kind}"${r.code?` data-code="${esc(r.code)}"`:''}
-    >${r.kind==='airport'?'✈':'🚆'} ${esc(r.label)}${r.code?` <span class="tb-ep-code">${esc(r.code)}</span>`:''}${
+    >${ICO(r.kind==='airport'?'plane':'train')} ${esc(r.label)}${r.code?` <span class="tb-ep-code">${esc(r.code)}</span>`:''}${
       r.meta?`<span class="tb-ep-meta">${esc(r.meta)}</span>`:''}</div>`).join('');
   let placeRows='';
   if(Array.isArray(places))placeRows=places.slice(0,TB_EP_MAX_ROWS).map(p=>`<div class="tb-place-row" role="option"
     data-label="${esc(p.label)}" data-lat="${p.lat}" data-lng="${p.lng}" data-kind="place"
-    >📍 ${esc(p.label)}</div>`).join('');
+    >${ICO('pin')} ${esc(p.label)}</div>`).join('');
   else if(places===undefined&&!stat.length)
     placeRows=`<div class="tb-place-empty">Place search is temporarily unavailable — airports and stations still work.</div>`;
   /* Always offered, last: an endpoint is allowed to be a name with no
@@ -1116,7 +1116,7 @@ function tbDayCostsHTML(d){
     const typed=(typeof c.amount==='number'&&isFinite(c.amount))?c.amount:0;
     const amount=c.per==='person'?typed*gs:typed;
     return`<div class="tb-daycost" data-cc="${id}">
-      <span class="tb-daycost-ico" aria-hidden="true">💷</span>
+      <span class="tb-daycost-ico" aria-hidden="true">${ICO('pound')}</span>
       <input class="tb-field tb-daycost-label" id="tb-cc-label-${id}" type="text" maxlength="80"
         aria-label="What is this cost?" placeholder="Caddie" value="${esc(c.label||'')}"
         oninput="tripCustomUpdate('${id}',{label:this.value})">
@@ -1151,7 +1151,7 @@ function tbDayCostsReadHTML(d){
     const amount=c.per==='person'?typed*gs:typed;
     const tag=c.per==='person'&&gs>1?`× ${gs}`:null;
     return`<div class="tb-daycost is-read">
-      <span class="tb-daycost-ico" aria-hidden="true">💷</span>
+      <span class="tb-daycost-ico" aria-hidden="true">${ICO('pound')}</span>
       <span class="tb-daycost-read">${esc((c.label||'').trim()||'Other cost')}${
         tag?` <span class="wt">${esc(tag)}</span>`:''}</span>
       <span class="tb-item-price">${costCustomAmtHTML({amount,cur},gs)}</span>
@@ -1388,11 +1388,11 @@ function costTripGroupHTML(b,readOnly){
   const carRow=car?`<div class="tb-cost-aff">
     <a class="tb-btn is-sm is-quiet tb-aff" href="${esc(car)}"
       target="_blank" rel="sponsored noopener"
-      title="Compare hire cars on EconomyBookings">🚗 Hire a car ↗</a>
+      title="Compare hire cars on EconomyBookings">${ICO('car')} Hire a car ↗</a>
     <p class="tb-aff-note">${esc(AFF_DISCLOSURE)}</p>
   </div>`:'';
   return costCustomGroupHTML(b,readOnly,{
-    key:'trip',icon:'💷',label:'Trip costs',
+    key:'trip',icon:ICO('pound'),label:'Trip costs',
     lines:b.tripLines||[],total:b.tripCostsTotal,dayId:null,
     foot:carRow,dayPick:costDayPickFn(),
   });
@@ -1489,11 +1489,11 @@ function tbCostsBodyHTML(b,fuelRowLabel,readOnly){
   return`<div class="cost-body"${multi?` data-mode="${mode}" data-gs="${gs}"`:''}>${control}
     <div class="cost-banner"><div class="cost-banner-label">Trip total${multi?` · ${gs} travellers`:''}${tripHasEstimate()?` · <span class="cost-est-note" title="${EST_TITLE}">~ includes an estimate</span>`:''}</div><div class="cost-banner-amount${mixed?' is-mixed':''}">${tbCostBannerAmountHTML(b)}</div></div>
     <div class="cost-card cost-groups">
-      ${costGroupHTML('⛳','Golf',b.golfTotal,golf,cur)}
-      ${costGroupHTML('🏨','Stays',b.stayTotal,stay,cur)}
-      ${costGroupHTML('📍','Stops',b.poiTotal,stop,cur)}
+      ${costGroupHTML(ICO('golf'),'Golf',b.golfTotal,golf,cur)}
+      ${costGroupHTML(ICO('hotel'),'Stays',b.stayTotal,stay,cur)}
+      ${costGroupHTML(ICO('pin'),'Stops',b.poiTotal,stop,cur)}
       ${/* GOLF-153: only when the trip has flights — see tripCostBreakdown(). */''}
-      ${travel.length?costGroupHTML('✈','Travel',b.travelTotal,travel,cur):''}
+      ${travel.length?costGroupHTML(ICO('plane'),'Travel',b.travelTotal,travel,cur):''}
       ${/* GOLF-247 (owner review): the days that have costs of their own,
            then the whole-trip group. Last, because "Trip costs" is where
            fuel and car hire live and neither belongs to a day. */''}
@@ -1659,21 +1659,21 @@ function tbDayCardHTML(d,idx){
             ${/* GOLF-186: a golf day asks this in its own stay slot above, so
                   offering it again here would be two doors to one room. Other
                   day kinds have no slot and still need the entry point. */''}
-            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbOpenHotelPicker(${d.id})">🏨 A place to stay</button>
-            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbAddCourseToDay(${d.id})">⛳ A course</button>
-            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbPromptPoi(${d.id})">📍 A stop (sight, lunch…)</button>
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbOpenHotelPicker(${d.id})">${ICO('hotel')} A place to stay</button>
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbAddCourseToDay(${d.id})">${ICO('golf')} A course</button>
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbPromptPoi(${d.id})">${ICO('pin')} A stop (sight, lunch…)</button>
             ${/* GOLF-153: a flight is trip data, not view data — it is
                  offered in both views, or you would have to switch to
                  Detailed to record the one that gets you there. */''}
-            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptFlight(${d.id})">✈ A flight</button>
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptFlight(${d.id})">${ICO('plane')} A flight</button>
             ${/* The same three the calendar's right-click menu offers, for
                  the same reason the flight is here: they are trip data,
                  not view data. The calendar adds the one thing this menu
                  cannot — a TIME to put them at. */''}
-            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptBlock(${d.id},'train')">🚆 A train</button>
-            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptBlock(${d.id},'drivefrom')">🚗 Drive from another place</button>
-            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptBlock(${d.id},'activity')">📌 An activity</button>
-            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tripCustomAdd(${d.id})"${(Array.isArray(tripCustom)?tripCustom:[]).length>=TRIP_CUSTOM_MAX?' disabled title="That is as many costs as one trip can hold."':''}>💷 A cost</button>
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptBlock(${d.id},'train')">${ICO('train')} A train</button>
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptBlock(${d.id},'drivefrom')">${ICO('car')} Drive from another place</button>
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptBlock(${d.id},'activity')">${ICO('activity')} An activity</button>
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tripCustomAdd(${d.id})"${(Array.isArray(tripCustom)?tripCustom:[]).length>=TRIP_CUSTOM_MAX?' disabled title="That is as many costs as one trip can hold."':''}>${ICO('pound')} A cost</button>
           </div>
         </details>
       </div>
@@ -1772,7 +1772,7 @@ function tbWishlistHTML(){
   const rows=unscheduled.map(i=>{
     const fee=feeUpper(i);
     return`<div class="tb-day-course tb-item-golf" data-ci="${i}" style="cursor:default">
-      <span class="tb-item-icon">⛳</span>
+      <span class="tb-item-icon">${ICO('golf')}</span>
       <div class="tb-item-main"><a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         <div class="cart-region">${esc(C[i].r)}</div></div>
       <span class="tb-item-price">${fee==null?'':'<span class="tb-upto">Up to </span>'}${tbDualPriceHTML(fee==null?null:fee*groupSizeFor(),courseCurrency(i))}</span>
