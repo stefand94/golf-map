@@ -7,9 +7,9 @@ verified._
 ## In flight
 
 UX review (DEC-040; spec and lanes in `GOLF-252-266-ux-review.md`), started 2026-10-16:
-- **GOLF-264** phone chrome + tap targets (Barry). (252 done.)
-- **GOLF-258** itinerary layout + Compact toggle (Gavin). (253 done.)
-- **GOLF-263** filters, hotels, POIs (Geoff). (257 done; 254 in REVIEW with two gaps.)
+- **GOLF-260** calendar (Barry). Done: 252, 264.
+- **GOLF-259** drag & drop (Gavin). Done: 253. In REVIEW: 258.
+- **GOLF-265** shared link (Geoff). Done: 257. In REVIEW: 254 (two gaps), 263 (labels go to Gavin).
 
 Queued behind them: 255 to 266, then 268 (see BACKLOG).
 
