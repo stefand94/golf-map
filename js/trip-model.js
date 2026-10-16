@@ -276,7 +276,7 @@ function tripDayFindItem(dayId,itemId){
    tripDayAdd()'s own convention) where it isn't. Every night's item
    shares one stayId so tripDayUpdateStop()/tripDayRemoveItem() can treat
    the whole booking as one unit. */
-function tripDayAddStop(dayId,type,name,price,lat,lng,nights){
+function tripDayAddStop(dayId,type,name,price,lat,lng,nights,beforeId){
   const d=tripDays.find(d=>d.id===dayId);if(!d)return null;
   if(!name||!String(name).trim())return null;
   if(!Array.isArray(d.items))d.items=[];
@@ -288,7 +288,11 @@ function tripDayAddStop(dayId,type,name,price,lat,lng,nights){
   const la=(typeof lat==='number'&&isFinite(lat))?lat:null;
   const lo=(typeof lng==='number'&&isFinite(lng))?lng:null;
   const it={id:tripItemNewId(),type:isHotel?'hotel':'poi',name:nm,price:pr,lat:la,lng:lo,nights:n,stayId};
-  d.items.push(it);
+  /* GOLF-258: the day reads in items[] order, so WHERE a stop goes is
+     part of adding it. `beforeId` seats it ahead of that row; without it
+     the stop goes last, as before. */
+  const at=beforeId?d.items.findIndex(x=>x.id===beforeId):-1;
+  if(at>=0)d.items.splice(at,0,it);else d.items.push(it);
   if(n>1){
     let idx=tripDays.indexOf(d);
     for(let k=1;k<n;k++){
@@ -441,7 +445,8 @@ function tbAddStopCommit(){
     tripDayUpdateStop(s.dayId,s.itemId,{name,price,lat,lng});
     if(s.type==='hotel')tripDayResizeStay(s.dayId,s.itemId,nights);
   }else{
-    tripDayAddStop(s.dayId,s.type,name,price,lat,lng,nights);
+    const posEl=document.getElementById('tb-addstop-pos');
+    tripDayAddStop(s.dayId,s.type,name,price,lat,lng,nights,posEl&&posEl.value?posEl.value:null);
   }
   const fitDay=s.dayId;
   tbAddStop=null;
@@ -486,6 +491,15 @@ function tbAddStopFormHTML(dayId,itemId){
         title="${editing?'Change how many nights this stay spans — extends or shrinks the following day(s) to match, creating new days if needed.':'Book this hotel for more than one night — it will automatically be added to the following day(s) too, creating new days if needed.'}"
         placeholder="Nights" value="${esc(tbAddStop.nights||'1')}" style="max-width:88px">`:''}
     </div>
+    ${(()=>{
+      /* GOLF-258: where in the day it goes. Only offered when there is a
+         row to go before; the default is the end of the day. */
+      const rows=editing?[]:tripDayItems(dayObj).filter(it=>it.type!=='drivefrom');
+      if(!rows.length)return'';
+      return`<label class="tb-addstop-pos"><span>Position</span><select class="tb-field" id="tb-addstop-pos">
+        <option value="">At the end of the day</option>${
+        rows.map(it=>`<option value="${esc(it.id)}"${tbAddStop.pos===it.id?' selected':''}>Before ${esc(tripItemName(it))}</option>`).join('')}</select></label>`;
+    })()}
     ${isHotel&&gs>1&&Number.isFinite(priceNum)?`<p class="hint" style="margin:var(--sp-2) 0 0">${cur}${Math.round(priceNum).toLocaleString('en-GB')} × ${gs} people = <b>${cur}${Math.round(priceNum*gs).toLocaleString('en-GB')}</b> per night.</p>`:''}
     <div class="tb-addstop-row" style="margin-top:var(--sp-2)">
       <button class="tb-btn is-primary" onclick="tbAddStopCommit()">${editing?'Save':'Add'}</button>
@@ -1177,6 +1191,12 @@ function tripDuplicate(id){
   if(tripBuilderOn){renderTripBuilder();tbDrawMap();}
   render();
 }
+/* GOLF-258: the one "Delete trip…" entry in the trip menu — deletes the
+   trip when there are several, empties it when it is the only one. */
+function tbDeleteTrip(){
+  if(Object.keys(trips).length>1)tripDelete(activeTripId);
+  else if(TRIP.size)tripClearAll();
+}
 function tripDelete(id){
   if(!trips[id])return;
   if(Object.keys(trips).length<=1){alert("You need at least one trip — clear it instead of deleting it.");return;}
@@ -1239,7 +1259,12 @@ function tbGroupStepperHTML(idp){
    the sheet's peek line (GOLF-185a, one £ total), so it gets no pill. */
 function tbItinGroupHTML(){
   const pill=tbPhoneLayout()?'':`<span class="tb-pill">${tripDays.length?`${tripDays.length} day${tripDays.length===1?'':'s'} · `:''}<span class="js-trip-total">${tbTripTotalHTML()}</span></span>`;
-  return`<div class="tb-itin-group"><span class="tb-itin-group-label">Group size</span>${tbGroupStepperHTML('tb-groupsize-itin')}${pill}</div>`;
+  /* GOLF-258: group size, List/Calendar, Compact and "Add start" in ONE
+     row (it used to be three stacked ones above Day 1), and it sticks to
+     the top of the pane as the days scroll under it. */
+  const startBtn=tripEndpointGet('start')?'':`<button type="button" class="tb-btn is-sm is-quiet" onclick="tbEndpointPickerOpen('start')">＋ Start</button>`;
+  const compact=tbDetailed?'':`<button type="button" class="tb-btn is-sm${tbCompact?' is-active':''}" aria-pressed="${tbCompact}" title="One line per day" onclick="tbSetCompact(${!tbCompact})">Compact</button>`;
+  return`<div class="tb-itin-group"><span class="tb-itin-group-label">Group</span>${tbGroupStepperHTML('tb-groupsize-itin')}${tlViewSwitchHTML()}${compact}${startBtn}${pill}</div>`;
 }
 function tbTripMenuHTML(isBuild){
   const list=tripListAll();
@@ -1270,7 +1295,7 @@ function tbTripMenuHTML(isBuild){
       <button type="button" class="tb-menu-item" onclick="tripRename(activeTripId)"><span class="tb-menu-ico" aria-hidden="true">✎</span>Rename</button>
       <button type="button" class="tb-menu-item" onclick="tripCreateNew()"><span class="tb-menu-ico" aria-hidden="true">＋</span>New trip</button>
       <button type="button" class="tb-menu-item" onclick="tripDuplicate(activeTripId)"><span class="tb-menu-ico" aria-hidden="true">⧉</span>Duplicate</button>
-      ${list.length>1?`<button type="button" class="tb-menu-item is-danger" onclick="tripDelete(activeTripId)"><span class="tb-menu-ico" aria-hidden="true">🗑</span>Delete this trip</button>`:''}
+      <button type="button" class="tb-menu-item is-danger" onclick="tbDeleteTrip()"${TRIP.size||tripDays.length||list.length>1?'':' disabled'}><span class="tb-menu-ico" aria-hidden="true">🗑</span>Delete trip…</button>
       <div class="tb-menu-sep"></div>
       <button type="button" class="tb-menu-item is-danger" onclick="tripStartFresh()" title="Deletes every trip, not just this one, and leaves you with one empty trip"><span class="tb-menu-ico" aria-hidden="true">⟲</span>Start fresh — delete all trips</button>
     </div>

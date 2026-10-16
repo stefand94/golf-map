@@ -533,13 +533,14 @@ function tlTimeFieldHTML(d,it,label){
    Shown on the Itinerary tab in both the live app and the read-only
    shared view: the recipient of a link gets the same two views the
    sender had. */
-function tlViewToggleHTML(){
+function tlViewToggleHTML(){return tlViewSwitchHTML()+(tbDetailed?tlLegendHTML():'');}
+function tlViewSwitchHTML(){
   const btn=(k,label,on,title)=>`<button type="button" class="tb-btn is-sm${on?' is-active':''}"
     aria-pressed="${on}" title="${title}" onclick="tlSetDetailed(${k})">${on?'✓ ':''}${label}</button>`;
   return`<div class="tl-viewswitch" role="group" aria-label="Itinerary view">
     ${btn('false','List',!tbDetailed,'The day as a list of stops.')}
     ${btn('true','Calendar',!!tbDetailed,'The day on an hour grid you can drag things around on.')}
-  </div>${tbDetailed?tlLegendHTML():''}`;
+  </div>`;
 }
 /* The key to the grid's colours (owner review 2026-10-05). Only under
    the calendar, because it explains nothing about the list. Order is the

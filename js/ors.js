@@ -279,6 +279,18 @@ function fmtDriveMinutes(mins){
 function tripDaySuggestedTown(day){
   if(day.place&&String(day.place).trim())return tripShortPlace(day.place);
   const cs=tripDayCourses(day);
+  /* GOLF-258: keep the same base across consecutive days whose courses
+     are no more than ~30 minutes apart — you don't change hotel to move
+     down the road. Same drive estimate as the itinerary's own drive captions. */
+  const idx=tripDays.indexOf(day);
+  if(idx>0&&cs.length){
+    const prev=tripDays[idx-1],pcs=tripDayCourses(prev);
+    if(pcs.length&&!(day.place&&String(day.place).trim())){
+      const a=C[pcs[pcs.length-1]],b=C[cs[0]];
+      const leg=tripLegEstimate({lat:a.lat,lng:a.lng},{lat:b.lat,lng:b.lng}); // the same figure the drive caption shows
+      if(leg&&leg.minutes<=30){const t=tripDaySuggestedTown(prev);if(t)return t;}
+    }
+  }
   if(cs.length){
     const i=cs[cs.length-1];
     const n=String(V(i,'n')||'').replace(/\s*\([^)]*\)\s*/g,' ').trim();

@@ -336,6 +336,8 @@
   .tb-itin-group-label{font:600 var(--fs-caption) var(--font-sans);color:var(--stone);text-transform:uppercase;letter-spacing:.06em}
   .tb-itin-group .tb-group-unit{display:inline}
   .tb-itin-group>.tb-pill{margin-left:auto}
+  .tb-itin-group{position:sticky;top:0;z-index:6;background:#fff;margin-left:calc(-1*var(--sp-5));margin-right:calc(-1*var(--sp-5));padding:var(--sp-2) var(--sp-5);border-bottom:1px solid var(--line);gap:var(--sp-2)}
+  .tb-itin-group .tl-viewswitch{padding:0}
   .tb-head-actions{display:flex;align-items:center;gap:var(--sp-1)}
   .mast .mast-fb{margin-left:auto}
   .tb-head-actions .tb-btn.is-icon{color:var(--ink-soft)}
@@ -461,9 +463,7 @@
   .tb-day-wish{background:var(--paper-2);border:1px dashed var(--line);box-shadow:none}
   /* Day kind reads as a coloured dot in the header now, not a slab of
      left border — the border competed with the golf rows' own accent rule. */
-  .tb-day-dot{width:8px;height:8px;border-radius:50%;flex:0 0 8px;background:var(--accent)}
-  .tb-day-start .tb-day-dot,.tb-day-end .tb-day-dot{background:var(--stone)}
-  .tb-day-free .tb-day-dot{background:#B25A9E}
+  .tb-day-dot{width:10px;height:10px;border-radius:50%;flex:0 0 10px;background:var(--day-c,var(--accent))}
 
   /* Header: ⠿ handle + bold title (+ place) on the left, £ total right. */
   .tb-day-head{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-2);
@@ -475,6 +475,10 @@
   .tb-day-title-text{flex:0 0 auto;white-space:nowrap}
   .tb-day-place{flex:1 1 auto;font:500 var(--fs-caption) var(--font-sans);color:var(--stone);white-space:nowrap;
     overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .tb-compact-line{width:100%;border:0;background:none;cursor:pointer;text-align:left;border-radius:var(--radius-lg);min-height:var(--tap)}
+  .tb-compact-line:hover{background:var(--paper-2)}
+  .tb-compact-drive{font:500 12px var(--font-sans);color:var(--stone);white-space:nowrap}
+  .tb-compact-chev{color:var(--stone);font-size:12px}
   .tb-day-sum{font:800 var(--fs-title) var(--font-sans);color:var(--accent-deep);font-variant-numeric:tabular-nums;white-space:nowrap}
   /* The thin divider under the header, straight from the sketch. */
   .tb-day-rule{height:1px;background:var(--line);margin:0 var(--sp-3)}
@@ -499,20 +503,22 @@
   .tb-item-main{flex:1 1 auto;min-width:0;text-align:left}
   .tb-item-actions{display:flex;align-items:center;gap:var(--sp-1);flex-shrink:0}
   .tb-item-price{font:800 var(--fs-body) var(--font-sans);color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
-  .tb-item-golf{box-shadow:inset 3px 0 0 var(--accent)}
+  /* GOLF-258: a straight 3px bar in the day's colour on every row of a day
+     (shortlist rows, in no day, stay neutral). Was a curved inset bracket. */
+  .tb-day-course::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--day-c,var(--line))}
   .tb-item-golf .tb-item-main>a,.tb-item-golf .tb-item-main>.tb-item-name{font:700 var(--fs-body) var(--font-sans);color:var(--ink);text-decoration:none}
   .tb-item-golf .tb-item-main>a:hover{color:var(--accent);text-decoration:underline}
   .tb-item-golf .tb-item-price{font-size:var(--fs-title);color:var(--accent-deep)}
   .tb-item-hotel .tb-item-name,.tb-item-poi .tb-item-name{font:500 var(--fs-small) var(--font-sans);color:var(--ink-soft)}
   .tb-item-hotel .tb-item-price,.tb-item-poi .tb-item-price{font-weight:600;font-size:var(--fs-small);color:var(--ink-soft)}
   .cart-region{color:var(--stone);font-size:var(--fs-caption)}
-  .tb-item-hotel .cart-region,.tb-item-poi .cart-region{font-size:var(--fs-micro)}
+  .tb-item-hotel .cart-region,.tb-item-poi .cart-region{font-size:12px}
 
   /* Drive caption — small, indented, sitting directly above the stop it
      leads into, exactly as sketched. Not a chip, not its own row of
      furniture; it is a label on the stop below it. */
   .tb-drive-cap{display:flex;align-items:center;gap:var(--sp-1);
-    padding:var(--sp-1) var(--sp-3) 0 44px;font:600 var(--fs-micro) var(--font-sans);
+    padding:var(--sp-1) var(--sp-3) 0 44px;font:600 12px var(--font-sans);
     letter-spacing:.02em;color:var(--stone);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .tb-drive-cap .tb-drive-real{color:#1a7a3e}
   /* GOLF-118: a ferry leg's caption carries an extra tag and a longer
@@ -809,13 +815,16 @@
   .cost-est{color:var(--stone);font-weight:400;margin-right:1px;cursor:help}
   .cost-est-note{color:var(--stone);white-space:nowrap;cursor:help}
   /* GOLF-186: the stay slot — one row per golf day, asking where you sleep. */
+  .tb-addstop-pos{display:flex;align-items:center;gap:var(--sp-2);margin-top:var(--sp-2);font-size:12px;color:var(--stone)}
+  .tb-addstop-pos select{flex:1;min-width:0}
   .tb-stay-slot{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;
     margin:var(--sp-2) var(--sp-3) 0 44px;padding:var(--sp-2);
     border:1px solid var(--line);border-radius:8px;background:var(--paper-2)}
-  .tb-stay-slot.is-empty{border-style:dashed;padding:0}
+  .tb-stay-slot.is-empty{border-style:dashed;padding:var(--sp-2) var(--sp-3);justify-content:space-between;font-size:12px;color:var(--stone)}
+  .tb-stay-slot .tb-stay-base b{color:var(--ink-soft)}
   .tb-stay-slot.is-cont{color:var(--stone)}
-  .tb-stay-ask{display:block;width:100%;padding:var(--sp-3);border:0;background:none;
-    font:inherit;color:var(--stone);text-align:left;cursor:pointer;border-radius:8px}
+  .tb-stay-ask{display:inline-block;padding:0 var(--sp-3);min-height:var(--tap-sm);border:0;background:none;
+    font:600 12px var(--font-sans);color:var(--accent-deep);text-align:right;cursor:pointer;border-radius:8px}
   .tb-stay-ask:hover{color:var(--ink);background:var(--accent-soft)}
   .tb-stay-name{flex:1 1 140px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
   .tb-stay-nights{display:inline-flex;align-items:center;gap:4px}

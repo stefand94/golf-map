@@ -294,7 +294,7 @@ function tbDriveCapHTML(l){
     timeHTML=l.mins!=null?esc(fmtDriveMinutes(l.mins)):'—';
   }
   const tag=l.hasFerry?` <span class="wt tb-ferry-tag" title="This route has a ferry">⛴ This route has a ferry</span>`:'';
-  return`<div class="tb-drive-cap${l.hasFerry?' has-ferry':''}" title="${esc(l.label)}"><span class="tb-drive-ico" aria-hidden="true">🚗</span>Drive ${timeHTML}${l.real?` <span class="tb-drive-real">· live</span>`:''}${tag}</div>`;
+  return`<div class="tb-drive-cap${l.hasFerry?' has-ferry':''}" title="${esc(l.label)}"><span class="tb-drive-ico" aria-hidden="true">🚗</span>Drive ${timeHTML}${tag}</div>`;
 }
 /* Currency correctness (GOLF-169): every `cur` passed around the pane is
    now a currency CODE ('GBP'/'EUR'/'ZAR'/'AUD'/'NZD'...), sourced from
@@ -480,14 +480,25 @@ function tbStayControlsHTML(d,st){
 function tbStaySlotHTML(d){
   if((d.kind||'golf')!=='golf')return'';
   if(tripDayStay(d))return'';
+  /* GOLF-258: one line — the suggested base and the way to pick a stay —
+     until a stay is chosen. */
+  const town=tripDaySuggestedTown(d);
   return`<div class="tb-stay-slot is-empty">
+    <span class="tb-stay-base">${town?`Suggested base: <b>${esc(town)}</b>`:'No stay yet'}${tbPoiLinkHTML(d)}</span>
     <button type="button" class="tb-stay-ask" onclick="tbOpenHotelPicker(${d.id})"
-      title="Show hotels near this day's golf"><span class="ico-gap" aria-hidden="true">🏨</span>Where are you staying?</button>
+      title="Show hotels near this day's golf">Find hotels</button>
   </div>`;
 }
-const tbDaySumHTML=idx=>{
+/* GOLF-258: a day's colour, shared by the card's dot and its rows' left bar. */
+const tbDayColor=idx=>(typeof TRIP_DAY_COLORS!=='undefined'&&TRIP_DAY_COLORS.length)?TRIP_DAY_COLORS[idx%TRIP_DAY_COLORS.length]:'var(--accent)';
+const tbDaySumHTML=(idx,force)=>{
   const b=tripDayTotal(idx);
   if(!Object.keys(b).some(c=>b[c]))return'';
+  /* One priced row says it all: the total would only repeat that row. */
+  const d=tripDays[idx];
+  const priced=tripDayLegs(idx).filter(l=>l.type!=='drive'&&l.price!=null).length;
+  const custom=d&&typeof tripCustomForDay==='function'?tripCustomForDay(d.id).length:0;
+  if(priced===1&&!custom&&!force)return'';
   return`<span class="tb-day-sum" data-day-sum="${idx}">${estMark(tripDayEstimated(idx))}${tbDualBucketHTML(b,undefined,{pp:'pp',tot:'total'})}</span>`;
 };
 /* GOLF-74/91: the £ figure as the visitor should read it. A hotel priced
@@ -672,6 +683,9 @@ function tbEndpointRowHTML(which,readOnly){
   const word=isEnd?'End':'Start';
   if(!ep){
     if(readOnly)return''; // nothing to say in a shared trip that has none
+    /* GOLF-258: the empty start is offered from the sticky bar above;
+       the row itself only appears while its picker is open. */
+    if(!isEnd&&!(tbEndpointPicker&&tbEndpointPicker.which===which))return'';
     return`<div class="tb-ep-row is-empty">
       <span class="tb-ep-lbl">${word}</span>
       <button type="button" class="tb-btn is-sm is-quiet" onclick="tbEndpointPickerOpen('${which}')"
@@ -1090,7 +1104,6 @@ function costCustomAmtHTML(x,gs){
 function tbDayCostsHTML(d){
   const lines=(typeof tripCustomForDay==='function')?tripCustomForDay(d.id):[];
   const gs=groupSizeFor();
-  const full=(Array.isArray(tripCustom)?tripCustom:[]).length>=TRIP_CUSTOM_MAX;
   const rows=lines.map(c=>{
     const id=esc(c.id);
     const cur=CURRENCY_SYMS[c.cur]?c.cur:tripPrimaryCurrency();
@@ -1116,11 +1129,8 @@ function tbDayCostsHTML(d){
         aria-label="Remove this cost" onclick="tripCustomRemove('${id}')">✕</button>
     </div>`;
   }).join('');
-  return`<div class="tb-day-costs">${rows}
-    <button type="button" class="tb-btn is-sm is-quiet tb-daycost-add"
-      ${full?'disabled title="That is as many costs as one trip can hold."':''}
-      onclick="tripCustomAdd(${d.id})">＋ Add a cost</button>
-  </div>`;
+  /* GOLF-258: the way to add one is the day's single "＋ Add" menu. */
+  return rows?`<div class="tb-day-costs">${rows}</div>`:'';
 }
 /* The same lines, read-only: the shared itinerary and the print sheet.
    Priced here exactly as the Costs tab prices them, so a frozen link and
@@ -1512,6 +1522,27 @@ let tbShowNearby=TB_SHOW_NEARBY_DEFAULT;
    them have since been removed, but the fields themselves (d.kind against
    TRIP_DAY_KINDS, d.date, d.driveIn) are still read normally wherever
    they're already set, in case this needs revisiting. */
+/* GOLF-258: "＋ Add → A course" — the unified search bar is where courses
+   are found, so point it at this day and focus it. */
+/* GOLF-258: the "Compact" itinerary — every day on one line (Day 3 ·
+   Carnoustie · 1h 9m · £450). Session state, not saved with the trip:
+   it is a way of looking, not a fact about the trip. Tapping a line opens
+   that one day in place. */
+let tbCompact=false;const tbCompactOpen=new Set();
+function tbSetCompact(on){tbCompact=!!on;tbCompactOpen.clear();renderTripBuilder();}
+function tbCompactToggleDay(dayId){
+  if(tbCompactOpen.has(dayId))tbCompactOpen.delete(dayId);else tbCompactOpen.add(dayId);
+  renderTripBuilder();
+}
+function tbDayDriveMins(idx){
+  return tripDayLegs(idx).reduce((m,l)=>l.type==='drive'&&!tbDriveLegHidden(l)&&l.mins!=null?m+l.mins:m,0);
+}
+function tbAddCourseToDay(dayId){
+  tbDayShown=dayId;
+  renderTripBuilder();
+  const el=document.getElementById('tb-unified-search');
+  if(el){el.scrollIntoView({block:'center'});el.focus();}
+}
 function tbDayCardHTML(d,idx){
   const kind=TRIP_DAY_KINDS[d.kind]?d.kind:'golf';
   const items=tripDayItems(d);
@@ -1542,14 +1573,30 @@ function tbDayCardHTML(d,idx){
         i===0?'↑ Move to Day 1':i===tripDays.length-1?`↓ Move to Day ${i+1} (last)`:`Move to Day ${i+1}`}</button>`).join(''):'';
   const menu=tbRowMenuHTML(moveItems+
     `<button type="button" class="tb-menu-item is-danger" onclick="tripRemoveDay(${d.id});">🗑 Remove day ${idx+1}</button>`);
+  if(tbCompact&&!tbDetailed&&!tbCompactOpen.has(d.id)){
+    const mins=tbDayDriveMins(idx);
+    return`<div class="tb-day tb-day-${kind} is-compact" style="--day-c:${tbDayColor(idx)}">
+      <button type="button" class="tb-day-head tb-compact-line" aria-expanded="false" onclick="tbCompactToggleDay(${d.id})"
+        title="Show this day">
+        <span class="tb-day-title"><span class="tb-day-dot"></span>
+          <span class="tb-day-title-text">Day ${idx+1}</span>
+          ${(()=>{const cn=nCourses?items.filter(it=>it.type==='golf').map(it=>esc(tripShortPlace(String(V(it.i,'n')).replace(/\s*\([^)]*\)\s*/g,' ').trim()))).join(' + '):'';
+            const t=[dow,cn||(d.place?esc(tripShortPlace(d.place)):''),kind!=='golf'?TRIP_DAY_KINDS[kind]:''].filter(Boolean).join(' · ');
+            return t?`<span class="tb-day-place">${t}</span>`:'';})()}</span>
+        ${mins>=1?`<span class="tb-compact-drive">${esc(fmtDriveMinutes(mins))}</span>`:''}
+        ${tbDaySumHTML(idx,true)}
+        <span class="tb-compact-chev" aria-hidden="true">▾</span>
+      </button>
+    </div>`;
+  }
   return`
-    <div class="tb-day tb-day-${kind}"
+    <div class="tb-day tb-day-${kind}" style="--day-c:${tbDayColor(idx)}"
       ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
       ondrop="event.preventDefault();tbDropOut(this);tbDropInDay(${d.id},null);">
       <div class="tb-day-head" draggable="true"
         ondragstart="tbDayDragSet(${d.id},event,this);"
         ondragend="tbDragEnd();">
-        <span class="tb-drag-handle" title="Drag to move this whole day">⠿</span>
+        <span class="tb-drag-handle" title="Drag to move this whole day">⠿</span>${tbCompact&&!tbDetailed?`<button type="button" class="tb-btn is-icon is-sm is-quiet" aria-label="Collapse day ${idx+1}" aria-expanded="true" onclick="tbCompactToggleDay(${d.id})">▴</button>`:''}
         <span class="tb-day-title"><span class="tb-day-dot"></span>
           <span class="tb-day-title-text">Day ${idx+1}</span>
           ${sub?`<span class="tb-day-place" title="${esc(d.place||'')}">${sub}</span>`:''}</span>
@@ -1562,7 +1609,7 @@ function tbDayCardHTML(d,idx){
         ondragover="event.preventDefault();event.stopPropagation();event.dataTransfer.dropEffect='move';tbDropOver(this);"
         ondragleave="tbDropOut(this,event);"
         ondrop="event.preventDefault();event.stopPropagation();tbDropOut(this);tbDropInDay(${d.id},null);">↓ Put it last on Day ${idx+1}</div>
-      ${town?`<div class="tb-day-town">Staying near <b>${esc(town)}</b>${tbPoiLinkHTML(d)}</div>`:''}
+      ${town&&tripDayStay(d)?`<div class="tb-day-town">Staying near <b>${esc(town)}</b>${tbPoiLinkHTML(d)}</div>`:''}
       ${tbStaySlotHTML(d)}
       ${tbPoiListHTML(d)}
       ${/* GOLF-247: the day's own costs, below the stops and above the
@@ -1586,12 +1633,13 @@ function tbDayCardHTML(d,idx){
            buttons (12 buttons on a 6-day trip). */''}
       <div class="tb-day-add">
         <details class="tb-drop tb-add-drop">
-          <summary class="tb-btn is-sm is-quiet">＋ Add to Day ${idx+1}</summary>
+          <summary class="tb-btn is-sm is-quiet">＋ Add</summary>
           <div class="tb-drop-body">
             ${/* GOLF-186: a golf day asks this in its own stay slot above, so
                   offering it again here would be two doors to one room. Other
                   day kinds have no slot and still need the entry point. */''}
-            ${kind==='golf'?'':`<button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbOpenHotelPicker(${d.id})">🏨 A place to stay</button>`}
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbOpenHotelPicker(${d.id})">🏨 A place to stay</button>
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbAddCourseToDay(${d.id})">⛳ A course</button>
             <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tbPromptPoi(${d.id})">📍 A stop (sight, lunch…)</button>
             ${/* GOLF-153: a flight is trip data, not view data — it is
                  offered in both views, or you would have to switch to
@@ -1604,6 +1652,7 @@ function tbDayCardHTML(d,idx){
             <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptBlock(${d.id},'train')">🚆 A train</button>
             <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptBlock(${d.id},'drivefrom')">🚗 Drive from another place</button>
             <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tlPromptBlock(${d.id},'activity')">📌 An activity</button>
+            <button type="button" class="tb-menu-item" onclick="this.closest('details').open=false;tripCustomAdd(${d.id})"${(Array.isArray(tripCustom)?tripCustom:[]).length>=TRIP_CUSTOM_MAX?' disabled title="That is as many costs as one trip can hold."':''}>💷 A cost</button>
           </div>
         </details>
       </div>
@@ -1660,7 +1709,7 @@ function tripDayScheduleHTML(){
   /* GOLF-243: the Start and End rows wrap the days in the live itinerary
      too — in both views, since this is above and below the day cards and
      tbDayCardHTML() is what switches between the list and the calendar. */
-  const daysHTML=tlViewToggleHTML()+tbEndpointRowHTML('start',false)
+  const daysHTML=(tbDetailed?tlLegendHTML():'')+tbEndpointRowHTML('start',false)
     +tripDays.map((d,idx)=>tbDayCardHTML(d,idx)).join('')
     +tbEndpointRowHTML('end',false);
   const unschedHTML=unscheduled.length?`
@@ -2010,7 +2059,7 @@ function tbGoTab(k){
      the itinerary, so the Itinerary tab opened onto a list of search hits
      rather than the trip. Switching tab is a change of subject. */
   tbClearUnifiedSearch();
-  if(k==='discover'){if(appMode!=='plan')setAppMode('plan');return;}
+  if(k==='discover'){if(appMode!=='plan')setAppMode('plan');const p=document.getElementById('tb-pane');if(p)p.scrollTop=0;return;}
   tbBuildTab=k;
   /* GOLF-178 reset removed by GOLF-193: re-opening the Costs tab used to
      force the mode back to Per person. That was harmless while the mode
@@ -2021,6 +2070,9 @@ function tbGoTab(k){
      undoing the visitor's own choice mid-session. */
   if(appMode!=='build')setAppMode('build');
   else{render();} // GOLF-108: render() so the course-pin layer tracks the tab (Costs/Itinerary hide it, Discover shows it)
+  /* GOLF-258: a new tab starts at its top, not wherever the last one was
+     scrolled to. */
+  const pane=document.getElementById('tb-pane');if(pane)pane.scrollTop=0;
 }
 function renderTripBuilder(){
   if(typeof mobBeforeRender==='function')mobBeforeRender(); // GOLF-185a
@@ -2082,10 +2134,9 @@ function renderTripBuilder(){
       ${tbTripMenuHTML(isBuild)}
       <div class="tb-head-actions">
         <button type="button" class="tb-btn is-icon is-sm is-quiet" id="tb-share-trip" aria-label="Share trip" title="Share — copies a read-only link showing this trip's map, day-by-day plan and costs. It's a frozen snapshot, not live — editing the trip afterward won't change the link.">${SHARE_ICON_SVG}</button>
-        <button type="button" class="tb-btn is-icon is-sm is-quiet is-danger" id="tb-clear-trip" aria-label="Clear trip" title="Clear trip — empties this trip. Your other trips are untouched; to delete every trip use Start fresh in the trip menu."${TRIP.size||tripDays.length?'':' disabled'}>${TRASH_ICON_SVG}</button>
       </div>
     </header>
-    ${tbNationPillsHTML()}
+    ${isBuild?'':tbNationPillsHTML()}
     <div class="tb-tabs" role="tablist">${TABS.map(([k,label])=>
       `<button class="tb-tab-btn" role="tab" data-tab="${k}" aria-pressed="${activeTab===k}">${label}</button>`).join('')}</div>
     ${tabChrome}
@@ -2096,7 +2147,6 @@ function renderTripBuilder(){
     }</div>`;
 
   tbMountBetaBadge();
-  document.getElementById('tb-clear-trip').addEventListener('click',()=>tripClearAll());
   const nationPills=document.getElementById('tb-nation-pills');
   if(nationPills)nationPills.addEventListener('click',e=>{
     const b=e.target.closest('[data-nation]');if(!b)return;
@@ -2183,6 +2233,7 @@ function renderTripBuilder(){
       onPick(r){
         const priceEl=document.getElementById('tb-addstop-price');
         tbAddStop.price=priceEl?priceEl.value:'';
+        const posEl=document.getElementById('tb-addstop-pos');tbAddStop.pos=posEl?posEl.value:'';
         tbAddStop.name=r.label;tbAddStop.lat=r.lat;tbAddStop.lng=r.lng;
         renderTripBuilder();
       }
