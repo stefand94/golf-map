@@ -660,6 +660,21 @@ function mapHighlightCourse(i,on){
   if(m.setZIndexOffset)m.setZIndexOffset(z+1000);
   hoverMarks.set(i,{el:t,m,z});
 }
+/* A short attention pulse on the pins (or their clusters) of a set of
+   courses; self-clearing, and a no-op for anyone who asks for reduced motion. */
+function mapPulseCourses(list){
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const els=new Set();
+  list.forEach(i=>{
+    let m=(typeof tripCourseMarkers!=='undefined'&&tripCourseMarkers.get(i))||markers.get(i);
+    if(!m)return;
+    if(!map.hasLayer(m)&&layer.hasLayer(m)){const v=layer.getVisibleParent(m);if(v)m=v;}
+    const el=m.getElement&&m.getElement();
+    if(el)els.add(el.querySelector('.gt-pin')||el);
+  });
+  els.forEach(e=>e.classList.add('is-pulse'));
+  setTimeout(()=>els.forEach(e=>e.classList.remove('is-pulse')),1800);
+}
 function mapClearHighlight(){[...hoverMarks.keys()].forEach(k=>mapHighlightCourse(k,false));}
 function mapPinHover(i,on){
   document.dispatchEvent(new CustomEvent('golf:coursehover',{detail:{i,on}}));
@@ -1004,7 +1019,16 @@ function tbFocusPlaceOnMap(lat,lng,label){
   if(label)tbTempPlaceMarker.bindTooltip(String(label),{direction:'top'});
   /* flyTo's easing math needs a sized container; fall back to a plain jump
      if the map hasn't been laid out yet (mirrors tbDrawMap()'s own guard). */
-  try{map.flyTo([lat,lng],12,{duration:.6});}catch(e){map.setView([lat,lng],12);}
+  /* GOLF-270 (6): a town with courses frames those courses, not just the
+     point, and pulses their pins once it lands. */
+  const near=(typeof TB_PLACE_RADIUS_MI==='number')?C.map((c,i)=>i).filter(i=>
+    (typeof tbCourseOfferable!=='function'||tbCourseOfferable(i))&&haversineMiles(lat,lng,C[i].lat,C[i].lng)<=TB_PLACE_RADIUS_MI):[];
+  if(near.length){
+    mapFitBounds(L.latLngBounds([[lat,lng],...near.map(i=>[C[i].lat,C[i].lng])]),{padding:[48,48],maxZoom:13,duration:.6});
+    map.once('moveend',()=>setTimeout(()=>mapPulseCourses(near),150));
+  }else{
+    try{map.flyTo([lat,lng],12,{duration:.6});}catch(e){map.setView([lat,lng],12);}
+  }
   // Opened after the camera move so the popup lands where the marker ends up.
   if(label)tbTempPlaceMarker.openPopup();
 }
