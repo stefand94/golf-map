@@ -373,11 +373,10 @@ function tripDayEstimated(dayIdx){
   return tripDayLegs(dayIdx).some(l=>l.type!=='drive'&&l.price!=null&&l.detail&&l.detail.est);
 }
 /* Any estimate anywhere in the trip, for the figures that total everything:
-   an estimated stay on any day, or the fuel estimate while it is switched
-   on (FUEL_COST_PER_MILE is an assumed running cost, js/trip-geo.js). */
+   an estimated stay on any day, or a typical-rate green fee (DEC-040: fuel is
+   no longer part of the total). */
 function tripHasEstimate(){
-  if(tbIncludeFuel&&tripTotalDriveMiles()>0)return true;
-  return tripDays.some((d,idx)=>tripDayEstimated(idx));
+  return tripDays.some((d,idx)=>tripDayEstimated(idx))||tripCostLineItems().some(x=>x.feeKind==='typ');
 }
 /* Day-header total: blank for a day with nothing priced. */
 /* ── GOLF-186: the stay slot.
@@ -774,6 +773,14 @@ function tbItinAllHTML(){
 /* ════════════════════════════════════════════════════════════════════
    Costs tab
    ════════════════════════════════════════════════════════════════════ */
+/* GOLF-261: where a green-fee line's number came from — 'pub' (a published
+   rate, or one the visitor typed), 'typ' (a typical rate the app filled in)
+   or 'none' (no price). The Costs footnote counts these. */
+function tbFeeKind(own,conf,amount){
+  if(amount==null)return'none';
+  if(own||conf==='published-rates'||conf==='published-range')return'pub';
+  return'typ';
+}
 function tripCostLineItems(){
   const items=[];
   // GOLF-63: itemised in the day's own order, so the breakdown reads down
@@ -869,7 +876,8 @@ function tripCostLineItems(){
       const confTag=FEE_CONF_TAG[det.feeRange.confidence];
       tag=tag?`${tag} · ${confTag}`:confTag;
     }
-    items.push({label,cat:CAT[it.type]||'Stop',amount:det.total,day:idx+1,cur:det.cur,tag});
+    items.push({label,cat:CAT[it.type]||'Stop',amount:det.total,day:idx+1,cur:det.cur,tag,
+      feeKind:it.type==='golf'?tbFeeKind(det.own,det.feeRange&&det.feeRange.confidence,det.total):undefined});
     if(it.type==='golf')pushMandatoryBuggy(it.i,idx+1);
   }));
   tripUnscheduled().forEach(i=>{
@@ -882,7 +890,8 @@ function tripCostLineItems(){
       const confTag=FEE_CONF_TAG[fr.confidence];
       tag=tag?`${tag} · ${confTag}`:confTag;
     }
-    items.push({label,cat:'Golf',amount:fee==null?null:fee*gs,day:null,cur:courseCurrency(i),tag});
+    items.push({label,cat:'Golf',amount:fee==null?null:fee*gs,day:null,cur:courseCurrency(i),tag,
+      feeKind:tbFeeKind(false,fr&&fr.confidence,fee)});
     pushMandatoryBuggy(i,null);
   });
   return items;
@@ -918,8 +927,6 @@ function tripCostBreakdown(){
   // only when it has lines — a trip with no flight (every trip before
   // this ticket) shows the same three groups it always did.
   const travel=items.filter(x=>x.cat==='Travel');
-  const fuelMiles=tripTotalDriveMiles();
-  const fuelCost=fuelMiles*FUEL_COST_PER_MILE;
   const golfTotal=sum(golf),stayTotal=sum(stay),poiTotal=sum(poi),travelTotal=sum(travel);
   /* GOLF-203: the trip's own "Other" lines, priced here and nowhere else.
      `typed` is what the visitor entered; `amount` is the whole-party
@@ -956,7 +963,6 @@ function tripCostBreakdown(){
     dayCustom.set(x.day,e);
   });
   const tripCostsTotal={[cur]:0};
-  if(tbIncludeFuel)moneyBucketAdd(tripCostsTotal,cur,fuelCost);
   tripLines.forEach(x=>moneyBucketAdd(tripCostsTotal,x.cur,x.amount));
   const grand={[cur]:0};
   [golfTotal,stayTotal,poiTotal,travelTotal,tripCostsTotal].forEach(b=>Object.keys(b).forEach(c=>moneyBucketAdd(grand,c,b[c])));
@@ -967,7 +973,7 @@ function tripCostBreakdown(){
   // here, at the very last step. Across currencies, each bucket divides on
   // its own (DEC-026).
   const perPerson=gs>1?moneyBucketScale(grand,1/gs):null;
-  return{items,cur,golfTotal,golfCov:golf.filter(x=>x.amount!=null).length,golfOf:golf.length,stayTotal,poiTotal,travelTotal,fuelMiles,fuelCost,customItems,dayLines,tripLines,dayCustom,tripCostsTotal,grand,groupSize:gs,perPerson};
+  return{items,cur,golfTotal,golfPub:golf.filter(x=>x.feeKind==='pub').length,golfTyp:golf.filter(x=>x.feeKind==='typ').length,golfNone:golf.filter(x=>x.feeKind==='none').length,golfOf:golf.filter(x=>x.feeKind).length,stayTotal,poiTotal,travelTotal,customItems,dayLines,tripLines,dayCustom,tripCostsTotal,grand,groupSize:gs,perPerson};
 }
 /* The headline trip total as display text — navbar pill, Itinerary's
    "Trip total" card and the shared view's pill all read this, so a mixed
@@ -1024,7 +1030,7 @@ function costPPBucketFmt(b,gs,emptyCur){
   return keys.length?keys.map(c=>ppAmt(b[c]/gs,c)).join(MONEY_JOIN):moneyBucketFmt(b,emptyCur);
 }
 const costDual=(tot,pp,gs)=>gs>1?`<span class="cv-pp">${pp}</span><span class="cv-tot">${tot}</span>`:tot;
-const costModeNote=(mode,gs)=>mode==='pp'?'Showing cost per person':`Showing total for all ${gs} travellers`;
+const costModeNote=(mode,gs)=>mode==='pp'?'':`Showing total for all ${gs} travellers`;
 function tbCostSetMode(btn,mode){
   // Every caller is a button in the segmented control, but the mode itself
   // is app-wide state — so a call without one sets the mode and skips only
@@ -1371,12 +1377,9 @@ function costDayGroupsHTML(b,readOnly){
   }).join('');
 }
 /* Trip costs: the lines that belong to the whole trip rather than a day,
-   with fuel at the top and the car-hire link at the bottom. */
+   with the car-hire link at the bottom (fuel left the total in DEC-040). */
 function costTripGroupHTML(b,readOnly){
   const cur=b.cur,gs=b.groupSize;
-  const fuelRow=`<div class="cost-fuel-row">${readOnly?'<span>⛽ Fuel (est.)</span>':
-    `<label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> ⛽ Fuel (est.)</label>`
-    }<span class="cost-group-amt">${/* its own label already reads "Fuel (est.)" — a ~ here just stutters */''}${costDual(fmtMoney(b.fuelCost,cur),costPPMoney(b.fuelCost,cur,gs),gs)}</span></div>`;
   /* GOLF-233: the trip's one car-hire link. It lives here rather than on
      the Itinerary because hire is a cost, not a stop — and this is the
      group whose first example is "Car hire". The readOnly branch is the
@@ -1391,7 +1394,7 @@ function costTripGroupHTML(b,readOnly){
   return costCustomGroupHTML(b,readOnly,{
     key:'trip',icon:'💷',label:'Trip costs',
     lines:b.tripLines||[],total:b.tripCostsTotal,dayId:null,
-    head:fuelRow,foot:carRow,dayPick:costDayPickFn(),
+    foot:carRow,dayPick:costDayPickFn(),
   });
 }
 /* GOLF-203: repaint every figure a custom-cost keystroke can move, and
@@ -1458,6 +1461,19 @@ function tbCostLiveRefresh(){
      because js/mobile-sheet.js loads after this one. */
   if(typeof mobUpdatePeek==='function')mobUpdatePeek();
 }
+/* GOLF-261: the footnote is built from counts, so it can't contradict
+   itself — "all N are published", or how many are, how many are typical
+   rates and how many have no price at all. */
+function tbCostCovText(b){
+  const n=b.golfOf,p=b.golfPub,t=b.golfTyp,z=b.golfNone;
+  if(!n)return'';
+  const s=k=>k===1?'':'s';
+  if(p===n)return n===1?'The green fee is a published rate.':`All ${n} green fees are published rates.`;
+  const bits=[];
+  if(t)bits.push(`${t} ${t===1?'is a typical rate':'are typical rates'}`);
+  if(z)bits.push(`${z} ${z===1?'has':'have'} no published fee and ${z===1?'is':'are'} not counted`);
+  return`${p} of ${n} green fee${s(n)} confirmed; ${bits.join(', ')}.`;
+}
 function tbCostsBodyHTML(b,fuelRowLabel,readOnly){
   const cur=b.cur,gs=b.groupSize,multi=gs>1;
   const mixed=moneyBucketCount(b.grand)>1;
@@ -1484,7 +1500,7 @@ function tbCostsBodyHTML(b,fuelRowLabel,readOnly){
       ${costDayGroupsHTML(b,readOnly)}
       ${costTripGroupHTML(b,readOnly)}
     </div>
-    <p class="hint cost-cov">${b.golfCov} of ${b.golfOf} green fee${b.golfOf===1?'':'s'} confirmed — the rest are typical rates.${mixed?' This trip spans more than one currency, so each is totalled separately — nothing is converted.':''}</p></div>`;
+    <p class="hint cost-cov">${tbCostCovText(b)}${mixed?' This trip spans more than one currency, so each is totalled separately — nothing is converted.':''}</p></div>`;
 }
 function tbCostsTabHTML(){
   // GOLF-203: the fuel row's label moved inside costOtherGroupHTML() with
