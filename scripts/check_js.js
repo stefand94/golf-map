@@ -71,6 +71,7 @@ const ORDER = [
   // GOLF-185a: after trip-ui.js (FILTER_ICON_SVG, renderTripBuilder's
   // hooks call into it) and map.js (it reads `map` at load).
   'mobile-sheet.js',
+  'course-pane.js',
   'trip-share.js',
   'explore.js',
   // GOLF-185d: reuses explore.js's FEE_BANDS/feeRangeSet(), so it follows it.

@@ -106,10 +106,10 @@ function revertEdit(i){delete EDITS[i];tripStopChainInvalidate();saveState();clo
 function corrections(){return Object.keys(EDITS).filter(isEdited).map(i=>{
   const changed={};Object.entries(EDITS[i]).forEach(([k,v])=>{if(k!=='_why')changed[k]={from:C[i][k],to:v}});
   return{course:C[i].n,why:EDITS[i]._why||null,changed}})}
-/* GOLF-252: the sidebar button that opened this went with the retired Explore
-   markup; the handler stays (guarded) until corrections export gets a new home. */
-const openExportBtn=document.getElementById('open-export');
-if(openExportBtn)openExportBtn.addEventListener('click',()=>{
+/* GOLF-255: the corrections export lives in the course popup's More menu,
+   next to Correct this (the sidebar button that used to open it went in
+   GOLF-252). */
+function openCorrectionsExport(){
   const list=corrections();
   const tripOrdered=tripSeq;
   const trip=tripOrdered.map(i=>({course:C[i].n,region:C[i].r,weekdayFee:V(i,'wd')}));
@@ -143,7 +143,7 @@ if(openExportBtn)openExportBtn.addEventListener('click',()=>{
     <span id="copied" style="font-size:12px;color:var(--stone)"></span></div>`
     :`<div class="bar"><button class="btn2 ghost" onclick="closeDrawer()">Close</button></div>`}
     <div class="bar"><button class="btn2 warn" onclick="wipeStoredState()">Clear saved filters &amp; corrections on this device</button></div>`;
-  openDrawer()});
+  openDrawer()}
 function wipeStoredState(){
   if(!confirm('Clear all saved filters, map position, corrections, played/want-to-play lists and your trip stored in this browser? This cannot be undone unless you exported a copy.'))return;
   Object.keys(EDITS).forEach(k=>delete EDITS[k]);

@@ -1463,9 +1463,10 @@
   .hotel-pop-add{width:100%}
   .leaflet-container{font-family:var(--font-sans)}
   .leaflet-popup-content-wrapper{border-radius:12px;box-shadow:var(--shadow-lg)}
+  .leaflet-container a.leaflet-popup-close-button{top:2px;right:2px;width:32px;height:32px;padding:0;font:400 22px/32px var(--font-sans);border-radius:8px}
   .leaflet-popup-content{margin:14px 16px;width:300px !important}
   .pop h3{font-family:var(--font-display);font-weight:600;font-size:17px;line-height:1.15;margin:0 0 3px}
-  .pop .sub{font-family:var(--font-mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--stone);margin:0 0 9px}
+  .pop .sub{font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--stone);margin:0 0 9px}
   .ranks{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 9px}
   .ranks span{font-family:var(--font-mono);font-size:9.5px;background:var(--accent-soft);color:var(--accent-dark);padding:3px 6px;border-radius:3px}
   .fees{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 9px}
@@ -1495,6 +1496,52 @@
   .pop .btn.ghost:hover{background:#fff;color:var(--accent);border-color:var(--accent);box-shadow:var(--shadow-sm);transform:translateY(-1px)}
   .pop .btn.subtle{background:none;color:var(--stone);border:none;padding:5px 6px;box-shadow:none;font-weight:500;text-decoration:underline;text-underline-offset:2px}
   .pop .btn.subtle:hover{background:none;color:var(--accent);box-shadow:none;transform:none}
+  /* GOLF-255 (B3): the slim course popup — name, price, summary + access,
+     Add, then a quiet row and a More menu. GOLF-267: the pane's detail. */
+  .leaflet-popup-content:has(.pop-slim){width:264px !important}
+  .pop-slim h3{margin:0 24px 2px 0;font-size:16px}
+  .cp-price{margin:0;font:700 14px var(--font-sans);font-variant-numeric:tabular-nums}
+  .cp-sum{margin:2px 0 10px;font-size:12px;color:var(--stone);display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
+  .acc-chip{display:inline-block;font:600 11px var(--font-sans);padding:2px 8px;border-radius:var(--radius-pill);background:var(--paper);color:var(--ink-soft)}
+  .cp-add{display:flex;gap:6px;margin-top:10px}
+  .pop-slim .cp-add{margin-top:0}
+  .cp-add .btn.primary{flex:1 1 auto;order:0;flex-basis:auto}
+  .cp-det{flex:0 0 auto}
+  .cp-foot{display:flex;flex-wrap:wrap;align-items:center;gap:2px 4px;margin-top:8px;border-top:1px solid var(--line);padding-top:6px}
+  .cp-quiet{display:flex;flex-wrap:wrap;gap:2px 4px;margin-top:8px}
+  .cp-foot .cp-quiet{margin-top:0}
+  .cp-q{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 8px;border-radius:7px;color:var(--ink-soft);font:600 12px var(--font-sans);text-decoration:none}
+  .cp-q:hover{background:var(--paper);color:var(--accent)}
+  .cp-more{flex:0 0 auto;margin-left:auto}
+  .cp-more[open]{flex-basis:100%}
+  .cp-more>summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;min-height:32px;padding:0 8px;border-radius:7px;
+    color:var(--ink-soft);font:600 12px var(--font-sans)}
+  .cp-more>summary::-webkit-details-marker{display:none}
+  .cp-more>summary:hover,.cp-more[open]>summary{background:var(--paper)}
+  .cp-rows{display:flex;flex-direction:column;margin-top:8px}
+  .cp-mi{display:flex;align-items:center;width:100%;min-height:32px;padding:0 8px;border:0;border-radius:7px;background:none;
+    color:var(--ink-soft);font:500 12.5px var(--font-sans);text-align:left;cursor:pointer}
+  .cp-mi:hover{background:var(--paper);color:var(--accent)}
+  .cp-feenote{margin:6px 0 0;font-size:12px;color:var(--stone)}
+  .cp-links{margin-top:8px}
+  .gt-pin.is-sel svg{transform:scale(1.25);transform-origin:50% 100%;
+    filter:drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff) drop-shadow(0 2px 3px rgba(0,0,0,.4))}
+  .tb-row.cd-sel{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+  .cd-pane{position:absolute;left:0;right:0;bottom:0;z-index:30;background:#fff;overflow-y:auto;overscroll-behavior:contain;
+    visibility:hidden;transform:translateX(100%);transition:transform .28s var(--ease),visibility 0s .28s}
+  .cd-pane.is-on{visibility:visible;transform:none;transition:transform .28s var(--ease)}
+  .cd-top{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);background:#fff;border-bottom:1px solid var(--line)}
+  .cd-back{border:0;background:none;color:var(--accent);font:600 13.5px var(--font-sans);padding:8px;border-radius:8px;cursor:pointer}
+  .cd-back:hover,.cd-pos button:hover{background:var(--accent-soft)}
+  .cd-pos{margin-left:auto;display:flex;align-items:center;gap:4px;font-size:12px;color:var(--stone)}
+  .cd-pos button{width:32px;height:32px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink-soft);font-size:16px;cursor:pointer}
+  .cd-body{padding:var(--sp-4) var(--sp-5) var(--sp-6)}
+  .cd-body .pop h3{font-size:22px;margin-bottom:4px}
+  .cd-body .pop .sub{font-size:11px}
+  .cd-body .pop dl,.cd-body .pop .note{font-size:13px}
+  .cd-body .pop .btn.primary{font-size:13.5px;padding:11px 14px}
+  .cd-back:focus-visible,.cd-pos button:focus-visible,.cp-q:focus-visible,.cp-mi:focus-visible,.cp-more>summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  @media (prefers-reduced-motion:reduce){.cd-pane,.cd-pane.is-on{transition:none}}
   .conf{font-family:var(--font-mono);font-size:9.5px;color:var(--stone);margin:7px 0 0}
 
   .gt-pin{display:flex;align-items:flex-end;justify-content:center}
@@ -1737,7 +1784,13 @@
     .bs-card-fee{margin:var(--sp-1) 0 0;font:700 var(--fs-body)/1.3 var(--font-sans);font-variant-numeric:tabular-nums;color:var(--ink)}
     .bs-card-note{margin:var(--sp-1) 0 0;font-size:13px;line-height:1.4;color:var(--ink-soft);
       display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-    .bs-card.is-more .bs-card-note{display:none} /* the full note is in the body below */
+    .bs-card.is-more .bs-card-note{-webkit-line-clamp:unset;display:block} /* one place for the note, open or shut */
+    .bs-card-head .acc-chip{vertical-align:2px;margin-left:var(--sp-1)}
+    .bs-card .cp-q,.bs-card .cp-mi,.bs-card .cp-links .btn{min-height:var(--tap)}
+    .bs-card .cp-q{padding:0 var(--sp-3)}
+    .bs-card .cp-mi{font-size:14px;padding:0 var(--sp-2);border-top:1px solid var(--line);border-radius:0}
+    .bs-card .cp-rows{margin-top:var(--sp-2)}
+    .cd-pane{display:none}
     .bs-card-acts{display:flex;align-items:center;gap:var(--sp-2);margin-top:var(--sp-3)}
     .bs-card-acts .btn.primary{flex:1 1 auto;min-height:var(--tap);font-size:14px;order:0;flex-basis:auto}
     .bs-card-more{flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;min-height:var(--tap);padding:0 var(--sp-2);
@@ -1895,6 +1948,7 @@
 <script src="js/touch-dnd.js?v=4127d3abc3"></script>
 <script src="js/app-mode.js?v=4127d3abc3"></script>
 <script src="js/mobile-sheet.js?v=4127d3abc3"></script>
+<script src="js/course-pane.js?v=4127d3abc3"></script>
 <script src="js/trip-share.js?v=4127d3abc3"></script>
 <script src="js/explore.js?v=4127d3abc3"></script>
 <script src="js/course-filters.js?v=4127d3abc3"></script>

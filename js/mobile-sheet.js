@@ -261,20 +261,16 @@ function showMobileList(){if(mobIsPhone())mobSheetSet('half');}
    Being in the sheet rather than on the map is also the phone half of
    GOLF-201's fix: a redraw that rebuilds the marker can't close it. */
 let mobCardI=null,mobCardMore=false,mobCardPrev=null;
-function mobCardFeeHTML(i){
-  const mark=typeof estMark==='function'?estMark(feeConfWord(i)==='Estimate'):''; // GOLF-193's "~"
-  return mark+esc(fmtGreenFee(i));
-}
 function mobCardHTML(i){
-  const fee=mobCardFeeHTML(i),note=String(V(i,'note')||'').trim(),inTrip=TRIP.has(i);
+  const fee=courseFeeLine(i),note=String(V(i,'note')||'').trim();
   return`<div class="bs-card-head">
-      <h3>${esc(V(i,'n'))} ${courseBadgesHTML(i)}</h3>
+      <h3>${esc(V(i,'n'))} ${courseBadgesHTML(i)} ${courseAccessChip(i)}</h3>
       <button type="button" class="bs-card-x" data-card="close" aria-label="Close">×</button>
     </div>
     ${fee?`<p class="bs-card-fee">${fee}</p>`:''}
     ${note?`<p class="bs-card-note">${esc(note)}</p>`:''}
     <div class="bs-card-acts">
-      <button type="button" class="btn primary" onclick="${inTrip?`tripRemoveCourse(${i})`:`tbAddToPlan(${i})`}">${inTrip?'✓ In your trip — remove':'＋ Add to trip'}</button>
+      ${courseAddBtn(i)}
       <button type="button" class="bs-card-more" data-card="more" aria-expanded="${mobCardMore}" aria-controls="bs-card-body">${mobCardMore?'Show less':'Show more'}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
     </div>
     <div class="bs-card-body" id="bs-card-body"${mobCardMore?'':' hidden'}>${popupHTML(i,{card:true})}</div>`;
@@ -290,6 +286,7 @@ function mobCardRender(){
 function mobCardOpen(i,ll){
   if(mobCardI==null)mobCardPrev=mobSheetState;
   mobCardI=i;mobCardMore=false;
+  courseSelect(i);
   document.body.classList.add('mob-card-on');
   mobCard.scrollTop=0;
   mobCardRender();
@@ -301,6 +298,7 @@ function mobCardOpen(i,ll){
 function mobCardDrop(){
   if(mobCardI==null)return;
   mobCardI=null;mobCardMore=false;
+  courseSelect(null);
   document.body.classList.remove('mob-card-on');
   mobCard.hidden=true;mobCard.replaceChildren();
 }
@@ -351,7 +349,7 @@ L.Popup.include({openOn(m){
   if(mobIsPhone()){
     const src=this._source,c=this._content;
     const html=typeof c==='function'?c(src||this):c;
-    const hit=typeof html==='string'&&/^<div class="pop" data-course="(\d+)"/.exec(html);
+    const hit=typeof html==='string'&&/^<div class="pop[^"]*" data-course="(\d+)"/.exec(html);
     if(hit){
       if(m&&m.closePopup)m.closePopup();
       mobCardOpen(+hit[1],src&&src.getLatLng?src.getLatLng():null);

@@ -607,9 +607,9 @@ function courseDayNo(i){
 }
 /* Pin hit area is padded to 44px (transparent box, SVG centred at the
    bottom) while the visual stays small. */
-function gtPinIcon(svg,w,h){
+function gtPinIcon(svg,w,h,sel){
   const bw=Math.max(w,44),bh=Math.max(h,44);
-  return L.divIcon({className:'',html:`<div class="gt-pin" style="width:${bw}px;height:${bh}px">${svg}</div>`,
+  return L.divIcon({className:'',html:`<div class="gt-pin${sel?' is-sel':''}" style="width:${bw}px;height:${bh}px">${svg}</div>`,
     iconSize:[bw,bh],iconAnchor:[bw/2,bh-1],popupAnchor:[0,-h+2],tooltipAnchor:[0,-h+2]});
 }
 function pinFor(i){
@@ -617,7 +617,22 @@ function pinFor(i){
   const played=PLAYED.has(i),want=!played&&WANT.has(i);
   const size=(rk||day||shortlist)?30:22;
   const svg=day?gtDayPinSVG(day,null,{ranked:rk,played,want,size}):gtCoursePinSVG({ranked:rk,played,want,shortlist,size});
-  return gtPinIcon(svg,size,size*1.5);
+  return gtPinIcon(svg,size,size*1.5,i===selCourseI);
+}
+/* GOLF-255: the course being looked at — pin at 1.25× with a white ring (js/course-pane.js
+   and the phone card set it; a redrawn pin comes back selected via pinFor). */
+let selCourseI=null;
+function courseSelect(i){
+  const prev=selCourseI;selCourseI=i;
+  new Set([prev,i]).forEach(k=>{
+    if(k==null)return;
+    [markers.get(k),(typeof tripCourseMarkers!=='undefined')?tripCourseMarkers.get(k):null].forEach(m=>{
+      if(!m)return;
+      const el=m.getElement&&m.getElement(),p=el&&el.querySelector('.gt-pin');
+      if(p)p.classList.toggle('is-sel',k===i);
+      if(m.setZIndexOffset)m.setZIndexOffset(k===i?1000:0);
+    });
+  });
 }
 /* Hover tooltips are for a mouse: never bound on touch, and closed once the
    popup opens so the two don't stack (the stuck "Walton Heath · Up to £275"). */
@@ -668,39 +683,106 @@ function feeBlock(i){
   const split=wd&&we&&wd!==we?`<span class="fee-split">Weekday ${esc(wd)} · Weekend ${esc(we)}</span>`:'';
   return`<div class="fees one"><div class="fee-box"><b>Green fee</b><span class="amt" title="${esc(V(i,'wd'))}">${esc(fmtGreenFee(i))}</span>${note}${split}</div></div>`;
 }
-/* GOLF-185b: `card` builds the phone card's "Show more" body instead — the
-   same content minus the name and the Add button, which the card's compact
-   head already shows (js/mobile-sheet.js). data-course is how the phone
-   layout recognises a course popup and routes it into the sheet. */
-function popupHTML(i,{card=false}={}){
-  const c=C[i],a=ACCESS[V(i,'a')],stn=STN[V(i,'stn')],near=c.nearStation;
+/* GOLF-255 (B3): one course body, three shapes. The desktop popup is slim
+   (name → "Up to £X" → summary + access chip → Add → quiet row); the phone
+   card's "Show more" and the pane's detail (GOLF-267, js/course-pane.js)
+   share courseBodyHTML(), so what a course shows can't drift between them.
+   data-course is how the phone layout recognises a course popup and routes
+   it into the sheet (js/mobile-sheet.js). */
+const CP_ICO={
+  site:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  phone:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/>',
+  dir:'<path d="m3 11 18-8-8 18-2-8-8-2Z"/>'
+};
+function cpIcon(k){return`<svg class="cp-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CP_ICO[k]}</svg>`;}
+/* "Up to £X" with GOLF-193's ~ on an estimate — said once per surface. */
+function courseFeeLine(i){
+  const mark=typeof estMark==='function'?estMark(feeConfWord(i)==='Estimate'):'';
+  return mark+esc(fmtGreenFee(i));
+}
+function courseAccessChip(i){
+  const a=ACCESS[V(i,'a')];
+  return a?`<span class="acc-chip">${esc(a.label)}</span>`:'';
+}
+function courseAddBtn(i){
+  return`<button type="button" class="btn primary" onclick="${TRIP.has(i)?`tripRemoveCourse(${i})`:`tbAddToPlan(${i})`}">${TRIP.has(i)?'✓ In your trip — remove':'＋ Add to trip'}</button>`;
+}
+/* Website, phone, directions: quiet, never a black filled button. */
+function courseQuietHTML(i){
+  const c=C[i],club=c.clubInfo,site=V(i,'site');
+  const search=`https://www.google.com/search?q=${encodeURIComponent(V(i,'n')+' golf club green fees')}`;
+  const dir=`https://www.google.com/maps/dir/?api=1&destination=${c.lat},${c.lng}`;
+  const q=(href,ico,label,ext)=>`<a class="cp-q" href="${href}"${ext?' target="_blank" rel="noopener"':''}>${cpIcon(ico)}<span>${label}</span></a>`;
+  return`<div class="cp-quiet">${site?q(esc(escUrl(site)),'site','Website',1):q(esc(search),'site','Find site',1)}${club&&club.phone?q('tel:'+esc(String(club.phone).replace(/[^\d+]/g,'')),'phone','Call'):''}${q(dir,'dir','Directions',1)}</div>`;
+}
+/* Mark played, Want to play, Set as anchor, Correct this, Export — a menu on
+   the desktop popup, plain 44px rows where there's room to show them. */
+function courseMoreHTML(i,open){
+  const rows=`<div class="cp-rows">
+    <button type="button" class="cp-mi" onclick="togglePlayed(${i})">${PLAYED.has(i)?'Unmark played':'Mark played'}</button>
+    <button type="button" class="cp-mi" onclick="toggleWant(${i})">${WANT.has(i)?'Remove from want-to-play':'Want to play'}</button>
+    <button type="button" class="cp-mi" onclick="setAsAnchor(${i})">Set as anchor course for a trip</button>
+    <button type="button" class="cp-mi" onclick="openEditor(${i})">Correct this</button>
+    <button type="button" class="cp-mi" onclick="openCorrectionsExport()">Export corrections</button>
+  </div>`;
+  return open?rows:`<details class="cp-more"><summary>More</summary>${rows}</details>`;
+}
+/* The confirmed/estimate word and the weekday/weekend split, for surfaces
+   that already show the headline price (the phone card). */
+function courseFeeExtraHTML(i){
+  const word=feeConfWord(i);
+  const lab=f=>(typeof feeV2Label==='function'&&feeV2Label(i,f))||'';
+  const wd=lab('wd'),we=lab('we');
+  const bits=[word,wd&&we&&wd!==we?`Weekday ${wd} · Weekend ${we}`:''].filter(Boolean);
+  return bits.length?`<p class="cp-feenote">${esc(bits.join(' · '))}</p>`:'';
+}
+function courseLinksHTML(i){
+  const c=C[i],club=c.clubInfo,site=V(i,'site'),book=V(i,'book');
+  const a=(u,t)=>`<a class="btn ghost" href="${esc(escUrl(u))}" target="_blank" rel="noopener">${t}</a>`;
+  const out=[
+    book&&book!==site?a(book,'Green fees'):'',
+    club&&club.teeBooking&&club.teeBooking!==site&&club.teeBooking!==book?a(club.teeBooking,'Tee booking'):'',
+    club&&club.membership&&club.membership!==site?a(club.membership,'Membership'):''
+  ].join('');
+  return out?`<div class="actions cp-links">${out}</div>`:'';
+}
+function courseDlHTML(i){
+  const c=C[i],stn=STN[V(i,'stn')],near=c.nearStation,club=c.clubInfo;
   const travel=stn?`<b style="color:${LINES[stn.l].c}">${esc(stn.n)}</b> · ${esc(LINES[stn.l].n)}${nrBadge(stn.l)} — ${esc(V(i,'walk'))}`
     :near?`<b>${esc(near.n)}</b>${nrBadge()} — ${near.mi} mi, straight-line (nearest station nationally, not a walking route)`
     :(esc(V(i,'walk'))||'Outside the rail catchment — no nearby station on this map');
-  const search=`https://www.google.com/search?q=${encodeURIComponent(V(i,'n')+' golf club green fees')}`;
-  const site=V(i,'site'),book=V(i,'book'),club=c.clubInfo;
-  /* GOLF-225 stopped showing course photos; GOLF-237 removed the England
-     Golf club logos and blurbs from the data altogether (their terms bar
-     republishing them), so the popup opens straight on the name. */
-  const addBtn=card?'':`<button class="btn primary" onclick="${TRIP.has(i)?`tripRemoveCourse(${i})`:`tbAddToPlan(${i})`}">${TRIP.has(i)?'✓ In your trip — remove':'＋ Add to trip'}</button>`;
-  return `<div class="pop" data-course="${i}">${card?'':`<h3>${esc(V(i,'n'))} ${courseBadgesHTML(i)}</h3>`}
-    <p class="sub">${esc(c.r)} · ${esc(a.label)}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
-    ${feeBlock(i)}
-    ${(()=>{const ct=(typeof feeCartFor==='function')&&feeCartFor(i);return ct&&ct.status==='mandatory'?`<p class="note" style="color:var(--stone)">Buggy compulsory${ct.amount!=null?` — ${esc(curSym(courseCurrency(i))+Math.round(ct.amount))}${ct.per==='person'?' per person':' per cart'}`:''}, billed separately.</p>`:'';})()}
-    <dl><dt>Course</dt><dd>${esc(V(i,'spec'))}</dd><dt>Design</dt><dd>${esc(V(i,'arch'))}</dd>${(!RAIL_FEATURE||c.topSouthAfrica)?'':`<dt>By rail</dt><dd>${travel}</dd>`}${club&&club.phone?`<dt>Phone</dt><dd>${esc(club.phone)}</dd>`:''}</dl>
-    <p class="note">${esc(V(i,'note'))}</p>
-    ${calcHTML(i)}
-    <div class="actions">
-      ${addBtn}
-      ${site?`<a class="btn" href="${esc(escUrl(site))}" target="_blank" rel="noopener">Club website</a>`:`<a class="btn ghost" href="${esc(search)}" target="_blank" rel="noopener">Find the club site</a>`}
-      ${book&&book!==site?`<a class="btn ghost" href="${esc(escUrl(book))}" target="_blank" rel="noopener">Green fees</a>`:''}
-      ${club&&club.teeBooking&&club.teeBooking!==site&&club.teeBooking!==book?`<a class="btn ghost" href="${esc(escUrl(club.teeBooking))}" target="_blank" rel="noopener">Tee booking</a>`:''}
-      ${club&&club.membership&&club.membership!==site?`<a class="btn ghost" href="${esc(escUrl(club.membership))}" target="_blank" rel="noopener">Membership</a>`:''}
-      <button class="btn subtle" onclick="togglePlayed(${i})">${PLAYED.has(i)?'Unmark played':'Mark played'}</button>
-      <button class="btn subtle" onclick="toggleWant(${i})">${WANT.has(i)?'Remove from want-to-play':'Want to play'}</button>
-      <button class="btn subtle" onclick="openEditor(${i})">Correct this</button>
-      <button class="btn subtle" onclick="setAsAnchor(${i})">Set as anchor course for a trip</button>
-    </div><p class="conf">${esc(CONF[c.conf])}</p></div>`;
+  const tel=club&&club.phone?`<a href="tel:${esc(String(club.phone).replace(/[^\d+]/g,''))}">${esc(club.phone)}</a>`:'';
+  return`<dl><dt>Course</dt><dd>${esc(V(i,'spec'))}</dd><dt>Design</dt><dd>${esc(V(i,'arch'))}</dd>${(!RAIL_FEATURE||c.topSouthAfrica)?'':`<dt>By rail</dt><dd>${travel}</dd>`}${tel?`<dt>Phone</dt><dd>${tel}</dd>`:''}</dl>`;
+}
+function courseBuggyHTML(i){
+  const ct=(typeof feeCartFor==='function')&&feeCartFor(i);
+  return ct&&ct.status==='mandatory'?`<p class="note" style="color:var(--stone)">Buggy compulsory${ct.amount!=null?` — ${esc(curSym(courseCurrency(i))+Math.round(ct.amount))}${ct.per==='person'?' per person':' per cart'}`:''}, billed separately.</p>`:'';
+}
+/* mode 'card': the phone card's body — its head already has the name, price,
+   access, note and Add. 'pane': the whole course, for the side pane. */
+function courseBodyHTML(i,mode){
+  const c=C[i],pane=mode==='pane';
+  return`<div class="pop pop-body" data-course="${i}">
+    ${pane?`<h3>${esc(V(i,'n'))} ${courseBadgesHTML(i)}</h3>`:''}
+    <p class="sub">${esc(c.r)} · ${esc(ACCESS[V(i,'a')].label)}${c.winter?' · drains well in winter':''}</p>${rankChips(i)}
+    ${pane?feeBlock(i):courseFeeExtraHTML(i)}
+    ${courseBuggyHTML(i)}
+    ${pane?`<div class="cp-add">${courseAddBtn(i)}</div>`:''}
+    ${courseQuietHTML(i)}
+    ${courseDlHTML(i)}
+    ${pane?`<p class="note">${esc(V(i,'note'))}</p>${calcHTML(i)}`:''}
+    ${courseLinksHTML(i)}
+    ${courseMoreHTML(i,true)}
+    <p class="conf">${esc(CONF[c.conf])}</p></div>`;
+}
+function popupHTML(i,{card=false}={}){
+  if(card)return courseBodyHTML(i,'card');
+  const c=C[i];
+  return `<div class="pop pop-slim" data-course="${i}"><h3>${esc(V(i,'n'))} ${courseBadgesHTML(i)}</h3>
+    <p class="cp-price">${courseFeeLine(i)}</p>
+    <p class="cp-sum">${esc(V(i,'spec'))} ${courseAccessChip(i)}</p>
+    <div class="cp-add">${courseAddBtn(i)}<button type="button" class="btn ghost cp-det" onclick="cdOpen(${i})">Details ›</button></div>
+    <div class="cp-foot">${courseQuietHTML(i)}${courseMoreHTML(i,false)}</div></div>`;
 }
 /* GOLF-52: a lightweight hover tooltip (name/fee) so a visitor
    can scan the map without clicking every pin open — the full popup
@@ -755,6 +837,7 @@ function refreshOpenCoursePopup(){
     if(m.isPopupOpen&&m.isPopupOpen())m.getPopup().update();
   });
   if(typeof mobCardRefresh==='function')mobCardRefresh(); // GOLF-185b: the phone card, which is not a popup
+  if(typeof cdRefresh==='function')cdRefresh(); // GOLF-267: the pane's course detail
 }
 /* GOLF-201: which course's popup is open, if any. Both redraws —
    tbDrawMap() rebuilding tripLayer and render() refilling the cluster
@@ -768,8 +851,16 @@ let mapOpenCourseI=null;
 map.on('popupopen',e=>{
   const el=e.popup.getElement()&&e.popup.getElement().querySelector('.pop[data-course]');
   mapOpenCourseI=el?+el.dataset.course:null;
+  if(mapOpenCourseI==null)return;
+  /* GOLF-267: with a course open in the pane, a pin swaps the pane to that
+     course rather than stacking a popup on it. */
+  if(typeof cdIsOpen==='function'&&cdIsOpen()){const k=mapOpenCourseI;map.closePopup();cdOpen(k);return;}
+  courseSelect(mapOpenCourseI);
 });
-map.on('popupclose',()=>{mapOpenCourseI=null;});
+map.on('popupclose',()=>{
+  mapOpenCourseI=null;
+  if(!(typeof cdIsOpen==='function'&&cdIsOpen()))courseSelect(null);
+});
 function mapOpenCourse(){return mapOpenCourseI;}
 /* Reopens course i's popup on whichever marker now carries it — unless
    something else opened meanwhile, or the course has gone: out of the
@@ -827,15 +918,19 @@ function goToCourse(i){
   const go=()=>{
     const fly=()=>{try{map.flyTo([C[i].lat,C[i].lng],13,{duration:.6});}catch(e){map.setView([C[i].lat,C[i].lng],13);}};
     const t=(typeof tripCourseMarkers!=='undefined')?tripCourseMarkers.get(i):null;
-    if(t&&t._map){fly();t.openPopup();highlight(i);drawLink(i);return;}
+    /* GOLF-267: on a desktop the course opens in the pane, not a popup. */
+    const desk=!mobIsPhone()&&typeof cdOpen==='function';
+    const show=mk=>{if(desk)cdOpen(i);else mk.openPopup();};
+    if(t&&t._map){fly();show(t);highlight(i);drawLink(i);return;}
     const m=markers.get(i);
-    if(!m){fly();highlight(i);drawLink(i);return;}
+    if(!m){fly();if(desk)cdOpen(i);highlight(i);drawLink(i);return;}
     /* Out of the current scope: lend it a pin. The next render() rebuilds
        this layer from scope, so nothing is left behind. */
     if(!layer.hasLayer(m)){m.setIcon(pinFor(i));layer.addLayer(m);}
     // zoomToShowLayer breaks open the cluster this marker is hiding in and
     // then fires — plain openPopup() on a clustered marker does nothing.
-    if(layer.zoomToShowLayer)layer.zoomToShowLayer(m,()=>m.openPopup());
+    if(desk){fly();cdOpen(i);}
+    else if(layer.zoomToShowLayer)layer.zoomToShowLayer(m,()=>m.openPopup());
     else{fly();m.openPopup();}
     highlight(i);drawLink(i);
   };
