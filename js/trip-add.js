@@ -527,7 +527,7 @@ function tripDayCourseRowHTML(i,dayId){
    inline <select> offered, as 44px menu rows. */
 function tbDayMenuItemsHTML(i,currentDayId){
   return[`<button type="button" class="tb-menu-item" onclick="tbAssignCourseDay(${i},'')">${currentDayId==null?'✓':'&nbsp;&nbsp;'} Shortlist</button>`]
-    .concat(tripDays.map((d,idx)=>`<button type="button" class="tb-menu-item" onclick="tbAssignCourseDay(${i},'${d.id}')">${d.id===currentDayId?'✓':'&nbsp;&nbsp;'} Day ${idx+1}</button>`))
+    .concat(tripDays.map((d,idx)=>`<button type="button" class="tb-menu-item" onclick="tbAssignCourseDay(${i},'${d.id}')">${d.id===currentDayId?'✓':'&nbsp;&nbsp;'} ${esc(tbDayMenuLabel(d,idx))}</button>`))
     .concat([`<button type="button" class="tb-menu-item" onclick="tbAssignCourseDay(${i},'new')">＋ New day</button>`]).join('');
 }
 /* GOLF-63: one scheduled stop of any type, draggable into any position in

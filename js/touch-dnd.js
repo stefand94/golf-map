@@ -46,7 +46,7 @@
    is in flight at that moment, which is what makes the subsequent
    preventDefault() in touchmove reliable (iOS ignores it once a scroll
    has begun). Desktop mouse drag never enters this file. */
-const TB_HOLD_MS=500;   // "about half a second, still"
+const TB_HOLD_MS=380;   // GOLF-259: was 500 — still deliberate, no longer a wait
 const TB_HOLD_SLOP=8;   // finger jitter tolerance while holding, px
 /* Auto-scroll (AC c2). The band at each end of the list inside which a
    held item drags the list along, and the px-per-frame range across it —

@@ -563,6 +563,8 @@ function tbDragEnd(){
   document.body.classList.remove('tb-dragging');
   document.querySelectorAll('.tb-drop-over').forEach(el=>el.classList.remove('tb-drop-over'));
   document.querySelectorAll('.tb-drag-src').forEach(el=>el.classList.remove('tb-drag-src'));
+  document.querySelectorAll('.tb-day-src').forEach(el=>el.classList.remove('tb-day-src'));
+  document.body.classList.remove('tb-collapse','tb-collapse-day');
   tbDrag=null;tbDayDrag=null;
 }
 /* ── GOLF-71 (workstream D) ────────────────────────────────────────────
@@ -601,7 +603,26 @@ function tbDragStart(ev,el,label){
   try{ev.dataTransfer.setData('text/plain',label||'trip-item');}catch(e){}
   try{ev.dataTransfer.effectAllowed='move';}catch(e){}
   tbDragBegin();
-  if(el)setTimeout(()=>{if(el.isConnected)el.classList.add('tb-drag-src');},0);
+  if(el)setTimeout(()=>{if(el.isConnected){el.classList.add('tb-drag-src');tbDragCollapse(el);}},0);
+}
+/* GOLF-259: once a drag has begun, every day folds to its header so the
+   whole trip fits on screen and any day is one short move away. Deferred
+   a tick like the lift above — folding inside dragstart would bake the
+   change into the browser's drag image or cancel the drag outright. The
+   day a stop is dragged FROM stays open, so reordering inside it still
+   has rows to land between; dragging a whole day folds them all. The
+   dragged row is held at the same height on screen, so it stays under the
+   pointer. Everything unfolds again on drop (tbDragEnd). */
+function tbDragCollapse(el){
+  const isDay=el.classList.contains('tb-day');
+  const srcDay=isDay?null:el.closest('.tb-day');
+  const before=el.getBoundingClientRect().top;
+  if(srcDay)srcDay.classList.add('tb-day-src');
+  document.body.classList.add('tb-collapse');
+  if(isDay)document.body.classList.add('tb-collapse-day');
+  const after=el.getBoundingClientRect().top;
+  const sc=typeof tbTouchScroller==='function'?tbTouchScroller(el):document.getElementById('tb-pane');
+  if(sc&&after!==before)sc.scrollTop+=after-before;
 }
 /* Per-target hover highlight. `ev` is optional: when passed to tbDropOut
    a dragleave onto a descendant is ignored (defect 3 above). */

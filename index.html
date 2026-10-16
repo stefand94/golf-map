@@ -408,6 +408,30 @@
   .tb-menu-item.is-danger{color:#9A3412}
   .tb-menu-item.is-danger:hover{background:#FBEEE7}
   .tb-menu-sep{height:1px;background:var(--line);margin:var(--sp-1) 0}
+
+  /* GOLF-259: menus — focus ring in the accent, a long list scrolls inside
+     the viewport, and one near the bottom of the screen opens upward. */
+  .tb-menu-item:focus-visible,.tb-rowmenu>summary:focus-visible,.tb-drop>summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .tb-menu-item{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tb-drop-body{max-height:calc(100vh - 16px);max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain}
+  .tb-drop-body.is-up{top:auto;bottom:calc(100% + var(--sp-2))}
+  /* GOLF-259: while a stop or a day is being dragged every day folds to its
+     header (the source day of a stop stays open to reorder within). The day
+     under the pointer says where the drop lands, in that day's colour. */
+  body.tb-collapse .tb-day:not(.tb-day-src)>:not(.tb-day-head){display:none}
+  body.tb-collapse .tb-day:not(.tb-day-src) .tb-day-head{border-radius:var(--radius-lg)}
+  body.tb-collapse .tb-day.tb-drop-over{border-color:var(--day-c,var(--accent));box-shadow:var(--shadow-dragging)}
+  body.tb-collapse .tb-day.tb-drop-over::before{background:var(--day-c,var(--accent));box-shadow:none;top:-4px}
+  body.tb-collapse .tb-day.tb-drop-over::after{content:'Drop into ' attr(data-drop-label);display:block;
+    padding:0 var(--sp-3) var(--sp-2) 44px;font:700 12px var(--font-sans);color:var(--ink)}
+  body.tb-collapse-day .tb-day.tb-drop-over::after{content:'Move before ' attr(data-drop-label)}
+  /* Grips: a 44px hit column without widening the layout (the padding eats
+     into the row's own padding and gap); on a mouse they appear on hover. */
+  .tb-drag-handle{box-sizing:content-box;padding:0 8px;margin:0 -8px}
+  @media (hover:hover) and (pointer:fine){
+    .tb-day-course .tb-drag-handle,.tb-day-head .tb-drag-handle{opacity:0}
+    .tb-day-course:hover .tb-drag-handle,.tb-day-head:hover .tb-drag-handle,.tb-drag-handle:focus-visible{opacity:1}
+  }
   /* GOLF-194: a non-item row inside a dropdown — a control that lives in
      the menu (the group-size stepper) rather than a thing to click once.
      Full width, and the stepper's own unit label stays visible here even

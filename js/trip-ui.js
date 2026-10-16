@@ -1543,6 +1543,11 @@ function tbAddCourseToDay(dayId){
   const el=document.getElementById('tb-unified-search');
   if(el){el.scrollIntoView({block:'center'});el.focus();}
 }
+/* GOLF-259: how a day is named wherever you choose it — "Day 4 · Gleneagles". */
+function tbDayMenuLabel(d,idx){
+  const t=tripDaySuggestedTown(d);
+  return`Day ${idx+1}${t?' · '+t:''}`;
+}
 function tbDayCardHTML(d,idx){
   const kind=TRIP_DAY_KINDS[d.kind]?d.kind:'golf';
   const items=tripDayItems(d);
@@ -1570,8 +1575,8 @@ function tbDayCardHTML(d,idx){
      depends on a drag that has to be done in stages down a long trip. */
   const moveItems=tripDays.length>1?tripDays.map((_,i)=>i===idx?''
     :`<button type="button" class="tb-menu-item" onclick="tripDayMoveToPos(${d.id},${i})">${
-        i===0?'↑ Move to Day 1':i===tripDays.length-1?`↓ Move to Day ${i+1} (last)`:`Move to Day ${i+1}`}</button>`).join(''):'';
-  const menu=tbRowMenuHTML(moveItems+
+        i===0?`↑ ${esc(tbDayMenuLabel(tripDays[i],i))} (first)`:i===tripDays.length-1?`↓ ${esc(tbDayMenuLabel(tripDays[i],i))} (last)`:esc(tbDayMenuLabel(tripDays[i],i))}</button>`).join(''):'';
+  const menu=tbRowMenuHTML((moveItems?'<div class="tb-menu-label">Move to</div>':'')+moveItems+
     `<button type="button" class="tb-menu-item is-danger" onclick="tripRemoveDay(${d.id});">🗑 Remove day ${idx+1}</button>`);
   if(tbCompact&&!tbDetailed&&!tbCompactOpen.has(d.id)){
     const mins=tbDayDriveMins(idx);
@@ -1590,7 +1595,7 @@ function tbDayCardHTML(d,idx){
     </div>`;
   }
   return`
-    <div class="tb-day tb-day-${kind}" style="--day-c:${tbDayColor(idx)}"
+    <div class="tb-day tb-day-${kind}" style="--day-c:${tbDayColor(idx)}" data-drop-label="${esc(tbDayMenuLabel(d,idx))}"
       ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
       ondrop="event.preventDefault();tbDropOut(this);tbDropInDay(${d.id},null);">
       <div class="tb-day-head" draggable="true"
@@ -1890,7 +1895,29 @@ function tbDiscoverTabHTML(){
    life of the page (not per render) so row menus opened after a render
    are covered too, and so re-renders can't stack duplicate listeners. */
 let tbDismissBound=false;
+/* GOLF-259: a dropdown that would run off the bottom of the screen opens
+   upward instead, and is never taller than the viewport (it scrolls). The
+   toggle event doesn't bubble, so listen in the capture phase, once. */
+let tbMenuFlipBound=false;
+function tbMenuPlace(det){
+  const body=det.querySelector(':scope>.tb-drop-body');
+  if(!body||!det.open)return;
+  body.classList.remove('is-up');body.style.maxHeight='';
+  const sum=det.querySelector(':scope>summary').getBoundingClientRect();
+  const vh=window.innerHeight,h=body.scrollHeight+2;
+  const below=vh-sum.bottom-12,above=sum.top-12;
+  if(h>below&&above>below)body.classList.add('is-up');
+  body.style.maxHeight=Math.max(120,Math.min(vh-16,h>below&&above>below?above:below))+'px';
+}
+function tbMenuFlipBind(){
+  if(tbMenuFlipBound)return;tbMenuFlipBound=true;
+  document.addEventListener('toggle',e=>{
+    const det=e.target;
+    if(det&&det.tagName==='DETAILS'&&det.classList.contains('tb-drop')||det.classList&&det.classList.contains('tb-rowmenu'))tbMenuPlace(det);
+  },true);
+}
 function tbBindDropdownDismiss(){
+  tbMenuFlipBind();
   if(tbDismissBound)return;
   tbDismissBound=true;
   document.addEventListener('mousedown',e=>{
