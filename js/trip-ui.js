@@ -1723,7 +1723,7 @@ function tbReorderSuggestionHTML(){
 function tripDayScheduleHTML(){
   if(!tripSeq.length&&!tripDays.length)
     return`<p class="hint">Nothing scheduled yet.</p>
-      <div class="tb-day-add" style="padding-left:0"><button class="tb-btn is-primary" onclick="tbAddDayWithPlace();">＋ Add a day</button>
+      <div class="tb-day-add" style="padding-left:0"><button class="ui-btn-primary" onclick="tbAddDayWithPlace();">＋ Add a day</button>
       <button class="tb-btn" onclick="setAppMode('plan')">Browse courses</button></div>`;
   const unscheduled=tripUnscheduled();
   const reorderHTML=tbReorderSuggestionHTML();
@@ -1745,7 +1745,7 @@ function tripDayScheduleHTML(){
     <div class="tb-day-endzone tb-day-add" style="padding-left:0"
       ondragover="event.preventDefault();tbDropOver(this);" ondragleave="tbDropOut(this,event);"
       ondrop="event.preventDefault();tbDropOut(this);tbDropDayAtEnd();">
-      <button class="tb-btn is-primary" onclick="tbAddDayWithPlace();">＋ Add a day</button>
+      <button class="ui-btn-primary" onclick="tbAddDayWithPlace();">＋ Add a day</button>
       ${tripSeq.length>1?`<details class="tb-drop tb-auto-drop">
         <summary class="tb-btn" title="Rebuilds every golf day from scratch, one course per day, in nearest-neighbour order. Free/start/end days are kept exactly where they are."><span class="tb-drop-label">Auto schedule</span></summary>
         <div class="tb-drop-body is-right">
@@ -1766,7 +1766,7 @@ function tbWishlistHTML(){
      yet" read like the trip had been lost. Say where the courses went. */
   const nSched=tripSeq.length-allUnscheduled.length;
   if(!unscheduled.length&&!hiddenNote&&nSched>0)
-    return`<div class="tb-wish-moved"><span>✓ ${nSched} course${nSched===1?' is':'s are'} in your itinerary${tripDays.length?` across ${tripDays.length} day${tripDays.length===1?'':'s'}`:''}.</span>
+    return`<div class="tb-wish-moved"><span>${ICO('check')} ${nSched} course${nSched===1?' is':'s are'} in your itinerary${tripDays.length?` across ${tripDays.length} day${tripDays.length===1?'':'s'}`:''}.</span>
       <button class="tb-btn is-sm is-primary" onclick="enterBuildMode()">View itinerary →</button></div>`;
   if(!unscheduled.length)return hiddenNote||`<p class="hint">Nothing on your shortlist yet — add any course you fancy playing.</p>`;
   const rows=unscheduled.map(i=>{
@@ -2176,10 +2176,10 @@ function renderTripBuilder(){
   const searchHTML=`${tbSearchFieldHTML({id:'tb-unified-search',variant:'bar',value:tbSearchQ,
       placeholder:isItin?'Add a course or town…':tbPhoneLayout()?'Search clubs or towns':'Search courses, towns and cities…',ariaLabel:'Search courses, towns and cities'})}
     <div class="tb-section" id="tb-search-results" style="border-bottom:none;padding-top:0${tbSearchQ.trim()?'':';display:none'}">${tbSearchQ.trim()?tbUnifiedSearchResultsHTML():''}</div>`;
-  const hotelsBtn=`<button type="button" class="tb-btn is-sm${tbHotelLayerOn?' is-active':''}" id="tb-hotel-layer-toggle" aria-pressed="${tbHotelLayerOn}" title="Show nearby hotels on the map as you pan and zoom. Zoom in to see pins — no price data, just location."><span>Hotels</span></button>`;
+  const hotelsBtn=`<button type="button" class="ui-chip" id="tb-hotel-layer-toggle" aria-pressed="${tbHotelLayerOn}" title="Show nearby hotels on the map as you pan and zoom. Zoom in to see pins — no price data, just location."><span>Hotels</span></button>`;
   /* GOLF-208: Show POIs drives GOLF-207's POI layer (Gavin's tbPoiLayerOn /
      tbPoiLayerSet); left out until that layer exists. */
-  const poisBtn=typeof tbPoiLayerSet==='function'?`<button type="button" class="tb-btn is-sm${tbPoiLayerOn?' is-active':''}" id="tb-poi-layer-toggle" aria-pressed="${!!tbPoiLayerOn}" title="Show places to see near the map view. Zoom in to see pins."><span>Things to see</span></button>`:'';
+  const poisBtn=typeof tbPoiLayerSet==='function'?`<button type="button" class="ui-chip" id="tb-poi-layer-toggle" aria-pressed="${!!tbPoiLayerOn}" title="Show places to see near the map view. Zoom in to see pins."><span>Things to see</span></button>`:'';
   let tabChrome='';
   if(!isBuild){
     // GOLF-185d: the course filters sit beside the search, on every viewport.
@@ -2194,7 +2194,7 @@ function renderTripBuilder(){
     <div class="tb-toolbar">
       ${cfButtonHTML()}
       ${hotelsBtn}
-      <button type="button" class="tb-btn is-sm${tbShowNearby?' is-active':''}" id="tb-nearby-toggle" aria-pressed="${tbShowNearby}" title="Show other bookable courses near your trip on the map. Doesn't change your itinerary."><span>Nearby courses</span></button>
+      <button type="button" class="ui-chip" id="tb-nearby-toggle" aria-pressed="${tbShowNearby}" title="Show other bookable courses near your trip on the map. Doesn't change your itinerary."><span>Nearby courses</span></button>
       ${poisBtn}
     </div>`;
   }

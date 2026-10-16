@@ -1249,7 +1249,7 @@ function tlBlockFormHTML(dayId){
     ${s.kind==='drivefrom'?`<p class="hint" style="margin:var(--sp-2) 0 0">Pick a place from the search for the drive to your first stop to be worked out. ${
       s.lat!=null?ICO('pin')+' Location set.':'No location yet.'}</p>`:''}
     <div class="tb-addstop-row" style="margin-top:var(--sp-2)">
-      <button class="tb-btn is-primary" onclick="tlBlockCommit()">${s.itemId?'Save':'Add'}</button>
+      <button class="ui-btn-primary" onclick="tlBlockCommit()">${s.itemId?'Save':'Add'}</button>
       <button class="tb-btn is-quiet" onclick="tlBlockCancel()">Cancel</button>
     </div>
   </div>`;
@@ -1480,7 +1480,7 @@ function tlFlightFormHTML(dayId){
     </div>
     ${gs>1&&Number.isFinite(priceNum)?`<p class="hint" style="margin:var(--sp-2) 0 0">${cur}${Math.round(priceNum).toLocaleString('en-GB')} × ${gs} people = <b>${cur}${Math.round(priceNum*gs).toLocaleString('en-GB')}</b>.</p>`:''}
     <div class="tb-addstop-row" style="margin-top:var(--sp-2)">
-      <button class="tb-btn is-primary" onclick="tlFlightCommit()">${s.itemId?'Save':'Add'}</button>
+      <button class="ui-btn-primary" onclick="tlFlightCommit()">${s.itemId?'Save':'Add'}</button>
       <button class="tb-btn is-quiet" onclick="tlFlightCancel()">Cancel</button>
     </div>
   </div>`;

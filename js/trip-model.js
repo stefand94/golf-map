@@ -502,7 +502,7 @@ function tbAddStopFormHTML(dayId,itemId){
     })()}
     ${isHotel&&gs>1&&Number.isFinite(priceNum)?`<p class="hint" style="margin:var(--sp-2) 0 0">${cur}${Math.round(priceNum).toLocaleString('en-GB')} × ${gs} people = <b>${cur}${Math.round(priceNum*gs).toLocaleString('en-GB')}</b> per night.</p>`:''}
     <div class="tb-addstop-row" style="margin-top:var(--sp-2)">
-      <button class="tb-btn is-primary" onclick="tbAddStopCommit()">${editing?'Save':'Add'}</button>
+      <button class="ui-btn-primary" onclick="tbAddStopCommit()">${editing?'Save':'Add'}</button>
       <button class="tb-btn is-quiet" onclick="tbAddStopCancel()">Cancel</button>
     </div>
     ${tbAddStop.lat!=null?`<p class="hint" style="margin:var(--sp-2) 0 0">${ICO('pin')} Location set</p>`:''}
@@ -1290,7 +1290,7 @@ function tbItinGroupHTML(){
 function tbTripMenuHTML(isBuild){
   const list=tripListAll();
   const active=list.find(t=>t.id===activeTripId);
-  const rows=list.map(t=>`<button type="button" class="tb-menu-item" onclick="tripSwitchTo('${t.id}')">${t.id===activeTripId?'✓':'&nbsp;&nbsp;'} ${esc(t.name)}</button>`).join('');
+  const rows=list.map(t=>`<button type="button" class="tb-menu-item" onclick="tripSwitchTo('${t.id}')">${t.id===activeTripId?ICO('check'):'<span class="ico-gap" style="display:inline-block;width:1.1em"></span>'} ${esc(t.name)}</button>`).join('');
   /* GOLF-115: a long trip name must stay fully readable — it ellipsises
      and carries the full name as a tooltip.
      GOLF-150: this menu is now the pane's HEADLINE rather than a toolbar
