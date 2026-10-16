@@ -41,7 +41,6 @@
   - Stay22 link;
   - spacing.
 - **GOLF-270 (desktop):** hover a course in the search results or the list, and its map pin should get a ring. Hover a pin, and its row should highlight.
-- **GOLF-266 logo:** check that the new header mark (a navy circle with a flag) and the "Golf Tripper" wordmark look right.
 - **GOLF-259 (iPhone):** hold and drag an itinerary item to another day.
 - **GOLF-251 follow-up (added 2026-10-16):** on the HeiGIT dashboard, check the real daily Geocoding (autocomplete) limit. The plan page says 3,000/day. Our cap assumes 1,000 (site cap 950). ORS's header shows 100, which looks like the per-minute figure.
   - If it says 3,000: the dev raises `QUOTA_LIMITS.geocode.site` in `scripts/cloudflare-worker/ors-proxy.js` (e.g. to 2,900).
