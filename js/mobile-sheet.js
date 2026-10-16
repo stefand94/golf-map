@@ -72,31 +72,35 @@ filterBtn.setAttribute('aria-label','Filters');filterBtn.title='Filters';
 filterBtn.innerHTML=FILTER_ICON_SVG;
 filterBtn.hidden=true; // GOLF-185d unhides it once the filter panel exists
 
-/* GOLF-185c: on a phone the app opens on a country question, over a
-   blurred map, until a country is picked; after that the pick lives on as
-   a small chip beside the floating search. state.nation is saved, so the
-   card doesn't come back on reload. GOLF-224/DEC-037 retired the per-deploy
-   wipe that used to bring it back once after every release, so a release no
-   longer re-asks the question. Never on a #share= link: CSS keys every
-   rule below off body:not(.shared-mode). */
+/* GOLF-185c / GOLF-257: the app opens on a country question, as a frosted
+   glass panel over the live map (GB + Ireland by default), on desktop and
+   phone alike, until a country is picked. There is no "Just looking"
+   (DEC-040). state.nation is saved, so the card doesn't come back on
+   reload. Never on a #share= link: CSS keys every rule below off
+   body:not(.shared-mode). Outlines: design/svg-proposals/countries/. */
 const MOB_NATION_CODE={gb:'GB',ie:'IE',za:'ZA'};
+const MOB_COUNTRY_SVG={gb: "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 62.1 100\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M18.8 9.3 20.3 9.8 22.3 10.2 24.8 9.7 27.4 9.5 28.3 8.8 30.3 9.1 30.0 11.1 26.7 14.3 25.9 16.9 23.5 20.5 28.8 18.3 36.3 18.6 37.5 20.5 35.8 24.0 33.5 28.5 32.9 32.7 29.3 34.5 27.0 35.2 29.3 35.7 32.1 34.9 33.4 35.5 35.5 36.5 36.3 37.8 37.9 39.5 39.6 45.3 40.9 48.6 44.3 50.7 47.4 54.4 46.7 56.6 48.5 59.8 46.1 58.6 48.5 60.6 49.9 64.1 49.1 67.1 50.8 66.1 55.4 66.3 57.9 69.6 58.1 70.8 57.1 74.8 55.3 76.2 54.6 77.7 52.0 80.3 50.2 80.9 53.1 81.4 56.3 81.8 55.9 84.2 53.6 86.5 49.3 88.3 47.1 87.4 43.3 88.4 41.5 87.6 39.8 87.1 37.0 88.5 36.0 89.8 33.6 90.5 30.5 88.6 28.1 89.4 26.7 93.4 23.8 92.0 17.7 96.0 14.7 94.9 16.0 93.5 18.6 90.1 21.6 85.4 23.5 84.9 25.9 83.1 27.7 83.6 30.6 82.1 32.2 80.6 33.4 78.6 30.7 80.1 29.5 81.1 26.4 80.8 24.9 79.6 22.8 80.0 22.3 78.4 20.6 78.9 19.2 79.6 18.0 78.6 17.0 76.6 18.4 75.3 20.6 74.6 24.2 71.5 24.3 70.1 24.3 68.4 23.9 66.5 22.3 66.8 20.1 67.6 21.1 66.1 22.9 64.4 23.9 63.3 25.7 62.3 27.5 62.3 28.6 62.1 30.2 63.1 29.6 61.6 29.9 60.1 30.3 59.1 30.2 57.4 30.3 56.3 31.3 54.6 29.0 54.8 26.7 50.5 27.1 49.0 29.3 46.0 27.0 46.7 24.3 47.5 22.3 48.7 19.6 49.2 18.1 47.1 18.0 45.5 18.8 44.5 19.6 43.0 21.0 40.9 20.7 40.1 19.9 39.1 19.6 37.5 20.3 36.0 19.3 36.0 18.8 34.0 16.5 36.9 16.1 39.5 15.3 41.3 14.2 42.5 14.6 39.5 15.3 37.0 15.0 35.5 16.1 31.4 14.5 29.5 11.7 28.2 14.0 25.5 14.7 22.7 13.9 21.0 14.5 18.2 14.1 16.9 16.8 15.0 16.8 12.9 18.5 11.0ZM11.0 18.6 9.5 20.5 8.7 20.3 8.4 21.3 10.4 22.5 11.8 24.0 13.1 25.2 14.5 23.5 14.6 22.8 13.0 22.0 12.0 21.3 12.1 19.5ZM11.5 10.4 12.1 12.9 10.8 13.5 9.8 15.5 8.7 17.0 5.7 21.5 5.7 24.5 4.6 25.5 4.0 26.0 4.6 22.5 4.0 19.5 6.6 17.0 6.9 14.0 6.9 13.0 9.5 11.5ZM11.3 29.3 14.5 30.0 15.0 31.0 13.0 32.5 10.7 32.7 12.1 31.0ZM12.1 36.3 13.0 38.3 11.3 39.7 10.1 38.5 10.4 37.0ZM22.6 61.4 20.7 62.4 21.4 63.6 22.3 64.1 23.8 63.1 24.3 62.6 23.5 61.8ZM38.6 89.0 40.3 89.8 41.6 89.0 40.4 87.9 39.2 88.5ZM28.4 4.0 31.0 4.3 31.9 6.0 30.2 6.9 28.4 6.2Z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\" fill-rule=\"evenodd\"/></svg>", ie: "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 68.4 88\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M41.7 4.0 46.2 7.7 45.0 10.7 46.8 8.3 50.5 7.5 56.6 7.1 57.8 9.3 60.8 14.8 59.6 18.9 64.4 19.5 63.8 25.0 62.6 27.6 59.8 28.0 57.2 31.5 53.8 32.1 55.7 36.2 57.2 40.2 57.8 44.7 55.9 45.7 58.4 53.1 56.8 56.5 55.9 61.4 53.5 66.1 54.0 69.3 47.1 70.4 39.0 71.2 35.9 73.8 31.1 76.9 27.7 80.9 22.0 82.4 12.0 84.0 14.7 79.9 8.0 80.9 11.0 77.9 6.2 76.9 5.6 74.2 11.0 71.2 4.0 70.8 7.4 67.7 11.6 66.7 10.4 64.3 17.1 61.2 10.8 61.4 14.1 59.0 16.5 55.5 16.7 53.1 18.7 49.4 21.4 47.0 14.7 47.4 9.8 44.3 7.0 44.3 9.2 42.3 11.6 39.8 7.4 33.1 9.8 26.0 17.7 25.6 19.5 27.6 26.8 26.0 28.6 22.9 31.7 19.9 24.4 19.5 24.6 18.5 28.6 14.8 30.7 8.7 34.3 7.3 38.6 6.2 39.6 10.7 41.4 6.0Z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\" fill-rule=\"evenodd\"/></svg>", za: "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 88.8\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M4.0 45.1 7.6 41.4 9.3 45.6 10.4 45.9 13.8 46.9 18.3 44.0 21.6 44.3 23.9 43.7 23.9 20.3 27.2 24.5 27.2 31.3 28.3 33.8 33.4 33.8 38.4 29.0 40.7 23.8 46.3 25.8 54.6 26.1 56.6 20.3 62.5 13.3 68.6 6.6 74.2 4.0 76.5 4.0 87.1 5.3 88.8 12.3 90.5 18.7 90.7 24.8 91.0 28.0 87.7 26.7 84.3 30.2 84.3 33.8 86.5 36.6 90.5 36.6 91.7 33.8 96.0 33.9 93.3 43.7 91.3 46.2 85.6 53.1 82.3 58.6 77.3 64.3 68.1 73.2 62.5 76.9 55.3 79.2 55.8 79.7 51.0 80.8 42.7 79.8 40.9 80.0 35.9 80.7 23.9 84.8 19.6 82.2 17.2 80.1 15.3 81.8 15.2 79.0 12.4 73.1 13.2 71.5 11.8 72.0 14.4 67.2 8.6 55.8 6.4 49.1ZM69.5 45.6 74.1 47.2 76.6 49.3 75.2 53.4 70.9 54.9 67.2 57.7 65.0 55.8 63.0 51.3 65.8 48.8Z\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\" fill-rule=\"evenodd\"/></svg>"};
 document.body.insertAdjacentHTML('beforeend',
   `<div class="mob-gate" id="mob-gate" hidden>
     <div class="mob-gate-card" role="dialog" aria-modal="true" aria-labelledby="mob-gate-h">
+      <p class="mob-gate-mark">Golf Tripper</p>
       <h2 id="mob-gate-h">Where are you playing?</h2>
-      <p>Pick a country to see its courses.</p>
+      <p class="mob-gate-promise">Plan a golf trip: find courses, line up days, see the cost.</p>
       <div class="mob-gate-opts"></div>
     </div>
   </div>`);
 const mobGate=document.getElementById('mob-gate');
-function mobGateWanted(){return mobIsPhone()&&!state.nation&&!document.body.classList.contains('shared-mode');}
+function mobGateWanted(){return !state.nation&&!document.body.classList.contains('shared-mode');}
 function mobGateSync(){
   const want=mobGateWanted();
   if(want&&mobGate.hidden){
     /* Filled here, not at load: NATIONS lives in js/explore.js, which
        loads after this file. */
     const opts=mobGate.querySelector('.mob-gate-opts');
-    if(!opts.firstChild)opts.innerHTML=NATIONS.map(([k,l])=>`<button type="button" class="mob-gate-opt" data-nation="${k}">${esc(l)}</button>`).join('');
+    if(!opts.firstChild)opts.innerHTML=NATIONS.map(([k,l])=>{
+      const n=C.filter((c,i)=>courseNation(i)===k&&courseShownOnMap(i)).length;
+      return`<button type="button" class="mob-gate-opt" data-nation="${k}">${MOB_COUNTRY_SVG[k]||''}<span class="mob-gate-name">${esc(l)}</span><span class="mob-gate-count">${n} courses</span></button>`;
+    }).join('');
     mobGate.classList.remove('is-leaving');
     mobGate.hidden=false;
     document.body.classList.add('mob-gate-on');
@@ -121,6 +125,13 @@ function mobPickNation(k){
     }
   }
   tbPickNation(k);
+  /* GOLF-257: fit again once the gate has gone and the layout has settled,
+     to the courses the map actually shows for this nation (Scotland was cut
+     off by the first, earlier fit). */
+  setTimeout(()=>{
+    const pts=C.map((c,i)=>i).filter(i=>courseNation(i)===k&&courseShownOnMap(i)).map(i=>[C[i].lat,C[i].lng]);
+    if(pts.length)mapFitBounds(L.latLngBounds(pts),{padding:[48,48],animate:false});
+  },360);
   const chip=document.getElementById('mob-nation-chip');
   if(chip)chip.focus({preventScroll:true});
 }
@@ -593,3 +604,51 @@ window.addEventListener('resize',()=>{
   mobApplySheet();
 });
 mobWasPhone=mobIsPhone();
+
+
+/* GOLF-257: desktop attribution folds behind the same ⓘ as the phone when
+   the map column is narrow (under ~600px), so the credits never wrap over
+   the pins. CSS keys off #map.attr-fold. */
+(function(){
+  const el=map.getContainer();
+  const sync=()=>el.classList.toggle('attr-fold',el.clientWidth>0&&el.clientWidth<600);
+  if(typeof ResizeObserver==='function')new ResizeObserver(sync).observe(el);
+  sync();
+})();
+
+/* GOLF-257: the desktop pane's width is draggable (clamp(400px,42vw,640px)
+   by default, see index.html); the choice is remembered per browser. */
+(function(){
+  const KEY='golfmap.paneW';
+  const root=document.documentElement,pane=document.querySelector('.panel');
+  if(!pane)return;
+  const bar=document.createElement('div');
+  bar.className='pane-resizer';bar.setAttribute('role','separator');bar.setAttribute('aria-orientation','vertical');
+  bar.setAttribute('aria-label','Resize panel');bar.title='Drag to resize';
+  document.body.appendChild(bar);
+  const place=()=>{
+    const r=pane.getBoundingClientRect();
+    bar.style.left=(r.right-4)+'px';
+    bar.style.display=(mobIsPhone()||!r.width)?'none':'';
+  };
+  const set=w=>{
+    w=Math.max(360,Math.min(w,Math.round(window.innerWidth*0.7)));
+    root.style.setProperty('--pane-w',w+'px');
+    document.body.classList.add('pane-custom');
+    return w;
+  };
+  try{const w=parseInt(localStorage.getItem(KEY),10);if(w>0)set(w);}catch(e){}
+  if(typeof ResizeObserver==='function')new ResizeObserver(place).observe(pane);
+  window.addEventListener('resize',place);
+  bar.addEventListener('pointerdown',e=>{
+    e.preventDefault();bar.setPointerCapture(e.pointerId);bar.classList.add('is-drag');
+    const move=ev=>{set(ev.clientX);place();};
+    const up=()=>{
+      bar.classList.remove('is-drag');
+      bar.removeEventListener('pointermove',move);bar.removeEventListener('pointerup',up);bar.removeEventListener('pointercancel',up);
+      try{localStorage.setItem(KEY,String(Math.round(pane.getBoundingClientRect().width)));}catch(e){}
+    };
+    bar.addEventListener('pointermove',move);bar.addEventListener('pointerup',up);bar.addEventListener('pointercancel',up);
+  });
+  place();
+})();
