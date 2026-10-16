@@ -22,7 +22,7 @@ _Minor defects / visual regressions live in `BUGS.md` (GOLF-123+)._
 | GOLF-265 | UX: shared link: per-trip OG title, payload compression | P2 | READY (Geoff, after 254) | GOLF-254 | B13. Trip name only in the query (owner OK). Old `#share=` links must still decode. See `GOLF-252-266-ux-review.md` |
 | GOLF-266 | UX: visual system (selected states, shapes, one icon set, type floor) | P2 | READY (rolling; Barry sweeps last) | all of 252–265 | B14. See `GOLF-252-266-ux-review.md` |
 | GOLF-262 | UX: Discover shortlist polish | P3 | READY (Gavin, after 258) | GOLF-258 | B10. See `GOLF-252-266-ux-review.md` |
-| GOLF-267 | UX: desktop course detail in the pane: PoC first | P3 | **PARKED 2026-10-16** (owner: show a PoC first) | GOLF-255 | Barry builds a PoC on a preview branch only if it is ≤ half a day; otherwise stays parked. See `GOLF-252-266-ux-review.md` |
+| GOLF-267 | UX: desktop course detail in the pane: PoC first | P3 | **PARKED 2026-10-16**: owner reviewing a static mock (https://claude.ai/artifact/VuPQJf3QghRpjn1FMz1oKe) | GOLF-255 | No dev work until Stefan decides from the mock: build it, ask for a working PoC, or drop it. See `GOLF-252-266-ux-review.md` |
 | GOLF-268 | UX: shared-link "Copy this trip / Plan your own" CTA | P3 | READY (Geoff, low priority) | GOLF-265 | Split from B13 (owner: low priority). See `GOLF-252-266-ux-review.md` |
 | GOLF-269 | IDEA: "yardage book" visual direction | — | IDEA 2026-10-16 | — | From the UX review growth ideas. Not scoped. |
 | GOLF-270 | IDEA: map ↔ list hover linking | — | IDEA 2026-10-16 | — | From the UX review growth ideas. Not scoped. |
