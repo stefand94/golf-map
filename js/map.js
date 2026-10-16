@@ -638,13 +638,12 @@ function feeAmtHTML(i,field){
   return`<span class="amt" title="${raw}">${lab?esc(lab):raw}</span>`;
 }
 function feeBlock(i){
-  const wd=(typeof feeV2Label==='function'&&feeV2Label(i,'wd'))||esc(V(i,'wd'));
-  const we=(typeof feeV2Label==='function'&&feeV2Label(i,'we'))||esc(V(i,'we'));
   const word=feeConfWord(i);
   const note=word?`<span class="fee-note${word==='Estimate'?' est':''}">${word}</span>`:'';
-  if(wd===we)return`<div class="fees one"><div class="fee-box"><b>Green fee</b>${feeAmtHTML(i,'wd')}${note}</div></div>`;
-  return`<div class="fees"><div class="fee-box"><b>Weekday</b>${feeAmtHTML(i,'wd')}${note}</div>`
-    +`<div class="fee-box"><b>Weekend</b>${feeAmtHTML(i,'we')}${note}</div></div>`;
+  const lab=f=>(typeof feeV2Label==='function'&&feeV2Label(i,f))||'';
+  const wd=lab('wd'),we=lab('we');
+  const split=wd&&we&&wd!==we?`<span class="fee-split">Weekday ${esc(wd)} · Weekend ${esc(we)}</span>`:'';
+  return`<div class="fees one"><div class="fee-box"><b>Green fee</b><span class="amt" title="${esc(V(i,'wd'))}">${esc(fmtGreenFee(i))}</span>${note}${split}</div></div>`;
 }
 /* GOLF-185b: `card` builds the phone card's "Show more" body instead — the
    same content minus the name and the Add button, which the card's compact
@@ -684,7 +683,7 @@ function popupHTML(i,{card=false}={}){
    can scan the map without clicking every pin open — the full popup
    (fees, design, booking links, etc.) still only opens on click. */
 function courseTooltipHTML(i){
-  const fee=((typeof feeV2Label==='function')&&feeV2Label(i,'wd'))||V(i,'wd');
+  const fee=fmtGreenFee(i);
   return`<div class="course-tt-name">${esc(V(i,'n'))}</div><div class="course-tt-meta">${esc(fee)}</div>`;
 }
 /* GOLF: a handful of clubs (Sunningdale Old/New, Saunton East/West,

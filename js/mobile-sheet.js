@@ -251,11 +251,8 @@ function showMobileList(){if(mobIsPhone())mobSheetSet('half');}
    GOLF-201's fix: a redraw that rebuilds the marker can't close it. */
 let mobCardI=null,mobCardMore=false,mobCardPrev=null;
 function mobCardFeeHTML(i){
-  const lab=f=>String((typeof feeV2Label==='function'&&feeV2Label(i,f))||V(i,f)||'').trim();
-  const wd=lab('wd'),we=lab('we');
-  if(!wd&&!we)return'';
   const mark=typeof estMark==='function'?estMark(feeConfWord(i)==='Estimate'):''; // GOLF-193's "~"
-  return mark+(!we||!wd||wd===we?esc(wd||we):`${esc(wd)} weekday · ${esc(we)} weekend`);
+  return mark+esc(fmtGreenFee(i));
 }
 function mobCardHTML(i){
   const fee=mobCardFeeHTML(i),note=String(V(i,'note')||'').trim(),inTrip=TRIP.has(i);

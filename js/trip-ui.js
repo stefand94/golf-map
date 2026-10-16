@@ -304,7 +304,7 @@ function tbDriveCapHTML(l){
    (curSym(), js/util.js), so every caller downstream of it — tbPrice(),
    this file's manual "£X × N people" templates below — gets the
    conversion for free as long as it goes through tbMoney or curSym(). */
-const tbMoney=(v,cur='GBP')=>v!=null?`${curSym(cur)}${v.toFixed(0)}`:'—';
+const tbMoney=(v,cur='GBP')=>v!=null?fmtMoney(v,cur):'—';
 /* GOLF-150 I3: a row's own price when it's unknown reads "TBC" (muted)
    rather than a bare "–" that sat beside the ⋯ menu looking like a
    collapse control. Cost tables keep tbMoney()'s dash. */
@@ -497,7 +497,7 @@ const tbDaySumHTML=idx=>{
 function tripPriceLabel(det){
   if(!det||det.total==null)return'—';
   const cur=det.cur||'GBP',sym=curSym(cur);
-  return det.sharing?`${sym}${det.base.toFixed(0)} × ${det.guests} people = ${sym}${det.total.toFixed(0)}`:tbMoney(det.total,cur);
+  return det.sharing?`${tbMoney(det.base,cur)} × ${det.guests} people = ${tbMoney(det.total,cur)}`:tbMoney(det.total,cur);
 }
 function itinLegRowHTML(l){
   if(l.type==='drive')return tbDriveCapHTML(l);
@@ -519,7 +519,7 @@ function itinLegRowHTML(l){
   return`<div class="tb-day-course tb-item-${l.type}" style="cursor:default">
     <span class="tb-item-icon">${icon}</span>
     <div class="tb-item-main"><span class="tb-item-name">${esc(l.name)}</span>
-      ${sharing?`<div class="cart-region">${sym}${l.detail.base.toFixed(0)} × ${l.detail.guests} people = ${sym}${l.detail.total.toFixed(0)}</div>`:''}</div>
+      ${sharing?`<div class="cart-region">${tbMoney(l.detail.base,cur)} × ${l.detail.guests} people = ${tbMoney(l.detail.total,cur)}</div>`:''}</div>
     <span class="tb-item-price">${estMark(!!(l.detail&&l.detail.est))}${tbDualPriceHTML(l.price,cur)}</span>
   </div>`;
 }
@@ -828,7 +828,7 @@ function tripCostLineItems(){
         /* A stay mixing a typed price with the regional guess has no single
            per-person rate, so it falls back to the party's nightly rate. */
         if(!det.sharing&&row._guests>1){row._guests=1;row.tag=det.est?'estimated':null;}
-        row.label=`${row._name} (${curSym(row._cur)}${(row.amount/row._nights/row._guests).toFixed(0)}/night × ${row._nights} nights)`;
+        row.label=`${row._name} (${fmtMoney(row.amount/row._nights/row._guests,row._cur)}/night × ${row._nights} nights)`;
       }else{
         stayGroups.set(key,items.length);
         items.push({label:name,cat:'Stay',amount:det.total,day:idx+1,cur:det.cur,
@@ -845,7 +845,7 @@ function tripCostLineItems(){
        happened, so a line the visitor put on a group basis says so
        instead of claiming a multiplication it didn't get. */
     let tag=det.basis==='group'?(gs>1?'whole party':null):(gs>1?`× ${gs}`:null);
-    let label=tripItemName(it)+(det.sharing?` (${curSym(det.cur)}${det.base.toFixed(0)} × ${det.guests} people)`:'');
+    let label=tripItemName(it)+(det.sharing?` (${fmtMoney(det.base,det.cur)} × ${det.guests} people)`:'');
     /* A fee the visitor typed is theirs; it gets neither the published
        range nor the data's confidence tag, both of which describe a
        number that is no longer on the row. */
@@ -859,12 +859,12 @@ function tripCostLineItems(){
     if(it.type==='golf')pushMandatoryBuggy(it.i,idx+1);
   }));
   tripUnscheduled().forEach(i=>{
-    const fee=feeNumberFor(i,'wd');
+    const fee=feeUpper(i);
     const fr=feeRangeFor(i,'wd');
     let label=V(i,'n');
     let tag=gs>1?`× ${gs}`:null;
     if(fr&&fr.confidence){
-      label+=feeRangeLabel(fr);
+      label+=fee==null?'':' (up to)';
       const confTag=FEE_CONF_TAG[fr.confidence];
       tag=tag?`${tag} · ${confTag}`:confTag;
     }
@@ -1002,7 +1002,7 @@ function tbTripTotalHTML(unit){
    Not persisted: the card always opens on Per person. */
 let tbCostMode='pp';
 // A real cost that rounds to nothing per head reads "<£1", never "£0".
-const ppAmt=(v,c)=>v>0&&v<0.5?`&lt;${curSym(c)}1`:`${curSym(c)}${Math.round(v)}`;
+const ppAmt=(v,c)=>v>0&&v<0.5?`&lt;${curSym(c)}1`:fmtMoney(v,c);
 const costPPMoney=(v,cur,gs)=>v==null?tbMoney(v,cur):ppAmt(v/gs,cur);
 // GOLF-174 / DEC-026: per currency, never combined — "£368 + €380".
 function costPPBucketFmt(b,gs,emptyCur){
@@ -1192,7 +1192,7 @@ function tbCostEditHTML(d,it){
      outright instead of showing an empty box. */
   const dataFee=isGolf?feeNumberForDate(it.i,d&&d.date):null;
   const ph=isGolf
-    ?(dataFee!=null?`${curSym(cur)}${dataFee.toFixed(0)} (club's own)`:'Add your fee')
+    ?(dataFee!=null?`${fmtMoney(dataFee,cur)} (club's own)`:'Add your fee')
     :`${curSym(cur)} amount`;
   const basis=det.basis||'person';
   const label=TB_COST_LABEL[it.type]||'Price';
@@ -1366,7 +1366,7 @@ function costTripGroupHTML(b,readOnly){
   const cur=b.cur,gs=b.groupSize;
   const fuelRow=`<div class="cost-fuel-row">${readOnly?'<span>⛽ Fuel (est.)</span>':
     `<label class="cost-fuel-toggle"><input type="checkbox" ${tbIncludeFuel?'checked':''} onchange="tbIncludeFuel=this.checked;renderTripBuilder();"> ⛽ Fuel (est.)</label>`
-    }<span class="cost-group-amt">${/* its own label already reads "Fuel (est.)" — a ~ here just stutters */''}${costDual(`${curSym(cur)}${b.fuelCost.toFixed(0)}`,costPPMoney(b.fuelCost,cur,gs),gs)}</span></div>`;
+    }<span class="cost-group-amt">${/* its own label already reads "Fuel (est.)" — a ~ here just stutters */''}${costDual(fmtMoney(b.fuelCost,cur),costPPMoney(b.fuelCost,cur,gs),gs)}</span></div>`;
   /* GOLF-233: the trip's one car-hire link. It lives here rather than on
      the Itinerary because hire is a cost, not a stop — and this is the
      group whose first example is "Car hire". The readOnly branch is the
@@ -1700,12 +1700,12 @@ function tbWishlistHTML(){
       <button class="tb-btn is-sm is-primary" onclick="enterBuildMode()">View itinerary →</button></div>`;
   if(!unscheduled.length)return hiddenNote||`<p class="hint">Nothing on your shortlist yet — add any course you fancy playing.</p>`;
   const rows=unscheduled.map(i=>{
-    const fee=feeNumberFor(i,'wd');
+    const fee=feeUpper(i);
     return`<div class="tb-day-course tb-item-golf" style="cursor:default">
       <span class="tb-item-icon">⛳</span>
       <div class="tb-item-main"><a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
         <div class="cart-region">${esc(C[i].r)}</div></div>
-      <span class="tb-item-price">${tbDualPriceHTML(fee==null?null:fee*groupSizeFor(),courseCurrency(i))}</span>
+      <span class="tb-item-price">${fee==null?'':'<span class="tb-upto">Up to </span>'}${tbDualPriceHTML(fee==null?null:fee*groupSizeFor(),courseCurrency(i))}</span>
       <div class="tb-item-actions"><button class="tb-btn is-icon is-sm is-quiet" title="Remove from shortlist"
         onclick="tripRemoveCourse(${i});">✕</button></div>
     </div>`;}).join('');

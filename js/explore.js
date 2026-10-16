@@ -459,7 +459,7 @@ function renderNearestList(anchorIdx){
   list.innerHTML=rows.map(({i,mi})=>{const ac=ACCESS[V(i,'a')];
     return`<div class="card" data-i="${i}"><div class="card-top">
       <p class="cname">${flagSVG(ac.colour,ac.pole,15,false)}${esc(V(i,'n'))}</p>
-      <span class="cfee">${esc(V(i,'wd'))}<small>${mi.toFixed(0)} mi away</small></span></div>
+      <span class="cfee">${esc(fmtGreenFee(i))}<small>${mi.toFixed(0)} mi away</small></span></div>
       <p class="cmeta"><span>${esc(ac.label)}</span><span>${esc(C[i].r)}</span></p>
       <p class="cmeta"><button class="btn2" data-add="${i}" style="padding:5px 10px;font-size:11px">＋ Add to trip</button></p></div>`}).join('');
   list.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',e=>{

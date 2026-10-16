@@ -221,6 +221,32 @@ function courseCurrency(i){
   }
   return feeCurrencyCodeFromText(V(i,'wd'))||feeCurrencyCodeFromText(V(i,'we'))||'GBP';
 }
+/* GOLF-253 (B1): the one place money becomes text — whole units, en-GB
+   thousands separator ("£3,690"). `cur` is a currency code. Every price in the app goes through here. */
+function fmtMoney(v,cur='GBP'){
+  if(v==null||!Number.isFinite(+v))return'—';
+  return curSym(cur)+Math.round(+v).toLocaleString('en-GB');
+}
+/* The ceiling of a course's published green fee — the upper of the weekday
+   and weekend figures. null when neither carries a number. This is the one
+   source field every surface reads, so a course shows the same price in
+   search, popup, shortlist and costs. */
+function feeUpper(i){
+  if(typeof feeRangeFor!=='function')return null;
+  let m=null;
+  ['wd','we'].forEach(f=>{const r=feeRangeFor(i,f);if(r&&r.max!=null&&(m==null||r.max>m))m=r.max;});
+  return m;
+}
+/* "Up to £X" / "Price on request" / "No published fee" — plain text, caller escapes. */
+function fmtGreenFee(i){
+  const u=feeUpper(i);
+  if(u!=null)return'Up to '+fmtMoney(u,courseCurrency(i));
+  const poa=['wd','we'].some(f=>{
+    const r=typeof feeRangeFor==='function'?feeRangeFor(i,f):null;
+    return(r&&r.confidence==='poa')||/\b(poa|on request)\b/i.test(String(V(i,f)||''));
+  });
+  return poa?'Price on request':'No published fee';
+}
 function editCount(){return Object.keys(EDITS).filter(isEdited).length}
 
 /* GOLF-15: two distinct personal lists, not one generic "favourites" set.

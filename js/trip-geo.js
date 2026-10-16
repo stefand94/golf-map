@@ -284,7 +284,7 @@ const FEE_CONF_LABEL={
 function feeLabelFrom(r,sym){
   if(!r)return'';
   if(r.min==null)return r.confidence==='poa'?'POA':'';
-  const n=v=>sym+Math.round(v);
+  const n=v=>sym+Math.round(v).toLocaleString('en-GB');
   // isFrom: every candidate rate is itself a floor ("from £X"), so even a
   // multi-season spread is honestly a single "from £min" — a £min–£max
   // range would imply a ceiling the club never quoted (owner Q5).
@@ -461,7 +461,7 @@ const MONEY_JOIN=' + ';
 function moneyBucketFmt(buckets,emptyCur){
   const keys=Object.keys(buckets).filter(c=>buckets[c]);
   if(!keys.length)return emptyCur?`${curSym(emptyCur)}0`:'—';
-  return keys.map(c=>`${curSym(c)}${buckets[c].toFixed(0)}`).join(MONEY_JOIN);
+  return keys.map(c=>fmtMoney(buckets[c],c)).join(MONEY_JOIN);
 }
 /* GOLF-174 / DEC-026: per person across currencies is each bucket divided
    on its own — "£160 + €75" — never a combined figure. */

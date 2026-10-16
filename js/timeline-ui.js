@@ -659,7 +659,7 @@ function tlPanelCostFieldHTML(d,it){
     :(it.type==='flight'||it.type==='train')?'Fare':'Price';
   const ph=isGolf&&dataFee!=null?String(dataFee.toFixed(0)):curSym(cur);
   const title=isGolf
-    ?(dataFee!=null?`Your own fee for this round, in ${cur}. Clear it to go back to the club's ${curSym(cur)}${dataFee.toFixed(0)}.`
+    ?(dataFee!=null?`Your own fee for this round, in ${cur}. Clear it to go back to the club's ${fmtMoney(dataFee,cur)}.`
       :`Nobody has published a fee for this course, so this is the only one the trip has.`)
     :it.type==='hotel'?`Per person, per night, in ${cur}.`:`In ${cur}.`;
   /* GOLF-247 (owner review): once the visitor has typed over the listed
@@ -1161,7 +1161,7 @@ function tlBlockFormHTML(dayId){
       <input class="tb-field" type="number" id="tl-bk-price" min="0" step="5"
         placeholder="${cur} per person — optional" value="${esc(s.price)}">
     </div>
-    ${gs>1&&Number.isFinite(priceNum)?`<p class="hint" style="margin:var(--sp-2) 0 0">${cur}${priceNum.toFixed(0)} × ${gs} people = <b>${cur}${(priceNum*gs).toFixed(0)}</b>.</p>`:''}`:''}
+    ${gs>1&&Number.isFinite(priceNum)?`<p class="hint" style="margin:var(--sp-2) 0 0">${cur}${Math.round(priceNum).toLocaleString('en-GB')} × ${gs} people = <b>${cur}${Math.round(priceNum*gs).toLocaleString('en-GB')}</b>.</p>`:''}`:''}
     <div class="tb-addstop-row">
       <input class="tb-field" type="text" id="tl-bk-note" maxlength="${TL_NOTE_MAX}"
         placeholder="Note — optional" value="${esc(s.note)}">
@@ -1398,7 +1398,7 @@ function tlFlightFormHTML(dayId){
       <input class="tb-field" type="text" id="tl-fl-note" maxlength="${TL_NOTE_MAX}"
         placeholder="Note — optional" value="${esc(s.note)}">
     </div>
-    ${gs>1&&Number.isFinite(priceNum)?`<p class="hint" style="margin:var(--sp-2) 0 0">${cur}${priceNum.toFixed(0)} × ${gs} people = <b>${cur}${(priceNum*gs).toFixed(0)}</b>.</p>`:''}
+    ${gs>1&&Number.isFinite(priceNum)?`<p class="hint" style="margin:var(--sp-2) 0 0">${cur}${Math.round(priceNum).toLocaleString('en-GB')} × ${gs} people = <b>${cur}${Math.round(priceNum*gs).toLocaleString('en-GB')}</b>.</p>`:''}
     <div class="tb-addstop-row" style="margin-top:var(--sp-2)">
       <button class="tb-btn is-primary" onclick="tlFlightCommit()">${s.itemId?'Save':'Add'}</button>
       <button class="tb-btn is-quiet" onclick="tlFlightCancel()">Cancel</button>

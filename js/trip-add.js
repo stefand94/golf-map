@@ -401,9 +401,7 @@ function tbSearchGoToCourse(i){
    headline (the weekday rate, else the weekend one), with GOLF-193's "~"
    when it is an estimate. '' when the course has no usable fee. */
 function tbSearchFeeHTML(i){
-  const r=feeRangeFor(i,'wd')||feeRangeFor(i,'we');
-  const lab=feeLabelFrom(r,curSym(courseCurrency(i)));
-  return lab?` · <span class="tb-sr-fee">${estMark(feeConfWord(i)==='Estimate')}${esc(lab)}</span>`:'';
+  return` · <span class="tb-sr-fee">${estMark(feeConfWord(i)==='Estimate')}${esc(fmtGreenFee(i))}</span>`;
 }
 function tbSearchCourseRowHTML(e,day){
   const i=e.i;
@@ -509,7 +507,7 @@ function tbRowDragAttrs(startExpr,dropExpr){
 /* A wishlist (unscheduled) course row — no item of its own yet, so it
    drags by course index. */
 function tripDayCourseRowHTML(i,dayId){
-  const fee=feeNumberFor(i,'wd');
+  const fee=feeUpper(i);
   const menu=tbRowMenuHTML(
     `<div class="tb-menu-label">Move to</div>${tbDayMenuItemsHTML(i,dayId)}
      <div class="tb-menu-sep"></div>
@@ -521,7 +519,7 @@ function tripDayCourseRowHTML(i,dayId){
       <a href="#" draggable="false" onclick="event.preventDefault();goToCourse(${i})">${esc(V(i,'n'))}</a>
       <div class="cart-region">${esc(C[i].r)}</div>
     </div>
-    <span class="tb-item-price">${tbDualPriceHTML(fee==null?null:fee*groupSizeFor(),courseCurrency(i))}</span>
+    <span class="tb-item-price">${fee==null?'':'<span class="tb-upto">Up to </span>'}${tbDualPriceHTML(fee==null?null:fee*groupSizeFor(),courseCurrency(i))}</span>
     <div class="tb-item-actions">${menu}</div>
   </div>`;
 }
