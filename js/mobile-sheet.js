@@ -399,6 +399,19 @@ function mobAttrSet(open){
   mobAttrControl.getContainer().firstChild.setAttribute('aria-expanded',String(open));
 }
 map.on('click',()=>mobAttrSet(false));
+/* GOLF-273: on a mouse the credits also open on hover and close shortly
+   after the pointer leaves both the button and the credits. Click still
+   works, and so does keyboard focus. */
+if(window.matchMedia&&window.matchMedia('(hover:hover)').matches){
+  let t=null;
+  const hold=()=>{clearTimeout(t);};
+  const leave=()=>{hold();t=setTimeout(()=>mobAttrSet(false),500);};
+  const btn=mobAttrControl.getContainer(),attr=map.attributionControl.getContainer();
+  [btn,attr].forEach(e=>{
+    e.addEventListener('mouseenter',()=>{hold();if(map.getContainer().classList.contains('attr-fold'))mobAttrSet(true);});
+    e.addEventListener('mouseleave',leave);
+  });
+}
 
 /* ── Dragging ─────────────────────────────────────────────────── */
 /* Handle: drags either way; a tap moves it up one height (full → half,
@@ -633,7 +646,7 @@ mobWasPhone=mobIsPhone();
    the pins. CSS keys off #map.attr-fold. */
 (function(){
   const el=map.getContainer();
-  const sync=()=>el.classList.toggle('attr-fold',el.clientWidth>0&&el.clientWidth<600);
+  const sync=()=>el.classList.toggle('attr-fold',el.clientWidth>0); // GOLF-273: always, not only when narrow
   if(typeof ResizeObserver==='function')new ResizeObserver(sync).observe(el);
   sync();
 })();
