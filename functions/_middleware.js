@@ -64,8 +64,38 @@ function ownBuild(env, origin) {
   return deploymentBuild;
 }
 
+/*
+ * GOLF-265 — link previews for shared trips. A share link is
+ * /?t=<trip name>#share=...; the hash never reaches a server, so the
+ * name alone rides in the query and the title/description tags are
+ * rewritten here. Trip data is never in the query. Plain text replacement
+ * (index.html is one small file) so it needs no HTMLRewriter and tests
+ * under node.
+ */
+const escAttr = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+export function injectTripPreview(html, name) {
+  const n = name.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 60);
+  if (!n) return html;
+  const title = escAttr('Golf Tripper – ' + n);
+  const desc = escAttr('A golf trip planned on Golf Tripper: ' + n + '. Open it to see the courses, drives, hotels and costs.');
+  const meta = (key, val) => (m) => m.replace(/content="[^"]*"/, () => 'content="' + val + '"');
+  return html
+    .replace(/<title>[^<]*<\/title>/, () => '<title>' + title + '</title>')
+    .replace(/<meta name="description"[^>]*>/, meta('d', desc))
+    .replace(/<meta property="og:title"[^>]*>/, meta('t', title))
+    .replace(/<meta property="og:description"[^>]*>/, meta('d', desc));
+}
+
 async function withBuild(context, url) {
-  const res = await context.next();
+  let res = await context.next();
+  const t = url.searchParams.get('t');
+  if (t && context.request.method === 'GET' && res.status === 200 && url.pathname === '/'
+      && /text\/html/.test(res.headers.get('Content-Type') || '')) {
+    const html = injectTripPreview(await res.text(), t);
+    res = new Response(html, res);
+    res.headers.delete('Content-Length');
+    res.headers.delete('ETag');
+  }
   if (context.request.method !== 'GET' || (res.status !== 200 && res.status !== 304)) return res;
   const build = await ownBuild(context.env, url.origin);
   if (!build) return res;

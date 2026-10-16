@@ -126,17 +126,65 @@ function tripShareInboundFerry(dayIdx){
   const f=legFerryInfo(a,b);
   return f.hasFerry?{mins:Math.round(f.ferryMinutes||0)}:null;
 }
+/* GOLF-265: two forms of link, both decoded for ever.
+     #share=<urlencoded JSON>      the original (sync decode, ~2,200 chars)
+     #share=z1.<base64url deflate> compressed (about a quarter the size)
+   The trip NAME also rides in the query (?t=) so the host can put it in
+   the link preview; the trip data itself stays in the hash, which no
+   server ever sees. */
+function shareB64uEncode(bytes){
+  let b='';for(let i=0;i<bytes.length;i++)b+=String.fromCharCode(bytes[i]);
+  return btoa(b).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function shareB64uDecode(str){
+  const b=atob(str.replace(/-/g,'+').replace(/_/g,'/'));
+  const out=new Uint8Array(b.length);
+  for(let i=0;i<b.length;i++)out[i]=b.charCodeAt(i);
+  return out;
+}
+async function shareStreamBytes(bytes,stream){
+  const w=stream.writable.getWriter();w.write(bytes);w.close();
+  return new Uint8Array(await new Response(stream.readable).arrayBuffer());
+}
+function shareQuery(){
+  const t=String((trips[activeTripId]&&trips[activeTripId].name)||'').trim().slice(0,60);
+  return t?'?t='+encodeURIComponent(t):'';
+}
 function tripEncodeShareURL(){
   const encoded=encodeURIComponent(JSON.stringify(tripBuildSharePayload()));
-  return location.origin+location.pathname+'#share='+encoded;
+  return location.origin+location.pathname+shareQuery()+'#share='+encoded;
+}
+async function tripEncodeShareURLAsync(){
+  const json=JSON.stringify(tripBuildSharePayload());
+  try{
+    if(typeof CompressionStream==='function'){
+      const z=await shareStreamBytes(new TextEncoder().encode(json),new CompressionStream('deflate-raw'));
+      return location.origin+location.pathname+shareQuery()+'#share=z1.'+shareB64uEncode(z);
+    }
+  }catch(_){}
+  return tripEncodeShareURL();
+}
+/* Resolves to the same payload tripDecodeSharePayload() gives (or null).
+   Compressed links are inflated to the plain JSON form first and then go
+   through the one validating decoder, so there is a single place that
+   treats the URL as untrusted. */
+async function tripDecodeSharePayloadAsync(hash){
+  try{
+    if(hash&&hash.indexOf('#share=z1.')===0){
+      const raw=await shareStreamBytes(shareB64uDecode(hash.slice('#share=z1.'.length)),new DecompressionStream('deflate-raw'));
+      if(raw.length>2000000)return null;
+      return tripDecodeSharePayload('#share='+encodeURIComponent(new TextDecoder().decode(raw)));
+    }
+  }catch(_){return null;}
+  return tripDecodeSharePayload(hash);
 }
 /* Wired to the Build-mode "🔗 Share" button — builds the link, writes it
    into location.hash (so the *current tab* also becomes that shareable
    URL — bookmarkable, matches GOLF-41's convention) and copies it to the
    clipboard, following the exact copy/feedback pattern already used by
    the corrections drawer's "Copy to clipboard" button (js/editor.js). */
-function tbShareTrip(btn){
-  const url=tripEncodeShareURL();
+async function tbShareTrip(btn){
+  const url=await tripEncodeShareURLAsync();
   history.pushState({appMode},'',url);
   /* GOLF-235: one 'share' per trip, saved straight away so a reload can't
      count it twice; and the sharer's own link is marked as seen, so their
@@ -355,9 +403,17 @@ function tripDecodeSharePayload(hash){
    so the visitor's own trip is never persisted-over, never visibly
    altered, and no other code path can observe the swapped values. ── */
 function renderSharedTrip(){
+  const h=location.hash;
+  // GOLF-265: a compressed link inflates asynchronously, the original form stays synchronous.
+  if(h.indexOf('#share=z1.')===0){
+    tripDecodeSharePayloadAsync(h).then(p=>{if(appMode==='shared'&&location.hash===h)renderSharedTripPayload(p);});
+    return;
+  }
+  renderSharedTripPayload(tripDecodeSharePayload(h));
+}
+function renderSharedTripPayload(payload){
   const pane=document.getElementById('shared-pane');
   if(!pane)return;
-  const payload=tripDecodeSharePayload(location.hash);
   if(!payload){
     pane.innerHTML=`<div class="shared-wrap"><div class="cost-card" style="margin:var(--sp-6) auto;max-width:640px">
       <p class="hint">This link looks broken or incomplete — a character may have been cut off when it was shared. Ask whoever sent it for a fresh one.</p>
@@ -369,7 +425,7 @@ function renderSharedTrip(){
      that the recipient's own toggle wins — this re-renders through here,
      so it has to be first-render only. Nothing is saved either way: a
      shared link never writes to this browser's state. */
-  if(!tlSharedViewApplied){tlSharedViewApplied=true;tbDetailed=!!payload.dt;}
+  if(!tlSharedViewApplied){tlSharedViewApplied=true;tbDetailed=false;} // GOLF-265: shared links always open on List; the viewer can switch
   const savedTrip=new Set(TRIP),savedSeq=tripSeq,savedDays=tripDays,savedGS=groupSize,savedFuel=tbIncludeFuel,savedCustom=tripCustom;
   const savedStart=tripStart,savedEnd=tripEnd; // GOLF-243
   try{
@@ -387,11 +443,11 @@ function renderSharedTrip(){
     tbCostModeApply(); // GOLF-193: ...and the whole shared view follows it
     const dayCount=tripDays.length;
     pane.innerHTML=`<div class="shared-wrap">
-      <div class="tb-navbar"><span class="tb-wordmark">${payload.nm?esc(payload.nm):'Shared trip'}</span>
+      <div class="tb-navbar shared-nav"><span class="shared-title"><span class="shared-brand">Golf Tripper</span><span class="tb-wordmark">${payload.nm?esc(payload.nm):'Shared trip'}</span></span>
         <span class="tb-navbar-right"><span class="tb-pill">${dayCount?`${dayCount} day${dayCount===1?'':'s'} · `:''}${tbTripTotalHTML()}</span>
         <button class="tb-btn is-sm is-quiet no-print" id="shared-print" title="Opens the browser's print dialog — save as PDF from there for a nice printable itinerary."><span aria-hidden="true">🖨️</span>Print / Save as PDF</button></span></div>
-      <p class="hint no-print" style="margin:var(--sp-3) var(--sp-4)"><span class="ico-gap" aria-hidden="true">📸</span><b>Frozen snapshot</b> — this shows the trip exactly as it was when the link was made. It won't update if the trip changes, and viewing it doesn't touch your own trip.</p>
-      <div id="shared-map" class="no-print" style="height:320px;margin:0 var(--sp-4) var(--sp-4);border-radius:var(--radius-lg);overflow:hidden"></div>
+      <p class="hint no-print" style="margin:var(--sp-3) var(--sp-4)"><span class="ico-gap" aria-hidden="true">📸</span> <b>Frozen snapshot</b> — this shows the trip exactly as it was when the link was made. It won't update if the trip changes, and viewing it doesn't touch your own trip.</p>
+      <div class="shared-map-wrap no-print"><div id="shared-map" style="height:320px;border-radius:var(--radius-lg);overflow:hidden"></div><button type="button" class="shared-attr-btn" aria-label="Map credits" onclick="this.parentNode.classList.toggle('attr-open')">ⓘ</button></div>
       <div class="tb-section" style="padding:0 var(--sp-4)"><h3 style="font-size:var(--fs-title);margin:0 0 var(--sp-2)">Itinerary</h3>${tbItinAllHTML()}</div>
       <div class="tb-section" style="padding:0 var(--sp-4) var(--sp-6)"><h3 style="font-size:var(--fs-title);margin:var(--sp-4) 0 var(--sp-2)">Costs</h3>${tbCostsTabReadOnlyHTML()}</div>
     </div>`;

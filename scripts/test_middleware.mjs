@@ -97,6 +97,20 @@ check('bare pages.dev robots.txt still 301s to production', bareRobots.status ==
   `status=${bareRobots.status} location=${bareRobots.headers.get('Location')}`);
 
 let failed = 0;
+/* GOLF-265: ?t=<name> rewrites the preview tags; no ?t= leaves the page alone. */
+{
+  const page = '<title>Golf Tripper – plan</title><meta name="description" content="old"><meta property="og:title" content="old"><meta property="og:description" content="old">';
+  const go = (u) => onRequest({ request: new Request(u), env: { ASSETS },
+    next: async () => new Response(page, { headers: { 'Content-Type': 'text/html' } }) });
+  const r = await go('https://golftripper.uk/?t=' + encodeURIComponent('Bandon "Dunes" <b>'));
+  const h = await r.text();
+  check('?t= sets title', h.includes('<title>Golf Tripper – Bandon "Dunes" &lt;b&gt;</title>') || h.includes('<title>Golf Tripper – Bandon &quot;Dunes&quot; &lt;b&gt;</title>'), h);
+  check('?t= sets og:title, escaped', h.includes('og:title" content="Golf Tripper – Bandon &quot;Dunes&quot; &lt;b&gt;"'), h);
+  check('?t= keeps X-Build', r.headers.get('X-Build') === BUILD, String(r.headers.get('X-Build')));
+  check('no ?t= leaves page untouched', (await (await go('https://golftripper.uk/')).text()) === page, '');
+  check('blank ?t= leaves page untouched', (await (await go('https://golftripper.uk/?t=%20')).text()) === page, '');
+}
+
 for (const t of results) {
   if (!t.pass) failed++;
   console.log(`${t.pass ? 'PASS' : 'FAIL'}  ${t.name}${t.pass ? '' : '   <- ' + t.detail}`);

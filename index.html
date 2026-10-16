@@ -226,6 +226,18 @@
   /* ── Pane chrome (sketch rows 1–4) ──────────────────────────────── */
   .tb-navbar{padding:var(--sp-3) var(--sp-5) var(--sp-1);display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3)}
   .tb-wordmark{font-family:var(--font-display);font-weight:700;font-size:var(--fs-title);color:var(--ink)}
+  .ico-gap{margin-right:.4em}
+  .shared-title{display:flex;flex-direction:column;min-width:0}
+  .shared-brand{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3,#5b6b78)}
+  .shared-map-wrap{position:relative;margin:0 var(--sp-4) var(--sp-4)}
+  .shared-attr-btn{display:none}
+  @media(max-width:700px){
+    .shared-nav{flex-direction:column;align-items:stretch}
+    .shared-nav .tb-navbar-right{flex-wrap:wrap}
+    .shared-map-wrap .leaflet-control-attribution{display:none}
+    .shared-map-wrap.attr-open .leaflet-control-attribution{display:block}
+    .shared-attr-btn{display:flex;position:absolute;right:8px;bottom:8px;z-index:1000;width:40px;height:40px;align-items:center;justify-content:center;border:0;border-radius:50%;background:rgba(255,255,255,.92);box-shadow:0 1px 4px rgba(0,0,0,.3);font-size:18px}
+  }
   .tb-navbar-right{display:flex;align-items:center;gap:var(--sp-2)}
   .tb-pill{font:700 var(--fs-caption) var(--font-sans);background:var(--accent-soft);color:var(--accent-deep);
     padding:var(--sp-1) var(--sp-3);border-radius:var(--radius-pill);font-variant-numeric:tabular-nums;white-space:nowrap}
