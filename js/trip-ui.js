@@ -2003,13 +2003,14 @@ function privacyOpen(){
     document.body.insertAdjacentHTML('beforeend',`<dialog id="privacy-dlg" class="privacy-dlg" aria-labelledby="privacy-h"><div class="privacy-body">
       <h3 id="privacy-h">Your privacy</h3>
       <ul>
-        <li>Your trips are saved only in this browser. There are no accounts and no cookies.</li>
+        <li>Your trips are saved in this browser, apart from any you share (see below). There are no accounts and no cookies.</li>
         <li>Route and place searches go through our server to OpenRouteService and OpenStreetMap. They see the places you search for, not who you are.</li>
         <li>To stop abuse, our server counts how many lookups each connection makes per day, using a scrambled form of your IP address that is deleted the next day. It doesn't record what you searched.</li>
         <li>Cloudflare Web Analytics counts visits anonymously: which pages, the referring site, country and browser type, and page speed. No cookies and nothing that identifies you.</li>
         <li>The map comes from Esri and the fonts from Google Fonts. Like any website, they see your IP address when your browser loads them.</li>
         <li>Feedback you send is emailed to the site owner. It's not stored anywhere else.</li>
-        <li>We count, anonymously, how many trips are planned and shared. Nothing about you or your trip is stored.</li>
+        <li>We count, anonymously, how many trips are planned and shared. Those counts store nothing about you or your trip.</li>
+        <li>A trip you share is stored on our server so its link works, including any notes you added. It has no name or account attached.</li>
         <li>Hotel "Check prices" links go through Stay22, and the car-hire link through Travelpayouts, to the booking site, which may pay us a commission. We send the hotel's map position or the destination, your dates and group size, nothing else, and nothing is sent until you click.</li>
       </ul>
       <h3>Credits</h3>
