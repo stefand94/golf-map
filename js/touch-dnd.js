@@ -47,7 +47,7 @@
    preventDefault() in touchmove reliable (iOS ignores it once a scroll
    has begun). Desktop mouse drag never enters this file. */
 const TB_HOLD_MS=380;   // GOLF-259: was 500 — still deliberate, no longer a wait
-const TB_HOLD_SLOP=8;   // finger jitter tolerance while holding, px
+const TB_HOLD_SLOP=12;  // finger jitter tolerance while holding, px (GOLF-278: was 8 — a resting thumb on an iPhone drifts more than that)
 /* Auto-scroll (AC c2). The band at each end of the list inside which a
    held item drags the list along, and the px-per-frame range across it —
    gentle where the finger just enters the band, quickest against the
@@ -90,7 +90,11 @@ function tbTouchDropTarget(el){
    stealing the drag), plus the interactive controls a real tap needs to
    keep working untouched by this shim. */
 function tbTouchExcluded(el){
-  return el.closest('a,button,input,select,summary,.tb-rowmenu,.tb-drop-body');
+  /* GOLF-278: links are NOT excluded any more. A stop's name is a link and is
+     most of the row, so a hold on it never lifted anything. A tap on it still
+     opens it (a lift only happens after a hold, and the click that follows a
+     lifted drop is suppressed in tbTouchFinish). */
+  return el.closest('button,input,select,summary,.tb-rowmenu,.tb-drop-body');
 }
 /* The thing that actually scrolls under the itinerary. On a phone that
    is the mobile sheet's own scrolling body, on a desktop it is usually
@@ -108,6 +112,38 @@ function tbTouchScroller(el){
    goes with a change. Shared by touchmove and the auto-scroll frame loop,
    because scrolling moves the list under a stationary finger — the row
    the visitor is now pointing at changes with no touch event at all. */
+/* GOLF-278: the lifted row now rides the finger on a transform, so its own
+   getBoundingClientRect() follows the finger too. Its footprint "at home" is
+   the rect measured once after the days folded, moved by however far the
+   list has scrolled since. */
+function tbTouchHome(){
+  const h=tbTouch.home;
+  if(!h)return tbTouch.srcEl.getBoundingClientRect();
+  const d=h.scrollTop-tbTouch.scroller.scrollTop;
+  return{left:h.left,right:h.right,top:h.top+d,bottom:h.bottom+d};
+}
+/* GOLF-278: the lifted row tracks the finger. One rAF per frame, however
+   many touchmoves arrived: move the row with a compositor-only transform
+   (no layout) and do the hit-test once. The home rect is measured a frame
+   after the lift, when the days have folded and the scroll has settled. */
+function tbTouchFrame(){
+  if(!tbTouch||!tbTouch.started){return;}
+  tbTouch.frame=null;
+  const src=tbTouch.srcEl;
+  if(!src.isConnected)return;
+  if(!tbTouch.home){
+    const r=src.getBoundingClientRect();
+    tbTouch.home={left:r.left,right:r.right,top:r.top,bottom:r.bottom,scrollTop:tbTouch.scroller.scrollTop};
+    tbTouch.grabX=tbTouch.x-r.left;tbTouch.grabY=tbTouch.y-r.top;
+  }
+  const h=tbTouchHome();
+  const tx=tbTouch.lastX-tbTouch.grabX-h.left, ty=tbTouch.lastY-tbTouch.grabY-h.top;
+  src.style.transform='translate3d('+tx+'px,'+ty+'px,0) scale(1.02)';
+  tbTouchHover(tbTouch.lastX,tbTouch.lastY);
+}
+function tbTouchSchedule(){
+  if(tbTouch&&tbTouch.started&&!tbTouch.frame)tbTouch.frame=requestAnimationFrame(tbTouchFrame);
+}
 function tbTouchResolve(x,y){
   /* Still over the row you picked up: no target. .tb-touch-lift is
      pointer-events:none, so elementFromPoint() sees straight through to
@@ -115,7 +151,7 @@ function tbTouchResolve(x,y){
      move the item to the end of its own day. Releasing roughly where you
      started should do nothing at all, so the source row's own footprint
      is dead space for the whole drag. */
-  const sb=tbTouch.srcEl.getBoundingClientRect();
+  const sb=tbTouchHome();
   if(x>=sb.left&&x<=sb.right&&y>=sb.top&&y<=sb.bottom)return null;
   return tbTouchDropTarget(document.elementFromPoint(x,y));
 }
@@ -155,7 +191,7 @@ function tbTouchEdgeTick(){
   const sc=tbTouch.scroller,before=sc.scrollTop;
   sc.scrollTop=before+v;
   if(sc.scrollTop===before){tbTouch.raf=null;return;} // hit the end
-  tbTouchHover(tbTouch.lastX,tbTouch.lastY);
+  tbTouchFrame(); // the list moved under the finger: re-seat the row and re-aim
   tbTouch.raf=requestAnimationFrame(tbTouchEdgeTick);
 }
 function tbTouchEdgeSync(){
@@ -169,6 +205,8 @@ function tbTouchEdgeSync(){
 function tbTouchReset(){
   if(tbTouch&&tbTouch.timer)clearTimeout(tbTouch.timer);
   tbTouchEdgeStop();
+  if(tbTouch&&tbTouch.frame)cancelAnimationFrame(tbTouch.frame);
+  if(tbTouch&&tbTouch.srcEl)tbTouch.srcEl.style.transform='';
   const lifted=!!(tbTouch&&tbTouch.started);
   tbTouch=null;
   document.querySelectorAll('.tb-touch-lift').forEach(el=>el.classList.remove('tb-touch-lift'));
@@ -197,6 +235,7 @@ function tbTouchLift(){
   src.classList.add('tb-touch-lift');
   try{if(navigator.vibrate)navigator.vibrate(18);}catch(e){}
   src.ondragstart(tbFakeDragEvent());
+  tbTouch.frame=requestAnimationFrame(()=>requestAnimationFrame(tbTouchFrame)); // after the fold
 }
 document.addEventListener('touchstart',e=>{
   /* A finger landing mid-drag is not the start of anything — ignore it and
@@ -210,7 +249,7 @@ document.addEventListener('touchstart',e=>{
   const src=e.target.closest('[draggable="true"]');
   if(!src||typeof src.ondragstart!=='function')return;
   const t=e.touches[0];
-  tbTouch={id:t.identifier,srcEl:src,overEl:null,x:t.clientX,y:t.clientY,
+  tbTouch={id:t.identifier,srcEl:src,overEl:null,home:null,frame:null,grabX:0,grabY:0,x:t.clientX,y:t.clientY,
     lastX:t.clientX,lastY:t.clientY,timer:null,started:false,scroller:null,raf:null};
   tbTouch.timer=setTimeout(tbTouchLift,TB_HOLD_MS);
 },{passive:true});
@@ -230,7 +269,7 @@ document.addEventListener('touchmove',e=>{
   }
   e.preventDefault(); // lifted — the finger now moves the item, not the list
   tbTouch.lastX=t.clientX;tbTouch.lastY=t.clientY;
-  tbTouchHover(t.clientX,t.clientY);
+  tbTouchSchedule(); // GOLF-278: move the row + hit-test once per frame, not per event
   tbTouchEdgeSync(); // AC (c2): near an end of the list, bring the list to the finger
 },{passive:false});
 function tbTouchFinish(e){

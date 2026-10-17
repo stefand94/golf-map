@@ -729,7 +729,10 @@
        to be invisible to hit-testing for the touch shim to see the row
        underneath — a mouse drag has no equivalent problem because the
        browser tracks the drop target itself. */
-    pointer-events:none}
+    pointer-events:none;
+    /* GOLF-278: js/touch-dnd.js moves this row with an inline transform every
+       frame; a CSS transition on it would make it chase the finger. */
+    transition:none;will-change:transform}
   /* GOLF-215: on a phone, js/touch-dnd.js IS the drag system, and mobile
      WebKit's own long-press drag for draggable="true" elements is armed by
      the same gesture at about the same moment. Whenever it won that race the
@@ -740,6 +743,15 @@
      desktop mouse drag keeps the native path it has always used. */
   @media (hover:none) and (pointer:coarse){
     #tb-pane [draggable="true"]{-webkit-user-drag:none;user-drag:none}
+    /* GOLF-278: no grey tap flash, and no iOS callout on the stop-name link,
+       which is most of a row. */
+    #tb-pane [draggable="true"],#tb-pane [draggable="true"] a{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+    /* GOLF-278: a folded day always carries its label row, empty until the
+       finger is over it, so naming the target no longer grows the card and
+       shoves every day below it down mid-drag. */
+    body.tb-collapse .tb-day:not(.tb-day-src)::after{content:'';display:block;box-sizing:border-box;height:26px}
+    body.tb-collapse .tb-day:not(.tb-day-src).tb-drop-over::after{content:'Drop into ' attr(data-drop-label);padding:0 var(--sp-4) var(--sp-2) var(--tb-text,46px)}
+    body.tb-collapse-day .tb-day:not(.tb-day-src).tb-drop-over::after{content:'Move before ' attr(data-drop-label)}
   }
   /* The row/card actually under the pointer lifts toward the cursor. */
   body.tb-dragging .tb-day-course.tb-drop-over,body.tb-dragging .tb-day.tb-drop-over{box-shadow:var(--shadow-dragging)}
