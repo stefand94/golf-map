@@ -266,3 +266,14 @@ else (caching, fallback, re-render on load) is already wired up.
 If the ORS key ever needs rotating, update the `ORS_API_KEY` secret in
 the Worker's dashboard settings — no code change, no redeploy of the
 main app.
+
+## Short share links (GOLF-277, DEC-041)
+
+`POST /share {p, m}` stores a trip snapshot in the KV namespace bound as
+`SHARES` and answers `{id}` (9 chars of the content's SHA-256, so the same
+trip is one record); `GET /share/<id>` returns it. `functions/_middleware.js`
+serves `/s/<id>` as the app with the record inlined and the preview tags set.
+Records never expire. Saves are capped per visitor and per day (`shsave` in
+the `LookupQuota` object, kept out of `/stats`). With no `SHARES` binding, or
+on any error, the app falls back to the long link. Tests:
+`node scripts/test_share.mjs`.

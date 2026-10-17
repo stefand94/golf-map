@@ -73,11 +73,11 @@ function ownBuild(env, origin) {
  * under node.
  */
 const escAttr = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-export function injectTripPreview(html, name) {
+export function injectTripPreview(html, name, summary) {
   const n = name.replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 60);
   if (!n) return html;
   const title = escAttr('Golf Tripper – ' + n);
-  const desc = escAttr('A golf trip planned on Golf Tripper: ' + n + '. Open it to see the courses, drives, hotels and costs.');
+  const desc = escAttr(summary || ('A golf trip planned on Golf Tripper: ' + n + '. Open it to see the courses, drives, hotels and costs.'));
   const meta = (key, val) => (m) => m.replace(/content="[^"]*"/, () => 'content="' + val + '"');
   return html
     .replace(/<title>[^<]*<\/title>/, () => '<title>' + title + '</title>')
@@ -86,8 +86,47 @@ export function injectTripPreview(html, name) {
     .replace(/<meta property="og:description"[^>]*>/, meta('d', desc));
 }
 
+/*
+ * GOLF-277 — short share links. /s/<id> is the app itself with a stored
+ * trip behind it (the Worker's KV, read through api.golftripper.uk). The
+ * record is inlined as window.GT_SHARE so the shared view needs no second
+ * round trip, and the title/description come from the stored name and
+ * one-line summary. <base href="/"> keeps every relative asset path working
+ * under /s/. An id the Worker doesn't know answers 404 with GT_SHARE=null
+ * (the app shows its "link isn't valid" state); if the Worker can't be
+ * reached GT_SHARE is left out and the app asks for the record itself.
+ * Never indexed, on any host.
+ */
+const SHORT_SHARE = /^\/s\/([a-z2-7]{9,16})\/?$/;
+const SHARE_API = 'https://api.golftripper.uk/share/';
+export function injectShortShare(html, rec) {
+  const inline = rec === undefined ? '' : '<script>window.GT_SHARE=' + JSON.stringify(rec).replace(/</g, '\\u003c') + ';</script>';
+  const head = '<base href="/">' + inline;
+  let out = html.replace(/<head[^>]*>/, (m) => m + head);
+  if (rec && rec.m && rec.m.n) out = injectTripPreview(out, rec.m.n, rec.m.d);
+  return out;
+}
+async function shortShare(context, url, id) {
+  let rec;
+  try {
+    const r = await fetch(SHARE_API + id, { signal: AbortSignal.timeout(4000) });
+    if (r.status === 404) rec = null;
+    else if (r.ok) rec = await r.json();
+  } catch (e) { /* rec stays undefined: the app asks for itself */ }
+  const page = await context.env.ASSETS.fetch(new Request(url.origin + '/'));
+  if (!page.ok) return page;
+  const out = new Response(injectShortShare(await page.text(), rec), { status: rec === null ? 404 : 200, headers: page.headers });
+  out.headers.delete('Content-Length');
+  out.headers.delete('ETag');
+  out.headers.set('Content-Type', 'text/html; charset=utf-8');
+  out.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  out.headers.set('Cache-Control', 'no-cache');
+  return out;
+}
+
 async function withBuild(context, url) {
-  let res = await context.next();
+  const short = SHORT_SHARE.exec(url.pathname);
+  let res = short && context.request.method === 'GET' ? await shortShare(context, url, short[1]) : await context.next();
   const t = url.searchParams.get('t');
   if (t && context.request.method === 'GET' && res.status === 200 && url.pathname === '/'
       && /text\/html/.test(res.headers.get('Content-Type') || '')) {

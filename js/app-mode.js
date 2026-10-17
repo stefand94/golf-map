@@ -21,8 +21,13 @@
    `if(tripBuilderOn)` redraw hook across the file keeps working
    untouched, it's just never false anymore. */
 let appMode='plan';
+/* GOLF-277: /s/<id> is a short share link (the trip is stored server-side). */
+function shareShortId(){
+  const m=/^\/s\/([a-z2-7]{9,16})\/?$/.exec(location.pathname);
+  return m?m[1]:null;
+}
 function appModeFromHash(){
-  if(location.hash.indexOf('#share=')===0)return 'shared';
+  if(location.hash.indexOf('#share=')===0||shareShortId())return 'shared';
   return location.hash==='#trip'?'build':'plan';
 }
 function appModeHash(m){return m==='build'?'#trip':'';}

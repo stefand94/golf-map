@@ -111,6 +111,34 @@ let failed = 0;
   check('blank ?t= leaves page untouched', (await (await go('https://golftripper.uk/?t=%20')).text()) === page, '');
 }
 
+/* GOLF-277: /s/<id> serves the app with the stored trip inlined and its preview tags. */
+{
+  const page = '<html><head><title>Golf Tripper – plan</title><meta name="description" content="old"><meta property="og:title" content="old"><meta property="og:description" content="old"></head><body></body></html>';
+  const assets = { fetch: async (r) => new Response(new URL(r.url).pathname === '/js/app-version.js' ? `const APP_VERSION='golfmap-shell-v5-${BUILD}';` : page, { headers: { 'Content-Type': 'text/html' } }) };
+  const realFetch = globalThis.fetch;
+  const go = async (u, reply) => {
+    globalThis.fetch = async () => reply();
+    try { return await onRequest({ request: new Request(u), env: { ASSETS: assets }, next: async () => new Response('app') }); }
+    finally { globalThis.fetch = realFetch; }
+  };
+  const rec = { p: { v: 1, days: [], seq: [] }, m: { n: 'Fife </script> trip', d: '5 days · St Andrews' } };
+  const r = await go('https://golftripper.uk/s/abcdefghi', () => new Response(JSON.stringify(rec)));
+  const h = await r.text();
+  check('/s/ is 200 with base href', r.status === 200 && h.includes('<base href="/">'), String(r.status));
+  check('/s/ inlines the record, no raw </script>', h.includes('window.GT_SHARE={') && !h.includes('Fife </script>'), h.slice(0, 300));
+  check('/s/ description is the summary', h.includes('og:description" content="5 days · St Andrews"'), h);
+  check('/s/ title is the trip name', h.includes('<title>Golf Tripper – Fife'), h);
+  check('/s/ is noindex even on production', r.headers.get('X-Robots-Tag') === 'noindex, nofollow', '');
+  check('/s/ carries X-Build', r.headers.get('X-Build') === BUILD, String(r.headers.get('X-Build')));
+  const nf = await go('https://golftripper.uk/s/abcdefghi', () => new Response('{}', { status: 404 }));
+  check('/s/ unknown id: 404 with GT_SHARE=null', nf.status === 404 && (await nf.text()).includes('window.GT_SHARE=null'), String(nf.status));
+  const down = await go('https://golftripper.uk/s/abcdefghi', () => { throw new Error('offline'); });
+  const dh = await down.text();
+  check('/s/ Worker unreachable: app still loads, no GT_SHARE', down.status === 200 && !dh.includes('GT_SHARE'), String(down.status));
+  const bad = await go('https://golftripper.uk/s/NOPE', () => new Response('{}'));
+  check('/s/<malformed> falls through to next()', (await bad.text()) === 'app', '');
+}
+
 for (const t of results) {
   if (!t.pass) failed++;
   console.log(`${t.pass ? 'PASS' : 'FAIL'}  ${t.name}${t.pass ? '' : '   <- ' + t.detail}`);

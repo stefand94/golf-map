@@ -780,6 +780,91 @@ function countDone(request, status) {
   return new Response(null, { status, headers: { 'X-Worker-Build': WORKER_BUILD, ...corsHeaders(request) } });
 }
 
+/* ── GOLF-277: short share links (DEC-041).
+
+   POST /share {p: payload, m: {n: name, d: description}} stores the trip
+   snapshot in KV (binding SHARES) under an id derived from its content, and
+   answers {id}. GET /share/<id> gives it back. A snapshot never expires and
+   is never changed, so the same trip shared twice is one record.
+
+   The client's tripDecodeSharePayload() stays the one validator of what is
+   rendered; this side only checks the shape and the size, so the store can't
+   be filled with arbitrary data. Saves are capped per visitor and site-wide
+   per day (SHARE_SAVE_LIMITS, counted in the same Durable Object as
+   GOLF-235, under the event 'shsave'), the site cap sitting under the free
+   plan's ~1,000 KV writes a day. Any non-2xx makes the app fall back to the
+   long link, so a cap or a missing binding costs nothing but length.
+   Reading the same stored record again is free of the write quota. */
+const SHARE_MAX_BYTES = 120000;
+const SHARE_SAVE_LIMITS = { visitor: 20, site: 800 };
+const SHARE_ID_RE = /^[a-z2-7]{9,16}$/;
+
+function shareShapeOk(p) {
+  if (!p || typeof p !== 'object' || Array.isArray(p)) return false;
+  if (p.v !== 1 || !Array.isArray(p.days) || !Array.isArray(p.seq)) return false;
+  if (p.days.length > 30 || p.seq.length > 500) return false;
+  return p.days.every((d) => d && typeof d === 'object' && (d.items === undefined || (Array.isArray(d.items) && d.items.length <= 20)));
+}
+
+async function shareId(text, len) {
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz234567';
+  let out = '', bits = 0, acc = 0;
+  for (const b of digest) {
+    acc = (acc << 8) | b; bits += 8;
+    while (bits >= 5 && out.length < len) { out += alphabet[(acc >> (bits - 5)) & 31]; bits -= 5; }
+    acc &= (1 << bits) - 1;
+    if (out.length >= len) break;
+  }
+  return out;
+}
+
+async function handleShare(request, env, path) {
+  const origin = request.headers.get('Origin');
+  if (request.method === 'GET') {
+    const id = path.slice('/share/'.length);
+    if (!SHARE_ID_RE.test(id)) return json({ error: 'not found' }, 404, request);
+    if (!env.SHARES) return json({ error: 'sharing unavailable' }, 503, request);
+    const value = await env.SHARES.get(id);
+    if (!value) return json({ error: 'not found' }, 404, request);
+    // A snapshot never changes, so it can be cached for as long as anyone likes.
+    return new Response(value, {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=86400', 'X-Worker-Build': WORKER_BUILD, ...corsHeaders(request) },
+    });
+  }
+  if (request.method !== 'POST' || path !== '/share') return json({ error: 'POST only' }, 405, request);
+  if (!isAllowedOrigin(origin)) return json({ error: 'origin not allowed' }, 403, request);
+  if (!env.SHARES) return json({ error: 'sharing unavailable' }, 503, request);
+  let raw;
+  try { raw = await request.text(); } catch (e) { return json({ error: 'bad body' }, 400, request); }
+  if (raw.length > SHARE_MAX_BYTES) return json({ error: 'too large' }, 413, request);
+  let body;
+  try { body = JSON.parse(raw); } catch (e) { return json({ error: 'invalid JSON body' }, 400, request); }
+  if (!body || !shareShapeOk(body.p)) return json({ error: 'not a trip' }, 400, request);
+  const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
+  const m = body.m && typeof body.m === 'object' ? body.m : {};
+  const value = JSON.stringify({ p: body.p, m: { n: clip(m.n, 60), d: clip(m.d, 160) } });
+  let id = await shareId(value, 9);
+  let have = await env.SHARES.get(id);
+  if (have && have !== value) { // a 45-bit clash with a different trip: take the long id
+    id = await shareId(value, 16);
+    have = await env.SHARES.get(id);
+  }
+  if (have === value) return json({ id }, 200, request);
+  if (!env.LOOKUP_QUOTA) return json({ error: 'sharing unavailable' }, 503, request);
+  try {
+    const stub = env.LOOKUP_QUOTA.get(env.LOOKUP_QUOTA.idFromName('global'));
+    const r = await stub.count('shsave', visitorKey(request.headers.get('CF-Connecting-IP')), SHARE_SAVE_LIMITS);
+    if (!r.ok) return json({ error: 'save limit reached', limit: r.scope }, 429, request);
+    await env.SHARES.put(id, value);
+  } catch (e) {
+    console.log(`GOLF-277 save failed: ${e}`);
+    return json({ error: 'save failed' }, 503, request);
+  }
+  return json({ id }, 200, request);
+}
+
 /* GOLF-234 (1): the Esri basemap key, for production only.
 
    ESRI_MAP is a Worker secret (named by the owner) holding a
@@ -881,6 +966,7 @@ async function handleStats(request, env) {
   const byDay = new Map();
   const totals = { trip: 0, share: 0, open: 0 };
   for (const r of rows) {
+    if (!COUNT_EVENTS.includes(r.event)) continue; // GOLF-277: 'shsave' is a limiter row, not a stat
     if (!byDay.has(r.day)) byDay.set(r.day, { day: r.day, trip: 0, share: 0, open: 0 });
     byDay.get(r.day)[r.event] = r.n;
     totals[r.event] += r.n;
@@ -1027,6 +1113,7 @@ export default {
       return handleFeedback(request, env);
     }
     if (path === '/count') return handleCount(request, env);
+    if (path === '/share' || path.startsWith('/share/')) return handleShare(request, env, path);
     if (path === '/stats') return handleStats(request, env);
     if (path === '/esri-key') return handleEsriKey(request, env, ctx);
     if (request.method !== 'POST') {

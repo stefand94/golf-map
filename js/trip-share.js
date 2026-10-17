@@ -183,25 +183,47 @@ async function tripDecodeSharePayloadAsync(hash){
    URL — bookmarkable, matches GOLF-41's convention) and copies it to the
    clipboard, following the exact copy/feedback pattern already used by
    the corrections drawer's "Copy to clipboard" button (js/editor.js). */
+/* GOLF-277: the trip is saved on the server and the link is golftripper.uk/s/<id>.
+   Any failure (offline, a cap, no binding) quietly gives the long link instead. */
+function shareSummary(){
+  const days=tripDays.filter(d=>d.kind!=='start'&&d.kind!=='end').length||tripDays.length;
+  const names=tripSeq.map(i=>C[i]&&C[i].n).filter(Boolean);
+  const shown=names.slice(0,4).join(', ')+(names.length>4?' +'+(names.length-4)+' more':'');
+  return [days?days+(days===1?' day':' days'):'',shown].filter(Boolean).join(' · ');
+}
+async function tripSaveShortShare(){
+  try{
+    if(typeof ORS_PROXY_URL!=='string')return null;
+    const body=JSON.stringify({p:tripBuildSharePayload(),m:{n:(trips[activeTripId]&&trips[activeTripId].name)||'',d:shareSummary()}});
+    const r=await fetch(ORS_PROXY_URL+'share',{method:'POST',headers:{'Content-Type':'application/json'},body,signal:AbortSignal.timeout(5000)});
+    if(!r.ok)return null;
+    const j=await r.json();
+    return j&&/^[a-z2-7]{9,16}$/.test(j.id)?j.id:null;
+  }catch(_){return null;}
+}
 async function tbShareTrip(btn){
-  const url=await tripEncodeShareURLAsync();
-  history.pushState({appMode},'',url);
+  const id=await tripSaveShortShare();
+  const url=id?'https://golftripper.uk/s/'+id:await tripEncodeShareURLAsync();
+  /* Preview hosts and localhost can save too, but their short link must open
+     on the host they are on. */
+  const link=id&&location.hostname!=='golftripper.uk'?location.origin+'/s/'+id:url;
+  if(!id)history.pushState({appMode},'',url);
   /* GOLF-235: one 'share' per trip, saved straight away so a reload can't
      count it twice; and the sharer's own link is marked as seen, so their
      reopening it doesn't count as an open. */
   usageTripOnce(trips[activeTripId],'share');saveState();
-  usageLinkFirstSeen(location.hash);
+  usageLinkFirstSeen(id?'/s/'+id:location.hash);
   /* GOLF-150: the button is icon-only now, so "Copied!" can't replace its
      label — it shows as a small bubble (the data-tip ::after in CSS).
      On touch devices with a native share sheet (iPhone/iPad, most
      phones) that's opened instead, matching the Apple-style share glyph;
      desktop keeps the one-click copy. */
   const tip=(msg,ms)=>{btn.dataset.tip=msg;clearTimeout(btn._tipT);btn._tipT=setTimeout(()=>{delete btn.dataset.tip;},ms);};
-  const copy=()=>navigator.clipboard.writeText(url)
+  const copy=()=>navigator.clipboard.writeText(link)
     .then(()=>tip('Link copied',1800))
     .catch(()=>tip('Copy failed — copy from the address bar',2600));
   if(navigator.share&&matchMedia('(pointer:coarse)').matches){
-    navigator.share({title:(trips[activeTripId]&&trips[activeTripId].name)||'Golf trip',url})
+    navigator.share({title:(trips[activeTripId]&&trips[activeTripId].name)||'Golf trip',url:link})
       .catch(e=>{if(e&&e.name!=='AbortError')copy();});
     return;
   }
@@ -402,7 +424,26 @@ function tripDecodeSharePayload(hash){
    synchronous and over before this function's caller gets control back,
    so the visitor's own trip is never persisted-over, never visibly
    altered, and no other code path can observe the swapped values. ── */
+/* GOLF-277: a short link's record is inlined by the host (window.GT_SHARE:
+   {p,m}, or null for an unknown id); if it isn't there, ask the Worker. The
+   stored payload goes through the same validating decoder as a long link. */
+async function shareShortPayload(id){
+  try{
+    let rec=window.GT_SHARE;
+    if(rec===undefined){
+      const r=await fetch(ORS_PROXY_URL+'share/'+id);
+      rec=r.ok?await r.json():null;
+    }
+    if(!rec||!rec.p)return null;
+    return tripDecodeSharePayload('#share='+encodeURIComponent(JSON.stringify(rec.p)));
+  }catch(_){return null;}
+}
 function renderSharedTrip(){
+  const sid=shareShortId();
+  if(sid){
+    shareShortPayload(sid).then(p=>{if(appMode==='shared'&&shareShortId()===sid)renderSharedTripPayload(p);});
+    return;
+  }
   const h=location.hash;
   // GOLF-265: a compressed link inflates asynchronously, the original form stays synchronous.
   if(h.indexOf('#share=z1.')===0){
@@ -432,22 +473,23 @@ function sharedCopyToMyTrips(){
   trips[id]=t;activeTripId=id;tripRestoreActive();
   tbResetTransients();
   saveState();
-  history.pushState({appMode:'build'},'',location.pathname+'#trip');
+  history.pushState({appMode:'build'},'',(shareShortId()?'/':location.pathname)+'#trip'); // GOLF-277: out of /s/<id>
   setAppMode('build',{pushHash:false});
   render();
 }
-function sharedPlanOwn(){location.href=location.pathname;}
+function sharedPlanOwn(){location.href=shareShortId()?'/':location.pathname;}
 function renderSharedTripPayload(payload){
   const pane=document.getElementById('shared-pane');
   if(!pane)return;
   sharedPayloadShown=payload;
   if(!payload){
     pane.innerHTML=`<div class="shared-wrap"><div class="cost-card" style="margin:var(--sp-6) auto;max-width:640px">
-      <p class="hint">This link looks broken or incomplete — a character may have been cut off when it was shared. Ask whoever sent it for a fresh one.</p>
+      <p class="hint">${shareShortId()?'This trip link isn\'t valid. Check it with whoever sent it, or ask them for a fresh one.':'This link looks broken or incomplete — a character may have been cut off when it was shared. Ask whoever sent it for a fresh one.'}</p>
+      <div class="shared-cta no-print"><button type="button" class="tb-btn is-primary" onclick="sharedPlanOwn()">Plan your own trip</button></div>
     </div></div>`;
     return;
   }
-  usageShareOpened(location.hash); // GOLF-235: once per link per browser
+  usageShareOpened(shareShortId()?location.pathname:location.hash); // GOLF-235: once per link per browser
   /* GOLF-153: the link opens on the view its sender was using, and after
      that the recipient's own toggle wins — this re-renders through here,
      so it has to be first-render only. Nothing is saved either way: a
