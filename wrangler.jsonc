@@ -38,5 +38,8 @@
   // any verified Email Routing destination, so the recipient comes from the
   // FEEDBACK_TO secret Stefan sets in the dashboard. Never add a
   // destination_address here; that would put his address in the repo.
-  "send_email": [{ "name": "EMAIL" }]
+  "send_email": [{ "name": "EMAIL" }],
+  // GOLF-277: short share links (handleShare in ors-proxy.js). Snapshots
+  // live here for ever; the id is not a secret.
+  "kv_namespaces": [{ "binding": "SHARES", "id": "271b31334d7d40229c751d3dde950329" }]
 }
