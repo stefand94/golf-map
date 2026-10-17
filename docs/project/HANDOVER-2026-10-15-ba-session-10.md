@@ -40,7 +40,7 @@
   - edit a fee and add a day cost;
   - Stay22 link;
   - spacing.
-- **GOLF-259 (iPhone):** hold and drag an itinerary item to another day.
+- **GOLF-278 (iPhone):** re-test the drag smoothness once Gavin ships it.
 - **GOLF-251 follow-up (added 2026-10-16):** on the HeiGIT dashboard, check the real daily Geocoding (autocomplete) limit. The plan page says 3,000/day. Our cap assumes 1,000 (site cap 950). ORS's header shows 100, which looks like the per-minute figure.
   - If it says 3,000: the dev raises `QUOTA_LIMITS.geocode.site` in `scripts/cloudflare-worker/ors-proxy.js` (e.g. to 2,900).
   - If it says 1,000: no change.
