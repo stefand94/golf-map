@@ -987,3 +987,11 @@ in `.claude/plans/history/2026-H1-archive.md` — grep by ticket._
 - **Context:** a full UI/UX deep dive found misleading prices, emoji markers, a fixed "HOME" pin, and friction in search/add and drag & drop. The requirements and lanes are in `GOLF-252-266-ux-review.md`.
 - **Affected:** GOLF-252 to 271.
 
+## DEC-041 — Short share links: store shared trips on Cloudflare
+
+- **Decision (owner, 2026-10-17):** shared trips are saved on Cloudflare (Worker + KV) behind a short link (`golftripper.uk/s/<id>`). Links never expire. A link is a snapshot of the trip when shared; to send an update, share again.
+- **Context:** the link carried the whole trip (~230+ chars after GOLF-265's compression). The owner wants a link that looks short in WhatsApp. The only way to get one is to store the trip server-side.
+- **Alternatives:** keep compressing (still long); an expiry after a year with no opens; links that update live (much more work, needs identity).
+- **Reason:** short links and proper previews matter more than staying 100% stateless. Only trips the visitor chooses to share are stored, with no names or accounts. Old long links keep working.
+- **Affects:** GOLF-277. It is the first stored visitor data beyond `localStorage`, so the privacy note is updated.
+
