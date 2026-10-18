@@ -309,7 +309,7 @@ const OVERPASS_HEDGE_AFTER_MS = 2500;
    that governs Overpass's own execution budget, not a mirror that accepts
    the connection and then never replies — which is exactly the 70s+ hang
    two candidate mirrors exhibited during testing. */
-const OVERPASS_ATTEMPT_TIMEOUT_MS = 12000;
+const OVERPASS_ATTEMPT_TIMEOUT_MS = 8000;
 
 /* Resolves to the first truthy value among `promises`, or null if they all
    resolve falsy. (Promise.any is close but rejects-on-all and would need
@@ -398,7 +398,7 @@ async function overpassFetch(query, urls = OVERPASS_URLS) {
       if (r === 'hedge') { won = await firstTruthy(live); } // last attempts still running: wait for them
       break;
     }
-    if (r === null && launched % urls.length === 0) await new Promise((res) => setTimeout(res, 400));
+    if (r === null && launched % urls.length === 0) await new Promise((res) => setTimeout(res, 1500));
     launch();
   }
   // Free the losing sockets; the winner has already been fully read.
