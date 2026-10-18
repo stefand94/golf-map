@@ -69,7 +69,10 @@ globalThis.fetch = async (url, opts) => {
       // same "loser never resolves usefully" behaviour the real Worker does.
       if (opts?.signal?.aborted) throw Object.assign(new Error('aborted'), { name: 'AbortError' });
     }
-    if (b.status && b.status !== 200) return new Response('mirror boom', { status: b.status });
+    if (b.status && b.status !== 200) {
+      if (b.times !== undefined && b.times-- <= 0) continue; // GOLF-279: refuse only the first N calls
+      return new Response('mirror boom', { status: b.status });
+    }
   }
   if (overpassStatus !== 200) {
     return new Response('upstream boom', { status: overpassStatus });
@@ -183,7 +186,7 @@ check('malformed bbox still 400s', r.status === 400, `status=${r.status}`);
 // 10. the fast mirror is primary, and identifies itself
 calledUrls = []; mirrorBehaviour = {};
 await call({ mode: 'hotelsViewport', bbox: [51.26, 1.31, 51.31, 1.37] });
-check('overpass-api.de is tried first', /overpass-api\.de/.test(calledUrls[0] || ''), `first=${calledUrls[0]}`);
+check('the fast mirror (kumi) is tried first', /overpass\.kumi\.systems/.test(calledUrls[0] || ''), `first=${calledUrls[0]}`);
 check('sends a User-Agent (else overpass-api.de 406s)',
   /golf-map/.test(String(lastHeaders?.['User-Agent'] || '')), `ua=${lastHeaders?.['User-Agent']}`);
 
@@ -194,7 +197,7 @@ check('fast primary does not hedge (1 upstream call)', overpassCalls === 1, `cal
 
 // 12. a primary that fails outright should hedge at once, not wait out the delay
 calledUrls = []; overpassCalls = 0;
-mirrorBehaviour = { 'overpass-api.de': { status: 504 } };
+mirrorBehaviour = { 'overpass.kumi.systems': { status: 504 } };
 let t0 = Date.now();
 r = await call({ mode: 'hotelsViewport', bbox: [55.60, -4.60, 55.65, -4.54] });
 j = await r.clone().json();
@@ -205,7 +208,7 @@ check('fast failure does not wait out the hedge delay', Date.now() - t0 < 2000, 
 
 // 13. a *slow* primary is hedged, and the quicker mirror's answer wins
 calledUrls = []; overpassCalls = 0;
-mirrorBehaviour = { 'overpass-api.de': { delayMs: 60000 } };
+mirrorBehaviour = { 'overpass.kumi.systems': { delayMs: 60000 } };
 t0 = Date.now();
 r = await call({ mode: 'hotelsViewport', bbox: [57.47, -1.80, 57.52, -1.74] });
 j = await r.clone().json();
@@ -214,7 +217,7 @@ check('slow primary is hedged onto mirror 2', calledUrls.length === 2, `urls=${c
 check('hedge returns the fallback answer', r.status === 200 && j.pois?.length === 2,
   `status=${r.status} n=${j.pois?.length}`);
 check('hedge resolves in ~the hedge delay, not the slow mirror',
-  elapsed >= 3500 && elapsed < 12000, `${elapsed}ms`);
+  elapsed >= 2000 && elapsed < 12000, `${elapsed}ms`);
 mirrorBehaviour = {};
 
 // 14. both mirrors down is still a clean 502, not a hang
@@ -222,6 +225,31 @@ calledUrls = [];
 mirrorBehaviour = { 'overpass': { status: 504 } };
 r = await call({ mode: 'hotelsViewport', bbox: [50.40, -4.20, 50.45, -4.14] });
 check('all mirrors failing returns 502', r.status === 502, `status=${r.status}`);
+mirrorBehaviour = {};
+
+// 15. GOLF-279: the first three mirrors refuse at once; the fourth answers.
+calledUrls = []; overpassCalls = 0;
+mirrorBehaviour = { 'overpass.kumi.systems': { status: 500 }, 'private.coffee': { status: 500 }, 'overpass-api.de': { status: 504 } };
+t0 = Date.now();
+r = await call({ mode: 'hotelsViewport', bbox: [52.40, -1.95, 52.45, -1.89] });
+j = await r.clone().json();
+check('walks the list on fast failures until one answers',
+  r.status === 200 && j.pois?.length === 2 && calledUrls.length === 4 && Date.now() - t0 < 2000,
+  `status=${r.status} urls=${calledUrls.length} ${Date.now() - t0}ms`);
+
+// 16. GOLF-279: a mirror that refuses once and then answers is retried on the second pass.
+calledUrls = []; overpassCalls = 0;
+mirrorBehaviour = { 'overpass.kumi.systems': { status: 500, times: 1 }, 'private.coffee': { status: 500 }, 'overpass-api.de': { status: 504 }, 'maps.mail.ru': { status: 504 } };
+r = await call({ mode: 'hotelsViewport', bbox: [54.55, -5.95, 54.60, -5.89] });
+j = await r.clone().json();
+check('second pass retries the first mirror', r.status === 200 && calledUrls.length === 5, `status=${r.status} urls=${calledUrls.length}`);
+mirrorBehaviour = {};
+
+// 17. GOLF-279: everything down is bounded at two passes (8 calls), then 502.
+calledUrls = [];
+mirrorBehaviour = { 'overpass': { status: 504 }, 'maps.mail.ru': { status: 504 } };
+r = await call({ mode: 'hotelsViewport', bbox: [51.10, -2.70, 51.15, -2.64] });
+check('all mirrors failing: 502 after exactly two passes', r.status === 502 && calledUrls.length === 8, `status=${r.status} urls=${calledUrls.length}`);
 mirrorBehaviour = {};
 
 /* ── GOLF-149: the routing success path.

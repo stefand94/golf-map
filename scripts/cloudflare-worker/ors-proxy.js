@@ -132,7 +132,19 @@ const ORS_GEOCODE_URL = 'https://api.openrouteservice.org/geocode/autocomplete';
 //
 // Both mirrors still 504 under load, so overpassFetch() below hedges across
 // this list rather than walking it strictly serially.
+//
+// GOLF-279 (2026-10-18): overpass-api.de was 504ing or hanging past 25s for
+// every viewport, so the hotel layer and picker failed. Probed from here:
+// overpass.kumi.systems and overpass.private.coffee (the ones that hung in
+// 2026-09) now answer in 0.5-1.5s when they answer, but under load they
+// refuse at once with a 500. So the list is ordered by what answers fast,
+// and overpassFetch() moves on at the first fast failure and goes round the
+// list a second time before giving up. overpass.openstreetmap.fr is
+// white-list only (403); lz4/z.overpass-api.de are the same overloaded
+// service as the primary.
 const OVERPASS_URLS = [
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
   'https://overpass-api.de/api/interpreter',
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ];
@@ -292,12 +304,12 @@ async function withPoiCache(key, request, ctx, handler) {
    slow, so the steady state stays one-call-per-miss — DEC-016's fair-use
    constraint makes "always race every mirror" the wrong default even
    though it would shave a little more off the tail. */
-const OVERPASS_HEDGE_AFTER_MS = 4000;
+const OVERPASS_HEDGE_AFTER_MS = 2500;
 /* Hard ceiling per attempt. The queries carry [timeout:20] themselves, but
    that governs Overpass's own execution budget, not a mirror that accepts
    the connection and then never replies — which is exactly the 70s+ hang
    two candidate mirrors exhibited during testing. */
-const OVERPASS_ATTEMPT_TIMEOUT_MS = 25000;
+const OVERPASS_ATTEMPT_TIMEOUT_MS = 12000;
 
 /* Resolves to the first truthy value among `promises`, or null if they all
    resolve falsy. (Promise.any is close but rejects-on-all and would need
@@ -365,17 +377,30 @@ async function overpassFetch(query, urls = OVERPASS_URLS) {
     })();
   };
 
-  const live = [attempt(0)];
-  let hedgeTimer = null;
-  const hedgeGate = new Promise((r) => { hedgeTimer = setTimeout(r, OVERPASS_HEDGE_AFTER_MS); });
-  // Settles early either way: on data (return it) or on a fast failure
-  // (falsy -> hedge immediately rather than sitting out the full delay).
-  const early = await Promise.race([live[0], hedgeGate.then(() => undefined)]);
-  clearTimeout(hedgeTimer);
-  if (early) return { data: early };
-
-  for (let i = 1; i < urls.length; i++) live.push(attempt(i));
-  const won = await firstTruthy(live);
+  /* GOLF-279: one call goes out; a fast failure sends the next mirror at
+     once, a slow one (OVERPASS_HEDGE_AFTER_MS) sends the next alongside it.
+     Mirrors are used in order and the list is walked at most twice (a busy
+     mirror's refusal is often gone a second later), so a bad day costs up
+     to 2n calls and a good one costs one. The first usable answer wins. */
+  const maxLaunches = urls.length * 2;
+  const live = [];
+  let launched = 0;
+  const launch = () => live.push(attempt(launched++ % urls.length));
+  launch();
+  let won = null;
+  while (!won) {
+    let hedgeTimer = null;
+    const gate = new Promise((r) => { hedgeTimer = setTimeout(() => r('hedge'), OVERPASS_HEDGE_AFTER_MS); });
+    const r = await Promise.race([firstTruthy(live), gate]);
+    clearTimeout(hedgeTimer);
+    if (r && r !== 'hedge') { won = r; break; }
+    if (launched >= maxLaunches) {
+      if (r === 'hedge') { won = await firstTruthy(live); } // last attempts still running: wait for them
+      break;
+    }
+    if (r === null && launched % urls.length === 0) await new Promise((res) => setTimeout(res, 400));
+    launch();
+  }
   // Free the losing sockets; the winner has already been fully read.
   for (const c of controllers) { try { c.abort(); } catch (e) { /* already settled */ } }
   return won ? { data: won } : { error: lastError };
@@ -416,12 +441,12 @@ const QUOTA_LIMITS = {
   // HeiGIT Standard plan (account.heigit.org/info/plans, read 2026-10-15),
   // each its own quota, per day AND per minute:
   //   directions 2,000/day, 40/min;  geocoding 3,000/day, 100/min.
-  // The geocode day cap stays at 950 (the old 1,000/day autocomplete
-  // figure) until the dashboard or ORS's own X-RateLimit-Limit header
-  // says otherwise. `minute` is site-wide, a little under ORS's figure
+  // The geocode day cap is 2,850 (GOLF-251 follow-up, 2026-10-18: the owner's
+  // HeiGIT dashboard shows 3,000/day, 100/min; it was 950 on the old
+  // 1,000/day autocomplete figure). `minute` is site-wide, a little under ORS's figure
   // (GOLF-251, see paceSlot). Check the HeiGIT dashboard if they change.
   directions: { visitor: 300, site: 1900, minute: 36 },
-  geocode: { visitor: 200, site: 950, minute: 90 },
+  geocode: { visitor: 200, site: 2850, minute: 90 },
 };
 
 /* ── GOLF-251: site-wide per-minute guard.
@@ -1720,7 +1745,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = 'ebd6169199';
+const WORKER_BUILD = 'a0f25621a1';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {
