@@ -41,13 +41,14 @@
  *      -> {results:[{label, lat, lng}, ...]}
  *
  *   3. Nearby hotels/guest houses (GOLF-96 — Trip Builder's "Add a stay"
- *      map picker), Overpass-sourced, no ORS key needed:
+ *      map picker). Since GOLF-279, ORS /pois first and Overpass (keyless)
+ *      as the fallback; X-Hotel-Source says which answered:
  *      POST {mode:'hotels', point:[lng,lat], radius?:metres}
  *      -> {pois:[{name, category, lat, lng}, ...]}
  *
  *   4. Hotels within the current map viewport (GOLF-142 — ambient "Show
  *      hotels" browsing layer, distinct from #3's point-based picker),
- *      same Overpass source/shape, bbox instead of point+radius:
+ *      same sources/shape, bbox instead of point+radius:
  *      POST {mode:'hotelsViewport', bbox:[south,west,north,east]}
  *      -> {pois:[{name, category, lat, lng}, ...]}
  *
@@ -1910,7 +1911,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = 'a61ba3bd4d';
+const WORKER_BUILD = 'd63e803349';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {
