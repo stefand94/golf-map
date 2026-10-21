@@ -311,6 +311,7 @@ j = await r.clone().json();
 check('ORS: viewport answered by ORS', r.status === 200 && r.headers.get('X-Hotel-Source') === 'ors' && overpassCalls === 0,
   `status=${r.status} src=${r.headers.get('X-Hotel-Source')} overpass=${overpassCalls}`);
 const g = orsPoisCalls[0]?.body.geometry;
+check('ORS: a small viewport gets a tight buffer, not 2 km of spill', g.buffer <= 700, `buffer=${g.buffer}`);
 check('ORS: one call, a LineString with a buffer ≤ 2000 m and no bbox',
   orsPoisCalls.length === 1 && g.geojson.type === 'LineString' && g.buffer > 0 && g.buffer <= 2000 && !g.bbox,
   `calls=${orsPoisCalls.length} geom=${JSON.stringify(g)?.slice(0, 120)}`);

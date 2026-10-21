@@ -424,10 +424,15 @@ async function overpassFetch(query, urls = OVERPASS_URLS) {
      (25 km²) measured 81 km² live. A bbox holds only ~14 km² of the UK.
    - a LineString + buffer has NO area check: only its Mercator length
      (500 km) and the buffer (2,000 m, applied in true metres on PostGIS
-     geography). So a box is swept with one zig-zag line whose rows sit
-     ORS_POI_ROW_M apart, each covering ±ORS_POI_BUFFER_M: one call covers a
-     whole desktop viewport. A box too long for one line is split across up
-     to ORS_POI_MAX_CALLS lines; past that it is left to Overpass.
+     geography). So a box is swept with one zig-zag line: one call covers
+     a whole desktop viewport. A box too long for one line is split across
+     up to ORS_POI_MAX_CALLS lines; past that it is left to Overpass.
+   - the buffer also spills past every edge of the box, and in a dense
+     city that spill is the cost: a 2 km buffer round a 3 x 4 km London
+     viewport asked for ~5x its area and ORS took over 6s (live, 2026-10-21).
+     So rows are packed ~1 km apart with a buffer just over half that,
+     as long as the line stays within ORS_POI_LINE_BUDGET_M; a bigger box
+     spreads its rows out instead, up to the 2 km buffer cap.
    - at most 5 category ids.
    Anything ORS can't answer whole (no key, quota spent, an error, too big)
    returns null and the caller falls back to Overpass exactly as before.
@@ -444,12 +449,16 @@ const HOTEL_CATEGORY_LABELS = {
   apartment: 'Apartment',
   motel: 'Motel',
 };
-const ORS_POI_BUFFER_M = 2000; // openpoiservice's maximum_search_radius_for_linestrings
-const ORS_POI_ROW_M = 3800;    // < 2 x buffer, so neighbouring rows overlap
+const ORS_POI_BUFFER_MAX_M = 2000; // openpoiservice's maximum_search_radius_for_linestrings
+const ORS_POI_ROW_MIN_M = 1000;    // densest packing: buffer ~600 m
+const ORS_POI_ROW_MAX_M = 3800;    // sparsest: < 2 x the buffer cap, so rows still overlap
+const ORS_POI_LINE_BUDGET_M = 200000; // true metres of row, all lines together
 const ORS_POI_MAX_LINE_M = 450000; // Mercator metres, under the 500 km cap
 const ORS_POI_MAX_CALLS = 3;   // the Worker's 0.6° viewport cap needs 3 at most
 const ORS_POI_LIMIT = 2000;    // openpoiservice's response_limit
-const ORS_POI_TIMEOUT_MS = 6000;
+// Longer than the 5s we aim for: a slow ORS answer still beats Overpass,
+// which today mostly means a 502 after ~25s.
+const ORS_POI_TIMEOUT_MS = 9000;
 const M_PER_DEG_LAT = 111320;
 
 function mercXY([lng, lat]) {
@@ -465,10 +474,17 @@ function mercLength(coords) {
   return m;
 }
 
-/* The zig-zag lines ([lng, lat] LineStrings) that sweep a box, or null if
-   it needs more than ORS_POI_MAX_CALLS. */
+/* { lines, buffer }: the zig-zag lines ([lng, lat] LineStrings) that
+   sweep a box and the buffer that makes their rows meet, or null if it
+   needs more than ORS_POI_MAX_CALLS. */
 function orsSweepLines([south, west, north, east]) {
-  const rows = Math.max(1, Math.ceil(((north - south) * M_PER_DEG_LAT) / ORS_POI_ROW_M));
+  const heightM = (north - south) * M_PER_DEG_LAT;
+  const widthM = (east - west) * M_PER_DEG_LAT * Math.cos(((south + north) / 2) * Math.PI / 180);
+  const fewest = Math.ceil(heightM / ORS_POI_ROW_MAX_M);
+  const most = Math.ceil(heightM / ORS_POI_ROW_MIN_M);
+  const rows = Math.max(1, fewest, Math.min(most, Math.floor(ORS_POI_LINE_BUDGET_M / Math.max(widthM, 1))));
+  // Half the row spacing reaches the midline between rows; +10% margin.
+  const buffer = Math.min(ORS_POI_BUFFER_MAX_M, Math.ceil((heightM / rows / 2) * 1.1));
   const step = (north - south) / rows;
   const lines = [];
   let cur = [];
@@ -485,12 +501,12 @@ function orsSweepLines([south, west, north, east]) {
   }
   lines.push(cur);
   if (lines.length > ORS_POI_MAX_CALLS || lines.some((l) => mercLength(l) > ORS_POI_MAX_LINE_M)) return null;
-  return lines;
+  return { lines, buffer };
 }
 
 /* One ORS /pois call along `line`. Returns [{id, name, tourism, lat, lng}]
    or null on any failure, with the reason in diag.why. */
-async function orsHotelLine(line, env, request, diag) {
+async function orsHotelLine(line, buffer, env, request, diag) {
   const url = testUrl('orspois', env, request) || ORS_POIS_URL;
   if (await quotaGate('pois', env, request)) { diag.why = 'quota'; return null; } // over a limit: let Overpass have it
   const ctl = new AbortController();
@@ -501,7 +517,7 @@ async function orsHotelLine(line, env, request, diag) {
       headers: { Authorization: env.ORS_API_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         request: 'pois',
-        geometry: { geojson: { type: 'LineString', coordinates: line }, buffer: ORS_POI_BUFFER_M },
+        geometry: { geojson: { type: 'LineString', coordinates: line }, buffer },
         filters: { category_ids: Object.keys(ORS_HOTEL_CATEGORIES).map(Number) },
         limit: ORS_POI_LIMIT,
       }),
@@ -542,9 +558,9 @@ function metresBetween(aLat, aLng, bLat, bLng) {
 /* Every hotel inside the box, deduplicated, or null. */
 async function orsHotelsInBox(box, env, request, diag) {
   if (!env || !env.ORS_API_KEY) { diag.why = 'no key'; return null; }
-  const lines = orsSweepLines(box);
-  if (!lines) { diag.why = 'area too big for ORS'; return null; }
-  const lists = await Promise.all(lines.map((l) => orsHotelLine(l, env, request, diag)));
+  const sweep = orsSweepLines(box);
+  if (!sweep) { diag.why = 'area too big for ORS'; return null; }
+  const lists = await Promise.all(sweep.lines.map((l) => orsHotelLine(l, sweep.buffer, env, request, diag)));
   if (lists.some((l) => !l)) return null;
   const [south, west, north, east] = box;
   const seen = new Set();
@@ -1935,7 +1951,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = '65176ce5fd';
+const WORKER_BUILD = '36153d9b24';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {
