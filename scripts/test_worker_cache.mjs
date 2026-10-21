@@ -356,6 +356,22 @@ check('ORS: an ORS failure falls back to Overpass',
 check('ORS: the fallback says why ORS was passed over', /^429 /.test(r.headers.get('X-Hotel-ORS') || ''),
   `hdr=${r.headers.get('X-Hotel-ORS')}`);
 
+// 20b. an ORS error body with newlines and non-ASCII must not break the response
+//      (live 2026-10-21: Headers.set threw on it and every hotel call was a 1101)
+orsPoisStub = () => new Response('<html>\n<body>Rate limit — exceeded\r\n</body></html>', { status: 429 });
+mirrorBehaviour = { 'overpass': { status: 504 }, 'maps.mail.ru': { status: 504 } };
+let threw = null;
+try { r = await callEnv({ mode: 'hotelsViewport', bbox: [52.20, 0.10, 52.23, 0.15] }, orsEnv); } catch (e) { threw = e; }
+check('ORS: a messy ORS error body still gives a clean 502 with a one-line reason',
+  !threw && r.status === 502 && /^429 [\x20-\x7e]+$/.test(r.headers.get('X-Hotel-ORS') || ''),
+  threw ? `threw ${threw}` : `status=${r.status} hdr=${r.headers.get('X-Hotel-ORS')}`);
+mirrorBehaviour = {};
+orsPoisStub = () => new Response('<html>\nnope — é\n</html>', { status: 503 });
+threw = null;
+try { r = await callEnv({ mode: 'hotels', point: [0.12, 52.2], radius: 3000 }, orsEnv); } catch (e) { threw = e; }
+check('ORS: …and a clean 200 from Overpass in the picker', !threw && r.status === 200 && r.headers.get('X-Hotel-Source') === 'overpass',
+  threw ? `threw ${threw}` : `status=${r.status}`);
+
 // 21. one of several lines failing means Overpass for the whole viewport, never half a map
 let nth = 0;
 orsPoisStub = (b) => (nth++ === 1 ? new Response('boom', { status: 500 }) : orsPoisOk(b)); overpassCalls = 0;

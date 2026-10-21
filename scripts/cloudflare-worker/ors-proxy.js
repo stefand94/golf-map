@@ -597,17 +597,29 @@ function hotelPois(list, max) {
   }));
 }
 
+/* Why ORS was passed over (key already redacted), as a header value.
+   Headers.set throws on a newline or a non-Latin-1 character, and an
+   upstream error body can hold either (an HTML page, an em dash), which
+   took the whole hotel call down with a 1101 on 2026-10-21. So: one line,
+   printable ASCII only, and never allowed to throw. */
+function setWhyHeader(res, diag) {
+  if (!diag || !diag.why) return;
+  try {
+    res.headers.set('X-Hotel-ORS', String(diag.why).replace(/\s+/g, ' ').replace(/[^\x20-\x7e]/g, '?').trim().slice(0, 200));
+  } catch (e) { /* diagnostics must never break the response */ }
+}
+
 function hotelJson(pois, source, request, diag) {
   const res = json({ pois }, 200, request);
   res.headers.set('X-Hotel-Source', source); // GOLF-279: which source answered, for live checks
-  if (diag && diag.why) res.headers.set('X-Hotel-ORS', diag.why); // and why ORS didn't (key redacted)
+  setWhyHeader(res, diag);
   return res;
 }
 
 /* An Overpass error response, carrying why ORS was passed over. */
 function hotelError(err, request, diag) {
   const res = json(err, 502, request);
-  if (diag && diag.why) res.headers.set('X-Hotel-ORS', diag.why);
+  setWhyHeader(res, diag);
   return res;
 }
 
@@ -1951,7 +1963,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = '36153d9b24';
+const WORKER_BUILD = '07506d879e';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {
