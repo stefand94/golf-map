@@ -325,6 +325,8 @@ j = await r.clone().json();
 check('ORS: an ORS failure falls back to Overpass',
   r.status === 200 && r.headers.get('X-Hotel-Source') === 'overpass' && overpassCalls === 1 && j.pois.length === 2,
   `status=${r.status} src=${r.headers.get('X-Hotel-Source')} overpass=${overpassCalls}`);
+check('ORS: the fallback says why ORS was passed over', /^429 /.test(r.headers.get('X-Hotel-ORS') || ''),
+  `hdr=${r.headers.get('X-Hotel-ORS')}`);
 
 // 21. one tile failing means Overpass for the whole viewport, never half a map
 let nth = 0;

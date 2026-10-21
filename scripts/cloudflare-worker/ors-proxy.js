@@ -455,10 +455,10 @@ const ORS_POI_TILE_TTL_S = 7 * 86400; // hotels move on a scale of years
 
 /* One ORS /pois call for a [south, west, north, east] box. Returns
    [{id, name, tourism, lat, lng}] or null on any failure. */
-async function orsHotelBox([south, west, north, east], env, request) {
-  if (!env || !env.ORS_API_KEY) return null;
+async function orsHotelBox([south, west, north, east], env, request, diag = {}) {
+  if (!env || !env.ORS_API_KEY) { diag.why = 'no key'; return null; }
   const url = testUrl('orspois', env, request) || ORS_POIS_URL;
-  if (await quotaGate('pois', env, request)) return null; // over a limit: let Overpass have it
+  if (await quotaGate('pois', env, request)) { diag.why = 'quota'; return null; } // over a limit: let Overpass have it
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), ORS_POI_TIMEOUT_MS);
   try {
@@ -474,11 +474,11 @@ async function orsHotelBox([south, west, north, east], env, request) {
       signal: ctl.signal,
     });
     if (!res.ok) {
-      await logUpstreamFailure('pois', res);
+      diag.why = `${res.status} ${(await logUpstreamFailure('pois', res)).slice(0, 160)}`;
       return null;
     }
     const data = await res.json();
-    if (!data || !Array.isArray(data.features)) return null;
+    if (!data || !Array.isArray(data.features)) { diag.why = 'no features'; return null; }
     const out = [];
     for (const f of data.features) {
       const props = (f && f.properties) || {};
@@ -490,7 +490,8 @@ async function orsHotelBox([south, west, north, east], env, request) {
     }
     return out;
   } catch (e) {
-    console.log(`ORS pois failed: ${e && e.name === 'AbortError' ? 'timed out' : e}`);
+    diag.why = e && e.name === 'AbortError' ? 'timed out' : String(e).slice(0, 160);
+    console.log(`ORS pois failed: ${diag.why}`);
     return null;
   } finally {
     clearTimeout(timer);
@@ -498,7 +499,7 @@ async function orsHotelBox([south, west, north, east], env, request) {
 }
 
 /* One grid tile, through its own edge cache entry. */
-async function orsHotelTile(i, j, env, request, ctx) {
+async function orsHotelTile(i, j, env, request, ctx, diag) {
   const key = poiCacheKey('orsHotelTile', [i, j]);
   try {
     const hit = await caches.default.match(key);
@@ -506,7 +507,7 @@ async function orsHotelTile(i, j, env, request, ctx) {
   } catch (e) { /* cache unavailable: fetch it */ }
   const box = [i * ORS_POI_TILE_LAT, j * ORS_POI_TILE_LNG, (i + 1) * ORS_POI_TILE_LAT, (j + 1) * ORS_POI_TILE_LNG]
     .map((n) => Number(n.toFixed(4)));
-  const list = await orsHotelBox(box, env, request);
+  const list = await orsHotelBox(box, env, request, diag);
   if (list) {
     try {
       const put = caches.default.put(key, new Response(JSON.stringify(list), {
@@ -527,16 +528,16 @@ function metresBetween(aLat, aLng, bLat, bLng) {
 }
 
 /* Hotels for a whole viewport, nearest its centre first, or null. */
-async function orsHotelsInBbox([south, west, north, east], env, request, ctx) {
-  if (!env || !env.ORS_API_KEY) return null;
+async function orsHotelsInBbox([south, west, north, east], env, request, ctx, diag = {}) {
+  if (!env || !env.ORS_API_KEY) { diag.why = 'no key'; return null; }
   // The epsilon keeps a north/east edge sitting exactly on a grid line
   // from pulling in a whole extra row of tiles.
   const i0 = Math.floor(south / ORS_POI_TILE_LAT), i1 = Math.floor((north - 1e-9) / ORS_POI_TILE_LAT);
   const j0 = Math.floor(west / ORS_POI_TILE_LNG), j1 = Math.floor((east - 1e-9) / ORS_POI_TILE_LNG);
   const tiles = [];
   for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) tiles.push([i, j]);
-  if (!tiles.length || tiles.length > ORS_POI_MAX_TILES) return null;
-  const lists = await Promise.all(tiles.map(([i, j]) => orsHotelTile(i, j, env, request, ctx)));
+  if (!tiles.length || tiles.length > ORS_POI_MAX_TILES) { diag.why = `${tiles.length} tiles`; return null; }
+  const lists = await Promise.all(tiles.map(([i, j]) => orsHotelTile(i, j, env, request, ctx, diag)));
   if (lists.some((l) => !l)) return null;
   const seen = new Set();
   const cLat = (south + north) / 2, cLng = (west + east) / 2;
@@ -548,10 +549,10 @@ async function orsHotelsInBbox([south, west, north, east], env, request, ctx) {
 }
 
 /* Hotels within `radius` metres of [lng, lat], nearest first, or null. */
-async function orsHotelsNear([lng, lat], radius, env, request) {
+async function orsHotelsNear([lng, lat], radius, env, request, diag = {}) {
   const r = Math.min(radius, ORS_POI_POINT_MAX_M);
   const dLat = r / 111320, dLng = r / (111320 * Math.cos(lat * Math.PI / 180));
-  const list = await orsHotelBox([lat - dLat, lng - dLng, lat + dLat, lng + dLng], env, request);
+  const list = await orsHotelBox([lat - dLat, lng - dLng, lat + dLat, lng + dLng], env, request, diag);
   if (!list) return null;
   return list
     .map((p) => ({ ...p, d: metresBetween(lat, lng, p.lat, p.lng) }))
@@ -566,9 +567,17 @@ function hotelPois(list, max) {
   }));
 }
 
-function hotelJson(pois, source, request) {
+function hotelJson(pois, source, request, diag) {
   const res = json({ pois }, 200, request);
   res.headers.set('X-Hotel-Source', source); // GOLF-279: which source answered, for live checks
+  if (diag && diag.why) res.headers.set('X-Hotel-ORS', diag.why); // and why ORS didn't (key redacted)
+  return res;
+}
+
+/* An Overpass error response, carrying why ORS was passed over. */
+function hotelError(err, request, diag) {
+  const res = json(err, 502, request);
+  if (diag && diag.why) res.headers.set('X-Hotel-ORS', diag.why);
   return res;
 }
 
@@ -1631,7 +1640,8 @@ async function handleHotels(body, request, env = {}, { overpassOnly = false } = 
   const [lng, lat] = point;
 
   // GOLF-279: ORS first; Overpass only when ORS can't answer.
-  const ors = overpassOnly ? null : await orsHotelsNear(point, radius, env, request);
+  const diag = {};
+  const ors = overpassOnly ? null : await orsHotelsNear(point, radius, env, request, diag);
   if (ors) return hotelJson(hotelPois(ors, 40), 'ors', request);
 
   const query = `
@@ -1644,7 +1654,7 @@ out center 60;
 
   const overpassTest = testUrl('overpass', env, request);
   const op = await overpassFetch(query, overpassTest ? [overpassTest] : OVERPASS_URLS);
-  if (op.error) return json(op.error, 502, request);
+  if (op.error) return hotelError(op.error, request, diag);
   const data = op.data;
 
   const elements = Array.isArray(data && data.elements) ? data.elements : [];
@@ -1663,7 +1673,7 @@ out center 60;
     .filter((p) => p.name && typeof p.lat === 'number' && typeof p.lng === 'number')
     .slice(0, 40);
 
-  return hotelJson(pois, 'overpass', request);
+  return hotelJson(pois, 'overpass', request, diag);
 }
 
 // GOLF-142: hotels within the currently-visible map viewport, for the
@@ -1694,7 +1704,8 @@ async function handleHotelsViewport(body, request, env = {}, ctx = null) {
   }
 
   // GOLF-279: ORS first; Overpass only when ORS can't answer.
-  const ors = await orsHotelsInBbox([south, west, north, east], env, request, ctx);
+  const diag = {};
+  const ors = await orsHotelsInBbox([south, west, north, east], env, request, ctx, diag);
   if (ors) return hotelJson(hotelPois(ors, 80), 'ors', request);
 
   const query = `
@@ -1706,7 +1717,7 @@ out center 80;
 `.trim();
 
   const op = await overpassFetch(query);
-  if (op.error) return json(op.error, 502, request);
+  if (op.error) return hotelError(op.error, request, diag);
   const data = op.data;
 
   const elements = Array.isArray(data && data.elements) ? data.elements : [];
@@ -1725,7 +1736,7 @@ out center 80;
     .filter((p) => p.name && typeof p.lat === 'number' && typeof p.lng === 'number')
     .slice(0, 80);
 
-  return hotelJson(pois, 'overpass', request);
+  return hotelJson(pois, 'overpass', request, diag);
 }
 
 // GOLF-56: place search for start/free/end day locations. ORS's geocoder
@@ -1911,7 +1922,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = 'd63e803349';
+const WORKER_BUILD = '09d020d42a';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {
