@@ -207,7 +207,9 @@ function isAllowedOrigin(origin) {
    or geocoding (those are keyed by exact coordinates, so hit rates would be
    near zero and ORS's own terms are a separate question), and it never
    caches a non-200 — an Overpass 521 must not be remembered for a day. */
-const POI_CACHE_TTL_S = 86400; // 24h — hotels/POIs move on a scale of years
+// GOLF-279: 7 days (was 24h). Hotels move on a scale of years, and since
+// GOLF-279 every miss spends ORS POI quota, which is small.
+const POI_CACHE_TTL_S = 7 * 86400;
 
 /* Cache API keys on a Request, and a POST body isn't part of that key, so
    every mode builds a synthetic GET URL standing in for its parameters.
@@ -523,6 +525,12 @@ async function orsHotelLine(line, buffer, env, request, diag) {
       }),
       signal: ctl.signal,
     });
+    // ORS's own count for this key's POI quota (a rolling 24h window from
+    // the first call), relayed so the real figure can be read live.
+    for (const h of ['limit', 'remaining', 'reset']) {
+      const v = res.headers.get('x-ratelimit-' + h);
+      if (v) diag['ratelimit-' + h] = v;
+    }
     if (!res.ok) {
       diag.why = `${res.status} ${(await logUpstreamFailure('pois', res)).slice(0, 160)}`;
       return null;
@@ -603,9 +611,13 @@ function hotelPois(list, max) {
    took the whole hotel call down with a 1101 on 2026-10-21. So: one line,
    printable ASCII only, and never allowed to throw. */
 function setWhyHeader(res, diag) {
-  if (!diag || !diag.why) return;
+  if (!diag) return;
+  const clean = (v) => String(v).replace(/\s+/g, ' ').replace(/[^\x20-\x7e]/g, '?').trim().slice(0, 200);
   try {
-    res.headers.set('X-Hotel-ORS', String(diag.why).replace(/\s+/g, ' ').replace(/[^\x20-\x7e]/g, '?').trim().slice(0, 200));
+    if (diag.why) res.headers.set('X-Hotel-ORS', clean(diag.why));
+    for (const h of ['limit', 'remaining', 'reset']) {
+      if (diag['ratelimit-' + h]) res.headers.set('X-ORS-POI-RateLimit-' + h[0].toUpperCase() + h.slice(1), clean(diag['ratelimit-' + h]));
+    }
   } catch (e) { /* diagnostics must never break the response */ }
 }
 
@@ -1683,7 +1695,7 @@ async function handleHotels(body, request, env = {}, { overpassOnly = false } = 
   // GOLF-279: ORS first; Overpass only when ORS can't answer.
   const diag = {};
   const ors = overpassOnly ? null : await orsHotelsNear(point, radius, env, request, diag);
-  if (ors) return hotelJson(hotelPois(ors, 40), 'ors', request);
+  if (ors) return hotelJson(hotelPois(ors, 40), 'ors', request, diag);
 
   const query = `
 [out:json][timeout:20];
@@ -1747,7 +1759,7 @@ async function handleHotelsViewport(body, request, env = {}, ctx = null) {
   // GOLF-279: ORS first; Overpass only when ORS can't answer.
   const diag = {};
   const ors = await orsHotelsInBbox([south, west, north, east], env, request, diag);
-  if (ors) return hotelJson(hotelPois(ors, 80), 'ors', request);
+  if (ors) return hotelJson(hotelPois(ors, 80), 'ors', request, diag);
 
   const query = `
 [out:json][timeout:20];
@@ -1963,7 +1975,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = '07506d879e';
+const WORKER_BUILD = 'fba4ecf7d9';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {

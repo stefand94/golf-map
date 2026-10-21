@@ -292,7 +292,7 @@ const orsPoisOk = (body) => {
       feat(n + 5, cx, y, 108, 'hotel', null)); // unnamed: dropped like Overpass's
   }
   return new Response(JSON.stringify({ type: 'FeatureCollection', features }),
-    { status: 200, headers: { 'Content-Type': 'application/json' } });
+    { status: 200, headers: { 'Content-Type': 'application/json', 'x-ratelimit-limit': '500', 'x-ratelimit-remaining': '499' } });
 };
 // Web Mercator length, as openpoiservice measures it against its 500 km cap.
 const mercLen = (coords) => {
@@ -325,6 +325,9 @@ check('ORS: one call, a LineString with a buffer ≤ 2000 m and no bbox',
     && Math.min(...c.map((p) => p[0])) <= -2.86 && Math.max(...c.map((p) => p[0])) >= -2.76,
     `rows=${lats.length} gaps=${gaps.map((x) => x.toFixed(0)).join(',')}`);
 }
+check('ORS: relays ORS\'s own POI quota headers',
+  r.headers.get('X-ORS-POI-RateLimit-Limit') === '500' && r.headers.get('X-ORS-POI-RateLimit-Remaining') === '499',
+  `limit=${r.headers.get('X-ORS-POI-RateLimit-Limit')} remaining=${r.headers.get('X-ORS-POI-RateLimit-Remaining')}`);
 check('ORS: sends the key and ≤5 accommodation category ids',
   orsPoisCalls.every((c) => c.auth === 'test-key' && c.body.filters.category_ids.length <= 5 && c.body.filters.category_ids.includes(108)),
   JSON.stringify(orsPoisCalls[0]?.body.filters));
