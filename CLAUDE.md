@@ -16,8 +16,9 @@ archaeology, not for onboarding; grep it by ticket number).
   live network call is to one small Cloudflare Worker
   (`scripts/cloudflare-worker/ors-proxy.js`, served at
   `api.golftripper.uk`; the Worker's own name is `geofftheworker`) that proxies OpenRouteService
-  (driving directions/geocoding) and OpenStreetMap Overpass (heritage POIs,
-  hotels) so no API key ever reaches the browser.
+  (driving directions, geocoding, and since GOLF-279 the hotel POIs) and
+  OpenStreetMap Overpass (the hotels' fallback when ORS can't answer) so no
+  API key ever reaches the browser.
 - All per-visitor state (trips, corrections, filters) lives in that
   browser's own `localStorage`. No accounts, no database, no server beyond
   the one stateless Worker.

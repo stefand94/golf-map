@@ -49,7 +49,17 @@ const esriAll = (url) => url.includes('/styles/')
   : new Response('png', { status: 200, headers: { 'Content-Type': 'image/png' } });
 let esriStub = esriAll;
 
+/* GOLF-279: ORS /pois, the hotel modes' first source. orsPoisStub(body)
+   returns the Response; every call's parsed body is kept in orsPoisCalls. */
+let orsPoisCalls = [];
+let orsPoisStub = null;
+
 globalThis.fetch = async (url, opts) => {
+  if (String(url).includes('/pois')) {
+    const body = JSON.parse(opts.body);
+    orsPoisCalls.push({ body, auth: opts.headers?.Authorization });
+    return orsPoisStub(body);
+  }
   if (String(url).includes('arcgis.com')) {
     esriCalls.push({ url: String(url), headers: opts?.headers || {} });
     return esriStub(String(url));
@@ -251,6 +261,99 @@ mirrorBehaviour = { 'overpass': { status: 504 }, 'maps.mail.ru': { status: 504 }
 r = await call({ mode: 'hotelsViewport', bbox: [51.10, -2.70, 51.15, -2.64] });
 check('all mirrors failing: 502 after exactly two passes', r.status === 502 && calledUrls.length === 8, `status=${r.status} urls=${calledUrls.length}`);
 mirrorBehaviour = {};
+
+/* ── GOLF-279: hotels come from ORS /pois first, Overpass only as fallback.
+
+   The stub answers every bbox with one feature of each kind at the box's
+   centre and one at its corner, plus a restaurant that must be dropped. */
+const orsEnv = { ORS_API_KEY: 'test-key' };
+const callEnv = (body, env) => worker.fetch(new Request('https://w.test', {
+  method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://golf-map.pages.dev' },
+  body: JSON.stringify(body),
+}), env, ctx);
+const feat = (id, lng, lat, catId, catName, name) => ({
+  type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] },
+  properties: { osm_id: id, osm_type: 1, category_ids: { [catId]: { category_name: catName } }, osm_tags: name ? { name } : {} },
+});
+const orsPoisOk = (body) => {
+  const [[w, s], [e, n]] = body.geometry.bbox;
+  const cx = (w + e) / 2, cy = (s + n) / 2, k = Math.round(cx * 1000 + cy * 10);
+  return new Response(JSON.stringify({ type: 'FeatureCollection', features: [
+    feat(k + 1, cx, cy, 108, 'hotel', `Hotel ${k}`),
+    feat(k + 2, cx + 0.001, cy, 106, 'guest_house', `GH ${k}`),
+    feat(k + 3, w + 0.0001, s + 0.0001, 107, 'hostel', `Hostel ${k}`),
+    feat(k + 4, cx, cy, 570, 'restaurant', 'Not a hotel'),
+    feat(k + 5, cx, cy, 108, 'hotel', null), // unnamed: dropped like Overpass's
+  ] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+};
+const boxKm2 = (b) => {
+  const [[w, s], [e, n]] = b;
+  return (n - s) * 111.32 * (e - w) * 111.32 * Math.cos(((s + n) / 2) * Math.PI / 180);
+};
+
+// 18. a viewport is answered by ORS, tile by tile, with Overpass untouched
+orsPoisStub = orsPoisOk; orsPoisCalls = []; overpassCalls = 0;
+r = await callEnv({ mode: 'hotelsViewport', bbox: [56.31, -2.86, 56.36, -2.76] }, orsEnv);
+j = await r.clone().json();
+check('ORS: viewport answered by ORS', r.status === 200 && r.headers.get('X-Hotel-Source') === 'ors' && overpassCalls === 0,
+  `status=${r.status} src=${r.headers.get('X-Hotel-Source')} overpass=${overpassCalls}`);
+check('ORS: one call per grid tile, each under 50 km²',
+  orsPoisCalls.length >= 2 && orsPoisCalls.length <= 6 && orsPoisCalls.every((c) => boxKm2(c.body.geometry.bbox) < 50),
+  `calls=${orsPoisCalls.length} km2=${orsPoisCalls.map((c) => boxKm2(c.body.geometry.bbox).toFixed(1)).join(',')}`);
+check('ORS: sends the key and ≤5 accommodation category ids',
+  orsPoisCalls.every((c) => c.auth === 'test-key' && c.body.filters.category_ids.length <= 5 && c.body.filters.category_ids.includes(108)),
+  JSON.stringify(orsPoisCalls[0]?.body.filters));
+check('ORS: restaurants and unnamed places dropped, labels mapped',
+  j.pois.length > 0 && j.pois.every((p) => ['Hotel', 'Guest house', 'Hostel'].includes(p.category) && p.name && p.name !== 'Not a hotel'),
+  JSON.stringify(j.pois.slice(0, 3)));
+check('ORS: only pins inside the viewport, nearest the centre first',
+  j.pois.every((p) => p.lat >= 56.31 && p.lat <= 56.36 && p.lng >= -2.86 && p.lng <= -2.76)
+  && j.pois[0].category !== 'Hostel', `first=${JSON.stringify(j.pois[0])}`);
+check('ORS: response keeps the {name,category,lat,lng} shape',
+  j.pois.every((p) => Object.keys(p).sort().join() === 'category,lat,lng,name'), Object.keys(j.pois[0] || {}).join());
+
+// 19. an overlapping viewport (a different snapped cell) reuses the cached tiles
+orsPoisCalls = [];
+r = await callEnv({ mode: 'hotelsViewport', bbox: [56.32, -2.85, 56.35, -2.78] }, orsEnv);
+check('ORS: overlapping viewport spends no new ORS calls', r.status === 200 && r.headers.get('X-POI-Cache') === null && orsPoisCalls.length === 0,
+  `status=${r.status} cache=${r.headers.get('X-POI-Cache')} calls=${orsPoisCalls.length}`);
+
+// 20. ORS failing falls back to Overpass, not to an error
+orsPoisStub = () => new Response('{"error":"quota"}', { status: 429 }); overpassCalls = 0;
+r = await callEnv({ mode: 'hotelsViewport', bbox: [53.30, -6.35, 53.34, -6.27] }, orsEnv);
+j = await r.clone().json();
+check('ORS: an ORS failure falls back to Overpass',
+  r.status === 200 && r.headers.get('X-Hotel-Source') === 'overpass' && overpassCalls === 1 && j.pois.length === 2,
+  `status=${r.status} src=${r.headers.get('X-Hotel-Source')} overpass=${overpassCalls}`);
+
+// 21. one tile failing means Overpass for the whole viewport, never half a map
+let nth = 0;
+orsPoisStub = (b) => (nth++ === 1 ? new Response('boom', { status: 500 }) : orsPoisOk(b)); overpassCalls = 0;
+r = await callEnv({ mode: 'hotelsViewport', bbox: [51.50, -0.20, 51.54, -0.13] }, orsEnv);
+check('ORS: a partial ORS answer is not used', r.status === 200 && r.headers.get('X-Hotel-Source') === 'overpass',
+  `src=${r.headers.get('X-Hotel-Source')}`);
+
+// 22. a viewport needing more than ORS_POI_MAX_TILES goes straight to Overpass
+orsPoisStub = orsPoisOk; orsPoisCalls = []; overpassCalls = 0;
+r = await callEnv({ mode: 'hotelsViewport', bbox: [52.00, -1.50, 52.40, -1.00] }, orsEnv);
+check('ORS: an oversized viewport skips ORS', r.headers.get('X-Hotel-Source') === 'overpass' && orsPoisCalls.length === 0,
+  `src=${r.headers.get('X-Hotel-Source')} calls=${orsPoisCalls.length}`);
+
+// 23. the day's hotel picker (point + radius) is one ORS call, under 50 km²
+orsPoisCalls = []; overpassCalls = 0;
+r = await callEnv({ mode: 'hotels', point: [-6.2601, 53.3491], radius: 3000 }, orsEnv);
+j = await r.clone().json();
+check('ORS: hotel picker answered by ORS in one call',
+  r.status === 200 && r.headers.get('X-Hotel-Source') === 'ors' && orsPoisCalls.length === 1 && overpassCalls === 0
+  && boxKm2(orsPoisCalls[0].body.geometry.bbox) < 50 && j.pois.length === 2,
+  `src=${r.headers.get('X-Hotel-Source')} calls=${orsPoisCalls.length} n=${j.pois?.length} km2=${orsPoisCalls[0] && boxKm2(orsPoisCalls[0].body.geometry.bbox).toFixed(1)}`);
+
+// 24. without a key it is Overpass, as before
+orsPoisCalls = []; overpassCalls = 0;
+r = await callEnv({ mode: 'hotels', point: [-3.19, 55.95], radius: 3000 }, {});
+check('ORS: no key means Overpass, no ORS call', r.headers.get('X-Hotel-Source') === 'overpass' && orsPoisCalls.length === 0,
+  `src=${r.headers.get('X-Hotel-Source')} calls=${orsPoisCalls.length}`);
+orsPoisStub = null;
 
 /* ── GOLF-149: the routing success path.
 

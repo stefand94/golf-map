@@ -406,6 +406,171 @@ async function overpassFetch(query, urls = OVERPASS_URLS) {
   return won ? { data: won } : { error: lastError };
 }
 
+/* ── GOLF-279: hotels from ORS's POI service first, Overpass second.
+
+   Probed 2026-10-21: every public Overpass mirror was saturated.
+   overpass-api.de answered "at capacity, request queue is full",
+   maps.mail.ru took 17-20s for a one-node query (pure queue time), and
+   kumi.systems and private.coffee hung past 30s. No mirror order, hedge or
+   retry fixes that: the 8s per-attempt cap was simply shorter than the
+   queue, so every cold hotel call 502'd at ~20s.
+
+   ORS's /pois is the same OpenStreetMap data (openpoiservice), behind the
+   key this Worker already holds, and answers in well under a second. Its
+   limits, from openpoiservice's ops_settings.yml: a query area of at most
+   50 km², at most 5 category ids. So:
+   - 'hotels' (a point + radius) is one bbox query around the point,
+     clipped to ORS_POI_POINT_MAX_M, then filtered back to the circle.
+   - 'hotelsViewport' is split along a fixed tile grid that keeps every
+     tile under 50 km² anywhere the app has courses, and each tile is
+     edge-cached on its own for ORS_POI_TILE_TTL_S, so panning and
+     overlapping viewports reuse tiles instead of spending quota again.
+   Anything ORS can't answer whole (no key, quota spent, an error, a
+   viewport over ORS_POI_MAX_TILES) returns null and the caller falls back
+   to Overpass exactly as before — never a partial answer, because the
+   viewport response is itself cached and must cover its whole cell. */
+const ORS_POIS_URL = 'https://api.openrouteservice.org/pois';
+// openpoiservice's 'accomodation' group (id 100): only the five the
+// Overpass query asks for. Anything else in a response is dropped.
+const ORS_HOTEL_CATEGORIES = { 102: 'apartment', 106: 'guest_house', 107: 'hostel', 108: 'hotel', 109: 'motel' };
+const HOTEL_CATEGORY_LABELS = {
+  hotel: 'Hotel',
+  guest_house: 'Guest house',
+  hostel: 'Hostel',
+  apartment: 'Apartment',
+  motel: 'Motel',
+};
+// 0.05° x 0.075° is 5.6 km x 8.3 km at the equator (46 km²), and smaller
+// everywhere north or south of it, so a tile never trips ORS's 50 km² cap.
+const ORS_POI_TILE_LAT = 0.05;
+const ORS_POI_TILE_LNG = 0.075;
+// A phone at zoom 13 needs 2-4 tiles, a desktop map 6-9; zoom 12 (the
+// day's "search this area") up to ~20, where Overpass takes over.
+const ORS_POI_MAX_TILES = 16;
+// Half the side of the point mode's square: (2 x 3.3 km)² = 43.6 km².
+const ORS_POI_POINT_MAX_M = 3300;
+const ORS_POI_TIMEOUT_MS = 6000;
+const ORS_POI_TILE_TTL_S = 7 * 86400; // hotels move on a scale of years
+
+/* One ORS /pois call for a [south, west, north, east] box. Returns
+   [{id, name, tourism, lat, lng}] or null on any failure. */
+async function orsHotelBox([south, west, north, east], env, request) {
+  if (!env || !env.ORS_API_KEY) return null;
+  const url = testUrl('orspois', env, request) || ORS_POIS_URL;
+  if (await quotaGate('pois', env, request)) return null; // over a limit: let Overpass have it
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), ORS_POI_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: env.ORS_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        request: 'pois',
+        geometry: { bbox: [[west, south], [east, north]] },
+        filters: { category_ids: Object.keys(ORS_HOTEL_CATEGORIES).map(Number) },
+        limit: 1000,
+      }),
+      signal: ctl.signal,
+    });
+    if (!res.ok) {
+      await logUpstreamFailure('pois', res);
+      return null;
+    }
+    const data = await res.json();
+    if (!data || !Array.isArray(data.features)) return null;
+    const out = [];
+    for (const f of data.features) {
+      const props = (f && f.properties) || {};
+      const tags = props.osm_tags || {};
+      const c = f && f.geometry && f.geometry.coordinates;
+      const cat = Object.keys(props.category_ids || {}).map((k) => ORS_HOTEL_CATEGORIES[k]).find(Boolean);
+      if (!cat || !tags.name || !Array.isArray(c) || typeof c[0] !== 'number' || typeof c[1] !== 'number') continue;
+      out.push({ id: `${props.osm_type}/${props.osm_id}`, name: tags.name, tourism: cat, lat: c[1], lng: c[0] });
+    }
+    return out;
+  } catch (e) {
+    console.log(`ORS pois failed: ${e && e.name === 'AbortError' ? 'timed out' : e}`);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/* One grid tile, through its own edge cache entry. */
+async function orsHotelTile(i, j, env, request, ctx) {
+  const key = poiCacheKey('orsHotelTile', [i, j]);
+  try {
+    const hit = await caches.default.match(key);
+    if (hit) return await hit.json();
+  } catch (e) { /* cache unavailable: fetch it */ }
+  const box = [i * ORS_POI_TILE_LAT, j * ORS_POI_TILE_LNG, (i + 1) * ORS_POI_TILE_LAT, (j + 1) * ORS_POI_TILE_LNG]
+    .map((n) => Number(n.toFixed(4)));
+  const list = await orsHotelBox(box, env, request);
+  if (list) {
+    try {
+      const put = caches.default.put(key, new Response(JSON.stringify(list), {
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${ORS_POI_TILE_TTL_S}` },
+      }));
+      if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(put);
+      else await put;
+    } catch (e) { /* a failed cache write must never fail the request */ }
+  }
+  return list;
+}
+
+function metresBetween(aLat, aLng, bLat, bLng) {
+  const rad = Math.PI / 180;
+  const x = (bLng - aLng) * rad * Math.cos(((aLat + bLat) / 2) * rad);
+  const y = (bLat - aLat) * rad;
+  return Math.sqrt(x * x + y * y) * 6371000;
+}
+
+/* Hotels for a whole viewport, nearest its centre first, or null. */
+async function orsHotelsInBbox([south, west, north, east], env, request, ctx) {
+  if (!env || !env.ORS_API_KEY) return null;
+  // The epsilon keeps a north/east edge sitting exactly on a grid line
+  // from pulling in a whole extra row of tiles.
+  const i0 = Math.floor(south / ORS_POI_TILE_LAT), i1 = Math.floor((north - 1e-9) / ORS_POI_TILE_LAT);
+  const j0 = Math.floor(west / ORS_POI_TILE_LNG), j1 = Math.floor((east - 1e-9) / ORS_POI_TILE_LNG);
+  const tiles = [];
+  for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) tiles.push([i, j]);
+  if (!tiles.length || tiles.length > ORS_POI_MAX_TILES) return null;
+  const lists = await Promise.all(tiles.map(([i, j]) => orsHotelTile(i, j, env, request, ctx)));
+  if (lists.some((l) => !l)) return null;
+  const seen = new Set();
+  const cLat = (south + north) / 2, cLng = (west + east) / 2;
+  return lists.flat()
+    .filter((p) => p.lat >= south && p.lat <= north && p.lng >= west && p.lng <= east)
+    .filter((p) => !seen.has(p.id) && seen.add(p.id))
+    .map((p) => ({ ...p, d: metresBetween(cLat, cLng, p.lat, p.lng) }))
+    .sort((a, b) => a.d - b.d);
+}
+
+/* Hotels within `radius` metres of [lng, lat], nearest first, or null. */
+async function orsHotelsNear([lng, lat], radius, env, request) {
+  const r = Math.min(radius, ORS_POI_POINT_MAX_M);
+  const dLat = r / 111320, dLng = r / (111320 * Math.cos(lat * Math.PI / 180));
+  const list = await orsHotelBox([lat - dLat, lng - dLng, lat + dLat, lng + dLng], env, request);
+  if (!list) return null;
+  return list
+    .map((p) => ({ ...p, d: metresBetween(lat, lng, p.lat, p.lng) }))
+    .filter((p) => p.d <= r)
+    .sort((a, b) => a.d - b.d);
+}
+
+/* The response shape both hotel modes have always returned. */
+function hotelPois(list, max) {
+  return list.slice(0, max).map((p) => ({
+    name: p.name, category: HOTEL_CATEGORY_LABELS[p.tourism] || 'Hotel', lat: p.lat, lng: p.lng,
+  }));
+}
+
+function hotelJson(pois, source, request) {
+  const res = json({ pois }, 200, request);
+  res.headers.set('X-Hotel-Source', source); // GOLF-279: which source answered, for live checks
+  return res;
+}
+
 /* ── GOLF-223: daily cap on ORS lookups (directions + geocoding).
 
    The api.golftripper.uk rate-limiting rule (100 requests / 10 s per IP)
@@ -423,8 +588,9 @@ async function overpassFetch(query, urls = OVERPASS_URLS) {
    app already treats any non-200 as "no answer": drives fall back to the
    dotted straight line and place search says it is unavailable.
 
-   The Overpass hotel modes are not counted: they are keyless, edge-cached
-   (GOLF-146) and draw on no quota of ours.
+   The Overpass hotel fallback is not counted: it is keyless, edge-cached
+   (GOLF-146) and draws on no quota of ours. Its ORS POI source (GOLF-279)
+   is, as kind 'pois'.
 
    Storage is one SQLite-backed Durable Object rather than KV: KV is
    eventually consistent (two edges could both let the 1,900th call
@@ -447,6 +613,13 @@ const QUOTA_LIMITS = {
   // (GOLF-251, see paceSlot). Check the HeiGIT dashboard if they change.
   directions: { visitor: 300, site: 1900, minute: 36 },
   geocode: { visitor: 200, site: 2850, minute: 90 },
+  // GOLF-279: ORS POIs, the hotel layer's first source (see orsHotels). The
+  // plan's POI figure is 500/day, 60/min; check the HeiGIT dashboard. One
+  // count per tile actually fetched, so a cold desktop viewport can spend
+  // up to ORS_POI_MAX_TILES. Over any limit the hotel call quietly falls
+  // back to Overpass, never a 429, and the pacing wait is kept short so a
+  // burst falls back rather than leaving the map spinning.
+  pois: { visitor: 150, site: 470, minute: 55, maxWaitMs: 1500 },
 };
 
 /* ── GOLF-251: site-wide per-minute guard.
@@ -1084,7 +1257,7 @@ async function runHealthChecks(env, local, previous) {
     // quiet day's list were empty. Not through withPoiCache: a cached
     // answer would say nothing about Overpass now.
     probe(
-      () => handleHotels({ mode: 'hotels', point: [-2.8, 56.343], radius: 800 }, req, env),
+      () => handleHotels({ mode: 'hotels', point: [-2.8, 56.343], radius: 800 }, req, env, { overpassOnly: true }),
       (d) => Array.isArray(d.pois)),
   ]);
   const checks = { directions, geocode, overpass };
@@ -1168,9 +1341,9 @@ export default {
           body.point[0].toFixed(3), body.point[1].toFixed(3),
           Math.round(typeof body.radius === 'number' ? body.radius : 3000),
         ]);
-        return withPoiCache(key, request, ctx, () => handleHotels(body, request));
+        return withPoiCache(key, request, ctx, () => handleHotels(body, request, env));
       }
-      return handleHotels(body, request);
+      return handleHotels(body, request, env);
     }
     if (body && body.mode === 'hotelsViewport') {
       // GOLF-142: viewport-bbox sibling of handleHotels() above, for the
@@ -1190,9 +1363,9 @@ export default {
         // that's short a few pins along one edge.
         const key = poiCacheKey('hotelsViewport', snapped.map((v) => v.toFixed(2)));
         return withPoiCache(key, request, ctx, () =>
-          handleHotelsViewport({ ...body, bbox: snapped }, request));
+          handleHotelsViewport({ ...body, bbox: snapped }, request, env, ctx));
       }
-      return handleHotelsViewport(body, request); // let the handler own the 400
+      return handleHotelsViewport(body, request, env, ctx); // let the handler own the 400
     }
 
     if (!env.ORS_API_KEY) {
@@ -1447,7 +1620,7 @@ function simplifyRoute(points) {
 // accommodation tags unconditionally — a real, ungated hotel doesn't need
 // a Wikipedia page to be worth showing. (It used to be described as a
 // sibling of handleHeritagePois(); that handler went with GOLF-156.)
-async function handleHotels(body, request, env = {}) {
+async function handleHotels(body, request, env = {}, { overpassOnly = false } = {}) {
   const { point } = body || {};
   if (!isCoord(point)) {
     return json({ error: 'point must be a [lng, lat] number pair' }, 400, request);
@@ -1455,6 +1628,10 @@ async function handleHotels(body, request, env = {}) {
   const rawRadius = typeof body.radius === 'number' ? body.radius : 3000;
   const radius = Math.min(5000, Math.max(200, rawRadius));
   const [lng, lat] = point;
+
+  // GOLF-279: ORS first; Overpass only when ORS can't answer.
+  const ors = overpassOnly ? null : await orsHotelsNear(point, radius, env, request);
+  if (ors) return hotelJson(hotelPois(ors, 40), 'ors', request);
 
   const query = `
 [out:json][timeout:20];
@@ -1468,14 +1645,6 @@ out center 60;
   const op = await overpassFetch(query, overpassTest ? [overpassTest] : OVERPASS_URLS);
   if (op.error) return json(op.error, 502, request);
   const data = op.data;
-
-  const HOTEL_CATEGORY_LABELS = {
-    hotel: 'Hotel',
-    guest_house: 'Guest house',
-    hostel: 'Hostel',
-    apartment: 'Apartment',
-    motel: 'Motel',
-  };
 
   const elements = Array.isArray(data && data.elements) ? data.elements : [];
   const pois = elements
@@ -1493,7 +1662,7 @@ out center 60;
     .filter((p) => p.name && typeof p.lat === 'number' && typeof p.lng === 'number')
     .slice(0, 40);
 
-  return json({ pois }, 200, request);
+  return hotelJson(pois, 'overpass', request);
 }
 
 // GOLF-142: hotels within the currently-visible map viewport, for the
@@ -1503,7 +1672,7 @@ out center 60;
 // the client already has a Leaflet viewport rather than a single point.
 // Kept as its own mode/function (not an overload of 'hotels') so GOLF-96's
 // "add a stay" picker is guaranteed untouched.
-async function handleHotelsViewport(body, request) {
+async function handleHotelsViewport(body, request, env = {}, ctx = null) {
   const bbox = body && body.bbox;
   if (!Array.isArray(bbox) || bbox.length !== 4 || bbox.some((n) => typeof n !== 'number' || Number.isNaN(n))) {
     return json({ error: 'bbox must be [south, west, north, east] numbers' }, 400, request);
@@ -1523,6 +1692,10 @@ async function handleHotelsViewport(body, request) {
     return json({ error: 'viewport too large for a hotel query' }, 400, request);
   }
 
+  // GOLF-279: ORS first; Overpass only when ORS can't answer.
+  const ors = await orsHotelsInBbox([south, west, north, east], env, request, ctx);
+  if (ors) return hotelJson(hotelPois(ors, 80), 'ors', request);
+
   const query = `
 [out:json][timeout:20];
 (
@@ -1534,14 +1707,6 @@ out center 80;
   const op = await overpassFetch(query);
   if (op.error) return json(op.error, 502, request);
   const data = op.data;
-
-  const HOTEL_CATEGORY_LABELS = {
-    hotel: 'Hotel',
-    guest_house: 'Guest house',
-    hostel: 'Hostel',
-    apartment: 'Apartment',
-    motel: 'Motel',
-  };
 
   const elements = Array.isArray(data && data.elements) ? data.elements : [];
   const pois = elements
@@ -1559,7 +1724,7 @@ out center 80;
     .filter((p) => p.name && typeof p.lat === 'number' && typeof p.lng === 'number')
     .slice(0, 80);
 
-  return json({ pois }, 200, request);
+  return hotelJson(pois, 'overpass', request);
 }
 
 // GOLF-56: place search for start/free/end day locations. ORS's geocoder
@@ -1745,7 +1910,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = '21efd7e0b0';
+const WORKER_BUILD = 'a61ba3bd4d';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {
