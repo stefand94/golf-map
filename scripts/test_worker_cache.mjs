@@ -264,8 +264,10 @@ mirrorBehaviour = {};
 
 /* ── GOLF-279: hotels come from ORS /pois first, Overpass only as fallback.
 
-   The stub answers every bbox with one feature of each kind at the box's
-   centre and one at its corner, plus a restaurant that must be dropped. */
+   ORS is asked along a buffered zig-zag LineString (no area check there,
+   unlike a bbox). The stub answers with, per row of the line, a hotel at
+   the row's middle and a guest house beside it, a hostel at its west end,
+   plus a restaurant and an unnamed hotel that must both be dropped. */
 const orsEnv = { ORS_API_KEY: 'test-key' };
 const callEnv = (body, env) => worker.fetch(new Request('https://w.test', {
   method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://golf-map.pages.dev' },
@@ -275,31 +277,53 @@ const feat = (id, lng, lat, catId, catName, name) => ({
   type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] },
   properties: { osm_id: id, osm_type: 1, category_ids: { [catId]: { category_name: catName } }, osm_tags: name ? { name } : {} },
 });
+let featId = 0;
 const orsPoisOk = (body) => {
-  const [[w, s], [e, n]] = body.geometry.bbox;
-  const cx = (w + e) / 2, cy = (s + n) / 2, k = Math.round(cx * 1000 + cy * 10);
-  return new Response(JSON.stringify({ type: 'FeatureCollection', features: [
-    feat(k + 1, cx, cy, 108, 'hotel', `Hotel ${k}`),
-    feat(k + 2, cx + 0.001, cy, 106, 'guest_house', `GH ${k}`),
-    feat(k + 3, w + 0.0001, s + 0.0001, 107, 'hostel', `Hostel ${k}`),
-    feat(k + 4, cx, cy, 570, 'restaurant', 'Not a hotel'),
-    feat(k + 5, cx, cy, 108, 'hotel', null), // unnamed: dropped like Overpass's
-  ] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  const c = body.geometry.geojson.coordinates;
+  const features = [];
+  for (let k = 0; k + 1 < c.length; k += 2) {
+    const [[x1, y], [x2]] = [c[k], c[k + 1]];
+    const w = Math.min(x1, x2), cx = (x1 + x2) / 2, n = ++featId * 10;
+    features.push(
+      feat(n + 1, cx, y, 108, 'hotel', `Hotel ${n}`),
+      feat(n + 2, cx + 0.001, y, 106, 'guest_house', `GH ${n}`),
+      feat(n + 3, w + 0.0001, y, 107, 'hostel', `Hostel ${n}`),
+      feat(n + 4, cx, y, 570, 'restaurant', 'Not a hotel'),
+      feat(n + 5, cx, y, 108, 'hotel', null)); // unnamed: dropped like Overpass's
+  }
+  return new Response(JSON.stringify({ type: 'FeatureCollection', features }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } });
 };
-const boxKm2 = (b) => {
-  const [[w, s], [e, n]] = b;
-  return (n - s) * 111.32 * (e - w) * 111.32 * Math.cos(((s + n) / 2) * Math.PI / 180);
+// Web Mercator length, as openpoiservice measures it against its 500 km cap.
+const mercLen = (coords) => {
+  const R = 6378137, rad = Math.PI / 180;
+  const xy = ([lng, lat]) => [R * lng * rad, R * Math.log(Math.tan(Math.PI / 4 + lat * rad / 2))];
+  let m = 0;
+  for (let k = 1; k < coords.length; k++) { const a = xy(coords[k - 1]), b = xy(coords[k]); m += Math.hypot(b[0] - a[0], b[1] - a[1]); }
+  return m;
 };
+const rowLats = (c) => [...new Set(c.map((p) => p[1]))].sort((a, b) => a - b);
 
-// 18. a viewport is answered by ORS, tile by tile, with Overpass untouched
+// 18. a viewport is answered by ORS in one call, with Overpass untouched
 orsPoisStub = orsPoisOk; orsPoisCalls = []; overpassCalls = 0;
 r = await callEnv({ mode: 'hotelsViewport', bbox: [56.31, -2.86, 56.36, -2.76] }, orsEnv);
 j = await r.clone().json();
 check('ORS: viewport answered by ORS', r.status === 200 && r.headers.get('X-Hotel-Source') === 'ors' && overpassCalls === 0,
   `status=${r.status} src=${r.headers.get('X-Hotel-Source')} overpass=${overpassCalls}`);
-check('ORS: one call per grid tile, each under 50 km²',
-  orsPoisCalls.length >= 2 && orsPoisCalls.length <= 6 && orsPoisCalls.every((c) => boxKm2(c.body.geometry.bbox) < 50),
-  `calls=${orsPoisCalls.length} km2=${orsPoisCalls.map((c) => boxKm2(c.body.geometry.bbox).toFixed(1)).join(',')}`);
+const g = orsPoisCalls[0]?.body.geometry;
+check('ORS: one call, a LineString with a buffer ≤ 2000 m and no bbox',
+  orsPoisCalls.length === 1 && g.geojson.type === 'LineString' && g.buffer > 0 && g.buffer <= 2000 && !g.bbox,
+  `calls=${orsPoisCalls.length} geom=${JSON.stringify(g)?.slice(0, 120)}`);
+{
+  // Rows cover the whole box: first and last within a buffer of the edges,
+  // neighbours closer than two buffers, every row spanning west to east.
+  const c = g.geojson.coordinates, lats = rowLats(c), m = (d) => d * 111320;
+  const gaps = lats.slice(1).map((v, k) => m(v - lats[k]));
+  check('ORS: the line sweeps the whole viewport',
+    m(lats[0] - 56.31) < g.buffer && m(56.36 - lats[lats.length - 1]) < g.buffer && gaps.every((x) => x < 2 * g.buffer)
+    && Math.min(...c.map((p) => p[0])) <= -2.86 && Math.max(...c.map((p) => p[0])) >= -2.76,
+    `rows=${lats.length} gaps=${gaps.map((x) => x.toFixed(0)).join(',')}`);
+}
 check('ORS: sends the key and ≤5 accommodation category ids',
   orsPoisCalls.every((c) => c.auth === 'test-key' && c.body.filters.category_ids.length <= 5 && c.body.filters.category_ids.includes(108)),
   JSON.stringify(orsPoisCalls[0]?.body.filters));
@@ -312,11 +336,14 @@ check('ORS: only pins inside the viewport, nearest the centre first',
 check('ORS: response keeps the {name,category,lat,lng} shape',
   j.pois.every((p) => Object.keys(p).sort().join() === 'category,lat,lng,name'), Object.keys(j.pois[0] || {}).join());
 
-// 19. an overlapping viewport (a different snapped cell) reuses the cached tiles
-orsPoisCalls = [];
-r = await callEnv({ mode: 'hotelsViewport', bbox: [56.32, -2.85, 56.35, -2.78] }, orsEnv);
-check('ORS: overlapping viewport spends no new ORS calls', r.status === 200 && r.headers.get('X-POI-Cache') === null && orsPoisCalls.length === 0,
-  `status=${r.status} cache=${r.headers.get('X-POI-Cache')} calls=${orsPoisCalls.length}`);
+// 19. the biggest viewport the Worker allows (0.6°, at Shetland's latitude)
+//     still goes to ORS, split into lines that each fit ORS's 500 km cap
+orsPoisCalls = []; overpassCalls = 0;
+r = await callEnv({ mode: 'hotelsViewport', bbox: [60.0, -1.6, 60.59, -1.01] }, orsEnv);
+check('ORS: the largest viewport fits in ≤3 lines, each under 500 km (Mercator)',
+  r.headers.get('X-Hotel-Source') === 'ors' && orsPoisCalls.length >= 2 && orsPoisCalls.length <= 3
+  && orsPoisCalls.every((c) => mercLen(c.body.geometry.geojson.coordinates) < 500000),
+  `src=${r.headers.get('X-Hotel-Source')} why=${r.headers.get('X-Hotel-ORS')} calls=${orsPoisCalls.length} km=${orsPoisCalls.map((c) => (mercLen(c.body.geometry.geojson.coordinates) / 1000).toFixed(0)).join(',')}`);
 
 // 20. ORS failing falls back to Overpass, not to an error
 orsPoisStub = () => new Response('{"error":"quota"}', { status: 429 }); overpassCalls = 0;
@@ -328,29 +355,25 @@ check('ORS: an ORS failure falls back to Overpass',
 check('ORS: the fallback says why ORS was passed over', /^429 /.test(r.headers.get('X-Hotel-ORS') || ''),
   `hdr=${r.headers.get('X-Hotel-ORS')}`);
 
-// 21. one tile failing means Overpass for the whole viewport, never half a map
+// 21. one of several lines failing means Overpass for the whole viewport, never half a map
 let nth = 0;
 orsPoisStub = (b) => (nth++ === 1 ? new Response('boom', { status: 500 }) : orsPoisOk(b)); overpassCalls = 0;
-r = await callEnv({ mode: 'hotelsViewport', bbox: [51.50, -0.20, 51.54, -0.13] }, orsEnv);
-check('ORS: a partial ORS answer is not used', r.status === 200 && r.headers.get('X-Hotel-Source') === 'overpass',
-  `src=${r.headers.get('X-Hotel-Source')}`);
+r = await callEnv({ mode: 'hotelsViewport', bbox: [59.0, -3.3, 59.59, -2.71] }, orsEnv);
+check('ORS: a partial ORS answer is not used', r.status === 200 && r.headers.get('X-Hotel-Source') === 'overpass' && nth >= 2,
+  `src=${r.headers.get('X-Hotel-Source')} orsCalls=${nth}`);
 
-// 22. a viewport needing more than ORS_POI_MAX_TILES goes straight to Overpass
+// 22. the day's hotel picker (point + 3 km) is one ORS call, filtered to the circle
 orsPoisStub = orsPoisOk; orsPoisCalls = []; overpassCalls = 0;
-r = await callEnv({ mode: 'hotelsViewport', bbox: [52.00, -1.50, 52.40, -1.00] }, orsEnv);
-check('ORS: an oversized viewport skips ORS', r.headers.get('X-Hotel-Source') === 'overpass' && orsPoisCalls.length === 0,
-  `src=${r.headers.get('X-Hotel-Source')} calls=${orsPoisCalls.length}`);
-
-// 23. the day's hotel picker (point + radius) is one ORS call, under 50 km²
-orsPoisCalls = []; overpassCalls = 0;
 r = await callEnv({ mode: 'hotels', point: [-6.2601, 53.3491], radius: 3000 }, orsEnv);
 j = await r.clone().json();
 check('ORS: hotel picker answered by ORS in one call',
-  r.status === 200 && r.headers.get('X-Hotel-Source') === 'ors' && orsPoisCalls.length === 1 && overpassCalls === 0
-  && boxKm2(orsPoisCalls[0].body.geometry.bbox) < 50 && j.pois.length === 2,
-  `src=${r.headers.get('X-Hotel-Source')} calls=${orsPoisCalls.length} n=${j.pois?.length} km2=${orsPoisCalls[0] && boxKm2(orsPoisCalls[0].body.geometry.bbox).toFixed(1)}`);
+  r.status === 200 && r.headers.get('X-Hotel-Source') === 'ors' && orsPoisCalls.length === 1 && overpassCalls === 0 && j.pois.length > 0,
+  `src=${r.headers.get('X-Hotel-Source')} why=${r.headers.get('X-Hotel-ORS')} calls=${orsPoisCalls.length} n=${j.pois?.length}`);
+check('ORS: picker results all within the radius',
+  j.pois.every((p) => Math.hypot((p.lat - 53.3491) * 111320, (p.lng + 6.2601) * 111320 * Math.cos(53.3491 * Math.PI / 180)) <= 3000),
+  JSON.stringify(j.pois.slice(0, 2)));
 
-// 24. without a key it is Overpass, as before
+// 23. without a key it is Overpass, as before
 orsPoisCalls = []; overpassCalls = 0;
 r = await callEnv({ mode: 'hotels', point: [-3.19, 55.95], radius: 3000 }, {});
 check('ORS: no key means Overpass, no ORS call', r.headers.get('X-Hotel-Source') === 'overpass' && orsPoisCalls.length === 0,

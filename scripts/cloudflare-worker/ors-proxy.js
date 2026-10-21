@@ -417,19 +417,22 @@ async function overpassFetch(query, urls = OVERPASS_URLS) {
    queue, so every cold hotel call 502'd at ~20s.
 
    ORS's /pois is the same OpenStreetMap data (openpoiservice), behind the
-   key this Worker already holds, and answers in well under a second. Its
-   limits, from openpoiservice's ops_settings.yml: a query area of at most
-   50 km², at most 5 category ids. So:
-   - 'hotels' (a point + radius) is one bbox query around the point,
-     clipped to ORS_POI_POINT_MAX_M, then filtered back to the circle.
-   - 'hotelsViewport' is split along a fixed tile grid that keeps every
-     tile under 50 km² anywhere the app has courses, and each tile is
-     edge-cached on its own for ORS_POI_TILE_TTL_S, so panning and
-     overlapping viewports reuse tiles instead of spending quota again.
-   Anything ORS can't answer whole (no key, quota spent, an error, a
-   viewport over ORS_POI_MAX_TILES) returns null and the caller falls back
-   to Overpass exactly as before — never a partial answer, because the
-   viewport response is itself cached and must cover its whole cell. */
+   key this Worker already holds; it answered Leeds in ~2s cold, Worker
+   included. Its limits (openpoiservice views.py / query_builder.py):
+   - a bbox or Polygon is refused over 50 km², and that area is measured in
+     Web Mercator, i.e. true area / cos²(lat). At St Andrews a 5 km square
+     (25 km²) measured 81 km² live. A bbox holds only ~14 km² of the UK.
+   - a LineString + buffer has NO area check: only its Mercator length
+     (500 km) and the buffer (2,000 m, applied in true metres on PostGIS
+     geography). So a box is swept with one zig-zag line whose rows sit
+     ORS_POI_ROW_M apart, each covering ±ORS_POI_BUFFER_M: one call covers a
+     whole desktop viewport. A box too long for one line is split across up
+     to ORS_POI_MAX_CALLS lines; past that it is left to Overpass.
+   - at most 5 category ids.
+   Anything ORS can't answer whole (no key, quota spent, an error, too big)
+   returns null and the caller falls back to Overpass exactly as before.
+   Never a partial answer: the response is cached for its whole cell. The
+   reason ORS was passed over goes out in X-Hotel-ORS (key redacted). */
 const ORS_POIS_URL = 'https://api.openrouteservice.org/pois';
 // openpoiservice's 'accomodation' group (id 100): only the five the
 // Overpass query asks for. Anything else in a response is dropped.
@@ -441,22 +444,53 @@ const HOTEL_CATEGORY_LABELS = {
   apartment: 'Apartment',
   motel: 'Motel',
 };
-// 0.05° x 0.075° is 5.6 km x 8.3 km at the equator (46 km²), and smaller
-// everywhere north or south of it, so a tile never trips ORS's 50 km² cap.
-const ORS_POI_TILE_LAT = 0.05;
-const ORS_POI_TILE_LNG = 0.075;
-// A phone at zoom 13 needs 2-4 tiles, a desktop map 6-9; zoom 12 (the
-// day's "search this area") up to ~20, where Overpass takes over.
-const ORS_POI_MAX_TILES = 16;
-// Half the side of the point mode's square: (2 x 3.3 km)² = 43.6 km².
-const ORS_POI_POINT_MAX_M = 3300;
+const ORS_POI_BUFFER_M = 2000; // openpoiservice's maximum_search_radius_for_linestrings
+const ORS_POI_ROW_M = 3800;    // < 2 x buffer, so neighbouring rows overlap
+const ORS_POI_MAX_LINE_M = 450000; // Mercator metres, under the 500 km cap
+const ORS_POI_MAX_CALLS = 3;   // the Worker's 0.6° viewport cap needs 3 at most
+const ORS_POI_LIMIT = 2000;    // openpoiservice's response_limit
 const ORS_POI_TIMEOUT_MS = 6000;
-const ORS_POI_TILE_TTL_S = 7 * 86400; // hotels move on a scale of years
+const M_PER_DEG_LAT = 111320;
 
-/* One ORS /pois call for a [south, west, north, east] box. Returns
-   [{id, name, tourism, lat, lng}] or null on any failure. */
-async function orsHotelBox([south, west, north, east], env, request, diag = {}) {
-  if (!env || !env.ORS_API_KEY) { diag.why = 'no key'; return null; }
+function mercXY([lng, lat]) {
+  const R = 6378137, rad = Math.PI / 180;
+  return [R * lng * rad, R * Math.log(Math.tan(Math.PI / 4 + (lat * rad) / 2))];
+}
+function mercLength(coords) {
+  let m = 0;
+  for (let k = 1; k < coords.length; k++) {
+    const [ax, ay] = mercXY(coords[k - 1]), [bx, by] = mercXY(coords[k]);
+    m += Math.hypot(bx - ax, by - ay);
+  }
+  return m;
+}
+
+/* The zig-zag lines ([lng, lat] LineStrings) that sweep a box, or null if
+   it needs more than ORS_POI_MAX_CALLS. */
+function orsSweepLines([south, west, north, east]) {
+  const rows = Math.max(1, Math.ceil(((north - south) * M_PER_DEG_LAT) / ORS_POI_ROW_M));
+  const step = (north - south) / rows;
+  const lines = [];
+  let cur = [];
+  for (let k = 0; k < rows; k++) {
+    const lat = south + (k + 0.5) * step;
+    const row = k % 2 ? [[east, lat], [west, lat]] : [[west, lat], [east, lat]];
+    const next = cur.concat(row);
+    if (cur.length && mercLength(next) > ORS_POI_MAX_LINE_M) {
+      lines.push(cur);
+      cur = row;
+    } else {
+      cur = next;
+    }
+  }
+  lines.push(cur);
+  if (lines.length > ORS_POI_MAX_CALLS || lines.some((l) => mercLength(l) > ORS_POI_MAX_LINE_M)) return null;
+  return lines;
+}
+
+/* One ORS /pois call along `line`. Returns [{id, name, tourism, lat, lng}]
+   or null on any failure, with the reason in diag.why. */
+async function orsHotelLine(line, env, request, diag) {
   const url = testUrl('orspois', env, request) || ORS_POIS_URL;
   if (await quotaGate('pois', env, request)) { diag.why = 'quota'; return null; } // over a limit: let Overpass have it
   const ctl = new AbortController();
@@ -467,9 +501,9 @@ async function orsHotelBox([south, west, north, east], env, request, diag = {}) 
       headers: { Authorization: env.ORS_API_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         request: 'pois',
-        geometry: { bbox: [[west, south], [east, north]] },
+        geometry: { geojson: { type: 'LineString', coordinates: line }, buffer: ORS_POI_BUFFER_M },
         filters: { category_ids: Object.keys(ORS_HOTEL_CATEGORIES).map(Number) },
-        limit: 1000,
+        limit: ORS_POI_LIMIT,
       }),
       signal: ctl.signal,
     });
@@ -498,28 +532,6 @@ async function orsHotelBox([south, west, north, east], env, request, diag = {}) 
   }
 }
 
-/* One grid tile, through its own edge cache entry. */
-async function orsHotelTile(i, j, env, request, ctx, diag) {
-  const key = poiCacheKey('orsHotelTile', [i, j]);
-  try {
-    const hit = await caches.default.match(key);
-    if (hit) return await hit.json();
-  } catch (e) { /* cache unavailable: fetch it */ }
-  const box = [i * ORS_POI_TILE_LAT, j * ORS_POI_TILE_LNG, (i + 1) * ORS_POI_TILE_LAT, (j + 1) * ORS_POI_TILE_LNG]
-    .map((n) => Number(n.toFixed(4)));
-  const list = await orsHotelBox(box, env, request, diag);
-  if (list) {
-    try {
-      const put = caches.default.put(key, new Response(JSON.stringify(list), {
-        headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${ORS_POI_TILE_TTL_S}` },
-      }));
-      if (ctx && typeof ctx.waitUntil === 'function') ctx.waitUntil(put);
-      else await put;
-    } catch (e) { /* a failed cache write must never fail the request */ }
-  }
-  return list;
-}
-
 function metresBetween(aLat, aLng, bLat, bLng) {
   const rad = Math.PI / 180;
   const x = (bLng - aLng) * rad * Math.cos(((aLat + bLat) / 2) * rad);
@@ -527,36 +539,38 @@ function metresBetween(aLat, aLng, bLat, bLng) {
   return Math.sqrt(x * x + y * y) * 6371000;
 }
 
-/* Hotels for a whole viewport, nearest its centre first, or null. */
-async function orsHotelsInBbox([south, west, north, east], env, request, ctx, diag = {}) {
+/* Every hotel inside the box, deduplicated, or null. */
+async function orsHotelsInBox(box, env, request, diag) {
   if (!env || !env.ORS_API_KEY) { diag.why = 'no key'; return null; }
-  // The epsilon keeps a north/east edge sitting exactly on a grid line
-  // from pulling in a whole extra row of tiles.
-  const i0 = Math.floor(south / ORS_POI_TILE_LAT), i1 = Math.floor((north - 1e-9) / ORS_POI_TILE_LAT);
-  const j0 = Math.floor(west / ORS_POI_TILE_LNG), j1 = Math.floor((east - 1e-9) / ORS_POI_TILE_LNG);
-  const tiles = [];
-  for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) tiles.push([i, j]);
-  if (!tiles.length || tiles.length > ORS_POI_MAX_TILES) { diag.why = `${tiles.length} tiles`; return null; }
-  const lists = await Promise.all(tiles.map(([i, j]) => orsHotelTile(i, j, env, request, ctx, diag)));
+  const lines = orsSweepLines(box);
+  if (!lines) { diag.why = 'area too big for ORS'; return null; }
+  const lists = await Promise.all(lines.map((l) => orsHotelLine(l, env, request, diag)));
   if (lists.some((l) => !l)) return null;
+  const [south, west, north, east] = box;
   const seen = new Set();
-  const cLat = (south + north) / 2, cLng = (west + east) / 2;
   return lists.flat()
     .filter((p) => p.lat >= south && p.lat <= north && p.lng >= west && p.lng <= east)
-    .filter((p) => !seen.has(p.id) && seen.add(p.id))
+    .filter((p) => !seen.has(p.id) && seen.add(p.id));
+}
+
+/* Hotels for a whole viewport, nearest its centre first, or null. */
+async function orsHotelsInBbox([south, west, north, east], env, request, diag = {}) {
+  const list = await orsHotelsInBox([south, west, north, east], env, request, diag);
+  if (!list) return null;
+  const cLat = (south + north) / 2, cLng = (west + east) / 2;
+  return list
     .map((p) => ({ ...p, d: metresBetween(cLat, cLng, p.lat, p.lng) }))
     .sort((a, b) => a.d - b.d);
 }
 
 /* Hotels within `radius` metres of [lng, lat], nearest first, or null. */
 async function orsHotelsNear([lng, lat], radius, env, request, diag = {}) {
-  const r = Math.min(radius, ORS_POI_POINT_MAX_M);
-  const dLat = r / 111320, dLng = r / (111320 * Math.cos(lat * Math.PI / 180));
-  const list = await orsHotelBox([lat - dLat, lng - dLng, lat + dLat, lng + dLng], env, request, diag);
+  const dLat = radius / M_PER_DEG_LAT, dLng = radius / (M_PER_DEG_LAT * Math.cos(lat * Math.PI / 180));
+  const list = await orsHotelsInBox([lat - dLat, lng - dLng, lat + dLat, lng + dLng], env, request, diag);
   if (!list) return null;
   return list
     .map((p) => ({ ...p, d: metresBetween(lat, lng, p.lat, p.lng) }))
-    .filter((p) => p.d <= r)
+    .filter((p) => p.d <= radius)
     .sort((a, b) => a.d - b.d);
 }
 
@@ -623,10 +637,9 @@ const QUOTA_LIMITS = {
   // (GOLF-251, see paceSlot). Check the HeiGIT dashboard if they change.
   directions: { visitor: 300, site: 1900, minute: 36 },
   geocode: { visitor: 200, site: 2850, minute: 90 },
-  // GOLF-279: ORS POIs, the hotel layer's first source (see orsHotels). The
-  // plan's POI figure is 500/day, 60/min; check the HeiGIT dashboard. One
-  // count per tile actually fetched, so a cold desktop viewport can spend
-  // up to ORS_POI_MAX_TILES. Over any limit the hotel call quietly falls
+  // GOLF-279: ORS POIs, the hotel layer's first source (see orsSweepLines).
+  // The plan's POI figure is 500/day, 60/min; check the HeiGIT dashboard.
+  // One count per ORS call: one per cold viewport or picker, rarely 2-3. Over any limit the hotel call quietly falls
   // back to Overpass, never a 429, and the pacing wait is kept short so a
   // burst falls back rather than leaving the map spinning.
   pois: { visitor: 150, site: 470, minute: 55, maxWaitMs: 1500 },
@@ -1705,7 +1718,7 @@ async function handleHotelsViewport(body, request, env = {}, ctx = null) {
 
   // GOLF-279: ORS first; Overpass only when ORS can't answer.
   const diag = {};
-  const ors = await orsHotelsInBbox([south, west, north, east], env, request, ctx, diag);
+  const ors = await orsHotelsInBbox([south, west, north, east], env, request, diag);
   if (ors) return hotelJson(hotelPois(ors, 80), 'ors', request);
 
   const query = `
@@ -1922,7 +1935,7 @@ async function logUpstreamFailure(label, orsRes) {
  *   python3 scripts/update_worker_build.py --print
  * Same value, the deployed Worker is this source. Different, it is not.
  */
-const WORKER_BUILD = '09d020d42a';
+const WORKER_BUILD = '65176ce5fd';
 
 function json(obj, status = 200, request) {
   return new Response(JSON.stringify(obj), {
